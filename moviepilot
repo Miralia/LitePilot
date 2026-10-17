@@ -17,10 +17,12 @@ Bootstrap Commands:
   moviepilot uninstall [--venv PATH] [--config-dir PATH]
   moviepilot update {backend|frontend|all} [OPTIONS]
   moviepilot startup {enable|disable|status} [--venv PATH] [--config-dir PATH]
-  moviepilot agent [OPTIONS] MESSAGE...
 
 Runtime Commands:
   moviepilot start|stop|restart|status|logs|version
+  moviepilot backup [--output PATH]
+  moviepilot restore ARCHIVE [--config-dir PATH] [--overwrite]
+  moviepilot migrate [--config-dir PATH]
   moviepilot doctor [--json] [--fix] [--deep]
   moviepilot config ...
   moviepilot tool ...
@@ -43,10 +45,12 @@ Examples:
   moviepilot uninstall
   moviepilot update all
   moviepilot startup enable
-  moviepilot agent 帮我分析最近一次搜索失败
   moviepilot help config
   moviepilot config keys
   moviepilot start
+  moviepilot backup
+  moviepilot restore /path/to/moviepilot-backup.tar.gz
+  moviepilot migrate --config-dir /moviepilot-v2/config
   moviepilot doctor
   moviepilot tool list
 EOF
@@ -67,7 +71,6 @@ Bootstrap Commands
   startup enable
   startup disable
   startup status
-  agent
 
 Runtime Commands
   start
@@ -75,6 +78,9 @@ Runtime Commands
   restart
   status
   logs
+  backup
+  restore
+  migrate
   doctor
   version
   config path
@@ -222,19 +228,6 @@ Options:
 EOF
 }
 
-show_agent_help() {
-  cat <<'EOF'
-Usage:
-  moviepilot agent [OPTIONS] MESSAGE...
-
-Options:
-  --session ID              指定会话 ID
-  --new-session             强制创建新会话
-  --user-id ID              智能体上下文中的用户 ID，默认 cli
-  --config-dir PATH         指定配置目录
-  -h, --help                显示帮助
-EOF
-}
 
 show_doctor_help() {
   cat <<'EOF'
@@ -375,10 +368,6 @@ show_command_help() {
       show_uninstall_help
       exit 0
       ;;
-    agent)
-      show_agent_help
-      exit 0
-      ;;
     doctor)
       show_doctor_help
       exit 0
@@ -499,11 +488,6 @@ case "${1:-}" in
     shift
     require_bootstrap_python
     exec "$BOOTSTRAP_PYTHON" "$SETUP_SCRIPT" startup "$@"
-    ;;
-  agent)
-    shift
-    require_bootstrap_python
-    exec "$BOOTSTRAP_PYTHON" "$SETUP_SCRIPT" agent "$@"
     ;;
   doctor)
     run_runtime_cli "$@"

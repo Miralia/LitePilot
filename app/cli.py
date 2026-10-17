@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from collections import deque
 from pathlib import Path
@@ -1172,6 +1173,86 @@ def scheduler_run(job_id: str) -> None:
         _print_json(result)
     else:
         click.echo(result)
+
+
+@cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option("--output", "output_path", type=click.Path(path_type=Path), help="备份包输出路径")
+def backup(output_path: Optional[Path]) -> None:
+    """备份配置目录与数据库"""
+    from app.helper.backup import create_backup
+
+    try:
+        result = create_backup(archive=output_path)
+    except FileNotFoundError as err:
+        raise click.ClickException(str(err)) from err
+    click.echo(f"备份完成：{result.archive}")
+    click.echo(f"文件数：{result.file_count}")
+    if result.excluded:
+        click.echo(f"已排除可重建目录：{', '.join(result.excluded)}")
+
+
+@cli.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("archive", type=click.Path(exists=True, path_type=Path))
+@click.option("--config-dir", "config_dir", type=click.Path(path_type=Path), help="目标配置目录")
+@click.option("--overwrite", is_flag=True, help="目标配置目录非空时覆盖")
+def restore(archive: Path, config_dir: Optional[Path], overwrite: bool) -> None:
+    """从备份包恢复配置目录与数据库"""
+    from app.helper.backup import restore_backup
+
+    backend_state, _, _, _ = _managed_backend_status()
+    if backend_state != "stopped":
+        raise click.ClickException("请先停止 MoviePilot 再恢复配置，避免数据库写入冲突")
+    try:
+        result = restore_backup(archive=archive, config_dir=config_dir, overwrite=overwrite)
+    except (FileNotFoundError, FileExistsError, ValueError) as err:
+        raise click.ClickException(str(err)) from err
+    click.echo(f"恢复完成：{result.config_dir}")
+    click.echo(f"文件数：{result.file_count}")
+    if result.backup_time:
+        click.echo(f"备份时间：{result.backup_time}")
+
+
+@cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option("--config-dir", "config_dir", type=click.Path(path_type=Path), help="旧实例配置目录")
+def migrate(config_dir: Optional[Path]) -> None:
+    """从旧实例（含 Docker 容器）迁移配置目录"""
+    from app.helper.backup import create_backup, restore_backup
+
+    source = (config_dir or Path("/moviepilot-v2/config")).expanduser()
+    if not source.exists():
+        raise click.ClickException(
+            f"未找到旧实例配置目录：{source}；请用 --config-dir 指定旧实例的配置目录"
+        )
+
+    backend_state, _, _, _ = _managed_backend_status()
+    if backend_state != "stopped":
+        raise click.ClickException("请先停止 MoviePilot 再执行迁移")
+
+    target = settings.CONFIG_PATH.expanduser().resolve()
+    if target == source.resolve():
+        raise click.ClickException("源目录与目标配置目录相同，无需迁移")
+
+    click.echo(f"旧实例配置目录：{source}")
+    click.echo(f"当前配置目录：{target}")
+
+    # 先备份当前配置，迁移失败时可直接回滚
+    if target.exists() and any(target.iterdir()):
+        rollback = create_backup()
+        click.echo(f"已备份当前配置，可用于回滚：{rollback.archive}")
+
+    temp_dir = Path(tempfile.mkdtemp(prefix="mp-migrate-"))
+    temp_archive = temp_dir / "legacy-config.tar.gz"
+    try:
+        created = create_backup(archive=temp_archive, config_dir=source)
+        click.echo(f"已打包旧实例配置：{created.file_count} 个文件")
+        restored = restore_backup(
+            archive=created.archive, config_dir=target, overwrite=True
+        )
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    click.echo(f"迁移完成：{restored.config_dir}（{restored.file_count} 个文件）")
+    click.echo("提示：SQLite 数据库随配置目录一并迁移；如使用 PostgreSQL 请自行迁移数据。")
 
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
