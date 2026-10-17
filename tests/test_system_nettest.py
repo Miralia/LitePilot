@@ -60,7 +60,7 @@ _STUB_MODULES = dict([
           LogConfigModel=type("LogConfigModel", (), {})),
     _stub("app.utils.crypto", HashUtils=_Dummy),
     _stub("app.utils.http", RequestUtils=_Dummy, AsyncRequestUtils=_Dummy),
-    _stub("version", APP_VERSION="test", FRONTEND_VERSION="frontend-test"),
+    _stub("version", APP_VERSION="test"),
 ])
 
 with stub_modules(_STUB_MODULES):

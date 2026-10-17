@@ -111,7 +111,7 @@ Options:
     说明            Rust 加速扩展通过 moviepilot-rust PyPI 依赖安装
 
   frontend:
-    --version TAG         前端版本，默认使用 version.py 中的 FRONTEND_VERSION
+    --version TAG         前端版本，默认使用 version.py 中的 APP_VERSION
     --node-version VER    本地 Node 运行时版本，默认 20.12.1
     --config-dir PATH     指定配置目录
 
@@ -147,7 +147,7 @@ Options:
   --python PYTHON           用于创建虚拟环境的 Python 解释器，默认自动选择本地 3.11+ 版本
   --venv PATH               虚拟环境目录，默认 ./venv
   --recreate                删除并重建虚拟环境
-  --frontend-version TAG    前端版本，默认使用 version.py 中的 FRONTEND_VERSION
+  --frontend-version TAG    前端版本，默认使用 version.py 中的 APP_VERSION
   --node-version VER        本地 Node 运行时版本，默认 20.12.1
   --skip-resources          跳过资源同步
   --force-token             强制重置 API_TOKEN
@@ -188,7 +188,7 @@ Usage:
 
 Options:
   --ref REF                 后端 Git 版本，默认 latest
-  --frontend-version TAG    前端版本，默认使用 version.py 中的 FRONTEND_VERSION
+  --frontend-version TAG    前端版本，默认使用 version.py 中的 APP_VERSION
   --node-version VER        本地 Node 运行时版本，默认 20.12.1
   --python PYTHON           用于安装后端依赖的 Python 解释器，默认自动选择本地 3.11+ 版本
   --venv PATH               虚拟环境目录，默认 ./venv

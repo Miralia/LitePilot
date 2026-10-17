@@ -27,12 +27,12 @@ class LocalSetupFrontendVersionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             (root / "version.py").write_text(
-                "APP_VERSION = 'v0.0.1'\nFRONTEND_VERSION = 'v9.9.9'\n",
+                "APP_VERSION = 'v0.0.1'\n",
                 encoding="utf-8",
             )
 
             with patch.object(module, "ROOT", root):
-                self.assertEqual(module._repo_frontend_version(), "v9.9.9")
+                self.assertEqual(module._repo_frontend_version(), "v0.0.1")
 
     def test_resolve_frontend_release_uses_repo_frontend_version_by_default(self):
         module = load_local_setup_module()

@@ -17,7 +17,7 @@ from app.schemas.types import MediaType, SystemConfigKey, media_type_to_agent
 from app.utils.http import AsyncRequestUtils, RequestUtils
 from app.utils.media import resolve_media_identity
 from app.utils.system import SystemUtils
-from version import APP_VERSION, FRONTEND_VERSION
+from version import APP_VERSION
 
 
 class MoviePilotServerHelper:
@@ -242,10 +242,10 @@ class MoviePilotServerHelper:
             try:
                 with open(version_file, "r", encoding="utf-8", errors="replace") as file:
                     version = str(file.read()).strip()
-                return version or FRONTEND_VERSION
+                return version or APP_VERSION
             except Exception as err:
                 logger.debug(f"加载版本文件 {version_file} 出错：{str(err)}")
-        return FRONTEND_VERSION
+        return APP_VERSION
 
     @classmethod
     def build_usage_payload(cls) -> Dict[str, Any]:

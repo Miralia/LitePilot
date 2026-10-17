@@ -12,7 +12,7 @@ from app.log import logger
 from app.schemas import Notification, MessageChannel
 from app.utils.http import RequestUtils
 from app.utils.system import SystemUtils
-from version import FRONTEND_VERSION, APP_VERSION
+from version import APP_VERSION
 
 
 class SystemChain(ChainBase):
@@ -293,4 +293,4 @@ class SystemChain(ChainBase):
                 return version
             except Exception as err:
                 logger.debug(f"加载版本文件 {version_file} 出错：{str(err)}")
-        return FRONTEND_VERSION
+        return APP_VERSION
