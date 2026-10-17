@@ -259,7 +259,6 @@ describe('dashboard page initial layout', () => {
     mocks.apiGet.mockImplementation((url: string) => {
       if (url === '/user/config/DashboardOrder') return remoteOrder.promise
       if (url === '/user/config/DashboardGridLayout') return remoteProfile.promise
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -292,7 +291,6 @@ describe('dashboard page initial layout', () => {
         return { data: {} }
       }
       if (url === '/user/config/Dashboard') return { data: {} }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -311,7 +309,6 @@ describe('dashboard page initial layout', () => {
     mocks.apiGet.mockImplementation((url: string) => {
       if (url === '/user/config/DashboardOrder') return remoteOrder.promise
       if (url === '/user/config/DashboardGridLayout') return remoteProfile.promise
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -361,7 +358,6 @@ describe('dashboard page initial layout', () => {
     mocks.apiGet.mockImplementation((url: string) => {
       if (url === '/user/config/DashboardOrder') return remoteOrder.promise
       if (url === '/user/config/DashboardGridLayout') return remoteProfile.promise
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -406,7 +402,6 @@ describe('dashboard page initial layout', () => {
     mocks.apiGet.mockImplementation((url: string) => {
       if (url === '/user/config/DashboardOrder') return remoteOrder.promise
       if (url === '/user/config/DashboardGridLayout') return remoteProfile.promise
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -460,7 +455,6 @@ describe('dashboard page initial layout', () => {
           },
         }
       }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -510,7 +504,6 @@ describe('dashboard page initial layout', () => {
           data: { value: { enabled: enabledOnlyLibrary, items: { library: { x: 0, y: 0, w: 12, h: 20 } } } },
         }
       }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -538,7 +531,6 @@ describe('dashboard page initial layout', () => {
       if (url === '/user/config/DashboardGridLayout') {
         return { data: { value: { enabled: enabledOnlyLibrary, items: { library: { x: 0, y: 0, w: 12 } } } } }
       }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -573,7 +565,6 @@ describe('dashboard page initial layout', () => {
         return { data: { value: [{ id: 'quickActions', key: '' }] } }
       }
       if (url === '/user/config/DashboardGridLayout') return remoteProfile.promise
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -613,7 +604,6 @@ describe('dashboard page initial layout', () => {
     mocks.apiGet.mockImplementation((url: string) => {
       if (url === '/user/config/DashboardOrder') return remoteOrder.promise
       if (url === '/user/config/DashboardGridLayout') return remoteProfile.promise
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -657,7 +647,6 @@ describe('dashboard page initial layout', () => {
         return { data: {} }
       }
       if (url === '/user/config/Dashboard') return { data: {} }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -672,7 +661,6 @@ describe('dashboard page initial layout', () => {
         return { data: {} }
       }
       if (url === '/user/config/Dashboard') return { data: {} }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -714,7 +702,6 @@ describe('dashboard page initial layout', () => {
         return { data: {} }
       }
       if (url === '/user/config/Dashboard') return { data: {} }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -760,7 +747,6 @@ describe('dashboard page initial layout', () => {
     mocks.apiGet.mockImplementation((url: string) => {
       if (url === '/user/config/DashboardOrder') return remoteOrder.promise
       if (url === '/user/config/DashboardGridLayout') return remoteProfile.promise
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -791,7 +777,6 @@ describe('dashboard page initial layout', () => {
     mocks.apiGet.mockImplementation((url: string) => {
       if (url === '/user/config/DashboardOrder') return remoteOrder.promise
       if (url === '/user/config/DashboardGridLayout') return remoteProfile.promise
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -844,7 +829,6 @@ describe('dashboard page initial layout', () => {
       if (url === '/user/config/DashboardGridLayout') {
         return { data: { value: JSON.parse(localStorage.getItem('MP_DASHBOARD_GRID_LAYOUT') || '{}') } }
       }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -889,7 +873,6 @@ describe('dashboard page initial layout', () => {
           },
         }
       }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -908,7 +891,7 @@ describe('dashboard page initial layout', () => {
       },
     })
 
-    await waitFor(() => expect(mocks.apiGet).toHaveBeenCalledWith('/plugin/dashboard/meta'))
+    await waitFor(() => expect(mocks.apiGet).toHaveBeenCalledWith('/user/config/DashboardGridLayoutMobile'))
     expect(screen.getByTestId('dashboard-item')).toHaveAttribute('data-dashboard-id', 'library')
     expect(mocks.apiPost).not.toHaveBeenCalledWith(
       '/user/config/DashboardGridLayoutMobile',
@@ -930,7 +913,6 @@ describe('dashboard page initial layout', () => {
         return desktopProfileReads === 1 ? { data: {} } : desktopReturnProfile.promise
       }
       if (url === '/user/config/DashboardGridLayoutMobile') return mobileProfile.promise
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
 
@@ -1041,7 +1023,6 @@ describe('dashboard page initial layout', () => {
       }
       if (url === '/user/config/DashboardGridLayoutMobile') return mobileProfile.promise
       if (url === '/user/config/Dashboard') return { data: { value: enabledOnlyLibrary } }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
     mocks.apiPost.mockImplementation((url: string) => {
@@ -1125,7 +1106,6 @@ describe('dashboard page initial layout', () => {
           },
         }
       }
-      if (url === '/plugin/dashboard/meta') return []
       throw new Error('Unexpected GET ' + url)
     })
     mocks.apiPost.mockImplementation((url: string) => {

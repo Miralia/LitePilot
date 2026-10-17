@@ -14,7 +14,6 @@ import { getCurrentLocale, setI18nLanguage } from '@/plugins/i18n'
 import { getNavMenus } from '@/router/i18n-menu'
 import { buildUserPermissionContext, filterMenusByPermission } from '@/utils/permission'
 import type { ApiResponse } from '@/api/types'
-import { loadRemoteComponentFromModule, type RemoteModule } from '@/utils/federationLoader'
 import type { MfaMethod } from '@/types/auth'
 import { getLoginVisualProfile } from '@/utils/loginPresentation'
 
@@ -116,18 +115,11 @@ let isManualPassKeyActive = false
 
 interface LoginAuthProvider {
   id: string
-  type: 'system' | 'plugin'
+  type: 'system'
   method?: string
   name: string
   icon?: string
   enabled?: boolean
-  plugin_id?: string
-  component?: string
-  remote?: RemoteModule
-}
-
-interface PluginAuthPayload {
-  ticket?: string
 }
 
 interface ApiErrorPayload {
@@ -160,17 +152,9 @@ function asApiError(error: unknown): AxiosError<ApiErrorPayload> {
 
 // 登录认证提供方
 const authProviders = ref<LoginAuthProvider[]>([])
-const selectedAuthProvider = ref<LoginAuthProvider | null>(null)
-const RemoteAuthView = shallowRef<Component | null>(null)
-const pluginAuthDialog = ref(false)
-const pluginAuthLoading = ref(false)
-const pluginAuthError = ref('')
 
 const systemPasskeyProvider = computed(() =>
   authProviders.value.find(provider => provider.type === 'system' && provider.method === 'passkey'),
-)
-const pluginAuthProviders = computed(() =>
-  authProviders.value.filter(provider => provider.type === 'plugin' && provider.remote && provider.enabled !== false),
 )
 const showPasskeyLogin = computed(() => !!systemPasskeyProvider.value?.enabled)
 
@@ -239,67 +223,6 @@ async function loadAuthProviders() {
     console.error('加载认证提供方失败:', error)
     authProviders.value = []
   }
-}
-
-// 打开插件认证联邦页面。
-async function openPluginAuth(provider: LoginAuthProvider) {
-  if (!provider.remote) return
-  selectedAuthProvider.value = provider
-  RemoteAuthView.value = null
-  pluginAuthError.value = ''
-  pluginAuthLoading.value = true
-  pluginAuthDialog.value = true
-  try {
-    RemoteAuthView.value = (await loadRemoteComponentFromModule(
-      provider.remote,
-      provider.component || 'AuthPage',
-    )) as Component
-  } catch (error: unknown) {
-    console.error('加载插件认证页面失败:', error)
-    pluginAuthError.value = getErrorMessage(error) || t('login.authFailure')
-  } finally {
-    pluginAuthLoading.value = false
-  }
-}
-
-// 关闭插件认证弹窗。
-function closePluginAuth() {
-  pluginAuthDialog.value = false
-  selectedAuthProvider.value = null
-  RemoteAuthView.value = null
-  pluginAuthError.value = ''
-}
-
-// 兑换插件认证票据并完成系统登录。
-async function exchangePluginAuthTicket(ticket: string) {
-  pluginAuthLoading.value = true
-  try {
-    const response = (await api.post('auth/exchange', { ticket })) as PassKeyFinishResponse
-    closePluginAuth()
-    await handleLoginSuccess(response)
-  } catch (error: unknown) {
-    console.error('插件认证票据兑换失败:', error)
-    const apiError = asApiError(error)
-    const message = apiError.response?.data?.message || apiError.response?.data?.detail
-    pluginAuthError.value =
-      (typeof message === 'string' ? message : undefined) || getErrorMessage(error) || t('login.authFailure')
-  } finally {
-    pluginAuthLoading.value = false
-  }
-}
-
-// 处理插件认证成功事件。
-async function handlePluginAuthenticated(payload: PluginAuthPayload) {
-  if (!payload?.ticket) {
-    pluginAuthError.value = t('login.authFailure')
-    return
-  }
-  await exchangePluginAuthTicket(payload.ticket)
-}
-
-// 处理插件认证失败事件。
-function handlePluginAuthError(error: unknown) {
-  pluginAuthError.value = getErrorMessage(error) || String(error || '') || t('login.authFailure')
 }
 
 // PassKey 认证核心函数 - 处理 WebAuthn 认证流程
@@ -899,7 +822,7 @@ onUnmounted(() => {
                 </VBtn>
 
                 <!-- or divider -->
-                <div v-if="showPasskeyLogin || pluginAuthProviders.length > 0" class="or-divider my-5">
+                <div v-if="showPasskeyLogin" class="or-divider my-5">
                   <span class="or-divider-text">{{ t('login.orDivider') }}</span>
                 </div>
 
@@ -916,20 +839,6 @@ onUnmounted(() => {
                 >
                   {{ t('login.loginWithPasskey') }}
                 </VBtn>
-                <VBtn
-                  v-for="provider in pluginAuthProviders"
-                  :key="provider.id"
-                  block
-                  variant="outlined"
-                  color="primary"
-                  class="mt-3 plugin-auth-btn"
-                  :prepend-icon="provider.icon || 'mdi-login-variant'"
-                  :loading="pluginAuthLoading && selectedAuthProvider?.id === provider.id"
-                  rounded="lg"
-                  @click="openPluginAuth(provider)"
-                >
-                  {{ provider.name }}
-                </VBtn>
                 <VAlert v-if="errorMessage" type="error" variant="tonal" class="mt-4 login-alert">
                   {{ errorMessage }}
                 </VAlert>
@@ -945,32 +854,6 @@ onUnmounted(() => {
         </div>
       </VCard>
     </div>
-    <VDialog v-model="pluginAuthDialog" max-width="520" persistent>
-      <VCard class="plugin-auth-card">
-        <VCardItem>
-          <VCardTitle>{{ selectedAuthProvider?.name }}</VCardTitle>
-          <template #append>
-            <VBtn icon="mdi-close" variant="text" @click="closePluginAuth" />
-          </template>
-        </VCardItem>
-        <VCardText>
-          <VSkeletonLoader v-if="pluginAuthLoading && !RemoteAuthView" type="article" />
-          <VAlert v-else-if="pluginAuthError" type="error" variant="tonal">
-            {{ pluginAuthError }}
-          </VAlert>
-          <component
-            v-else-if="RemoteAuthView && selectedAuthProvider"
-            :is="RemoteAuthView"
-            :api="api"
-            :provider="selectedAuthProvider"
-            :plugin-id="selectedAuthProvider.plugin_id"
-            @authenticated="handlePluginAuthenticated"
-            @error="handlePluginAuthError"
-            @close="closePluginAuth"
-          />
-        </VCardText>
-      </VCard>
-    </VDialog>
   </div>
 </template>
 

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import api from '@/api'
 import { getLogoUrl } from '@/utils/imageUtils'
-import tvdb from '@images/logos/thetvdb.jpeg'
 import { useI18n } from 'vue-i18n'
 
 // 国际化
@@ -30,11 +29,6 @@ interface Address {
   btndisable: boolean
 }
 
-function resolveTargetImage(icon: string) {
-  if (icon === 'tvdb') return tvdb
-  return getLogoUrl(icon)
-}
-
 const targets = ref<Address[]>([])
 
 const resolveStatusColor: Status = {
@@ -57,7 +51,7 @@ async function loadTargets() {
 
   targets.value = result.data.map((item: TargetItem) => ({
     id: item.id,
-    image: resolveTargetImage(item.icon),
+    image: getLogoUrl(item.icon),
     name: item.name,
     status: 'Normal',
     time: '',

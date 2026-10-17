@@ -137,22 +137,6 @@ def _build_nettest_rules() -> list[dict[str, Any]]:
             "allowed_redirect_prefixes": ["https://www.themoviedb.org/"],
         },
         {
-            "id": "tvdb_api",
-            "name": "api.thetvdb.com",
-            "icon": "tvdb",
-            "url": "https://api.thetvdb.com/series/81189",
-            "proxy": True,
-            "allowed_redirect_prefixes": ["https://api.thetvdb.com/"],
-        },
-        {
-            "id": "fanart_api",
-            "name": "webservice.fanart.tv",
-            "icon": "fanart",
-            "url": "https://webservice.fanart.tv",
-            "proxy": True,
-            "allowed_redirect_prefixes": ["https://webservice.fanart.tv/"],
-        },
-        {
             "id": "telegram_api",
             "name": "api.telegram.org",
             "icon": "telegram",
@@ -161,36 +145,6 @@ def _build_nettest_rules() -> list[dict[str, Any]]:
             "allowed_redirect_prefixes": [
                 "https://api.telegram.org/",
                 "https://core.telegram.org/",
-            ],
-        },
-        {
-            "id": "wechat_api",
-            "name": "qyapi.weixin.qq.com",
-            "icon": "wechat",
-            "url": "https://qyapi.weixin.qq.com/cgi-bin/gettoken",
-            "proxy": False,
-            "allowed_redirect_prefixes": ["https://qyapi.weixin.qq.com/"],
-        },
-        {
-            "id": "douban_api",
-            "name": "frodo.douban.com",
-            "icon": "douban",
-            "url": "https://frodo.douban.com",
-            "proxy": False,
-            "allowed_redirect_prefixes": [
-                "https://frodo.douban.com/",
-                "https://www.douban.com/doubanapp/frodo",
-            ],
-        },
-        {
-            "id": "slack_api",
-            "name": "slack.com",
-            "icon": "slack",
-            "url": "https://slack.com",
-            "proxy": False,
-            "allowed_redirect_prefixes": [
-                "https://slack.com/",
-                "https://www.slack.com/",
             ],
         },
         {

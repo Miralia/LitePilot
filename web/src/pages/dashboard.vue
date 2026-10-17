@@ -161,7 +161,6 @@ let dashboardLayoutProfileSwitchId = 0
 const isDashboardGridResizing = ref(false)
 
 // 所有组件刷新定时器的句柄
-const refreshTimers = ref<{ [key: string]: NodeJS.Timeout }>({})
 
 // 仪表板启用配置
 const enableConfig = ref<DashboardEnableConfig>(getDefaultDashboardEnableConfig())
@@ -296,21 +295,15 @@ const dashboardConfigs = ref<DashboardItem[]>([
   },
 ])
 
-// 插件的仪表板元信息
-const pluginDashboardMeta = ref<any[]>([])
-
-// 插件仪表板的刷新状态
-const pluginDashboardRefreshStatus = ref<{ [key: string]: boolean }>({})
-
 // 当前启用且可渲染的仪表板 Grid 项。
 const dashboardGridItems = computed<DashboardGridItem[]>(() =>
   dashboardConfigs.value
     .filter(
       item =>
-        enableConfig.value[buildPluginDashboardId(item.id, item.key)] && item.cols,
+        enableConfig.value[dashboardItemId(item.id, item.key)] && item.cols,
     )
     .map(item => {
-      const id = buildPluginDashboardId(item.id, item.key)
+      const id = dashboardItemId(item.id, item.key)
 
       return {
         config: item,
@@ -895,7 +888,7 @@ function openDashboardSettings() {
       items: dashboardConfigs.value,
       labelGetter: (item: DashboardItem) => item.attrs?.title ?? item.name,
       title: t('dashboard.settings'),
-      valueGetter: (item: DashboardItem) => buildPluginDashboardId(item.id, item.key),
+      valueGetter: (item: DashboardItem) => dashboardItemId(item.id, item.key),
     },
     {
       close: () => {
@@ -1069,103 +1062,14 @@ async function saveDashboardConfig(payload?: { enabled?: Record<string, boolean>
   } catch (error) {
     console.error(error)
   }
-  // 保存后重新获取插件仪表板
-  void getPluginDashboardMeta()
   settingsDialogController?.close()
   settingsDialogController = null
 }
 
-// 构造插件仪表板主ID
-function buildPluginDashboardId(plugin_id: string, key: string) {
-  if (!key) return plugin_id
-  return plugin_id + ':' + key
-}
-
-// 调用API获取所有插件的仪表板元信息
-async function getPluginDashboardMeta() {
-  try {
-    pluginDashboardMeta.value = (await api.get('/plugin/dashboard/meta')) ?? []
-    if (!isNullOrEmptyObject(pluginDashboardMeta.value)) {
-      // 下载插件仪表板配置
-      await Promise.all(
-        pluginDashboardMeta.value.map(async (pluginDashboard: { id: string; key: string }) => {
-          const pluginDashboardId = buildPluginDashboardId(pluginDashboard.id, pluginDashboard.key)
-          // 初始化插件仪表板的刷新状态
-          pluginDashboardRefreshStatus.value[pluginDashboardId] = true
-          await getPluginDashboard(pluginDashboard.id, pluginDashboard.key)
-        }),
-      )
-    }
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-// 清理指定插件仪表板的定时刷新任务。
-function clearPluginDashboardTimer(pluginDashboardId: string) {
-  if (!refreshTimers.value[pluginDashboardId]) return
-
-  clearTimeout(refreshTimers.value[pluginDashboardId])
-  delete refreshTimers.value[pluginDashboardId]
-}
-
-// 根据插件刷新配置安排下一次仪表板数据刷新。
-function schedulePluginDashboardRefresh(item: DashboardItem) {
-  const pluginDashboardId = buildPluginDashboardId(item.id, item.key)
-  clearPluginDashboardTimer(pluginDashboardId)
-
-  if (
-    item.attrs?.refresh &&
-    pluginDashboardRefreshStatus.value[pluginDashboardId] &&
-    enableConfig.value[pluginDashboardId] &&
-    isRequest.value
-  ) {
-    refreshTimers.value[pluginDashboardId] = setTimeout(() => {
-      void getPluginDashboard(item.id, item.key)
-    }, item.attrs.refresh * 1000)
-  }
-}
-
-// 重新拉取当前启用的插件仪表板数据。
-function refreshEnabledPluginDashboards() {
-  if (isNullOrEmptyObject(pluginDashboardMeta.value)) return
-
-  pluginDashboardMeta.value.forEach((pluginDashboard: { id: string; key: string }) => {
-    const pluginDashboardId = buildPluginDashboardId(pluginDashboard.id, pluginDashboard.key)
-    if (enableConfig.value[pluginDashboardId]) {
-      void getPluginDashboard(pluginDashboard.id, pluginDashboard.key)
-    }
-  })
-}
-
-// 获取一个插件的仪表板配置项
-async function getPluginDashboard(id: string, key: string) {
-  try {
-    const url = key ? `/plugin/dashboard/${id}/${key}` : `/plugin/dashboard/${id}`
-    const res: DashboardItem | undefined = await api.get(url)
-    if (res) {
-      // 名称替换为元信息的名称
-      const meta = pluginDashboardMeta.value.find(
-        (item: { id: string; key: string }) => item.id === id && item.key === key,
-      )
-      if (meta) res.name = meta.name
-      // 保存到仪表板配置中，如果已经存在则替换
-      const index = dashboardConfigs.value.findIndex(
-        (item: { id: string; key: string }) => item.id === id && item.key === key,
-      )
-      if (index !== -1) {
-        dashboardConfigs.value[index] = res
-      } else {
-        dashboardConfigs.value.push(res)
-        // 排序
-        sortDashboardConfigs()
-      }
-      // 定时刷新
-      schedulePluginDashboardRefresh(res)
-    }
-  } catch (error) {
-    console.error(error)
-  }
+// 构造仪表板项主ID
+function dashboardItemId(itemId: string, key: string) {
+  if (!key) return itemId
+  return itemId + ':' + key
 }
 
 // 初始化 GridStack 仪表板实例。
@@ -1544,7 +1448,7 @@ function cacheDashboardGridLayoutDraft(manualHeightId: string | false = false) {
 
 // 根据组件 ID 查找默认宽度，保存布局时用于兜底。
 function getDefaultDashboardGridWidthById(id: string, maxColumns = DASHBOARD_GRID_COLUMNS) {
-  const item = dashboardConfigs.value.find(config => buildPluginDashboardId(config.id, config.key) === id)
+  const item = dashboardConfigs.value.find(config => dashboardItemId(config.id, config.key) === id)
 
   return item ? Math.min(getDefaultDashboardGridWidth(item), maxColumns) : maxColumns
 }
@@ -1663,7 +1567,6 @@ hydrateDashboardConfigFromLocal()
 
 onBeforeMount(async () => {
   await loadDashboardConfig()
-  await getPluginDashboardMeta()
   isDashboardConfigLoaded.value = true
   scheduleDashboardReveal()
 })
@@ -1674,17 +1577,14 @@ onMounted(() => {
 
 onActivated(() => {
   isRequest.value = true
-  refreshEnabledPluginDashboards()
   nextTick(syncDashboardGrid)
 })
 
 onDeactivated(() => {
   isRequest.value = false
-  Object.keys(refreshTimers.value).forEach(clearPluginDashboardTimer)
 })
 
 onBeforeUnmount(() => {
-  Object.keys(refreshTimers.value).forEach(clearPluginDashboardTimer)
   dashboardGridContentMutationObserver?.disconnect()
   dashboardGridContentMutationObserver = null
   dashboardGridContentObserver?.disconnect()
@@ -1737,7 +1637,7 @@ onBeforeUnmount(() => {
             <DashboardElement
               :config="gridItem.config"
               :allow-refresh="isRequest"
-              v-model:refreshStatus="pluginDashboardRefreshStatus[gridItem.id]"
+              :refresh-status="true"
               @loaded="markDashboardGridItemLoaded(gridItem.id)"
             />
           </div>

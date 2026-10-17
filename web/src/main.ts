@@ -46,15 +46,7 @@ function loadIconBundle() {
   })
 }
 
-function loadRemoteComponentsAfterLogin() {
-  import('./utils/federationLoader')
-    .then(({ loadRemoteComponents }) => loadRemoteComponents())
-    .catch(error => {
-      console.error('Failed to load remote components', error)
-    })
-}
 
-let remoteComponentsInitialized = false
 
 const AsyncAceEditor = defineAsyncComponent(async () => {
   await import('./ace-config')
@@ -123,16 +115,3 @@ app.mount('#app')
 
 // 图标全集很大，延后到首屏挂载后的空闲时间加载，避免阻塞登录页首次渲染。
 runWhenBrowserIdle(loadIconBundle)
-
-// 插件远程入口只在登录后有用，延后初始化可以减少未登录首屏请求和解析成本。
-router.isReady().then(() => {
-  const loadIfAuthenticated = () => {
-    if (!remoteComponentsInitialized && pinia.state.value.auth?.token) {
-      remoteComponentsInitialized = true
-      runWhenBrowserIdle(loadRemoteComponentsAfterLogin)
-    }
-  }
-
-  loadIfAuthenticated()
-  router.afterEach(loadIfAuthenticated)
-})

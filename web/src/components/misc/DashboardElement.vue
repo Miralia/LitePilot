@@ -1,20 +1,14 @@
 <script setup lang="ts">
-import { h, resolveComponent } from 'vue'
-import api from '@/api'
+import { h, nextTick, onUnmounted, provide, ref, resolveComponent, watch } from 'vue'
+import { PropType } from 'vue'
 import { DashboardItem } from '@/api/types'
-import DashboardRender from '@/components/render/DashboardRender.vue'
-import { isNullOrEmptyObject } from '@/@core/utils'
-import { loadRemoteComponent } from '@/utils/federationLoader'
 import { useToast } from 'vue-toastification'
-import RemoteComponentError from './RemoteComponentError.vue'
 
 type DashboardComponentLoader = () => Promise<any>
 
 // 仪表板联邦组件复用主应用 Toast 实例。
 const $toast = useToast()
 provide('moviepilot:toast', $toast)
-
-// 向仪表板联邦组件导出主程序原生订阅入口。
 
 const DashboardSkeleton = {
   // 创建无需模板编译的仪表板加载骨架。
@@ -30,6 +24,7 @@ const asyncDashboardOptions = {
   loadingComponent: DashboardSkeleton,
 }
 
+// 内置仪表盘组件加载器（插件仪表板随插件体系删除，不再有远程组件渲染）
 const builtInDashboardComponentLoaders: Record<string, DashboardComponentLoader> = {
   storage: () => import('@/views/dashboard/AnalyticsStorage.vue'),
   mediaStatistic: () => import('@/views/dashboard/AnalyticsMediaStatistic.vue'),
@@ -109,61 +104,11 @@ const emit = defineEmits(['update:refreshStatus', 'loaded'])
 const isDashboardElementLoaded = ref(false)
 
 let isDashboardElementUnmounted = false
-let pluginDashboardComponentLoadPromise: Promise<any> | null = null
 let dashboardLoadGeneration = 0
-
-// 插件UI渲染模式 ('vuetify' 或 'vue')
-const pluginRenderMode = computed(() => props.config?.render_mode || 'vuetify')
-
-// 插件节点身份变化时重建异步组件，使失败后的远程模块可以再次加载。
-const pluginDashboardIdentity = computed(
-  () => `${props.config?.id ?? ''}:${props.config?.key ?? ''}:${pluginRenderMode.value}`,
-)
-
-// 加载 Vue 模式的插件仪表盘远程组件，并缓存当前节点的加载 Promise。
-function loadPluginDashboardComponent(pluginId: string) {
-  if (!pluginDashboardComponentLoadPromise) {
-    const loadPromise = loadRemoteComponent(pluginId, 'Dashboard')
-    const guardedPromise = loadPromise.catch(error => {
-      if (pluginDashboardComponentLoadPromise === guardedPromise) {
-        pluginDashboardComponentLoadPromise = null
-      }
-      throw error
-    })
-    pluginDashboardComponentLoadPromise = guardedPromise
-  }
-
-  return pluginDashboardComponentLoadPromise
-}
-
-// 每个插件节点身份使用独立异步组件，避免 Vue 复用前一个 remote 的成功解析结果。
-const dynamicPluginComponent = computed(() => {
-  const pluginId = props.config?.id
-  const identity = pluginDashboardIdentity.value
-
-  return defineAsyncComponent({
-    loader: async () => {
-      try {
-        if (!pluginId) throw new Error(`插件ID不存在: ${identity}`)
-        return await loadPluginDashboardComponent(pluginId)
-      } catch (error) {
-        console.error('加载远程组件失败:', error)
-        throw error
-      }
-    },
-    loadingComponent: DashboardSkeleton,
-    errorComponent: RemoteComponentError,
-  })
-})
 
 // 判断当前配置是否对应内置异步仪表盘组件。
 function isBuiltInDashboardElement() {
   return !!props.config?.id && !!builtInDashboardComponentLoaders[props.config.id]
-}
-
-// 判断当前配置是否需要等待插件 Vue 远程组件加载。
-function isVuePluginDashboardElement() {
-  return !isBuiltInDashboardElement() && pluginRenderMode.value === 'vue' && !isNullOrEmptyObject(props.config)
 }
 
 // 向页面层上报当前仪表盘节点已完成首次组件加载。
@@ -174,15 +119,13 @@ function emitDashboardElementLoaded() {
   emit('loaded')
 }
 
-// 等待当前仪表盘节点的异步组件加载完成，静态渲染模式则等待一次 DOM 更新。
+// 等待当前仪表盘节点的异步组件加载完成。
 async function waitForDashboardElementLoaded(generation: number) {
   if (isDashboardElementLoaded.value) return
 
   try {
     if (isBuiltInDashboardElement() && props.config?.id) {
       await loadBuiltInDashboardComponent(props.config.id)
-    } else if (isVuePluginDashboardElement() && props.config?.id) {
-      await loadPluginDashboardComponent(props.config.id)
     }
 
     await nextTick()
@@ -194,19 +137,11 @@ async function waitForDashboardElementLoaded(generation: number) {
 }
 
 watch(
-  () => [props.config?.id, props.config?.key, pluginRenderMode.value],
-  (_identity, previousIdentity) => {
-    const pluginIdentityChanged =
-      previousIdentity &&
-      (pluginRenderMode.value === 'vue' || previousIdentity[2] === 'vue') &&
-      previousIdentity.some((value, index) => value !== _identity[index])
-    if (pluginIdentityChanged) {
-      isDashboardElementLoaded.value = false
-      pluginDashboardComponentLoadPromise = null
-    }
-
-    const generation = ++dashboardLoadGeneration
-    void waitForDashboardElementLoaded(generation)
+  () => [props.config?.id, props.config?.key],
+  () => {
+    isDashboardElementLoaded.value = false
+    dashboardLoadGeneration += 1
+    void waitForDashboardElementLoaded(dashboardLoadGeneration)
   },
   { immediate: true },
 )
@@ -233,56 +168,8 @@ onUnmounted(() => {
   <DashboardRecentImports v-else-if="config?.id === 'recentImports'" />
   <DashboardQuickActions v-else-if="config?.id === 'quickActions'" />
   <DashboardSystemInfo v-else-if="config?.id === 'systemInfo'" :allow-refresh="props.allowRefresh" />
-  <!-- 插件仪表板 -->
-  <template v-else-if="!isNullOrEmptyObject(props.config)">
-    <!-- Vue 渲染模式 -->
-    <div v-if="pluginRenderMode === 'vue'" class="dashboard-plugin-vue-renderer">
-      <component
-        :key="pluginDashboardIdentity"
-        :is="dynamicPluginComponent"
-        :config="props.config"
-        :allow-refresh="props.allowRefresh"
-        :api="api"
-      />
-    </div>
-    <!-- Vuetify 渲染模式 -->
-    <template v-else-if="pluginRenderMode === 'vuetify'">
-      <!-- 无边框 -->
-      <div v-if="props.config?.attrs.border === false">
-        <VCard>
-          <VCardText class="p-0">
-            <DashboardRender v-for="(item, index) in props.config?.elements" :key="index" :config="item" />
-          </VCardText>
-        </VCard>
-      </div>
-      <!-- 有边框 -->
-      <VCard v-else>
-        <VCardItem v-if="props.config?.attrs.border !== false">
-          <VCardTitle>
-            {{ props.config?.attrs?.title ?? props.config?.name }}
-          </VCardTitle>
-          <VCardSubtitle v-if="props.config?.attrs?.subtitle"> {{ props.config?.attrs?.subtitle }}</VCardSubtitle>
-        </VCardItem>
-        <VCardText>
-          <DashboardRender v-for="(item, index) in props.config?.elements" :key="index" :config="item" />
-        </VCardText>
-      </VCard>
-    </template>
-    <!-- 未知模式或错误 -->
-    <VCard v-else>
-      <VCardText>无法渲染插件仪表盘部件: 未知渲染模式或配置错误</VCardText>
-    </VCard>
-  </template>
 </template>
 
 <style scoped>
 /* stylelint-disable selector-pseudo-class-no-unknown */
-
-.dashboard-plugin-vue-renderer {
-  display: flex;
-  flex-direction: column;
-  block-size: 100%;
-  inline-size: 100%;
-  min-block-size: 0;
-}
 </style>

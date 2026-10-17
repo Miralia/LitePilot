@@ -259,7 +259,6 @@ class NettestSecurityTest(unittest.TestCase):
     def test_nettest_allows_known_external_redirects(self):
         cases = {
             "telegram_api": "https://core.telegram.org/bots",
-            "douban_api": "https://www.douban.com/doubanapp/frodo?wechat=0&os=Other",
             "github_codeload": "https://github.com/",
         }
 
