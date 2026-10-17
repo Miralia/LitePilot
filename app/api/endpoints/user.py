@@ -15,6 +15,7 @@ from app.db.user_oper import (
     get_current_active_user,
 )
 from app.db.userconfig_oper import UserConfigOper
+from app.helper.swizzin import SwizzinUserSync
 
 router = APIRouter()
 
@@ -25,43 +26,28 @@ async def list_users(
     current_user: User = Depends(get_current_active_superuser_async),
 ) -> Any:
     """
-    查询用户列表
+    查询用户列表，返回前先与 swizzin 用户同步
     """
+    SwizzinUserSync().sync()
     return await current_user.async_list(db)
 
 
-@router.post("/", summary="新增用户", response_model=schemas.Response)
-async def create_user(
-    *,
-    db: AsyncSession = Depends(get_async_db),
-    user_in: schemas.UserCreate,
-    current_user: User = Depends(get_current_active_superuser_async),
-) -> Any:
-    """
-    新增用户
-    """
-    user = await current_user.async_get_by_name(db, name=user_in.name)
-    if user:
-        return schemas.Response(success=False, message="用户已存在")
-    user_info = user_in.model_dump()
-    if user_info.get("password"):
-        user_info["hashed_password"] = get_password_hash(user_info["password"])
-        user_info.pop("password")
-    user = await User(**user_info).async_create(db)
-    return schemas.Response(success=True if user else False)
 
 
-@router.put("/", summary="更新用户", response_model=schemas.Response)
+@router.put("/", summary="更新当前用户", response_model=schemas.Response)
 async def update_user(
     *,
     db: AsyncSession = Depends(get_async_db),
     user_in: schemas.UserUpdate,
-    current_user: User = Depends(get_current_active_superuser_async),
+    current_user: User = Depends(get_current_active_user_async),
 ) -> Any:
     """
-    更新用户
+    更新当前登录用户（用户名与权限由 swizzin 统一管理，此处不可变更）
     """
     user_info = user_in.model_dump()
+    user_info.pop("name", None)
+    user_info.pop("is_superuser", None)
+    user_info.pop("is_active", None)
     if user_info.get("password"):
         # 正则表达式匹配密码包含字母、数字、特殊字符中的至少两项
         pattern = r"^(?![a-zA-Z]+$)(?!\d+$)(?![^\da-zA-Z\s]+$).{6,50}$"
@@ -72,18 +58,8 @@ async def update_user(
             )
         user_info["hashed_password"] = get_password_hash(user_info["password"])
         user_info.pop("password")
-    user = await current_user.async_get_by_id(db, user_id=user_info["id"])
-    user_name = user_info.get("name")
-    if not user_name:
-        return schemas.Response(success=False, message="用户名不能为空")
-    # 新用户名去重
-    users = await current_user.async_list(db)
-    for u in users:
-        if u.name == user_name and u.id != user_info["id"]:
-            return schemas.Response(success=False, message="用户名已被使用")
-    if not user:
-        return schemas.Response(success=False, message="用户不存在")
-    await user.async_update(db, user_info)
+    user_info["id"] = current_user.id
+    await current_user.async_update(db, user_info)
     return schemas.Response(success=True)
 
 
@@ -144,38 +120,8 @@ def set_config(
     return schemas.Response(success=True)
 
 
-@router.delete("/id/{user_id}", summary="删除用户", response_model=schemas.Response)
-async def delete_user_by_id(
-    *,
-    db: AsyncSession = Depends(get_async_db),
-    user_id: int,
-    current_user: User = Depends(get_current_active_superuser_async),
-) -> Any:
-    """
-    通过唯一ID删除用户
-    """
-    user = await current_user.async_get_by_id(db, user_id=user_id)
-    if not user:
-        return schemas.Response(success=False, message="用户不存在")
-    await current_user.async_delete(db, user_id)
-    return schemas.Response(success=True)
 
 
-@router.delete("/name/{user_name}", summary="删除用户", response_model=schemas.Response)
-async def delete_user_by_name(
-    *,
-    db: AsyncSession = Depends(get_async_db),
-    user_name: str,
-    current_user: User = Depends(get_current_active_superuser_async),
-) -> Any:
-    """
-    通过用户名删除用户
-    """
-    user = await current_user.async_get_by_name(db, name=user_name)
-    if not user:
-        return schemas.Response(success=False, message="用户不存在")
-    await current_user.async_delete(db, user.id)
-    return schemas.Response(success=True)
 
 
 @router.get("/{username}", summary="用户详情", response_model=schemas.User)

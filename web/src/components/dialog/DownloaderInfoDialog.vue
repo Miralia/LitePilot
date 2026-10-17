@@ -119,12 +119,9 @@ function generateId() {
 
 /** 初始化下载器新增配置项的兼容默认值。 */
 function initializeDownloaderConfigDefaults() {
-  if (!['qbittorrent', 'transmission'].includes(downloaderInfo.value.type)) return
+  if (downloaderInfo.value.type !== 'qbittorrent') return
   if (!downloaderInfo.value.config) downloaderInfo.value.config = {}
-  if (downloaderInfo.value.type === 'qbittorrent' && downloaderInfo.value.config.incomplete_files_ext === undefined)
-    downloaderInfo.value.config.incomplete_files_ext = true
-  if (downloaderInfo.value.type === 'transmission' && downloaderInfo.value.config.rename_partial_files === undefined)
-    downloaderInfo.value.config.rename_partial_files = true
+  if (downloaderInfo.value.config.incomplete_files_ext === undefined) downloaderInfo.value.config.incomplete_files_ext = true
 }
 
 /** 初始化下载器编辑表单数据。 */
@@ -317,105 +314,6 @@ onMounted(() => {
                   :hint="t('downloader.incomplete_files_extHint')"
                   persistent-hint
                   active
-                />
-              </VCol>
-            </VRow>
-            <VRow v-else-if="downloaderInfo.type == 'transmission'">
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="downloaderInfo.name"
-                  :label="t('downloader.name')"
-                  :placeholder="t('downloader.nameRequired')"
-                  :hint="t('downloader.name')"
-                  persistent-hint
-                  active
-                  prepend-inner-icon="mdi-label"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="downloaderInfo.config.host"
-                  :label="t('downloader.host')"
-                  placeholder="http(s)://ip:port"
-                  :hint="t('downloader.host')"
-                  persistent-hint
-                  active
-                  prepend-inner-icon="mdi-server"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="downloaderInfo.config.username"
-                  :label="t('downloader.username')"
-                  :hint="t('downloader.username')"
-                  persistent-hint
-                  active
-                  prepend-inner-icon="mdi-account"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="downloaderInfo.config.password"
-                  type="password"
-                  :label="t('downloader.password')"
-                  :hint="t('downloader.password')"
-                  persistent-hint
-                  active
-                  prepend-inner-icon="mdi-lock"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VSwitch
-                  v-model="downloaderInfo.config.rename_partial_files"
-                  :label="t('downloader.rename_partial_files')"
-                  :hint="t('downloader.rename_partial_filesHint')"
-                  persistent-hint
-                  active
-                />
-              </VCol>
-            </VRow>
-            <VRow v-else-if="downloaderInfo.type == 'rtorrent'">
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="downloaderInfo.name"
-                  :label="t('downloader.name')"
-                  :placeholder="t('downloader.nameRequired')"
-                  :hint="t('downloader.name')"
-                  persistent-hint
-                  active
-                  prepend-inner-icon="mdi-label"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="downloaderInfo.config.host"
-                  :label="t('downloader.host')"
-                  placeholder="http(s)://ip:port/RPC2"
-                  :hint="t('downloader.rtorrentHostHint')"
-                  persistent-hint
-                  active
-                  prepend-inner-icon="mdi-server"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="downloaderInfo.config.username"
-                  :label="t('downloader.username')"
-                  :hint="t('downloader.username')"
-                  persistent-hint
-                  active
-                  prepend-inner-icon="mdi-account"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="downloaderInfo.config.password"
-                  type="password"
-                  :label="t('downloader.password')"
-                  :hint="t('downloader.password')"
-                  persistent-hint
-                  active
-                  prepend-inner-icon="mdi-lock"
                 />
               </VCol>
             </VRow>

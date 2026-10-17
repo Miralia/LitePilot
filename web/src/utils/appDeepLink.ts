@@ -1,18 +1,16 @@
 /**
  * 通用APP深度链接工具类
- * 支持媒体服务器（Plex、Jellyfin、Emby、极影视、飞牛影视）和豆瓣的APP跳转和网页跳转
+ * 支持媒体服务器（Emby）和豆瓣的APP跳转和网页跳转
  *
  * 深度链接格式参考：
- * - Plex: https://forums.plex.tv/t/plex-mobile-app-deep-linking/123456
  * - Emby: https://emby.media/support/articles/Deep-Linking.html
- * - Jellyfin: https://jellyfin.org/docs/general/administration/deep-linking
  * - 豆瓣: 官方搜索格式
  */
 
 import { isMobileDevice, isIOSDevice, isAndroidDevice } from '@/@core/utils'
 
 // APP类型
-export type AppType = 'plex' | 'jellyfin' | 'emby' | 'zspace' | 'trimemedia' | 'douban'
+export type AppType = 'emby' | 'douban'
 
 // 深度链接配置
 interface DeepLinkConfig {
@@ -23,29 +21,9 @@ interface DeepLinkConfig {
 
 // 各APP的深度链接配置
 const DEEP_LINK_CONFIGS: Record<AppType, DeepLinkConfig> = {
-  plex: {
-    appScheme: 'plex://',
-    webUrl: 'https://app.plex.tv',
-    timeout: 2000,
-  },
-  jellyfin: {
-    appScheme: 'jellyfin://',
-    webUrl: 'https://jellyfin.org',
-    timeout: 2000,
-  },
   emby: {
     appScheme: 'emby://',
     webUrl: 'https://emby.media',
-    timeout: 2000,
-  },
-  zspace: {
-    appScheme: 'emby://',
-    webUrl: 'https://www.zspace.com.cn',
-    timeout: 2000,
-  },
-  trimemedia: {
-    appScheme: 'trimemedia://',
-    webUrl: 'https://trimemedia.com',
     timeout: 2000,
   },
   douban: {
@@ -191,7 +169,7 @@ function getMediaServerPlayUrl(target: MediaServerLinkTarget): string | null {
   if (!playUrl) return null
 
   const serverType = target.server_type?.toLowerCase()
-  if (serverType === 'emby' || serverType === 'zspace') {
+  if (serverType === 'emby') {
     return normalizeEmbyWebUrl(playUrl, target)
   }
   return playUrl
@@ -274,267 +252,14 @@ function getWebUrl(appType: AppType, params: string | DoubanAppParams, fallbackU
  */
 function buildDeepLinkUrl(appType: AppType, params: string | DoubanAppParams): string {
   switch (appType) {
-    case 'plex':
-      return buildPlexDeepLink(params as string)
-
-    case 'jellyfin':
-      return buildJellyfinDeepLink(params as string)
-
     case 'emby':
       return buildEmbyDeepLink(params as string)
-
-    case 'zspace':
-      return buildEmbyDeepLink(params as string)
-
-    case 'trimemedia':
-      return buildTrimemediaDeepLink(params as string)
 
     case 'douban':
       return buildDoubanDeepLink(params as DoubanAppParams)
 
     default:
       return typeof params === 'string' ? params : ''
-  }
-}
-
-/**
- * 构建Plex深度链接
- * 参考: https://forums.plex.tv/t/plex-mobile-app-deep-linking/123456
- *
- * 后台API返回格式：
- * - 媒体库: web/index.html#!/media/{machineIdentifier}/com.plexapp.plugins.library?source={library.key}&X-Plex-Token={token}
- * - 媒体项: web/index.html#!/server/{machineIdentifier}/details?key={item_id}&X-Plex-Token={token}
- *
- * Plex官方APP URL格式：
- * plex://play/?metadataKey=/library/metadata/$SOME_ID&server=$SERVER_ID
- * 例如: plex://play/?metadataKey=/library/metadata/123&server=456
- *
- * @param playUrl 播放链接
- */
-function buildPlexDeepLink(playUrl: string): string {
-  try {
-    const url = new URL(playUrl)
-
-    // 提取媒体ID、机器标识符、库ID等
-    let mediaId: string | null = null
-    let machineIdentifier: string | null = null
-    let libraryKey: string | null = null
-    let librarySectionId: string | null = null
-    let plexToken: string | null = null
-
-    // 提取X-Plex-Token
-    const tokenMatch = playUrl.match(/X-Plex-Token=([^&]+)/)
-    if (tokenMatch) {
-      plexToken = tokenMatch[1]
-      console.log('提取Plex Token:', { plexToken })
-    }
-
-    // 格式1: 后台API返回的媒体库格式
-    // web/index.html#!/media/{machineIdentifier}/com.plexapp.plugins.library?source={library.key}&X-Plex-Token={token}
-    const mediaLibraryMatch = playUrl.match(/\/media\/([^\/]+)\/com\.plexapp\.plugins\.library\?source=([^&]+)/)
-    if (mediaLibraryMatch) {
-      machineIdentifier = mediaLibraryMatch[1]
-      libraryKey = mediaLibraryMatch[2]
-      console.log('Plex后台API媒体库格式匹配:', { machineIdentifier, libraryKey })
-
-      // 从library.key中提取section ID
-      // library.key格式通常是: library://video-section/1 或类似格式
-      const sectionMatch = libraryKey.match(/section\/(\d+)/)
-      if (sectionMatch) {
-        librarySectionId = sectionMatch[1]
-        console.log('从library.key提取section ID:', { librarySectionId })
-      }
-    }
-
-    // 格式2: 后台API返回的媒体项格式
-    // web/index.html#!/server/{machineIdentifier}/details?key={item_id}&X-Plex-Token={token}
-    const serverDetailsMatch = playUrl.match(/\/server\/([^\/]+)\/details\?key=([^&]+)/)
-    if (serverDetailsMatch) {
-      machineIdentifier = serverDetailsMatch[1]
-      const keyValue = serverDetailsMatch[2]
-      console.log('Plex后台API媒体项格式匹配:', { machineIdentifier, keyValue })
-
-      // 从key中提取媒体ID
-      // key格式可能是: /library/metadata/1668 或直接是 1668
-      const metadataMatch = keyValue.match(/\/library\/metadata\/(\d+)/)
-      if (metadataMatch) {
-        mediaId = metadataMatch[1]
-        console.log('从key提取媒体ID:', { mediaId })
-      } else if (/^\d+$/.test(keyValue)) {
-        // 如果key本身就是数字，直接使用
-        mediaId = keyValue
-        console.log('key本身就是媒体ID:', { mediaId })
-      }
-    }
-
-    // 构建深度链接 - 使用新的官方格式
-    if (mediaId && machineIdentifier) {
-      // plex://play/?metadataKey=/library/metadata/$SOME_ID&server=$SERVER_ID
-      let deepLink = `plex://play/?metadataKey=/library/metadata/${mediaId}&server=${machineIdentifier}`
-      if (plexToken) {
-        deepLink += `&X-Plex-Token=${plexToken}`
-      }
-      console.log('Plex深度链接构建成功:', {
-        originalUrl: playUrl,
-        machineIdentifier,
-        libraryKey,
-        librarySectionId,
-        mediaId,
-        plexToken,
-        deepLink,
-      })
-      return deepLink
-    }
-
-    // 如果有媒体ID但没有机器标识符，尝试使用旧的格式作为降级
-    if (mediaId) {
-      let deepLink = `plex://library/metadata/${mediaId}`
-      if (plexToken) {
-        deepLink += `?X-Plex-Token=${plexToken}`
-      }
-      console.log('Plex深度链接构建成功(降级格式):', {
-        originalUrl: playUrl,
-        mediaId,
-        plexToken,
-        deepLink,
-      })
-      return deepLink
-    }
-
-    // 如果有库ID，尝试使用库ID
-    if (librarySectionId) {
-      // http://[PMS_IP_Address]:32400/library/sections/29/all?X-Plex-Token=YourTokenGoesHere
-      let libraryLink = `plex://library/sections/${librarySectionId}/all`
-      if (plexToken) {
-        libraryLink += `?X-Plex-Token=${plexToken}`
-      }
-      console.log('Plex库深度链接构建成功:', {
-        originalUrl: playUrl,
-        librarySectionId,
-        plexToken,
-        libraryLink,
-      })
-      return libraryLink
-    }
-
-    // 如果无法提取媒体ID，尝试使用机器标识符
-    if (machineIdentifier) {
-      // http://[PMS_IP_Address]:32400/library/sections?X-Plex-Token=YourTokenGoesHere
-      let fallbackLink = `plex://library/sections`
-      if (plexToken) {
-        fallbackLink += `?X-Plex-Token=${plexToken}`
-      }
-      console.log('Plex深度链接构建失败，使用机器标识符:', {
-        originalUrl: playUrl,
-        machineIdentifier,
-        plexToken,
-        fallbackLink,
-      })
-      return fallbackLink
-    }
-
-    // 最后的降级方案
-    console.log('Plex深度链接构建失败，使用原始URL:', {
-      originalUrl: playUrl,
-    })
-    return `plex://${playUrl}`
-  } catch (error) {
-    console.warn('构建Plex深度链接失败:', error)
-    return `plex://${playUrl}`
-  }
-}
-
-/**
- * 构建Jellyfin深度链接
- * 参考: https://jellyfin.org/docs/general/administration/deep-linking
- * @param playUrl 播放链接
- */
-function buildJellyfinDeepLink(playUrl: string): string {
-  try {
-    const url = new URL(playUrl)
-    const serverAddress = url.hostname + (url.port ? `:${url.port}` : '')
-
-    // 提取媒体ID、库ID、serverId
-    let mediaId: string | null = null
-    let libraryId: string | null = null
-    let serverId: string | null = null
-
-    // 格式1: /details?id={item_id}&serverId={serverid}
-    const detailsMatch = playUrl.match(/\/details\?id=([^&]+)&serverId=([^&]+)/)
-    if (detailsMatch) {
-      mediaId = detailsMatch[1]
-      serverId = detailsMatch[2]
-    }
-
-    // 格式2: /movies.html?topParentId={libraryId}
-    const moviesMatch = playUrl.match(/\/movies\.html\?topParentId=([^&]+)/)
-    if (moviesMatch) {
-      libraryId = moviesMatch[1]
-    }
-    // 格式3: /tv.html?topParentId={libraryId}
-    const tvMatch = playUrl.match(/\/tv\.html\?topParentId=([^&]+)/)
-    if (tvMatch) {
-      libraryId = tvMatch[1]
-    }
-    // 格式4: /library.html?topParentId={libraryId}
-    const libMatch = playUrl.match(/\/library\.html\?topParentId=([^&]+)/)
-    if (libMatch) {
-      libraryId = libMatch[1]
-    }
-
-    // 兼容原有格式：?id=xxx
-    if (!mediaId) {
-      const idMatch = playUrl.match(/[?&]id=([^&]+)/)
-      if (idMatch) {
-        mediaId = idMatch[1]
-      }
-    }
-
-    // 兼容原有格式：/items/xxx
-    if (!mediaId) {
-      const itemsMatch = playUrl.match(/\/items\/([^\/\?]+)/)
-      if (itemsMatch) {
-        mediaId = itemsMatch[1]
-      }
-    }
-
-    // 构建深度链接
-    if (mediaId) {
-      let deepLink = `jellyfin://${serverAddress}/item/${mediaId}`
-      if (serverId) {
-        deepLink += `?serverId=${serverId}`
-      }
-      console.log('Jellyfin深度链接构建成功:', {
-        originalUrl: playUrl,
-        serverAddress,
-        mediaId,
-        serverId,
-        deepLink,
-      })
-      return deepLink
-    }
-    if (libraryId) {
-      const deepLink = `jellyfin://${serverAddress}/library/${libraryId}`
-      console.log('Jellyfin库深度链接构建成功:', {
-        originalUrl: playUrl,
-        serverAddress,
-        libraryId,
-        deepLink,
-      })
-      return deepLink
-    }
-
-    // 如果无法提取ID，尝试直接使用服务器地址
-    const fallbackLink = `jellyfin://${serverAddress}`
-    console.log('Jellyfin深度链接构建失败，使用服务器地址:', {
-      originalUrl: playUrl,
-      serverAddress,
-      fallbackLink,
-    })
-    return fallbackLink
-  } catch (error) {
-    console.warn('构建Jellyfin深度链接失败:', error)
-    return `jellyfin://${playUrl}`
   }
 }
 
@@ -653,58 +378,6 @@ function buildEmbyDeepLink(playUrl: string): string {
 }
 
 /**
- * 构建Trimemedia深度链接
- * @param playUrl 播放链接
- */
-function buildTrimemediaDeepLink(playUrl: string): string {
-  try {
-    const url = new URL(playUrl)
-    const serverAddress = url.hostname + (url.port ? `:${url.port}` : '')
-
-    // 提取媒体ID
-    let mediaId: string | null = null
-
-    // 尝试从URL路径中提取媒体ID
-    const pathMatch = playUrl.match(/\/item\/([^\/\?]+)/)
-    if (pathMatch) {
-      mediaId = pathMatch[1]
-    }
-
-    // 尝试从查询参数中提取媒体ID
-    if (!mediaId) {
-      const idMatch = playUrl.match(/[?&]id=([^&]+)/)
-      if (idMatch) {
-        mediaId = idMatch[1]
-      }
-    }
-
-    // 构建深度链接
-    if (mediaId) {
-      const deepLink = `trimemedia://${serverAddress}/item/${mediaId}`
-      console.log('Trimemedia深度链接构建成功:', {
-        originalUrl: playUrl,
-        serverAddress,
-        mediaId,
-        deepLink,
-      })
-      return deepLink
-    }
-
-    // 如果无法提取媒体ID，尝试直接使用服务器地址
-    const fallbackLink = `trimemedia://${serverAddress}`
-    console.log('Trimemedia深度链接构建失败，使用服务器地址:', {
-      originalUrl: playUrl,
-      serverAddress,
-      fallbackLink,
-    })
-    return fallbackLink
-  } catch (error) {
-    console.warn('构建Trimemedia深度链接失败:', error)
-    return playUrl
-  }
-}
-
-/**
  * 构建豆瓣深度链接
  * 使用豆瓣App官方支持的搜索格式
  * @param params 豆瓣参数
@@ -786,7 +459,7 @@ export async function openMediaServerWithAutoDetect(
   // 优先使用传入的 serverType 参数
   if (serverType) {
     const type = serverType.toLowerCase()
-    if (type === 'plex' || type === 'jellyfin' || type === 'emby' || type === 'zspace' || type === 'trimemedia') {
+    if (type === 'emby') {
       detectedServerType = type as AppType
     }
   }
@@ -795,14 +468,8 @@ export async function openMediaServerWithAutoDetect(
   if (!detectedServerType) {
     const url = playUrl.toLowerCase()
 
-    if (url.includes('plex') || url.includes('plex.tv')) {
-      detectedServerType = 'plex'
-    } else if (url.includes('jellyfin')) {
-      detectedServerType = 'jellyfin'
-    } else if (url.includes('emby')) {
+    if (url.includes('emby')) {
       detectedServerType = 'emby'
-    } else if (url.includes('zspace')) {
-      detectedServerType = 'zspace'
     }
   }
 
@@ -846,16 +513,8 @@ export async function openDoubanApp(
  */
 export function getAppDownloadUrl(appType: AppType): string {
   switch (appType) {
-    case 'plex':
-      return 'https://www.plex.tv/apps/'
-    case 'jellyfin':
-      return 'https://jellyfin.org/downloads/'
     case 'emby':
       return 'https://emby.media/download.html'
-    case 'zspace':
-      return 'https://www.zspace.com.cn/'
-    case 'trimemedia':
-      return 'https://trimemedia.com/download'
     case 'douban':
       return 'https://www.douban.com/doubanapp/'
     default:

@@ -53,14 +53,6 @@ export const downloaderOptions = [
     value: 'qbittorrent',
     title: i18n.global.t('setting.system.qbittorrent'),
   },
-  {
-    value: 'transmission',
-    title: i18n.global.t('setting.system.transmission'),
-  },
-  {
-    value: 'rtorrent',
-    title: i18n.global.t('setting.system.rtorrent'),
-  },
 ]
 
 export const downloaderDict = downloaderOptions.reduce((dict, item) => {
@@ -72,26 +64,6 @@ export const mediaServerOptions = [
   {
     value: 'emby',
     title: i18n.global.t('setting.system.emby'),
-  },
-  {
-    value: 'zspace',
-    title: i18n.global.t('setting.system.zspace'),
-  },
-  {
-    value: 'jellyfin',
-    title: i18n.global.t('setting.system.jellyfin'),
-  },
-  {
-    value: 'plex',
-    title: i18n.global.t('setting.system.plex'),
-  },
-  {
-    value: 'trimemedia',
-    title: i18n.global.t('setting.system.trimeMedia'),
-  },
-  {
-    value: 'ugreen',
-    title: i18n.global.t('setting.system.ugreen'),
   },
 ]
 
@@ -272,28 +244,12 @@ export const notificationSwitchOptions = [
     value: '整理入库',
   },
   {
-    title: i18n.global.t('notificationSwitch.subscribe'),
-    value: '订阅',
-  },
-  {
-    title: i18n.global.t('notificationSwitch.site'),
-    value: '站点',
-  },
-  {
     title: i18n.global.t('notificationSwitch.mediaServer'),
     value: '媒体服务器',
   },
   {
     title: i18n.global.t('notificationSwitch.manual'),
     value: '手动处理',
-  },
-  {
-    title: i18n.global.t('notificationSwitch.plugin'),
-    value: '插件',
-  },
-  {
-    title: i18n.global.t('notificationSwitch.agent'),
-    value: '智能体',
   },
   {
     title: i18n.global.t('notificationSwitch.other'),

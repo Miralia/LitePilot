@@ -1,9 +1,6 @@
 <script lang="ts" setup>
 import type { MediaServerLibrary } from '@/api/types'
-import plex from '@images/misc/plex.png'
 import emby from '@images/misc/emby.png'
-import jellyfin from '@images/misc/jellyfin.png'
-import { getLogoUrl } from '@/utils/imageUtils'
 import { openMediaServerItem } from '@/utils/appDeepLink'
 
 // 输入参数
@@ -71,13 +68,7 @@ function imageErrorHandler() {
  * 获取媒体服务器默认封面图。
  */
 function getDefaultImage() {
-  if (props.media?.server_type === 'plex') return plex
-  else if (props.media?.server_type === 'emby') return emby
-  else if (props.media?.server_type === 'zspace') return getLogoUrl('zspace')
-  else if (props.media?.server_type === 'jellyfin') return jellyfin
-  else if (props.media?.server_type === 'trimemedia') return getLogoUrl('trimemedia')
-  else if (props.media?.server_type === 'ugreen') return getLogoUrl('ugreen')
-  else return plex
+  return emby
 }
 
 /**

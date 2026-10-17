@@ -76,16 +76,6 @@ const getIcon = computed(() => {
   switch (props.mediaserver.type) {
     case 'emby':
       return getLogoUrl('emby')
-    case 'zspace':
-      return getLogoUrl('zspace')
-    case 'jellyfin':
-      return getLogoUrl('jellyfin')
-    case 'trimemedia':
-      return getLogoUrl('trimemedia')
-    case 'ugreen':
-      return getLogoUrl('ugreen')
-    case 'plex':
-      return getLogoUrl('plex')
     default:
       return getLogoUrl('mediaserver')
   }

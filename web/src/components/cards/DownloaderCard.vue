@@ -91,10 +91,6 @@ const getIcon = computed(() => {
   switch (props.downloader.type) {
     case 'qbittorrent':
       return getLogoUrl('qbittorrent')
-    case 'transmission':
-      return getLogoUrl('transmission')
-    case 'rtorrent':
-      return getLogoUrl('rtorrent')
     default:
       return getLogoUrl('downloader')
   }

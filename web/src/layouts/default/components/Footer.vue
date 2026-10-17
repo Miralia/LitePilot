@@ -187,10 +187,7 @@ const shouldRenderFooterNav = computed(() => appMode.value && props.showNav)
 const shouldRevealFooterNav = computed(() => shouldRenderFooterNav.value && !isLaunchLoading.value)
 
 const legacyDynamicMenuTitleKeyMap: Record<string, string> = {
-  'components.subscribeHistory.title': 'dialog.subscribeHistory.title',
-  'components.subscribeEdit.titleDefault': 'dialog.subscribeEdit.titleDefault',
   'components.transferQueue.title': 'dialog.transferQueue.title',
-  'components.pluginMarketSetting.title': 'dialog.pluginMarketSetting.title',
 }
 
 // 解析动态按钮菜单项标题，兼容旧版直接传入 i18n key 的写法。

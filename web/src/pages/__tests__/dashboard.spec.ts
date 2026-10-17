@@ -185,7 +185,6 @@ const enabledOnlySystemInfo = {
   cpu: false,
   latest: false,
   library: false,
-  mediaRecommend: false,
   mediaStatistic: false,
   memory: false,
   network: false,
@@ -318,7 +317,7 @@ describe('dashboard page initial layout', () => {
 
     await renderDashboard()
 
-    expect(screen.getAllByTestId('dashboard-item')).toHaveLength(10)
+    expect(screen.getAllByTestId('dashboard-item')).toHaveLength(9)
     expect(mocks.gridInit).toHaveBeenCalledWith(expect.objectContaining({ animate: true }), expect.any(HTMLElement))
 
     remoteOrder.resolve({ data: { value: [{ id: 'systemInfo', key: '' }] } })
@@ -664,7 +663,7 @@ describe('dashboard page initial layout', () => {
 
     await renderDashboard()
 
-    await waitFor(() => expect(screen.getAllByTestId('dashboard-item')).toHaveLength(10))
+    await waitFor(() => expect(screen.getAllByTestId('dashboard-item')).toHaveLength(9))
   })
 
   it('registers the default desktop widgets in target position order', async () => {
@@ -678,7 +677,7 @@ describe('dashboard page initial layout', () => {
     })
 
     await renderDashboard()
-    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(10))
+    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(9))
 
     expect(mocks.grid.makeWidget.mock.calls.map(([, widget]) => widget.id)).toEqual([
       'storage',
@@ -690,13 +689,9 @@ describe('dashboard page initial layout', () => {
       'cpu',
       'quickActions',
       'systemInfo',
-      'mediaRecommend',
     ])
     const desktopReturnWidgets = mocks.grid.load.mock.calls.at(-1)?.[0] as Array<Record<string, unknown>>
-    expect(desktopReturnWidgets).toHaveLength(10)
-    expect(desktopReturnWidgets.find(widget => widget.id === 'mediaRecommend')).toEqual(
-      expect.objectContaining({ x: 0, y: 33, w: 8 }),
-    )
+    expect(desktopReturnWidgets).toHaveLength(9)
   })
 
   it('registers cached automatic heights without forcing independent columns to share a baseline', async () => {
@@ -704,7 +699,6 @@ describe('dashboard page initial layout', () => {
       'MP_DASHBOARD_GRID_AUTO_HEIGHTS',
       JSON.stringify({
         cpu: 18,
-        mediaRecommend: 27,
         mediaStatistic: 11,
         memory: 18,
         quickActions: 9,
@@ -725,7 +719,7 @@ describe('dashboard page initial layout', () => {
     })
 
     await renderDashboard()
-    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(10))
+    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(9))
     await waitFor(() => expect(mocks.grid.load).toHaveBeenCalled())
 
     const loadedWidgets = mocks.grid.load.mock.calls.at(-1)?.[0] as Array<Record<string, unknown>>
@@ -742,7 +736,6 @@ describe('dashboard page initial layout', () => {
     expect(widgets.cpu).toEqual(expect.objectContaining({ x: 4, y: 22, w: 4, h: 18 }))
     expect(widgets.quickActions).toEqual(expect.objectContaining({ x: 8, y: 22, w: 4, h: 9 }))
     expect(widgets.systemInfo).toEqual(expect.objectContaining({ x: 8, y: 27, w: 4, h: 10 }))
-    expect(widgets.mediaRecommend).toEqual(expect.objectContaining({ x: 0, y: 33, w: 8, h: 27 }))
     await waitFor(() => {
       const autoHeights = JSON.parse(localStorage.getItem('MP_DASHBOARD_GRID_AUTO_HEIGHTS') || '{}')
       expect(autoHeights.speed).toBe(19)
@@ -942,7 +935,7 @@ describe('dashboard page initial layout', () => {
     })
 
     await renderDashboard()
-    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(10))
+    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(9))
     mocks.grid.column.mockClear()
     mocks.grid.makeWidget.mockClear()
     mocks.grid.removeAll.mockClear()
@@ -952,12 +945,11 @@ describe('dashboard page initial layout', () => {
     await waitFor(() => expect(mocks.apiGet).toHaveBeenCalledWith('/user/config/DashboardGridLayoutMobile'))
     await waitFor(() => expect(mocks.grid.column).toHaveBeenCalledWith(1, 'list'))
     await waitFor(() => expect(mocks.grid.removeAll).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(10))
+    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(9))
     expect(mocks.grid.setAnimation).toHaveBeenCalledWith(true)
     expect(mocks.grid.makeWidget.mock.calls.map(([, widget]) => widget.id)).toEqual([
       'storage',
       'mediaStatistic',
-      'mediaRecommend',
       'speed',
       'scheduler',
       'cpu',
@@ -973,7 +965,6 @@ describe('dashboard page initial layout', () => {
     expect(mocks.grid.makeWidget.mock.calls.map(([, widget]) => widget.id)).toEqual([
       'storage',
       'mediaStatistic',
-      'mediaRecommend',
       'speed',
       'scheduler',
       'cpu',
@@ -992,7 +983,7 @@ describe('dashboard page initial layout', () => {
     await waitFor(() => expect(desktopProfileReads).toBe(2))
     await waitFor(() => expect(mocks.grid.column).toHaveBeenCalledWith(12, 'moveScale'))
     await waitFor(() => expect(mocks.grid.removeAll).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(10))
+    await waitFor(() => expect(mocks.grid.makeWidget).toHaveBeenCalledTimes(9))
     expect(mocks.grid.makeWidget.mock.calls.map(([, widget]) => widget.id)).toEqual([
       'storage',
       'mediaStatistic',
@@ -1003,7 +994,6 @@ describe('dashboard page initial layout', () => {
       'cpu',
       'quickActions',
       'systemInfo',
-      'mediaRecommend',
     ])
     mocks.grid.makeWidget.mockClear()
 
@@ -1019,7 +1009,6 @@ describe('dashboard page initial layout', () => {
       'cpu',
       'quickActions',
       'systemInfo',
-      'mediaRecommend',
     ])
   })
 

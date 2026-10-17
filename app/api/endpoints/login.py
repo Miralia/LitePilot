@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.db.systemconfig_oper import SystemConfigOper
 from app.helper.sites import SitesHelper  # noqa
 from app.helper.image import WallpaperHelper
+from app.helper.swizzin import SwizzinUserSync
 from app.schemas.types import SystemConfigKey
 
 router = APIRouter()
@@ -27,6 +28,8 @@ def login_access_token(
     """
     获取认证Token
     """
+    # swizzin 环境先按用户清单补齐本地账号，未安装 swizzin 时退化为单管理员
+    SwizzinUserSync().sync()
     success, user_or_message = UserChain().user_authenticate(
         username=form_data.username, password=form_data.password, mfa_code=otp_password
     )

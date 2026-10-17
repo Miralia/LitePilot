@@ -5,70 +5,32 @@
 
 // 导入所有 logo 图标
 import qbittorrentLogo from '@/assets/images/logos/qbittorrent.png'
-import transmissionLogo from '@/assets/images/logos/transmission.png'
-import rtorrentLogo from '@/assets/images/logos/rtorrent.png'
 import embyLogo from '@/assets/images/logos/emby.png'
-import zspaceLogo from '@/assets/images/logos/zspace.webp'
-import jellyfinLogo from '@/assets/images/logos/jellyfin.png'
-import plexLogo from '@/assets/images/logos/plex.png'
-import trimemediaLogo from '@/assets/images/logos/trimemedia.png'
-import ugreenLogo from '@/assets/images/logos/ugreen.png'
-import wechatLogo from '@/assets/images/logos/wechat.png'
-import feishuLogo from '@/assets/images/logos/feishu.png'
-import clawbotLogo from '@/assets/images/logos/clawbot.png'
 import telegramLogo from '@/assets/images/logos/telegram.webp'
-import slackLogo from '@/assets/images/logos/slack.webp'
-import discordLogo from '@/assets/images/logos/discord.png'
-import synologychatLogo from '@/assets/images/logos/synologychat.png'
-import vocechatLogo from '@/assets/images/logos/vocechat.png'
 import downloaderLogo from '@/assets/images/logos/downloader.png'
 import mediaserverLogo from '@/assets/images/logos/mediaserver.png'
 import notificationLogo from '@/assets/images/logos/notification.png'
 import chromeLogo from '@/assets/images/logos/chrome.png'
-import doubanLogo from '@/assets/images/logos/douban.png'
 import githubLogo from '@/assets/images/logos/github.png'
 import tmdbLogo from '@/assets/images/logos/tmdb.png'
-import fanartLogo from '@/assets/images/logos/fanart.webp'
-import pythonLogo from '@/assets/images/logos/python.png'
-import pluginLogo from '@/assets/images/logos/plugin.png'
-import siteLogo from '@/assets/images/logos/site.webp'
 import bangumiLogo from '@/assets/images/logos/bangumi.png'
-import doubanBlackLogo from '@/assets/images/logos/douban-black.png'
-import qqLogo from '@/assets/images/logos/qq.png'
+import doubanLogo from '@/assets/images/logos/douban.png'
+import pythonLogo from '@/assets/images/logos/python.png'
 
 // 图标映射表
 const logoMap: Record<string, string> = {
   qbittorrent: qbittorrentLogo,
-  transmission: transmissionLogo,
-  rtorrent: rtorrentLogo,
   emby: embyLogo,
-  zspace: zspaceLogo,
-  jellyfin: jellyfinLogo,
-  plex: plexLogo,
-  trimemedia: trimemediaLogo,
-  ugreen: ugreenLogo,
-  wechat: wechatLogo,
-  feishu: feishuLogo,
-  wechatclawbot: clawbotLogo,
   telegram: telegramLogo,
-  slack: slackLogo,
-  discord: discordLogo,
-  synologychat: synologychatLogo,
-  vocechat: vocechatLogo,
   downloader: downloaderLogo,
   mediaserver: mediaserverLogo,
   notification: notificationLogo,
   chrome: chromeLogo,
-  douban: doubanLogo,
   github: githubLogo,
   tmdb: tmdbLogo,
-  fanart: fanartLogo,
-  python: pythonLogo,
-  plugin: pluginLogo,
-  site: siteLogo,
   bangumi: bangumiLogo,
-  'douban-black': doubanBlackLogo,
-  qq: qqLogo,
+  douban: doubanLogo,
+  python: pythonLogo,
 }
 
 /**

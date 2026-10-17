@@ -37,16 +37,6 @@ const templateTypeDefaults = [
     icon: 'mdi-download-box',
     accentRgb: 'var(--v-theme-info)',
   },
-  {
-    type: 'subscribeAdded',
-    icon: 'mdi-rss-box',
-    accentRgb: 'var(--v-theme-warning)',
-  },
-  {
-    type: 'subscribeComplete',
-    icon: 'mdi-check-circle',
-    accentRgb: 'var(--v-theme-success)',
-  },
 ] as const
 
 type NotificationTemplateType = (typeof templateTypeDefaults)[number]['type']
@@ -96,27 +86,11 @@ const notificationSwitchs = ref<NotificationSwitchConf[]>([
     action: 'all',
   },
   {
-    type: '订阅',
-    action: 'all',
-  },
-  {
-    type: '站点',
-    action: 'admin',
-  },
-  {
     type: '媒体服务器',
     action: 'admin',
   },
   {
     type: '手动处理',
-    action: 'admin',
-  },
-  {
-    type: '插件',
-    action: 'admin',
-  },
-  {
-    type: '智能体',
     action: 'admin',
   },
   {
@@ -433,34 +407,10 @@ useSilentSettingRefresh(loadPageData, {
                 <VIcon icon="mdi-plus" />
                 <VMenu :activator="'parent'" :close-on-content-click="true">
                   <VList>
-                    <VListItem @click="addNotification('wechat')">
-                      <VListItemTitle>{{ t('setting.notification.wechat') }}</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addNotification('wechatclawbot')">
-                      <VListItemTitle>{{ t('setting.notification.wechatClawBot') }}</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addNotification('feishu')">
-                      <VListItemTitle>{{ t('setting.notification.feishu') }}</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addNotification('telegram')">
+                                                                                <VListItem @click="addNotification('telegram')">
                       <VListItemTitle>{{ t('setting.notification.telegram') }}</VListItemTitle>
                     </VListItem>
-                    <VListItem @click="addNotification('slack')">
-                      <VListItemTitle>{{ t('setting.notification.slack') }}</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addNotification('discord')">
-                      <VListItemTitle>Discord</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addNotification('synologychat')">
-                      <VListItemTitle>{{ t('setting.notification.synologyChat') }}</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addNotification('qqbot')">
-                      <VListItemTitle>{{ t('setting.notification.qq') }}</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addNotification('vocechat')">
-                      <VListItemTitle>{{ t('setting.notification.voceChat') }}</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addNotification('webpush')">
+                                                                                                                        <VListItem @click="addNotification('webpush')">
                       <VListItemTitle>{{ t('setting.notification.webPush') }}</VListItemTitle>
                     </VListItem>
                     <VListItem @click="addNotification('custom')">

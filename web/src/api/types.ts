@@ -106,112 +106,6 @@ export interface Subscribe {
   episode_group?: string
 }
 
-// 订阅分享
-export interface SubscribeShare {
-  // 分享ID
-  id?: number
-  // 订阅ID
-  subscribe_id?: number
-  // 分享标题
-  share_title?: string
-  // 分享说明
-  share_comment?: string
-  // 分享人
-  share_user?: string
-  // 分享人唯一ID
-  share_uid?: string
-  // 订阅名称
-  name?: string
-  // 订阅年份
-  year?: string
-  // 订阅类型 电影/电视剧
-  type?: string
-  // 搜索关键字
-  keyword?: string
-  // TMDB ID
-  tmdbid?: number
-  // 豆瓣ID
-  doubanid?: string
-  // Bangumi ID
-  bangumiid?: number
-  // AniList ID
-  anilistid?: number
-  // 主媒体数据源
-  media_source?: MediaDataSource
-  // 数据源原生ID
-  media_id?: string
-  // 季号
-  season?: number
-  // 海报
-  poster?: string
-  // 背景图
-  backdrop?: string
-  // 评分
-  vote?: number
-  // 描述
-  description?: string
-  // 过滤规则
-  filter?: string
-  // 包含
-  include?: string
-  // 排除
-  exclude?: string
-  // 质量
-  quality?: string
-  // 分辨率
-  resolution?: string
-  // 特效
-  effect?: string
-  // 总集数
-  total_episode?: number
-  // 时间
-  date?: string
-  // 自定义识别词
-  custom_words?: string
-  // 自定义媒体类别
-  media_category?: string
-  // 复用次数
-  count?: number
-  // 自定义剧集组
-  episode_group?: string
-}
-
-// 工作流分享
-export interface WorkflowShare {
-  // 分享ID
-  id?: string
-  // 工作流ID
-  workflow_id?: string
-  // 分享标题
-  share_title?: string
-  // 分享说明
-  share_comment?: string
-  // 分享人
-  share_user?: string
-  // 分享人唯一ID
-  share_uid?: string
-  // 工作流名称
-  name?: string
-  // 工作流描述
-  description?: string
-  // 定时器
-  timer?: string
-  // 触发类型：timer-定时触发 event-事件触发 manual-手动触发
-  trigger_type?: string
-  // 事件类型（当trigger_type为event时使用）
-  event_type?: string
-  // 动作列表
-  actions?: any[]
-  // 动作流
-  flows?: any[]
-  // 上下文
-  context?: string
-  // 时间
-  date?: string
-  // 复用次数
-  count?: number
-}
-
 // 历史记录
 export interface TransferHistory {
   // ID
@@ -613,24 +507,6 @@ export interface Site {
   is_active: boolean
 }
 
-// 站点使用统计
-export interface SiteStatistic {
-  // 站点主域名Key
-  domain?: string
-  // 成功次数
-  success?: number
-  // 失败次数
-  fail?: number
-  // 平均耗时
-  seconds?: number
-  // 最后一次访问状态 0-成功 1-失败
-  lst_state?: number
-  // 最后访问时间
-  lst_mod_date?: string
-  // 耗时记录 JSON
-  note?: string
-}
-
 // 站点用户数据
 export interface SiteUserData {
   // 站点域名
@@ -671,38 +547,6 @@ export interface SiteUserData {
   updated_day?: string
   // 更新时间
   updated_time?: string
-}
-
-// 正在下载
-export interface DownloadingInfo {
-  // HASH
-  hash?: string
-  // 种子名称
-  title?: string
-  // 识别后的名称
-  name?: string
-  // 年份
-  year?: string
-  // SXXEXX
-  season_episode?: string
-  // 大小
-  size?: number
-  // 下载进 度
-  progress?: number
-  // 状态
-  state?: string
-  // 下载速度
-  dlspeed?: string
-  // 上传速度
-  upspeed?: string
-  // 媒体信息
-  media: { [key: string]: any }
-  // 下载用户ID
-  userid?: string
-  // 下载用户名称
-  username?: string
-  // 剩余时间
-  left_time?: string
 }
 
 // 缺失剧集信息
@@ -774,57 +618,6 @@ export interface Plugin {
   user_rating?: number | null
 }
 
-// 插件评分结果
-export interface PluginRating {
-  plugin_id: string
-  average_rating: number
-  rating_count: number
-  user_rating?: number | null
-}
-
-// 插件 Release 可安装版本
-export interface PluginReleaseVersion {
-  // 插件版本
-  version: string
-  // GitHub Release tag
-  tag_name: string
-  // Release 标题
-  name?: string
-  // 发布时间
-  published_at?: string
-  // Release 说明
-  body?: string
-  // 匹配到的资产文件名
-  asset_name?: string
-  // 是否为当前市场最新版本
-  is_latest?: boolean
-  // 是否为本地已安装版本
-  is_current?: boolean
-}
-
-// 插件 Release 可安装版本响应
-export interface PluginReleaseVersionsResponse {
-  // 当前插件是否存在可直接安装的 Release 资产
-  release_supported: boolean
-  // 当前市场 package 声明的最新版本
-  latest_version?: string | null
-  // 本地已安装版本
-  current_version?: string | null
-  // 可安装版本列表
-  items: PluginReleaseVersion[]
-}
-
-// 插件侧栏全页导航项（与后端 PluginSidebarNavItem 对齐）
-export interface PluginSidebarNavItem {
-  plugin_id: string
-  nav_key: string
-  title: string
-  icon: string
-  section: 'start' | 'discovery' | 'subscribe' | 'organize' | 'system'
-  permission?: 'subscribe' | 'discovery' | 'search' | 'manage' | 'admin' | null
-  order: number
-}
-
 // 渲染结构
 export interface RenderProps {
   component: string
@@ -854,64 +647,6 @@ export interface DashboardItem {
   elements: RenderProps[]
   // 渲染方式
   render_mode?: string
-}
-
-// 种子信息
-export interface TorrentInfo {
-  // 站点ID
-  site?: number
-  // 站点名称
-  site_name?: string
-  // 站点Cookie
-  site_cookie?: string
-  // 站点UA
-  site_ua?: string
-  // 站点是否使用代理
-  site_proxy: boolean
-  // 站点优先级
-  site_order: number
-  // 站点下载器
-  site_downloader?: string
-  // 种子名称
-  title?: string
-  // 种子副标题
-  description?: string
-  // IMDB ID
-  imdbid: string
-  // 种子链接
-  enclosure?: string
-  // 详情页面
-  page_url?: string
-  // 种子大小
-  size: number
-  // 做种者
-  seeders: number
-  // 下载者
-  peers: number
-  // 完成者
-  grabs: number
-  // 发布时间
-  pubdate?: string
-  // 已过时间
-  date_elapsed?: string
-  // 上传因子
-  uploadvolumefactor: number
-  // 下载因子
-  downloadvolumefactor: number
-  // HR
-  hit_and_run: boolean
-  // 种子标签
-  labels: string[]
-  // 种子优先级
-  pri_order: number
-  // 促销描述
-  volume_factor: string
-  // 免费时间
-  freedate: string
-  // 剩余免费时间
-  freedate_diff: string
-  // 种子类型
-  category: string
 }
 
 // 字幕信息
@@ -1566,48 +1301,6 @@ export interface RuleTestData {
   matched?: boolean
 }
 
-// 订阅下载文件详情
-export interface SubscribeDownloadFileInfo {
-  // 种子名称
-  torrent_title?: string
-  // 站点名称
-  site_name?: string
-  // 下载器
-  downloader?: string
-  // hash
-  hash?: string
-  // 文件路径
-  file_path?: string
-}
-
-// 订阅媒体库文件详情
-export interface SubscribeLibraryFileInfo {
-  // 存储
-  storage?: string
-  // 文件路径
-  file_path?: string
-  // 媒体服务器名称
-  server?: string
-  // 媒体服务器类型：emby、jellyfin、plex 等
-  server_type?: string
-  // 媒体服务器条目 ID
-  itemid?: string
-}
-
-// 订阅集详情
-export interface SubscribeEpisodeInfo {
-  // 标题
-  title?: string
-  // 描述
-  description?: string
-  // 背景图
-  backdrop?: string
-  // 下载文件信息
-  download?: SubscribeDownloadFileInfo[]
-  // 媒体库文件信息
-  library?: SubscribeLibraryFileInfo[]
-}
-
 // 订阅详情
 export interface SubscrbieInfo {
   // 订阅信息
@@ -1773,22 +1466,6 @@ export interface TransferQueue {
   }[]
 }
 
-// 探索的数据源
-export interface DiscoverSource {
-  // 数据源名称
-  name: string
-  // 媒体ID的前缀，不含:
-  mediaid_prefix: string
-  // 媒体数据源API地址
-  api_path: string
-  // 过滤参数
-  filter_params: { [key: string]: any }
-  // 过滤参数UI配置
-  filter_ui: RenderProps[]
-  // UI依赖关系字典
-  depends?: { [key: string]: string[] }
-}
-
 // 推荐的数据源
 export interface RecommendSource {
   // 数据源名称
@@ -1797,13 +1474,6 @@ export interface RecommendSource {
   api_path: string
   // 类型
   type: string
-}
-
-// 站点资源分类
-export interface SiteCategory {
-  id: number
-  cat: string
-  desc: string
 }
 
 // 工作流
@@ -1842,52 +1512,6 @@ export interface Workflow {
   last_time?: string
 }
 
-// 种子缓存项
-export interface TorrentCacheItem {
-  // 种子hash（用于操作标识）
-  hash: string
-  // 站点域名
-  domain: string
-  // 种子标题
-  title: string
-  // 种子描述
-  description?: string
-  // 种子大小
-  size: number
-  // 发布时间
-  pubdate?: string
-  // 站点名称
-  site_name?: string
-  // 识别的媒体名称
-  media_name?: string
-  // 识别的媒体年份
-  media_year?: string
-  // 识别的媒体类型
-  media_type?: string
-  // 季集信息
-  season_episode?: string
-  // 资源信息
-  resource_term?: string
-  // 种子链接
-  enclosure?: string
-  // 详情页面
-  page_url?: string
-  // 海报图片
-  poster_path?: string
-  // 背景图片
-  backdrop_path?: string
-}
-
-// 种子缓存数据
-export interface TorrentCacheData {
-  // 缓存数量
-  count: number
-  // 站点数量
-  sites: number
-  // 缓存数据
-  data: TorrentCacheItem[]
-}
-
 // 媒体识别缓存项
 export interface RecognitionCacheItem {
   // 缓存键
@@ -1922,16 +1546,6 @@ export interface RecognitionCacheData {
   shared_recognize_enabled: boolean
   // 缓存数据
   data: RecognitionCacheItem[]
-}
-
-// 订阅分享统计
-export interface SubscribeShareStatistics {
-  // 分享人
-  share_user?: string
-  // 分享数量
-  share_count?: number
-  // 总复用人次
-  total_reuse_count?: number
 }
 
 // 通用API响应

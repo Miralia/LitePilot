@@ -47,6 +47,7 @@ const MEDIA_SOURCE_LABELS: Record<string, string> = {
 }
 
 const MEDIA_SOURCE_LOGOS: Record<string, string> = {
+  anilist: '',
   bangumi: getLogoUrl('bangumi'),
   douban: getLogoUrl('douban'),
   themoviedb: getLogoUrl('tmdb'),

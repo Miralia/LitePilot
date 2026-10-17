@@ -156,10 +156,6 @@ EVENT_TYPE_NAMES = {
 class ChainEventType(Enum):
     # 名称识别
     NameRecognize = "name.recognize"
-    # 认证验证
-    AuthVerification = "auth.verification"
-    # 认证拦截
-    AuthIntercept = "auth.intercept"
     # 命令注册
     CommandRegister = "command.register"
     # 整理重命名

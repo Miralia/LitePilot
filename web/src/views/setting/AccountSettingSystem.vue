@@ -45,13 +45,8 @@ const SystemSettings = ref<any>({
     // 全局
     AUXILIARY_AUTH_ENABLE: false,
     GLOBAL_IMAGE_CACHE: false,
-    SUBSCRIBE_STATISTIC_SHARE: true,
-    PLUGIN_STATISTIC_SHARE: true,
-    USAGE_STATISTIC_SHARE: true,
-    WORKFLOW_STATISTIC_SHARE: true,
     BIG_MEMORY_MODE: false,
     DB_WAL_ENABLE: false,
-    AUTO_UPDATE_RESOURCE: true,
     MOVIEPILOT_AUTO_UPDATE: false,
     DATA_CLEANUP_ENABLE: false,
     DATA_CLEANUP_MESSAGE_DAYS: 90,
@@ -59,8 +54,6 @@ const SystemSettings = ref<any>({
     DATA_CLEANUP_SITE_USERDATA_DAYS: 180,
     DATA_CLEANUP_TRANSFER_HISTORY_DAYS: 365 * 3,
     // 媒体
-    RECOGNIZE_PLUGIN_FIRST: false,
-    MEDIA_RECOGNIZE_SHARE: true,
     TMDB_API_DOMAIN: null,
     TMDB_API_KEY: null,
     TMDB_IMAGE_DOMAIN: null,
@@ -86,8 +79,6 @@ const SystemSettings = ref<any>({
     LOG_BACKUP_COUNT: '3',
     LOG_FILE_FORMAT: '【%(levelname)s】%(asctime)s - %(message)s',
     // 实验室
-    PLUGIN_AUTO_RELOAD: false,
-    PLUGIN_LOCAL_REPO_PATHS: '',
     RUST_ACCEL: false,
     ENCODING_DETECTION_PERFORMANCE_MODE: true,
     TRANSFER_THREADS: 1,
@@ -853,38 +844,6 @@ useSilentSettingRefresh(
                 </VCol>
                 <VCol cols="12" md="6">
                   <VSwitch
-                    v-model="SystemSettings.Advanced.SUBSCRIBE_STATISTIC_SHARE"
-                    :label="t('setting.system.subscribeStatisticShare')"
-                    :hint="t('setting.system.subscribeStatisticShareHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.PLUGIN_STATISTIC_SHARE"
-                    :label="t('setting.system.pluginStatisticShare')"
-                    :hint="t('setting.system.pluginStatisticShareHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.USAGE_STATISTIC_SHARE"
-                    :label="t('setting.system.usageStatisticShare')"
-                    :hint="t('setting.system.usageStatisticShareHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.WORKFLOW_STATISTIC_SHARE"
-                    :label="t('setting.system.workflowStatisticShare')"
-                    :hint="t('setting.system.workflowStatisticShareHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VSwitch
                     v-model="SystemSettings.Advanced.BIG_MEMORY_MODE"
                     :label="t('setting.system.bigMemoryMode')"
                     :hint="t('setting.system.bigMemoryModeHint')"
@@ -904,14 +863,6 @@ useSilentSettingRefresh(
                     v-model="moviePilotAutoUpdate"
                     :label="t('setting.system.moviePilotAutoUpdate')"
                     :hint="t('setting.system.moviePilotAutoUpdateHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.AUTO_UPDATE_RESOURCE"
-                    :label="t('setting.system.autoUpdateResource')"
-                    :hint="t('setting.system.autoUpdateResourceHint')"
                     persistent-hint
                   />
                 </VCol>
@@ -1003,22 +954,6 @@ useSilentSettingRefresh(
                 </VCol>
               </VRow>
               <VRow>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.RECOGNIZE_PLUGIN_FIRST"
-                    :label="t('setting.system.recognizePluginFirst')"
-                    :hint="t('setting.system.recognizePluginFirstHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.MEDIA_RECOGNIZE_SHARE"
-                    :label="t('setting.system.mediaRecognizeShare')"
-                    :hint="t('setting.system.mediaRecognizeShareHint')"
-                    persistent-hint
-                  />
-                </VCol>
               </VRow>
               <VRow>
                 <VCol cols="12" md="6">
@@ -1415,15 +1350,6 @@ useSilentSettingRefresh(
               <VRow>
                 <VCol cols="12" md="6">
                   <VTextField
-                    v-model="SystemSettings.Advanced.PLUGIN_LOCAL_REPO_PATHS"
-                    :label="t('setting.system.pluginLocalRepoPaths')"
-                    :hint="t('setting.system.pluginLocalRepoPathsHint')"
-                    persistent-hint
-                    prepend-inner-icon="mdi-folder"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VTextField
                     v-model.number="SystemSettings.Advanced.TRANSFER_THREADS"
                     :label="t('setting.system.transferThreads')"
                     :hint="t('setting.system.transferThreadsHint')"
@@ -1435,14 +1361,6 @@ useSilentSettingRefresh(
                 </VCol>
               </VRow>
               <VRow>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.PLUGIN_AUTO_RELOAD"
-                    :label="t('setting.system.pluginAutoReload')"
-                    :hint="t('setting.system.pluginAutoReloadHint')"
-                    persistent-hint
-                  />
-                </VCol>
                 <VCol cols="12" md="6">
                   <VSwitch
                     v-model="SystemSettings.Advanced.ENCODING_DETECTION_PERFORMANCE_MODE"

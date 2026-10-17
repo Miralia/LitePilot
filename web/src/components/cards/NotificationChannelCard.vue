@@ -29,15 +29,7 @@ const emit = defineEmits(['close', 'change', 'done'])
 
 // 各通知类型的名称字典
 const notificationTypeNames: { [key: string]: string } = {
-  wechat: t('notification.wechat.name'),
-  feishu: t('notification.feishu.name'),
-  wechatclawbot: t('notification.wechatclawbot.name'),
   telegram: t('notification.telegram.name'),
-  qqbot: t('notification.qqbot.name'),
-  vocechat: t('notification.vocechat.name'),
-  synologychat: t('notification.synologychat.name'),
-  slack: t('notification.slack.name'),
-  discord: t('notification.discord.name'),
   webpush: t('notification.webpush.name'),
   custom: t('setting.notification.custom'),
 }
@@ -61,24 +53,8 @@ function openNotificationInfoDialog() {
 // 根据存储类型选择图标
 const getIcon = computed(() => {
   switch (props.notification.type) {
-    case 'wechat':
-      return getLogoUrl('wechat')
-    case 'wechatclawbot':
-      return getLogoUrl('wechatclawbot')
-    case 'feishu':
-      return getLogoUrl('feishu')
     case 'telegram':
       return getLogoUrl('telegram')
-    case 'qqbot':
-      return getLogoUrl('qq')
-    case 'vocechat':
-      return getLogoUrl('vocechat')
-    case 'synologychat':
-      return getLogoUrl('synologychat')
-    case 'slack':
-      return getLogoUrl('slack')
-    case 'discord':
-      return getLogoUrl('discord')
     case 'webpush':
       return getLogoUrl('chrome')
     default:

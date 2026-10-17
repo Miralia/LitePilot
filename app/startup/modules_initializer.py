@@ -7,6 +7,7 @@ from app.log import logger
 from app.core.config import settings
 from app.core.module import ModuleManager
 from app.core.event import EventManager
+from app.helper.swizzin import SwizzinUserSync
 from app.helper.thread import ThreadHelper
 from app.helper.message import stop_message
 from app.db import close_database
@@ -103,6 +104,8 @@ def init_modules():
     """
     启动模块
     """
+    # 按 swizzin 用户清单同步本地账号（非 swizzin 环境退化为单管理员）
+    SwizzinUserSync().sync()
     # 加载模块
     ModuleManager()
     # 启动事件消费
