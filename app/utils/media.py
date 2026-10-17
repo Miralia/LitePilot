@@ -6,21 +6,18 @@ MEDIA_SOURCE_ALIASES = {
     "themoviedb": "themoviedb",
     "douban": "douban",
     "bangumi": "bangumi",
-    "anilist": "anilist",
 }
 
 MEDIA_SOURCE_PREFIXES = {
     "themoviedb": "tmdb",
     "douban": "douban",
     "bangumi": "bangumi",
-    "anilist": "anilist",
 }
 
 MEDIA_SOURCE_ID_FIELDS = {
     "themoviedb": ("tmdb_id", "tmdbid"),
     "douban": ("douban_id", "doubanid"),
     "bangumi": ("bangumi_id", "bangumiid"),
-    "anilist": ("anilist_id", "anilistid"),
 }
 
 
@@ -51,13 +48,12 @@ def resolve_media_identity(
         tmdbid: Optional[Any] = None,
         doubanid: Optional[Any] = None,
         bangumiid: Optional[Any] = None,
-        anilistid: Optional[Any] = None,
 ) -> Tuple[Optional[str], Optional[str]]:
     """
     从统一媒体对象、通用身份或兼容 ID 中解析主媒体身份。
 
-    显式 ``source/media_id`` 优先；未指定来源时按 TMDB、豆瓣、Bangumi、
-    AniList 的兼容顺序选择首个有效 ID。
+    显式 ``source/media_id`` 优先；未指定来源时按 TMDB、豆瓣、Bangumi
+    的兼容顺序选择首个有效 ID。
     """
     normalized_source = normalize_media_source(source)
     if normalized_source and media_id is not None and str(media_id).strip():
@@ -67,7 +63,6 @@ def resolve_media_identity(
         "themoviedb": tmdbid,
         "douban": doubanid,
         "bangumi": bangumiid,
-        "anilist": anilistid,
     }
     if media is not None:
         normalized_source = normalized_source or normalize_media_source(

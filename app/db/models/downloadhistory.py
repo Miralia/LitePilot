@@ -32,7 +32,6 @@ class DownloadHistory(Base):
     tvdbid = Column(Integer)
     doubanid = Column(String)
     bangumiid = Column(Integer, index=True)
-    anilistid = Column(Integer, index=True)
     media_source = Column(String, index=True)
     media_id = Column(String, index=True)
     # Sxx
@@ -125,7 +124,7 @@ class DownloadHistory(Base):
     def get_by_mediaid(
             cls, db: Session, tmdbid: Optional[int] = None,
             doubanid: Optional[str] = None, bangumiid: Optional[int] = None,
-            anilistid: Optional[int] = None, media_source: Optional[str] = None,
+            media_source: Optional[str] = None,
             media_id: Optional[str] = None,
     ):
         """按统一媒体身份或兼容 ID 查询下载历史。"""
@@ -141,8 +140,6 @@ class DownloadHistory(Base):
             return query.filter(DownloadHistory.doubanid == doubanid).all()
         if bangumiid is not None:
             return query.filter(DownloadHistory.bangumiid == bangumiid).all()
-        if anilistid is not None:
-            return query.filter(DownloadHistory.anilistid == anilistid).all()
         return []
 
     @classmethod

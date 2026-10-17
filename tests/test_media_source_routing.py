@@ -14,13 +14,13 @@ def _chain_without_init() -> ChainBase:
 def test_generic_source_id_wins_over_legacy_ids() -> None:
     """显式source与media_id应优先于同一请求残留的兼容ID字段。"""
     resolved = ChainBase._resolve_media_source_params(
-        source="anilist",
+        source="bangumi",
         mediaid="154587",
         tmdbid=999,
         doubanid="888",
     )
 
-    assert resolved == ("anilist", None, None, None, 154587)
+    assert resolved == ("bangumi", None, None, 154587)
 
 
 def test_custom_plugin_source_is_not_discarded() -> None:
@@ -30,23 +30,23 @@ def test_custom_plugin_source_is_not_discarded() -> None:
         mediaid="custom-1",
     )
 
-    assert resolved == ("plugin_source", None, None, None, None)
+    assert resolved == ("plugin_source", None, None, None)
 
 
 def test_explicit_source_recognition_reaches_plugins_with_all_ids() -> None:
     """显式选择数据源时应保留通用参数并进入完整模块调度。"""
     chain = _chain_without_init()
     media = MediaInfo(
-        anilist_info={
+        bangumi_info={
             "id": 154587,
-            "title": {"english": "Frieren"},
-            "format": "TV",
+            "name": "Frieren",
+            "name_cn": "葬送的芙莉莲",
         }
     )
     chain.run_module = Mock(return_value=media)
 
     result = chain.recognize_media(
-        source="anilist",
+        source="bangumi",
         mediaid="154587",
         tmdbid=999,
         mtype=MediaType.TV,
@@ -54,9 +54,9 @@ def test_explicit_source_recognition_reaches_plugins_with_all_ids() -> None:
 
     assert result is media
     call = chain.run_module.call_args
-    assert call.kwargs["source"] == "anilist"
+    assert call.kwargs["source"] == "bangumi"
     assert call.kwargs["mediaid"] == "154587"
-    assert call.kwargs["anilistid"] == 154587
+    assert call.kwargs["bangumiid"] == 154587
     assert call.kwargs["tmdbid"] is None
 
 
@@ -75,7 +75,7 @@ def test_default_recognition_passes_empty_generic_identity() -> None:
     call = chain.run_module.call_args
     assert call.kwargs["source"] is None
     assert call.kwargs["mediaid"] is None
-    assert call.kwargs["anilistid"] is None
+    assert call.kwargs["bangumiid"] is None
 
 
 

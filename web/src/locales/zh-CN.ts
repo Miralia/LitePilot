@@ -814,8 +814,6 @@ export default {
     trendingNow: '流行趋势',
     nowShowing: '正在热映',
     bangumiDaily: 'Bangumi每日放送',
-    anilistTrendingNow: 'AniList 当前趋势',
-    anilistPopularThisSeason: 'AniList 本季热门',
     tmdbHotMovies: 'TMDB热门电影',
     tmdbHotTVShows: 'TMDB热门电视剧',
     doubanHotMovies: '豆瓣热门电影',
@@ -1445,7 +1443,7 @@ export default {
         '被替换词 => 替换词\n' +
         '前定位词 <> 后定位词 >> 集偏移量（EP）\n' +
         '被替换词 => 替换词 && 前定位词 <> 后定位词 >> 集偏移量（EP）\n' +
-        '其中替换词支持格式：&#123;[tmdbid/doubanid/bangumiid/anilistid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; 直接指定媒体数据源ID识别，其中g为剧集组编号，s、e为季数和集数（均可选）',
+        '其中替换词支持格式：&#123;[tmdbid/doubanid/bangumiid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; 直接指定媒体数据源ID识别，其中g为剧集组编号，s、e为季数和集数（均可选）',
       identifierSaveSuccess: '自定义识别词保存成功',
       identifierSaveFailed: '自定义识别词保存失败！',
 
@@ -1727,7 +1725,6 @@ export default {
         doubanId: '豆瓣 ID',
         doubanIdHint: '可选，手动指定豆瓣ID进行识别',
         bangumiId: 'Bangumi ID',
-        anilistId: 'AniList ID',
         mediaSource: '识别数据源',
         mediaSourceHint: '仅用于本次重新识别，不修改系统默认数据源',
         mediaId: '媒体 ID',
@@ -1748,7 +1745,6 @@ export default {
         themoviedb: 'TheMovieDb',
         douban: '豆瓣',
         bangumi: 'Bangumi',
-        anilist: 'AniList',
       },
     },
   },
@@ -2254,7 +2250,6 @@ export default {
       tmdbId: 'TheMovieDb编号',
       doubanId: '豆瓣编号',
       bangumiId: 'Bangumi编号',
-      anilistId: 'AniList编号',
       mediaIdHint: '按名称查询媒体编号，留空自动识别',
       mediaIdPlaceholder: '留空自动识别',
       mediaSearchInput: '搜索媒体',
@@ -2394,7 +2389,7 @@ export default {
       customWords: '自定义识别词',
       customWordsHint: '只对该订阅使用的识别词',
       customWordsPlaceholder:
-        '屏蔽词\n被替换词 => 替换词\n前定位词 <> 后定位词 >> 集偏移量（EP）\n被替换词 => 替换词 && 前定位词 <> 后定位词 >> 集偏移量（EP）\n其中替换词支持格式：&#123;[tmdbid/doubanid/bangumiid/anilistid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; 直接指定媒体数据源ID识别，其中g为剧集组编号，s、e为季数和集数（均可选）',
+        '屏蔽词\n被替换词 => 替换词\n前定位词 <> 后定位词 >> 集偏移量（EP）\n被替换词 => 替换词 && 前定位词 <> 后定位词 >> 集偏移量（EP）\n其中替换词支持格式：&#123;[tmdbid/doubanid/bangumiid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; 直接指定媒体数据源ID识别，其中g为剧集组编号，s、e为季数和集数（均可选）',
       cancelSubscribe: '取消订阅',
       save: '保存',
       cancelSubscribeConfirm: '是否确认取消订阅？',

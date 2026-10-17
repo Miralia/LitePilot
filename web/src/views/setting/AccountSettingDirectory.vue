@@ -43,7 +43,6 @@ const sourceItems = [
   { 'title': 'TheMovieDb', 'value': 'themoviedb' },
   { 'title': '豆瓣', 'value': 'douban' },
   { 'title': 'Bangumi', 'value': 'bangumi' },
-  { 'title': 'AniList', 'value': 'anilist' },
 ]
 
 // 存储选项（排除已添加的）

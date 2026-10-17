@@ -90,7 +90,7 @@ class DownloadChain(ChainBase):
             return set()
         source, media_id = resolve_media_identity(media=media)
         values = {
-            media.tmdb_id, media.douban_id, media.bangumi_id, media.anilist_id,
+            media.tmdb_id, media.douban_id, media.bangumi_id,
             build_media_key(source, media_id),
         }
         return {str(value) for value in values if value is not None and str(value)}
@@ -372,7 +372,6 @@ class DownloadChain(ChainBase):
             save_path: Optional[str] = None,
             username: Optional[str] = None,
             bangumiid: Optional[int] = None,
-            anilistid: Optional[int] = None,
     ) -> Tuple[bool, str, List[str]]:
         """
         下载字幕文件并保存到媒体对应的下载目录。
@@ -383,7 +382,6 @@ class DownloadChain(ChainBase):
         :param tmdbid: TMDB ID
         :param doubanid: 豆瓣 ID
         :param bangumiid: Bangumi ID
-        :param anilistid: AniList ID
         :param save_path: 保存路径
         :param username: 调用下载的用户名
         :return: 成功状态、提示消息、保存文件列表
@@ -399,7 +397,6 @@ class DownloadChain(ChainBase):
             tmdbid=tmdbid,
             doubanid=doubanid,
             bangumiid=bangumiid,
-            anilistid=anilistid,
         )
         if not mediainfo:
             return False, "无法识别媒体信息", []
@@ -606,7 +603,6 @@ class DownloadChain(ChainBase):
                 tmdbid=getattr(media, "tmdb_id", None),
                 doubanid=getattr(media, "douban_id", None),
                 bangumiid=media.bangumi_id,
-                anilistid=media.anilist_id,
                 media_source=media_source,
                 media_id=media_id,
                 seasons=getattr(meta, "season", None),
@@ -945,7 +941,6 @@ class DownloadChain(ChainBase):
                 tvdbid=_media.tvdb_id,
                 doubanid=_media.douban_id,
                 bangumiid=_media.bangumi_id,
-                anilistid=_media.anilist_id,
                 media_source=media_source,
                 media_id=media_id,
                 seasons=_meta.season,
@@ -1650,7 +1645,6 @@ class DownloadChain(ChainBase):
                                                             tmdbid=mediainfo.tmdb_id,
                                                             doubanid=mediainfo.douban_id,
                                                             bangumiid=mediainfo.bangumi_id,
-                                                            anilistid=mediainfo.anilist_id,
                                                             source=media_source,
                                                             mediaid=media_id,
                                                             episode_group=mediainfo.episode_group)

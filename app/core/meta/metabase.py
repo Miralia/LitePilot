@@ -98,7 +98,6 @@ class MetaBase(object):
     tmdbid: int = None
     doubanid: str = None
     bangumiid: int = None
-    anilistid: int = None
     media_source: Optional[str] = None
     media_id: Optional[str] = None
     episode_group: Optional[str] = None

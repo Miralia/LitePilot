@@ -28,8 +28,6 @@ class DownloadHistory(BaseModel):
     doubanid: Optional[str] = None
     # Bangumi ID
     bangumiid: Optional[int] = None
-    # AniList ID
-    anilistid: Optional[int] = None
     # 媒体数据源
     media_source: Optional[str] = None
     # 数据源原生ID
@@ -99,8 +97,6 @@ class TransferHistory(BaseModel):
     doubanid: Optional[str] = None
     # Bangumi ID
     bangumiid: Optional[int] = None
-    # AniList ID
-    anilistid: Optional[int] = None
     # 媒体数据源
     media_source: Optional[str] = None
     # 数据源原生ID

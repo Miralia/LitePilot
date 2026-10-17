@@ -76,8 +76,7 @@ async function searchMedias() {
         item.media_id ||
         item.tmdb_id?.toString() ||
         item.douban_id ||
-        item.bangumi_id?.toString() ||
-        item.anilist_id?.toString()
+        item.bangumi_id?.toString()
       if (!mediaId) continue
       items.value.push({
         id: mediaId,

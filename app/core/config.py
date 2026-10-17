@@ -38,8 +38,6 @@ class SystemConfModel(BaseModel):
     douban: int = 0
     # Bangumi请求缓存数量
     bangumi: int = 0
-    # AniList请求缓存数量
-    anilist: int = 0
     # Fanart请求缓存数量
     fanart: int = 0
     # 元数据缓存过期时间（秒）
@@ -179,11 +177,11 @@ class ConfigModel(BaseModel):
     # 网络代理服务器地址
     PROXY_HOST: Optional[str] = None
     # ==================== 媒体元数据配置 ====================
-    # 媒体搜索来源 themoviedb/douban/bangumi/anilist，多个用,分隔
+    # 媒体搜索来源 themoviedb/douban/bangumi，多个用,分隔
     SEARCH_SOURCE: str = "themoviedb"
-    # 媒体识别来源 themoviedb/douban/bangumi/anilist
+    # 媒体识别来源 themoviedb/douban/bangumi
     RECOGNIZE_SOURCE: str = "themoviedb"
-    # 刮削来源 themoviedb/douban/bangumi/anilist
+    # 刮削来源 themoviedb/douban/bangumi
     SCRAP_SOURCE: str = "themoviedb"
     # 电视剧动漫的分类genre_ids
     ANIME_GENREIDS: List[int] = Field(default=[16])
@@ -416,7 +414,6 @@ class ConfigModel(BaseModel):
             "cmvideo.cn",
             "ykimg.com",
             "qpic.cn",
-            "anilist.co",
         ]
     )
     # 图片代理允许访问的非公网 IP/CIDR，默认不放行任何非公网解析结果

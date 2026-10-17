@@ -1678,7 +1678,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                                 or download_history.tmdbid
                                 or download_history.doubanid
                                 or download_history.bangumiid
-                                or download_history.anilistid
                             )
                             and not history_year_conflict
                     ):
@@ -1688,7 +1687,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                             tmdbid=download_history.tmdbid,
                             doubanid=download_history.doubanid,
                             bangumiid=download_history.bangumiid,
-                            anilistid=download_history.anilistid,
                             source=download_history.media_source,
                             mediaid=download_history.media_id,
                             episode_group=download_history.episode_group,
@@ -2195,7 +2193,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                             tmdbid=downloadhis.tmdbid,
                             doubanid=downloadhis.doubanid,
                             bangumiid=downloadhis.bangumiid,
-                            anilistid=downloadhis.anilistid,
                             source=downloadhis.media_source,
                             mediaid=downloadhis.media_id,
                             episode_group=downloadhis.episode_group,
@@ -3731,7 +3728,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             sync_extra_files: Optional[bool] = True,
             cleanup_dest_fileitem: Optional[FileItem] = None,
             bangumiid: Optional[int] = None,
-            anilistid: Optional[int] = None,
             reorganize: Optional[bool] = False,
     ) -> Tuple[bool, Union[str, dict]]:
         """
@@ -3742,7 +3738,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         :param tmdbid: TMDB ID
         :param doubanid: 豆瓣ID
         :param bangumiid: Bangumi ID
-        :param anilistid: AniList ID
         :param media_source: 媒体数据源
         :param media_id: 数据源原生ID
         :param mtype: 媒体类型
@@ -3764,14 +3759,13 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         :param cleanup_dest_fileitem: 确认存在待整理任务后需要清理的旧目标文件
         """
         logger.info(f"手动整理：{fileitem.path} ...")
-        if tmdbid or doubanid or bangumiid or anilistid or media_id:
+        if tmdbid or doubanid or bangumiid or media_id:
             # 有输入媒体ID时单个识别
             # 识别媒体信息
             mediainfo: MediaInfo = MediaChain().recognize_media(
                 tmdbid=tmdbid,
                 doubanid=doubanid,
                 bangumiid=bangumiid,
-                anilistid=anilistid,
                 source=media_source,
                 mediaid=media_id,
                 mtype=mtype,

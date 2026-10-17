@@ -16,7 +16,6 @@ export function getMediaSubscribeIdentity(media?: MediaInfo): MediaSubscribeIden
     return source === 'tmdb' ? 'themoviedb' : source
   }
   const sourceIds: Record<string, unknown> = {
-    anilist: media.anilist_id,
     bangumi: media.bangumi_id,
     douban: media.douban_id,
     themoviedb: media.tmdb_id,
@@ -40,7 +39,7 @@ export function getMediaSubscribeIdentity(media?: MediaInfo): MediaSubscribeIden
     if (declaredIdentity) return declaredIdentity
   }
 
-  for (const fallbackSource of ['themoviedb', 'douban', 'bangumi', 'anilist']) {
+  for (const fallbackSource of ['themoviedb', 'douban', 'bangumi']) {
     const fallbackIdentity = buildIdentity(fallbackSource, sourceIds[fallbackSource])
     if (fallbackIdentity) return fallbackIdentity
   }

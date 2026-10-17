@@ -822,8 +822,6 @@ export default {
     trendingNow: 'Trending Now',
     nowShowing: 'Now Showing',
     bangumiDaily: 'Bangumi Daily Release',
-    anilistTrendingNow: 'AniList TRENDING NOW',
-    anilistPopularThisSeason: 'AniList POPULAR THIS SEASON',
     tmdbHotMovies: 'TMDB Hot Movies',
     tmdbHotTVShows: 'TMDB Hot TV Shows',
     doubanHotMovies: 'Douban Hot Movies',
@@ -1472,7 +1470,7 @@ export default {
         'Word to replace => Replacement\n' +
         'Front word <> Back word >> Episode offset (EP)\n' +
         'Word to replace => Replacement && Front word <> Back word >> Episode offset (EP)\n' +
-        'Replacement format supports: &#123;[tmdbid/doubanid/bangumiid/anilistid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; to directly specify a media data source ID, where g is the episode group ID and s/e are season and episode numbers (all optional)',
+        'Replacement format supports: &#123;[tmdbid/doubanid/bangumiid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; to directly specify a media data source ID, where g is the episode group ID and s/e are season and episode numbers (all optional)',
       identifierSaveSuccess: 'Custom identifiers saved successfully',
       identifierSaveFailed: 'Failed to save custom identifiers!',
 
@@ -1763,7 +1761,6 @@ export default {
         doubanId: 'Douban ID',
         doubanIdHint: 'Optional, manually specify Douban ID for recognition',
         bangumiId: 'Bangumi ID',
-        anilistId: 'AniList ID',
         mediaSource: 'Recognition source',
         mediaSourceHint: 'Applies only to this re-identification and does not change the system default',
         mediaId: 'Media ID',
@@ -1784,7 +1781,6 @@ export default {
         themoviedb: 'TheMovieDb',
         douban: 'Douban',
         bangumi: 'Bangumi',
-        anilist: 'AniList',
       },
     },
   },
@@ -2294,7 +2290,6 @@ export default {
       tmdbId: 'TheMovieDb ID',
       doubanId: 'Douban ID',
       bangumiId: 'Bangumi ID',
-      anilistId: 'AniList ID',
       mediaIdHint: 'Query media ID by name, leave empty for auto recognition',
       mediaIdPlaceholder: 'Leave empty for auto recognition',
       mediaSearchInput: 'Search Media',
@@ -2437,7 +2432,7 @@ export default {
       customWords: 'Custom Recognition Words',
       customWordsHint: 'Recognition words only used for this subscription',
       customWordsPlaceholder:
-        'Block word\nReplaced word => Replacement word\nPrefix <> Suffix >> Episode offset (EP)\nReplaced word => Replacement word && Prefix <> Suffix >> Episode offset (EP)\nReplacement word supports format: &#123;[tmdbid/doubanid/bangumiid/anilistid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; to directly specify a media data source ID, where g is the episode group ID and s/e are season and episode numbers (all optional)',
+        'Block word\nReplaced word => Replacement word\nPrefix <> Suffix >> Episode offset (EP)\nReplaced word => Replacement word && Prefix <> Suffix >> Episode offset (EP)\nReplacement word supports format: &#123;[tmdbid/doubanid/bangumiid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; to directly specify a media data source ID, where g is the episode group ID and s/e are season and episode numbers (all optional)',
       cancelSubscribe: 'Cancel Subscription',
       save: 'Save',
       cancelSubscribeConfirm: 'Are you sure you want to cancel the subscription?',

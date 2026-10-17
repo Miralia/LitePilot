@@ -400,22 +400,13 @@ class ChainBase(metaclass=ABCMeta):
         )
 
     @staticmethod
-
-    @staticmethod
-
-
-
-    @staticmethod
-
-    @staticmethod
     def _resolve_media_source_params(
             source: Optional[str] = None,
             mediaid: Optional[str] = None,
             tmdbid: Optional[int] = None,
             doubanid: Optional[str] = None,
             bangumiid: Optional[int] = None,
-            anilistid: Optional[int] = None,
-    ) -> Tuple[Optional[str], Optional[int], Optional[str], Optional[int], Optional[int]]:
+    ) -> Tuple[Optional[str], Optional[int], Optional[str], Optional[int]]:
         """
         统一请求级数据源ID与兼容字段，并保证同一次识别只携带一个来源ID。
 
@@ -424,8 +415,7 @@ class ChainBase(metaclass=ABCMeta):
         :param tmdbid: TMDB兼容ID
         :param doubanid: 豆瓣兼容ID
         :param bangumiid: Bangumi兼容ID
-        :param anilistid: AniList兼容ID
-        :return: 数据源及四种兼容ID
+        :return: 数据源及三种兼容ID
         """
         source = normalize_media_source(source)
 
@@ -438,7 +428,6 @@ class ChainBase(metaclass=ABCMeta):
                 "themoviedb": to_int(mediaid) if mediaid else to_int(tmdbid),
                 "douban": str(mediaid) if mediaid else str(doubanid) if doubanid else None,
                 "bangumi": to_int(mediaid) if mediaid else to_int(bangumiid),
-                "anilist": to_int(mediaid) if mediaid else to_int(anilistid),
             }
             selected_id = source_ids.get(source)
             return (
@@ -446,18 +435,15 @@ class ChainBase(metaclass=ABCMeta):
                 selected_id if source == "themoviedb" else None,
                 selected_id if source == "douban" else None,
                 selected_id if source == "bangumi" else None,
-                selected_id if source == "anilist" else None,
             )
 
         if tmdbid:
-            return "themoviedb", int(tmdbid), None, None, None
+            return "themoviedb", int(tmdbid), None, None
         if doubanid:
-            return "douban", None, str(doubanid), None, None
+            return "douban", None, str(doubanid), None
         if bangumiid:
-            return "bangumi", None, None, int(bangumiid), None
-        if anilistid:
-            return "anilist", None, None, None, int(anilistid)
-        return source, None, None, None, None
+            return "bangumi", None, None, int(bangumiid)
+        return source, None, None, None
 
     def recognize_media(
             self,
@@ -468,7 +454,6 @@ class ChainBase(metaclass=ABCMeta):
             tmdbid: Optional[int] = None,
             doubanid: Optional[str] = None,
             bangumiid: Optional[int] = None,
-            anilistid: Optional[int] = None,
             episode_group: Optional[str] = None,
             cache: bool = True,
             share_meta: MetaBase = None,
@@ -483,7 +468,6 @@ class ChainBase(metaclass=ABCMeta):
         :param tmdbid:   tmdbid
         :param doubanid: 豆瓣ID
         :param bangumiid: BangumiID
-        :param anilistid: AniList ID
         :param episode_group: 剧集组
         :param cache:    是否使用缓存
         :return: 识别的媒体信息，包括剧集信息
@@ -500,13 +484,12 @@ class ChainBase(metaclass=ABCMeta):
         requested_mediaid = mediaid
         if not episode_group and hasattr(meta, "episode_group"):
             episode_group = meta.episode_group
-        source, tmdbid, doubanid, bangumiid, anilistid = self._resolve_media_source_params(
+        source, tmdbid, doubanid, bangumiid = self._resolve_media_source_params(
             source=source,
             mediaid=mediaid,
             tmdbid=tmdbid,
             doubanid=doubanid,
             bangumiid=bangumiid,
-            anilistid=anilistid,
         )
         # 显式 TMDB ID 由模块自行消歧，不能被标题推断类型误导。
         if not mtype and not tmdbid and meta and meta.type in [MediaType.TV, MediaType.MOVIE]:
@@ -520,7 +503,6 @@ class ChainBase(metaclass=ABCMeta):
             "tmdbid": tmdbid,
             "doubanid": doubanid,
             "bangumiid": bangumiid,
-            "anilistid": anilistid,
             "episode_group": episode_group,
             "cache": cache,
         }
@@ -543,7 +525,6 @@ class ChainBase(metaclass=ABCMeta):
             tmdbid: Optional[int] = None,
             doubanid: Optional[str] = None,
             bangumiid: Optional[int] = None,
-            anilistid: Optional[int] = None,
             episode_group: Optional[str] = None,
             cache: bool = True,
             share_meta: MetaBase = None,
@@ -558,7 +539,6 @@ class ChainBase(metaclass=ABCMeta):
         :param tmdbid:   tmdbid
         :param doubanid: 豆瓣ID
         :param bangumiid: BangumiID
-        :param anilistid: AniList ID
         :param episode_group: 剧集组
         :param cache:    是否使用缓存
         :return: 识别的媒体信息，包括剧集信息
@@ -575,13 +555,12 @@ class ChainBase(metaclass=ABCMeta):
         requested_mediaid = mediaid
         if not episode_group and hasattr(meta, "episode_group"):
             episode_group = meta.episode_group
-        source, tmdbid, doubanid, bangumiid, anilistid = self._resolve_media_source_params(
+        source, tmdbid, doubanid, bangumiid = self._resolve_media_source_params(
             source=source,
             mediaid=mediaid,
             tmdbid=tmdbid,
             doubanid=doubanid,
             bangumiid=bangumiid,
-            anilistid=anilistid,
         )
         # 显式 TMDB ID 由模块自行消歧，不能被标题推断类型误导。
         if not mtype and not tmdbid and meta and meta.type in [MediaType.TV, MediaType.MOVIE]:
@@ -595,7 +574,6 @@ class ChainBase(metaclass=ABCMeta):
             "tmdbid": tmdbid,
             "doubanid": doubanid,
             "bangumiid": bangumiid,
-            "anilistid": anilistid,
             "episode_group": episode_group,
             "cache": cache,
         }

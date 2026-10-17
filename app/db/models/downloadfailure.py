@@ -26,8 +26,6 @@ class DownloadFailure(Base):
     doubanid = Column(String)
     # Bangumi ID
     bangumiid = Column(Integer)
-    # AniList ID
-    anilistid = Column(Integer)
     # 统一媒体数据源与原生ID
     media_source = Column(String)
     media_id = Column(String)

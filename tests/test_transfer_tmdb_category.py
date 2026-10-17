@@ -32,9 +32,9 @@ def test_transfer_stops_when_automatic_category_has_no_tmdb_result(monkeypatch) 
         ),
         meta=MetaInfo("Test Movie 2024"),
         mediainfo=MediaInfo(
-            source="anilist",
+            source="bangumi",
             media_id="1234",
-            anilist_id=1234,
+            bangumi_id=1234,
             type=MediaType.MOVIE,
             title="Test Movie",
             year="2024",
@@ -52,5 +52,5 @@ def test_transfer_stops_when_automatic_category_has_no_tmdb_result(monkeypatch) 
 
     assert not state
     assert message == "未识别到 TMDB 辅助信息，无法按媒体类别整理"
-    assert task.mediainfo.source == "anilist"
+    assert task.mediainfo.source == "bangumi"
     assert task.mediainfo.media_id == "1234"

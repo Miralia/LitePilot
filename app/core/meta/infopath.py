@@ -25,7 +25,7 @@ def should_use_parent_title_for_file_stem(
         return False
     if any((
             file_meta.tmdbid, file_meta.doubanid,
-            file_meta.bangumiid, file_meta.anilistid, file_meta.media_id,
+            file_meta.bangumiid, file_meta.media_id,
     )):
         return False
     if not PARENT_LATIN_TITLE_RE.search(parent_dir_name):

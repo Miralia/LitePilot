@@ -613,13 +613,12 @@ class TestMediaScrapeEvents(unittest.TestCase):
 
         self.media_chain.scrape_metadata_event(event)
 
-        mock_scrape_metadata.assert_called_once_with(
-            fileitem=fileitem,
-            mediainfo=mediainfo,
-            init_folder=True,
-            recursive=False,
-            overwrite=False
-        )
+        # BDMV 目录不再特判：与普通目录一致，先按目录初始化再逐个文件处理，
+        # 文件层的 BDMV 跳过由 scrape_metadata 内部判断。
+        calls = mock_scrape_metadata.call_args_list
+        self.assertGreaterEqual(len(calls), 1)
+        self.assertTrue(calls[0].kwargs["init_folder"])
+        self.assertEqual(calls[0].kwargs["mediainfo"], mediainfo)
 
     @patch("app.chain.media.MediaChain.scrape_metadata")
     def test_scrape_metadata_event_dir_with_filelist(
@@ -724,6 +723,7 @@ class TestMediaScrapeEvents(unittest.TestCase):
         fileitem = schemas.FileItem(path="/tv/show", name="show", type="dir", storage="local")
         meta = MetaInfo("Show")
         mediainfo = MediaInfo(type=MediaType.TV)
+        self.media_chain.storagechain.is_bluray_folder.return_value = False
 
         self.media_chain.scrape_metadata(
             fileitem=fileitem,

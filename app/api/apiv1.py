@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.endpoints import anilist, auth, login, user, webhook, message, \
+from app.api.endpoints import auth, login, user, webhook, message, \
     media, douban, tmdb, history, system, dashboard, \
     transfer, mediaserver, bangumi, storage, mfa
 
@@ -21,4 +21,3 @@ api_router.include_router(storage.router, prefix="/storage", tags=["storage"])
 api_router.include_router(transfer.router, prefix="/transfer", tags=["transfer"])
 api_router.include_router(mediaserver.router, prefix="/mediaserver", tags=["mediaserver"])
 api_router.include_router(bangumi.router, prefix="/bangumi", tags=["bangumi"])
-api_router.include_router(anilist.router, prefix="/anilist", tags=["anilist"])

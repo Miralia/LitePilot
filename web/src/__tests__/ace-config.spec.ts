@@ -117,7 +117,7 @@ describe('word list syntax mode', () => {
 
   it('accepts every supported replacement parameter type', () => {
     expect(
-      tokenize('旧名 => {[tmdbid=1;doubanid=2;bangumiid=3;anilistid=4;type=movie;g=group;s=5;e=6]}'),
+      tokenize('旧名 => {[tmdbid=1;doubanid=2;bangumiid=3;type=movie;g=group;s=5;e=6]}'),
     ).not.toContainEqual(expect.objectContaining({ type: 'invalid.word-list' }))
   })
 

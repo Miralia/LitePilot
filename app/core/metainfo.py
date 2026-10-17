@@ -30,7 +30,6 @@ _BRACED_METAINFO_RE = re.compile(r'(?<={\[)[\W\w]+(?=]})')
 _BRACED_TMDBID_RE = re.compile(r'(?<=tmdbid=)\d+')
 _BRACED_DOUBANID_RE = re.compile(r'(?<=doubanid=)\d+')
 _BRACED_BANGUMIID_RE = re.compile(r'(?<=bangumiid=)\d+')
-_BRACED_ANILISTID_RE = re.compile(r'(?<=anilistid=)\d+')
 _BRACED_TYPE_RE = re.compile(r'(?<=type=)\w+')
 _BRACED_EPISODE_GROUP_RE = re.compile(r'(?:^|;)g=([0-9a-fA-F]+)(?=;|$)')
 _BRACED_BEGIN_SEASON_RE = re.compile(r'(?<=s=)\d+')
@@ -50,15 +49,9 @@ _EXTENDED_MEDIA_ID_RE_LIST = {
         re.compile(r'\{bangumiid[=\-](\d+)\}'),
         re.compile(r'\{bangumi[=\-](\d+)\}'),
     ),
-    "anilist": (
-        re.compile(r'\[anilistid[=\-](\d+)\]'),
-        re.compile(r'\[anilist[=\-](\d+)\]'),
-        re.compile(r'\{anilistid[=\-](\d+)\}'),
-        re.compile(r'\{anilist[=\-](\d+)\}'),
-    ),
 }
 _EXTENDED_MEDIA_ID_TAG_RE = re.compile(
-    r'(?:bangumi(?:id)?|anilist(?:id)?)[=\-]\d+',
+    r'(?:bangumi(?:id)?)[=\-]\d+',
     re.IGNORECASE,
 )
 _RUST_PARSE_OPTIONS_CACHE_KEY = "_cache_key"
@@ -72,7 +65,6 @@ def _empty_metainfo() -> dict:
         'tmdbid': None,
         'doubanid': None,
         'bangumiid': None,
-        'anilistid': None,
         'media_source': None,
         'media_id': None,
         'type': None,
@@ -143,10 +135,6 @@ def _find_metainfo_python(title: str) -> Tuple[str, dict]:
             bangumiid = _BRACED_BANGUMIID_RE.search(result)
             if bangumiid and bangumiid.group(0).isdigit():
                 metainfo['bangumiid'] = bangumiid.group(0)
-            # 查找AniList ID信息
-            anilistid = _BRACED_ANILISTID_RE.search(result)
-            if anilistid and anilistid.group(0).isdigit():
-                metainfo['anilistid'] = anilistid.group(0)
             # 查找媒体类型
             mtype = _BRACED_TYPE_RE.search(result)
             if mtype:
@@ -178,7 +166,6 @@ def _find_metainfo_python(title: str) -> Tuple[str, dict]:
                 tmdbid
                 or doubanid
                 or bangumiid
-                or anilistid
                 or mtype
                 or episode_group
                 or begin_season
@@ -223,9 +210,6 @@ def _find_metainfo_python(title: str) -> Tuple[str, dict]:
     elif metainfo.get('bangumiid'):
         metainfo['media_source'] = 'bangumi'
         metainfo['media_id'] = metainfo['bangumiid']
-    elif metainfo.get('anilistid'):
-        metainfo['media_source'] = 'anilist'
-        metainfo['media_id'] = metainfo['anilistid']
 
     # 计算季集总数
     _apply_range_total(metainfo, 'begin_season', 'end_season', 'total_season')

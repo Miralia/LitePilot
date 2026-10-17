@@ -40,14 +40,12 @@ interface NameTestForm {
 }
 
 const MEDIA_SOURCE_LABELS: Record<string, string> = {
-  anilist: 'AniList',
   bangumi: 'Bangumi',
   douban: 'Douban',
   themoviedb: 'TheMovieDb',
 }
 
 const MEDIA_SOURCE_LOGOS: Record<string, string> = {
-  anilist: '',
   bangumi: getLogoUrl('bangumi'),
   douban: getLogoUrl('douban'),
   themoviedb: getLogoUrl('tmdb'),
@@ -66,7 +64,6 @@ const mediaSourceItems = computed<{ title: string; value: MediaDataSource }[]>((
   { title: t('setting.cache.recognitionSource.themoviedb'), value: 'themoviedb' },
   { title: t('setting.cache.recognitionSource.douban'), value: 'douban' },
   { title: t('setting.cache.recognitionSource.bangumi'), value: 'bangumi' },
-  { title: t('setting.cache.recognitionSource.anilist'), value: 'anilist' },
 ])
 
 // 获取后台默认识别数据源，未知值兼容回退到TheMovieDb。
@@ -167,7 +164,6 @@ const canViewMediaDetail = computed(() =>
     mediaInfo.value?.tmdb_id ||
     mediaInfo.value?.douban_id ||
     mediaInfo.value?.bangumi_id ||
-    mediaInfo.value?.anilist_id ||
     mediaInfo.value?.media_id,
   ),
 )
@@ -185,8 +181,6 @@ function getMediaOfficialLink(media: MediaInfo, source: string, mediaId: string)
       return `https://movie.douban.com/subject/${encodedId}`
     case 'bangumi':
       return `https://bgm.tv/subject/${encodedId}`
-    case 'anilist':
-      return `https://anilist.co/anime/${encodedId}`
     default:
       return undefined
   }
@@ -212,7 +206,6 @@ const recognizedMediaSource = computed<MediaSourceDisplay>(() => {
   const sourceKey = mediaIdentity.value?.sourceKey || nameTestForm.source
 
   return {
-    icon: sourceKey === 'anilist' ? 'mdi-alpha-a-circle' : undefined,
     image: MEDIA_SOURCE_LOGOS[sourceKey],
     key: sourceKey,
     label: mediaIdentity.value?.source || MEDIA_SOURCE_LABELS[sourceKey] || sourceKey,

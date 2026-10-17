@@ -218,14 +218,14 @@ def find_metainfo(title: str) -> Optional[dict]:
 @lru_cache(maxsize=1)
 def supports_extended_media_ids() -> bool:
     """
-    判断当前 Rust 扩展是否支持 Bangumi 与 AniList 显式媒体标签。
+    判断当前 Rust 扩展是否支持 Bangumi 显式媒体标签。
 
     :return: 是否支持扩展数据源ID字段
     """
     if not is_enabled():
         return False
     try:
-        result = _moviepilot_rust.find_metainfo_fast("test [anilist=1]")
+        result = _moviepilot_rust.find_metainfo_fast("test [bangumi=1]")
     except BaseException as err:
         _raise_non_rust_panic(err)
         logger.debug(f"检测 Rust 扩展数据源ID能力失败：{err}")
@@ -233,7 +233,7 @@ def supports_extended_media_ids() -> bool:
     metainfo = result.get("metainfo") if isinstance(result, dict) else None
     return bool(
         metainfo
-        and metainfo.get("media_source") == "anilist"
+        and metainfo.get("media_source") == "bangumi"
         and metainfo.get("media_id") == "1"
     )
 

@@ -50,7 +50,6 @@ class TransferHistory(Base):
     tvdbid = Column(Integer)
     doubanid = Column(String)
     bangumiid = Column(Integer, index=True)
-    anilistid = Column(Integer, index=True)
     # 统一媒体数据源与原生ID
     media_source = Column(String, index=True)
     media_id = Column(String, index=True)

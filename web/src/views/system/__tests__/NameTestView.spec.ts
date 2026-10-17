@@ -94,11 +94,6 @@ describe('NameTestView media identity', () => {
       { media_id: '485', source: 'bangumi', title: '测试动画', type: '电视剧', year: '2026' },
       'https://bgm.tv/subject/485',
     ],
-    [
-      'AniList',
-      { media_id: '154587', source: 'anilist', title: '测试番剧', type: '电视剧', year: '2026' },
-      'https://anilist.co/anime/154587',
-    ],
   ])('formats %s and links its native media ID', async (sourceLabel, media, expectedLink) => {
     await renderRecognizedMedia(media)
 

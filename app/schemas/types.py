@@ -335,8 +335,6 @@ class MediaRecognizeType(Enum):
     TMDB = "TheMovieDb"
     # bangumi
     Bangumi = "Bangumi"
-    # AniList
-    AniList = "AniList"
 
 
 # 用户配置Key字典

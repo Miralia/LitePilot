@@ -65,7 +65,7 @@ def test_extended_ids_fall_back_when_installed_rust_is_old() -> None:
         "app.core.metainfo.rust_accel.find_metainfo",
         side_effect=AssertionError("旧Rust扩展不应处理扩展来源ID"),
     ):
-        _, metainfo = find_metainfo("Frieren [anilist=154587]")
+        _, metainfo = find_metainfo("Frieren [bangumi=154587]")
 
-    assert metainfo["media_source"] == "anilist"
+    assert metainfo["media_source"] == "bangumi"
     assert metainfo["media_id"] == "154587"

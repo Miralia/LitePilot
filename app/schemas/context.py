@@ -73,15 +73,13 @@ class MetaInfo(BaseModel):
     doubanid: Optional[str] = None
     # Bangumi ID
     bangumiid: Optional[int] = None
-    # AniList ID
-    anilistid: Optional[int] = None
 
 
 class MediaInfo(BaseModel):
     """
     识别媒体信息
     """
-    # 来源：themoviedb、douban、bangumi、anilist
+    # 来源：themoviedb、douban、bangumi
     source: Optional[str] = None
     # 请求级刮削来源
     scrape_source: Optional[str] = None
@@ -107,10 +105,6 @@ class MediaInfo(BaseModel):
     douban_id: Optional[str] = None
     # Bangumi ID
     bangumi_id: Optional[int] = None
-    # AniList ID
-    anilist_id: Optional[int] = None
-    # AniDB ID
-    anidb_id: Optional[int] = None
     # 合集ID
     collection_id: Optional[int] = None
     # 其它媒体ID前缀
@@ -326,7 +320,7 @@ class Context(BaseModel):
     torrent_info: Optional[TorrentInfo] = None
     # 候选资源来源：rss、spider、search、unknown
     resource_source: Optional[str] = "unknown"
-    # 候选匹配来源：tmdbid、doubanid、bangumiid、anilistid、imdbid、title、unknown
+    # 候选匹配来源：tmdbid、doubanid、bangumiid、imdbid、title、unknown
     match_source: Optional[str] = "unknown"
     # 候选自身是否已经识别出有效媒体 ID
     candidate_recognized: Optional[bool] = False
@@ -353,7 +347,7 @@ class MediaPerson(BaseModel):
     """
     媒体人物信息
     """
-    # 来源：themoviedb、douban、bangumi、anilist
+    # 来源：themoviedb、douban、bangumi
     source: Optional[str] = None
     # 公共
     id: Optional[int] = None

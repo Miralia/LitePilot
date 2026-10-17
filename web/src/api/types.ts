@@ -1,4 +1,4 @@
-export type MediaDataSource = 'themoviedb' | 'douban' | 'bangumi' | 'anilist' | (string & {})
+export type MediaDataSource = 'themoviedb' | 'douban' | 'bangumi' | (string & {})
 
 // 手动刮削选项
 export interface ManualScrapeOptions {
@@ -28,8 +28,6 @@ export interface Subscribe {
   doubanid?: string
   // Bangumi ID
   bangumiid?: number
-  // AniList ID
-  anilistid?: number
   // 主媒体数据源
   media_source?: MediaDataSource
   // 数据源原生ID
@@ -138,8 +136,6 @@ export interface TransferHistory {
   doubanid?: string
   // Bangumi ID
   bangumiid?: number
-  // AniList ID
-  anilistid?: number
   // 媒体数据源
   media_source?: MediaDataSource
   // 数据源原生ID
@@ -184,8 +180,6 @@ export interface DownloadHistory {
   doubanid?: string
   // Bangumi ID
   bangumiid?: number
-  // AniList ID
-  anilistid?: number
   // 媒体数据源
   media_source?: MediaDataSource
   // 数据源原生 ID
@@ -278,7 +272,7 @@ export interface MediaRelease {
 }
 
 export interface MediaInfo {
-  // 来源：themoviedb、douban、bangumi、anilist
+  // 来源：themoviedb、douban、bangumi
   source?: string
   // 类型 电影、电视剧、合集
   type?: string
@@ -300,8 +294,6 @@ export interface MediaInfo {
   douban_id?: string
   // Bangumi ID
   bangumi_id?: string | number
-  // AniList ID
-  anilist_id?: number
   // AniDB ID
   anidb_id?: number
   // 合集ID
@@ -388,7 +380,7 @@ export interface MediaInfo {
 
 // TMDB人物信息
 export interface Person {
-  // 来源：themoviedb、douban、bangumi、anilist
+  // 来源：themoviedb、douban、bangumi
   source?: string
   // ID
   id?: number
@@ -1206,8 +1198,6 @@ export interface TransferForm {
   doubanid?: string
   // Bangumi ID
   bangumiid?: number
-  // AniList ID
-  anilistid?: number
   // 媒体数据源
   media_source?: MediaDataSource
   // 数据源原生ID

@@ -28,7 +28,6 @@ const mediaSourceItems = computed<{ title: string; value: MediaDataSource }[]>((
   { title: t('setting.cache.recognitionSource.themoviedb'), value: 'themoviedb' },
   { title: t('setting.cache.recognitionSource.douban'), value: 'douban' },
   { title: t('setting.cache.recognitionSource.bangumi'), value: 'bangumi' },
-  { title: t('setting.cache.recognitionSource.anilist'), value: 'anilist' },
 ])
 
 const globalSettingsStore = useGlobalSettingsStore()
@@ -54,7 +53,6 @@ const mediaIdLabel = computed(() => {
     themoviedb: t('dialog.reorganize.tmdbId'),
     douban: t('dialog.reorganize.doubanId'),
     bangumi: t('dialog.reorganize.bangumiId'),
-    anilist: t('dialog.reorganize.anilistId'),
   }
   return labels[mediaSource.value]
 })

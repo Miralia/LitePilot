@@ -25,7 +25,6 @@ class MediaScraperHelper:
             "themoviedb": mediainfo.tmdb_id,
             "douban": mediainfo.douban_id,
             "bangumi": mediainfo.bangumi_id,
-            "anilist": mediainfo.anilist_id,
         }
         media_id = source_ids.get(mediainfo.source)
         return mediainfo.source, str(media_id) if media_id is not None else None

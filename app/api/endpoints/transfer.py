@@ -331,7 +331,6 @@ def manual_transfer(
                 str(history.doubanid) if history.doubanid else transer_item.doubanid
             )
             transer_item.bangumiid = history.bangumiid or transer_item.bangumiid
-            transer_item.anilistid = history.anilistid or transer_item.anilistid
             transer_item.media_source = (
                 history.media_source or transer_item.media_source
             )
@@ -456,7 +455,6 @@ def manual_transfer(
                 tmdbid=transer_item.tmdbid,
                 doubanid=transer_item.doubanid,
                 bangumiid=transer_item.bangumiid,
-                anilistid=transer_item.anilistid,
                 media_source=transer_item.media_source,
                 media_id=transer_item.media_id,
                 mtype=mtype,
@@ -543,7 +541,6 @@ def manual_transfer(
         tmdbid=transer_item.tmdbid,
         doubanid=transer_item.doubanid,
         bangumiid=transer_item.bangumiid,
-        anilistid=transer_item.anilistid,
         media_source=transer_item.media_source,
         media_id=transer_item.media_id,
         mtype=mtype,

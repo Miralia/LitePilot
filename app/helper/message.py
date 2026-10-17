@@ -96,7 +96,6 @@ class TemplateContextBuilder:
             "themoviedb": mediainfo.tmdb_id,
             "douban": mediainfo.douban_id,
             "bangumi": mediainfo.bangumi_id,
-            "anilist": mediainfo.anilist_id,
         }
         media_source = mediainfo.source or next(
             (source for source, media_id in source_ids.items() if media_id is not None),
@@ -148,8 +147,6 @@ class TemplateContextBuilder:
             "doubanid": mediainfo.douban_id,
             # Bangumi ID
             "bangumiid": mediainfo.bangumi_id,
-            # AniList ID
-            "anilistid": mediainfo.anilist_id,
             # 当前媒体数据源
             "media_source": media_source,
             # 当前数据源原生ID

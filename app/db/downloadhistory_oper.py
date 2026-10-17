@@ -36,7 +36,7 @@ class DownloadHistoryOper(DbOper):
 
     def get_by_mediaid(
             self, tmdbid: Optional[int] = None, doubanid: Optional[str] = None,
-            bangumiid: Optional[int] = None, anilistid: Optional[int] = None,
+            bangumiid: Optional[int] = None,
             media_source: Optional[str] = None, media_id: Optional[str] = None,
     ) -> List[DownloadHistory]:
         """
@@ -44,7 +44,6 @@ class DownloadHistoryOper(DbOper):
         :param tmdbid: tmdbid
         :param doubanid: doubanid
         :param bangumiid: Bangumi ID
-        :param anilistid: AniList ID
         :param media_source: 媒体数据源
         :param media_id: 数据源原生 ID
         """
@@ -53,7 +52,6 @@ class DownloadHistoryOper(DbOper):
             tmdbid=tmdbid,
             doubanid=doubanid,
             bangumiid=bangumiid,
-            anilistid=anilistid,
             media_source=media_source,
             media_id=media_id,
         )
