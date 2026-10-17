@@ -1494,7 +1494,6 @@ def _collect_downloader_config() -> Optional[dict[str, Any]]:
         {
             "skip": "跳过",
             "qbittorrent": "qBittorrent",
-            "transmission": "Transmission",
         },
         default="skip",
     )
@@ -1523,21 +1522,7 @@ def _collect_downloader_config() -> Optional[dict[str, Any]]:
             "path_mapping": _collect_path_mapping(),
         }
 
-    host = _prompt_text("Transmission RPC 地址", default="http://127.0.0.1:9091")
-    username = _prompt_text("Transmission 用户名", allow_empty=True, default="")
-    password = _prompt_text("Transmission 密码", allow_empty=True, secret=True)
-    return {
-        "name": config_name,
-        "type": "transmission",
-        "default": True,
-        "enabled": True,
-        "config": {
-            "host": host,
-            "username": username,
-            "password": password,
-        },
-        "path_mapping": _collect_path_mapping(),
-    }
+    return None
 
 
 def _collect_media_server_config() -> Optional[dict[str, Any]]:
@@ -1547,9 +1532,6 @@ def _collect_media_server_config() -> Optional[dict[str, Any]]:
         {
             "skip": "跳过",
             "emby": "Emby",
-            "zspace": "极影视",
-            "jellyfin": "Jellyfin",
-            "plex": "Plex",
         },
         default="skip",
     )
@@ -1557,37 +1539,19 @@ def _collect_media_server_config() -> Optional[dict[str, Any]]:
         return None
 
     config_name = _prompt_text("媒体服务器名称", default=server_type)
-    default_host = {
-        "emby": "http://127.0.0.1:8096",
-        "zspace": "http://127.0.0.1:8096",
-        "jellyfin": "http://127.0.0.1:8096",
-        "plex": "http://127.0.0.1:32400",
-    }[server_type]
+    default_host = "http://127.0.0.1:8096"
     host = _prompt_text("媒体服务器地址", default=default_host)
     play_host = _prompt_text("外部访问地址（可选）", default="", allow_empty=True)
 
-    if server_type == "plex":
-        config = {
-            "host": host,
-            "token": _prompt_text("Plex Token", secret=True),
-        }
-    elif server_type == "zspace":
-        config = {
-            "host": host,
-            "username": _prompt_text("极影视 用户名"),
-            "password": _prompt_text("极影视 密码", secret=True),
-        }
-    else:
-        config = {
-            "host": host,
-            "apikey": _prompt_text("媒体服务器 API Key", secret=True),
-        }
-        if server_type == "emby":
-            username = _prompt_text(
-                "Emby 管理员用户名（可选）", default="", allow_empty=True
-            )
-            if username:
-                config["username"] = username
+    config = {
+        "host": host,
+        "apikey": _prompt_text("Emby API Key", secret=True),
+    }
+    username = _prompt_text(
+        "Emby 管理员用户名（可选）", default="", allow_empty=True
+    )
+    if username:
+        config["username"] = username
 
     if play_host:
         config["play_host"] = play_host
