@@ -105,32 +105,6 @@ def is_debug_log_enabled() -> bool:
         return True
     return getattr(logging, log_settings.LOG_LEVEL.upper(), logging.INFO) <= logging.DEBUG
 
-def parse_indexer_torrents(
-        html_text: str,
-        domain: str,
-        list_config: dict,
-        fields: dict,
-        category: Optional[dict] = None,
-        result_num: int = 100
-) -> Optional[List[dict]]:
-    """
-    使用 Rust 批量解析普通配置站点种子列表，不可用时返回 None。
-    """
-    if not is_enabled():
-        return None
-    try:
-        return _moviepilot_rust.parse_indexer_torrents_fast(
-            html_text,
-            domain,
-            list_config,
-            fields,
-            category,
-            result_num
-        )
-    except BaseException as err:
-        _raise_non_rust_panic(err)
-        logger.debug(f"Rust 站点列表解析失败，使用 Python 解析兜底：{err}")
-        return None
 
 
 

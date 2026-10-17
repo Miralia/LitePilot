@@ -20,21 +20,9 @@ class MediaType(Enum):
         return {MediaType.MOVIE: "movie", MediaType.TV: "tv"}.get(self, self.value)
 
 
-def media_type_to_agent(value) -> Optional[str]:
-    """将 MediaType 枚举或中文字符串统一转为 'movie'/'tv'"""
-    if isinstance(value, MediaType):
-        return value.to_agent()
-    if isinstance(value, str):
-        mt = MediaType.from_agent(value)
-        return mt.to_agent() if mt else value
-    return None
 
 
 # 排序类型枚举
-class SortType(Enum):
-    TIME = "time"  # 按时间排序
-    COUNT = "count"  # 按人数排序
-    RATING = "rating"  # 按评分排序
 
 
 # 种子状态
