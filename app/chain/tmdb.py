@@ -12,54 +12,8 @@ class TmdbChain(ChainBase):
     TheMovieDB处理链，单例运行
     """
 
-    def tmdb_discover(self, mtype: MediaType,
-                      sort_by: str,
-                      with_genres: str,
-                      with_original_language: str,
-                      with_keywords: str,
-                      with_watch_providers: str,
-                      vote_average: float,
-                      vote_count: int,
-                      release_date: str,
-                      page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
-        """
-        :param mtype:  媒体类型
-        :param sort_by:  排序方式
-        :param with_genres:  类型
-        :param with_original_language:  语言
-        :param with_keywords:  关键字
-        :param with_watch_providers:  提供商
-        :param vote_average:  评分
-        :param vote_count:  评分人数
-        :param release_date:  上映日期
-        :param page:  页码
-        :return: 媒体信息列表
-        """
-        return self.run_module("tmdb_discover", mtype=mtype,
-                               sort_by=sort_by,
-                               with_genres=with_genres,
-                               with_original_language=with_original_language,
-                               with_keywords=with_keywords,
-                               with_watch_providers=with_watch_providers,
-                               vote_average=vote_average,
-                               vote_count=vote_count,
-                               release_date=release_date,
-                               page=page)
 
-    def tmdb_trending(self, page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
-        """
-        TMDB流行趋势
-        :param page: 第几页
-        :return: TMDB信息列表
-        """
-        return self.run_module("tmdb_trending", page=page)
 
-    def tmdb_collection(self, collection_id: int) -> Optional[List[MediaInfo]]:
-        """
-        根据合集ID查询集合
-        :param collection_id:  合集ID
-        """
-        return self.run_module("tmdb_collection", collection_id=collection_id)
 
     def tmdb_seasons(self, tmdbid: int) -> List[schemas.TmdbSeason]:
         """
@@ -84,33 +38,9 @@ class TmdbChain(ChainBase):
         """
         return self.run_module("tmdb_episodes", tmdbid=tmdbid, season=season, episode_group=episode_group)
 
-    def movie_similar(self, tmdbid: int) -> Optional[List[MediaInfo]]:
-        """
-        根据TMDBID查询类似电影
-        :param tmdbid:  TMDBID
-        """
-        return self.run_module("tmdb_movie_similar", tmdbid=tmdbid)
 
-    def tv_similar(self, tmdbid: int) -> Optional[List[MediaInfo]]:
-        """
-        根据TMDBID查询类似电视剧
-        :param tmdbid:  TMDBID
-        """
-        return self.run_module("tmdb_tv_similar", tmdbid=tmdbid)
 
-    def movie_recommend(self, tmdbid: int) -> Optional[List[MediaInfo]]:
-        """
-        根据TMDBID查询推荐电影
-        :param tmdbid:  TMDBID
-        """
-        return self.run_module("tmdb_movie_recommend", tmdbid=tmdbid)
 
-    def tv_recommend(self, tmdbid: int) -> Optional[List[MediaInfo]]:
-        """
-        根据TMDBID查询推荐电视剧
-        :param tmdbid:  TMDBID
-        """
-        return self.run_module("tmdb_tv_recommend", tmdbid=tmdbid)
 
     def movie_credits(self, tmdbid: int, page: Optional[int] = 1) -> Optional[List[schemas.MediaPerson]]:
         """
@@ -165,55 +95,8 @@ class TmdbChain(ChainBase):
             return [info.backdrop_path for info in infos if info and info.backdrop_path][:num]
         return []
 
-    async def async_tmdb_discover(self, mtype: MediaType,
-                                  sort_by: str,
-                                  with_genres: str,
-                                  with_original_language: str,
-                                  with_keywords: str,
-                                  with_watch_providers: str,
-                                  vote_average: float,
-                                  vote_count: int,
-                                  release_date: str,
-                                  page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
-        """
-        发现TMDB电影、剧集（异步版本）
-        :param mtype:  媒体类型
-        :param sort_by:  排序方式
-        :param with_genres:  类型
-        :param with_original_language:  语言
-        :param with_keywords:  关键字
-        :param with_watch_providers:  提供商
-        :param vote_average:  评分
-        :param vote_count:  评分人数
-        :param release_date:  上映日期
-        :param page:  页码
-        :return: 媒体信息列表
-        """
-        return await self.async_run_module("async_tmdb_discover", mtype=mtype,
-                                           sort_by=sort_by,
-                                           with_genres=with_genres,
-                                           with_original_language=with_original_language,
-                                           with_keywords=with_keywords,
-                                           with_watch_providers=with_watch_providers,
-                                           vote_average=vote_average,
-                                           vote_count=vote_count,
-                                           release_date=release_date,
-                                           page=page)
 
-    async def async_tmdb_trending(self, page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
-        """
-        TMDB流行趋势（异步版本）
-        :param page: 第几页
-        :return: TMDB信息列表
-        """
-        return await self.async_run_module("async_tmdb_trending", page=page)
 
-    async def async_tmdb_collection(self, collection_id: int) -> Optional[List[MediaInfo]]:
-        """
-        根据合集ID查询集合（异步版本）
-        :param collection_id:  合集ID
-        """
-        return await self.async_run_module("async_tmdb_collection", collection_id=collection_id)
 
     async def async_tmdb_seasons(self, tmdbid: int) -> List[schemas.TmdbSeason]:
         """
@@ -240,33 +123,9 @@ class TmdbChain(ChainBase):
         return await self.async_run_module("async_tmdb_episodes", tmdbid=tmdbid, season=season,
                                            episode_group=episode_group)
 
-    async def async_movie_similar(self, tmdbid: int) -> Optional[List[MediaInfo]]:
-        """
-        根据TMDBID查询类似电影（异步版本）
-        :param tmdbid:  TMDBID
-        """
-        return await self.async_run_module("async_tmdb_movie_similar", tmdbid=tmdbid)
 
-    async def async_tv_similar(self, tmdbid: int) -> Optional[List[MediaInfo]]:
-        """
-        根据TMDBID查询类似电视剧（异步版本）
-        :param tmdbid:  TMDBID
-        """
-        return await self.async_run_module("async_tmdb_tv_similar", tmdbid=tmdbid)
 
-    async def async_movie_recommend(self, tmdbid: int) -> Optional[List[MediaInfo]]:
-        """
-        根据TMDBID查询推荐电影（异步版本）
-        :param tmdbid:  TMDBID
-        """
-        return await self.async_run_module("async_tmdb_movie_recommend", tmdbid=tmdbid)
 
-    async def async_tv_recommend(self, tmdbid: int) -> Optional[List[MediaInfo]]:
-        """
-        根据TMDBID查询推荐电视剧（异步版本）
-        :param tmdbid:  TMDBID
-        """
-        return await self.async_run_module("async_tmdb_tv_recommend", tmdbid=tmdbid)
 
     async def async_movie_credits(self, tmdbid: int, page: Optional[int] = 1) -> Optional[List[schemas.MediaPerson]]:
         """
