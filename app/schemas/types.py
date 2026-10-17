@@ -242,6 +242,10 @@ class SystemConfigKey(Enum):
     NotificationClearBefore = "NotificationClearBefore"
     # 刮削开关设置
     ScrapingSwitchs = "ScrapingSwitchs"
+    # 下载文件同步开关
+    DownloadFileSync = "DownloadFileSync"
+    # 媒体服务器删除同步开关
+    SyncDelByMediaServer = "SyncDelByMediaServer"
     # 配置向导状态
     SetupWizardState = "SetupWizardState"
     # 绿联影视登录会话缓存

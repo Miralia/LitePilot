@@ -178,22 +178,6 @@ class ConfigModel(BaseModel):
     # ==================== 网络代理配置 ====================
     # 网络代理服务器地址
     PROXY_HOST: Optional[str] = None
-    # 是否启用DOH解析域名
-    DOH_ENABLE: bool = False
-    # 使用 DOH 解析的域名列表
-    DOH_DOMAINS: str = (
-        "api.themoviedb.org,"
-        "api.tmdb.org,"
-        "webservice.fanart.tv,"
-        "api.github.com,"
-        "github.com,"
-        "raw.githubusercontent.com,"
-        "codeload.github.com,"
-        "api.telegram.org"
-    )
-    # DOH 解析服务器列表
-    DOH_RESOLVERS: str = "1.0.0.1,1.1.1.1,9.9.9.9,149.112.112.112"
-
     # ==================== 媒体元数据配置 ====================
     # 媒体搜索来源 themoviedb/douban/bangumi/anilist，多个用,分隔
     SEARCH_SOURCE: str = "themoviedb"
@@ -215,19 +199,6 @@ class ConfigModel(BaseModel):
     TMDB_SCRAP_ORIGINAL_IMAGE: bool = False
     # TMDB API Key
     TMDB_API_KEY: str = "db55323b8d3e4154498498a75642b381"
-
-    # ==================== TVDB配置 ====================
-    # TVDB API Key
-    TVDB_V4_API_KEY: str = "ed2aa66b-7899-4677-92a7-67bc9ce3d93a"
-    TVDB_V4_API_PIN: str = ""
-
-    # ==================== Fanart配置 ====================
-    # Fanart开关
-    FANART_ENABLE: bool = True
-    # Fanart语言
-    FANART_LANG: str = "zh,en"
-    # Fanart API Key
-    FANART_API_KEY: str = "d2d31f9ecabea050fc7d68aa3146015f"
 
     # ==================== 云盘配置 ====================
     # 115 AppId

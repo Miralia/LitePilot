@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app import schemas
 from app.chain import ChainBase
 from app.chain.mediaserver import MediaServerChain
+from app.chain.downloadfilesync import DownloadFileSyncChain
 from app.chain.transfer import TransferChain
 from app.core.config import settings, global_vars
 from app.core.event import Event, eventmanager
@@ -257,6 +258,7 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
         "DEV",
         "MEDIASERVER_SYNC_INTERVAL",
         SystemConfigKey.MediaServers.value,
+        SystemConfigKey.DownloadFileSync.value,
         "DATA_CLEANUP_ENABLE",
         "DATA_CLEANUP_MESSAGE_DAYS",
         "DATA_CLEANUP_DOWNLOAD_HISTORY_DAYS",
@@ -379,6 +381,11 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     "func": TransferChain().process,
                     "running": False,
                 },
+                "download_file_sync": {
+                    "name": "下载文件同步",
+                    "func": DownloadFileSyncChain().process,
+                    "running": False,
+                },
                 "clear_cache": {
                     "name": "缓存清理",
                     "func": self.clear_cache,
@@ -485,6 +492,16 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
 
 
 
+
+            # 下载文件同步（插件能力内置化）
+            self._scheduler.add_job(
+                self.start,
+                "interval",
+                id="download_file_sync",
+                name="下载文件同步",
+                minutes=5,
+                kwargs={"job_id": "download_file_sync"},
+            )
 
             # 主动内存回收
             if settings.MEMORY_GC_INTERVAL:

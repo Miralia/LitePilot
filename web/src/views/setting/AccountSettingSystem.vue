@@ -43,15 +43,15 @@ const SystemSettings = ref<any>({
   // 高级系统设置
   Advanced: {
     // 全局
-    AUXILIARY_AUTH_ENABLE: false,
     GLOBAL_IMAGE_CACHE: false,
     BIG_MEMORY_MODE: false,
     DB_WAL_ENABLE: false,
     MOVIEPILOT_AUTO_UPDATE: false,
     DATA_CLEANUP_ENABLE: false,
+    DOWNLOAD_FILE_SYNC: true,
+    SYNC_DEL_BY_MEDIA_SERVER: false,
     DATA_CLEANUP_MESSAGE_DAYS: 90,
     DATA_CLEANUP_DOWNLOAD_HISTORY_DAYS: 180,
-    DATA_CLEANUP_SITE_USERDATA_DAYS: 180,
     DATA_CLEANUP_TRANSFER_HISTORY_DAYS: 365 * 3,
     // 媒体
     TMDB_API_DOMAIN: null,
@@ -60,16 +60,11 @@ const SystemSettings = ref<any>({
     TMDB_LOCALE: null,
     META_CACHE_EXPIRE: 0,
     SCRAP_FOLLOW_TMDB: true,
-    FANART_ENABLE: false,
-    FANART_LANG: 'zh,en',
     TMDB_SCRAP_ORIGINAL_IMAGE: null,
     // 网络
     PROXY_HOST: null,
     GITHUB_PROXY: null,
     PIP_PROXY: null,
-    DOH_ENABLE: false,
-    DOH_RESOLVERS: null,
-    DOH_DOMAINS: null,
     SECURITY_IMAGE_DOMAINS: [],
     IMAGE_PROXY_ALLOWED_PRIVATE_RANGES: [],
     // 日志
@@ -165,20 +160,6 @@ const tmdbLanguageItems = [
   { title: t('setting.system.tmdbLanguage.zhCN'), value: 'zh' },
   { title: t('setting.system.tmdbLanguage.zhTW'), value: 'zh-TW' },
   { title: t('setting.system.tmdbLanguage.en'), value: 'en' },
-]
-
-// Fanart语言选项
-const fanartLanguageItems = [
-  { title: t('setting.system.fanartLanguage.zh'), value: 'zh' },
-  { title: t('setting.system.fanartLanguage.en'), value: 'en' },
-  { title: t('setting.system.fanartLanguage.ja'), value: 'ja' },
-  { title: t('setting.system.fanartLanguage.ko'), value: 'ko' },
-  { title: t('setting.system.fanartLanguage.de'), value: 'de' },
-  { title: t('setting.system.fanartLanguage.fr'), value: 'fr' },
-  { title: t('setting.system.fanartLanguage.es'), value: 'es' },
-  { title: t('setting.system.fanartLanguage.it'), value: 'it' },
-  { title: t('setting.system.fanartLanguage.pt'), value: 'pt' },
-  { title: t('setting.system.fanartLanguage.ru'), value: 'ru' },
 ]
 
 // 日志等级
@@ -495,19 +476,6 @@ const moviePilotAutoUpdate = computed({
   },
   set: val => {
     SystemSettings.value.Advanced.MOVIEPILOT_AUTO_UPDATE = val ? 'release' : 'false'
-  },
-})
-
-// Fanart语言多选处理
-const fanartLanguageSelection = computed({
-  get: () => {
-    if (!SystemSettings.value.Advanced.FANART_LANG) return []
-    return SystemSettings.value.Advanced.FANART_LANG.split(',')
-      .filter(Boolean)
-      .map((lang: any) => lang.trim())
-  },
-  set: (val: string[]) => {
-    SystemSettings.value.Advanced.FANART_LANG = val.join(',')
   },
 })
 
@@ -828,9 +796,17 @@ useSilentSettingRefresh(
               <VRow>
                 <VCol cols="12" md="6">
                   <VSwitch
-                    v-model="SystemSettings.Advanced.AUXILIARY_AUTH_ENABLE"
-                    :label="t('setting.system.auxAuthEnable')"
-                    :hint="t('setting.system.auxAuthEnableHint')"
+                    v-model="SystemSettings.Advanced.DOWNLOAD_FILE_SYNC"
+                    :label="t('setting.system.downloadFileSync')"
+                    :hint="t('setting.system.downloadFileSyncHint')"
+                    persistent-hint
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <VSwitch
+                    v-model="SystemSettings.Advanced.SYNC_DEL_BY_MEDIA_SERVER"
+                    :label="t('setting.system.syncDelByMediaServer')"
+                    :hint="t('setting.system.syncDelByMediaServerHint')"
                     persistent-hint
                   />
                 </VCol>
@@ -955,29 +931,6 @@ useSilentSettingRefresh(
               </VRow>
               <VRow>
               </VRow>
-              <VRow>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.FANART_ENABLE"
-                    :label="t('setting.system.fanartEnable')"
-                    :hint="t('setting.system.fanartEnableHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol v-if="SystemSettings.Advanced.FANART_ENABLE" cols="12" md="6">
-                  <VSelect
-                    v-model="fanartLanguageSelection"
-                    :label="t('setting.system.fanartLang')"
-                    :hint="t('setting.system.fanartLangHint')"
-                    persistent-hint
-                    :items="fanartLanguageItems"
-                    multiple
-                    chips
-                    closable-chips
-                    prepend-inner-icon="mdi-translate"
-                  />
-                </VCol>
-              </VRow>
 
               <!-- 刮削开关设置 -->
               <VRow class="mt-4">
@@ -1090,36 +1043,6 @@ useSilentSettingRefresh(
                     :items="pipMirrorsItems"
                     clearable
                     prepend-inner-icon="mdi-package"
-                  />
-                </VCol>
-              </VRow>
-              <VRow>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.DOH_ENABLE"
-                    :label="t('setting.system.dohEnable')"
-                    :hint="t('setting.system.dohEnableHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" v-show="SystemSettings.Advanced.DOH_ENABLE">
-                  <VTextarea
-                    v-model="SystemSettings.Advanced.DOH_RESOLVERS"
-                    :label="t('setting.system.dohResolvers')"
-                    :placeholder="t('setting.system.dohResolversPlaceholder')"
-                    :hint="t('setting.system.dohResolversHint')"
-                    persistent-hint
-                    prepend-inner-icon="mdi-dns"
-                  />
-                </VCol>
-                <VCol cols="12" v-show="SystemSettings.Advanced.DOH_ENABLE">
-                  <VTextarea
-                    v-model="SystemSettings.Advanced.DOH_DOMAINS"
-                    :label="t('setting.system.dohDomains')"
-                    :placeholder="t('setting.system.dohDomainsPlaceholder')"
-                    :hint="t('setting.system.dohDomainsHint')"
-                    persistent-hint
-                    prepend-inner-icon="mdi-domain"
                   />
                 </VCol>
               </VRow>
