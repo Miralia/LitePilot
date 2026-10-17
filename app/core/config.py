@@ -183,8 +183,6 @@ class ConfigModel(BaseModel):
     RECOGNIZE_SOURCE: str = "themoviedb"
     # 刮削来源 themoviedb/douban/bangumi
     SCRAP_SOURCE: str = "themoviedb"
-    # 电视剧动漫的分类genre_ids
-    ANIME_GENREIDS: List[int] = Field(default=[16])
 
     # ==================== TMDB配置 ====================
     # TMDB图片地址
@@ -198,19 +196,10 @@ class ConfigModel(BaseModel):
     # TMDB API Key
     TMDB_API_KEY: str = "db55323b8d3e4154498498a75642b381"
 
-    # ==================== 云盘配置 ====================
-    # 115 AppId
-    U115_APP_ID: str = "100197847"
-    # 115 OAuth2 Server 地址
-    U115_AUTH_SERVER: str = "https://movie-pilot.org"
-    # Alipan AppId
-    ALIPAN_APP_ID: str = "ac1bf04dc9fd4d9aaabb65b4a668d403"
 
     # ==================== 系统升级配置 ====================
     # 重启自动升级
     MOVIEPILOT_AUTO_UPDATE: str = "release"
-    # 自动检查和更新站点资源包（站点索引、认证等）
-    AUTO_UPDATE_RESOURCE: bool = True
 
     # ==================== 媒体文件格式配置 ====================
     # 支持的视频文件后缀格式
@@ -285,35 +274,13 @@ class ConfigModel(BaseModel):
     # 媒体服务器同步间隔（小时）
     MEDIASERVER_SYNC_INTERVAL: int = 6
 
-    # ==================== 订阅配置 ====================
-    # 订阅模式
-    SUBSCRIBE_MODE: str = "spider"
-    # RSS订阅模式刷新时间间隔（分钟）
-    SUBSCRIBE_RSS_INTERVAL: int = 30
-    # 订阅数据共享
-    SUBSCRIBE_STATISTIC_SHARE: bool = True
-    # 订阅搜索开关
-    SUBSCRIBE_SEARCH: bool = False
-    # 订阅搜索时间间隔（小时）
-    SUBSCRIBE_SEARCH_INTERVAL: int = 24
     # 检查本地媒体库是否存在资源开关
     LOCAL_EXISTS_SEARCH: bool = True
 
-    # ==================== 搜索配置 ====================
-    # 搜索多个名称
-    SEARCH_MULTIPLE_NAME: bool = False
-    # 最大搜索名称数量
-    MAX_SEARCH_NAME_LIMIT: int = 3
-    # 搜索资源获取页数
-    SEARCH_RESOURCE_PAGES: int = 1
 
     # ==================== 下载配置 ====================
     # 种子标签
     TORRENT_TAG: str = "MOVIEPILOT"
-    # 下载站点字幕
-    DOWNLOAD_SUBTITLE: bool = True
-    # 交互搜索自动下载用户ID，使用,分割
-    AUTO_DOWNLOAD_USER: Optional[str] = None
     # 下载器临时文件后缀
     DOWNLOAD_TMPEXT: list = Field(default_factory=lambda: [".!qb", ".part"])
 
@@ -341,15 +308,7 @@ class ConfigModel(BaseModel):
     DEFAULT_SUB: Optional[str] = "zh-cn"
     # 新增已入库媒体是否跟随TMDB信息变化
     SCRAP_FOLLOW_TMDB: bool = True
-    # 优先使用辅助识别
-    # 共享使用媒体识别数据
-    MEDIA_RECOGNIZE_SHARE: bool = True
 
-    # ==================== 服务地址配置 ====================
-    # 服务器地址，对应 https://github.com/jxxghp/MoviePilot-Server 项目
-    MP_SERVER_HOST: str = "https://movie-pilot.org"
-    # 共享媒体识别API地址，留空时默认拼接为 MP_SERVER_HOST + /recognize/share
-    MEDIA_RECOGNIZE_SHARE_API: Optional[str] = None
 
     # ==================== 个性化 ====================
     # 登录页面电影海报,tmdb/bing/mediaserver
@@ -364,8 +323,6 @@ class ConfigModel(BaseModel):
     GITHUB_PROXY: Optional[str] = ""
     # pip镜像站点，格式：https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
     PIP_PROXY: Optional[str] = ""
-    # 指定的仓库Github token，多个仓库使用,分隔，格式：{user1}/{repo1}:ghp_****,{user2}/{repo2}:github_pat_****
-    REPO_GITHUB_TOKEN: Optional[str] = None
 
     # ==================== 飞书通知配置 ====================
     # 飞书应用 App ID
@@ -390,8 +347,6 @@ class ConfigModel(BaseModel):
     RUST_ACCEL: bool = True
     # 是否启用编码探测的性能模式
     ENCODING_DETECTION_PERFORMANCE_MODE: bool = True
-    # 编码探测的最低置信度阈值
-    ENCODING_DETECTION_MIN_CONFIDENCE: float = 0.8
     # 主动内存回收时间间隔（分钟），0为不启用
     MEMORY_GC_INTERVAL: int = 30
 
@@ -425,107 +380,21 @@ class ConfigModel(BaseModel):
     # PassKey 是否强制用户验证（生物识别等）
     PASSKEY_REQUIRE_UV: bool = True
 
-    # ==================== 工作流配置 ====================
-    # 工作流数据共享
-    WORKFLOW_STATISTIC_SHARE: bool = True
 
-    # ==================== 存储配置 ====================
-    # 对rclone进行快照对比时，是否检查文件夹的修改时间
-    RCLONE_SNAPSHOT_CHECK_FOLDER_MODTIME: bool = True
-    # 对OpenList进行快照对比时，是否检查文件夹的修改时间
-    OPENLIST_SNAPSHOT_CHECK_FOLDER_MODTIME: bool = True
-    # 对阿里云盘进行快照对比时，是否检查文件夹的修改时间（默认关闭，因为阿里云盘目录时间不随子文件变更而更新）
-    ALIPAN_SNAPSHOT_CHECK_FOLDER_MODTIME: bool = False
 
     # ==================== Docker配置 ====================
     # Docker Client API地址
     DOCKER_CLIENT_API: Optional[str] = "tcp://127.0.0.1:38379"
-    # Playwright浏览器类型，供智能体浏览器工具和插件直接使用 Playwright 时读取
-    PLAYWRIGHT_BROWSER_TYPE: str = "chromium"
 
     # ==================== AI智能体配置 ====================
     # AI智能体开关
     AI_AGENT_ENABLE: bool = False
-    # 合局AI智能体
-    AI_AGENT_GLOBAL: bool = False
-    # 是否隐藏前端全局智能体入口
-    AI_AGENT_HIDE_ENTRY: bool = False
-    # LLM提供商（支持内置 provider，以及从 models.dev 动态补充的平台）
-    LLM_PROVIDER: str = "deepseek"
-    # LLM模型名称
-    LLM_MODEL: str = "deepseek-chat"
-    # 思考模式/深度配置：off/auto/minimal/low/medium/high/max/xhigh
-    LLM_THINKING_LEVEL: Optional[str] = "off"
-    # OpenAI兼容接口API协议：auto（自动）/ chat_completions / responses
-    LLM_API_PROTOCOL: str = "auto"
-    # 联网搜索模式：local（本地）/ builtin（模型服务端）/ auto（自动）/ disabled（关闭）
-    LLM_WEB_SEARCH_MODE: str = "local"
-    # LLM是否支持图片输入，开启后消息图片会按多模态输入发送给模型
-    LLM_SUPPORT_IMAGE_INPUT: bool = True
-    # 是否启用音频输入，开启后用户语音会先转写为文本再进入 Agent
-    LLM_SUPPORT_AUDIO_INPUT: bool = False
-    # 是否启用音频输出，开启后 Agent 可在支持渠道发送语音回复
-    LLM_SUPPORT_AUDIO_OUTPUT: bool = False
-    # LLM API密钥
-    LLM_API_KEY: Optional[str] = None
-    # LLM基础URL（用于自定义API端点）
-    LLM_BASE_URL: Optional[str] = "https://api.deepseek.com"
-    # LLM调用是否使用系统代理
-    LLM_USE_PROXY: bool = True
-    # LLM Base URL 预设标识，用于区分同一 Base URL 下的不同模型目录
-    LLM_BASE_URL_PRESET: Optional[str] = None
-    # LLM最大上下文Token数量（K），仅在模型目录未提供规格时作为回退值
-    LLM_MAX_CONTEXT_TOKENS: int = 256
-    # LLM OpenAI兼容接口请求User-Agent
-    LLM_USER_AGENT: Optional[str] = None
     # LLM温度参数
     LLM_TEMPERATURE: float = 0.3
-    # LLM最大迭代次数
-    LLM_MAX_ITERATIONS: int = 512
-    # LLM工具调用超时时间（秒）
-    LLM_TOOL_TIMEOUT: int = 300
-    # 是否启用详细日志
-    LLM_VERBOSE: bool = False
-    # 内存记忆保留天数
-    LLM_MEMORY_RETENTION_DAYS: int = 1
-    # 是否启用AI推荐
-    AI_RECOMMEND_ENABLED: bool = False
-    # AI推荐用户偏好
-    AI_RECOMMEND_USER_PREFERENCE: str = ""
 
-    # AI推荐条目数量限制
-    AI_RECOMMEND_MAX_ITEMS: int = 50
-    # LLM工具选择中间件最大工具数量，0为不启用工具选择中间件
-    LLM_MAX_TOOLS: int = 0
-    # AI智能体定时任务检查间隔（小时），0为不启用，默认24小时
-    AI_AGENT_JOB_INTERVAL: int = 0
-    # AI智能体啰嗦模式，开启后会回复工具调用过程
-    AI_AGENT_VERBOSE: bool = False
     # AI智能体自动重试整理失败记录开关
     AI_AGENT_RETRY_TRANSFER: bool = False
 
-    # 音频输入提供商：openai/openai_chat_audio/mimo/minimax
-    AUDIO_INPUT_PROVIDER: str = "openai"
-    # 音频输入 API 密钥
-    AUDIO_INPUT_API_KEY: Optional[str] = None
-    # 音频输入基础URL
-    AUDIO_INPUT_BASE_URL: Optional[str] = None
-    # 音频输入模型
-    AUDIO_INPUT_MODEL: str = "gpt-4o-mini-transcribe"
-    # 音频输入识别语言
-    AUDIO_INPUT_LANGUAGE: str = "zh"
-    # 音频输出提供商：openai/openai_chat_audio/mimo/minimax
-    AUDIO_OUTPUT_PROVIDER: str = "openai"
-    # 音频输出 API 密钥
-    AUDIO_OUTPUT_API_KEY: Optional[str] = None
-    # 音频输出基础URL
-    AUDIO_OUTPUT_BASE_URL: Optional[str] = None
-    # 音频输出模型
-    AUDIO_OUTPUT_MODEL: str = "gpt-4o-mini-tts"
-    # 音频输出音色/发音人
-    AUDIO_OUTPUT_VOICE: str = "alloy"
-    # 回复语音时是否同时附带文字说明
-    AUDIO_OUTPUT_INCLUDE_TEXT: bool = False
 
 
 class Settings(BaseSettings, ConfigModel, LogConfigModel):

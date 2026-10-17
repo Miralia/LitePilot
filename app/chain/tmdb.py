@@ -158,18 +158,6 @@ class TmdbChain(ChainBase):
         """
         return await self.async_run_module("async_tmdb_person_credits", person_id=person_id, page=page)
 
-    async def async_get_random_wallpager(self) -> Optional[str]:
-        """
-        获取随机壁纸（异步版本），缓存1个小时
-        """
-        infos = await self.async_tmdb_trending()
-        if infos:
-            # 随机一个电影
-            while True:
-                info = random.choice(infos)
-                if info and info.backdrop_path:
-                    return info.backdrop_path
-        return None
 
     async def async_get_trending_wallpapers(self, num: Optional[int] = 10) -> List[str]:
         """

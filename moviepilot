@@ -25,7 +25,6 @@ Runtime Commands:
   moviepilot migrate [--config-dir PATH]
   moviepilot doctor [--json] [--fix] [--deep]
   moviepilot config ...
-  moviepilot tool ...
   moviepilot scheduler ...
 
 Discovery Commands:
@@ -52,7 +51,7 @@ Examples:
   moviepilot restore /path/to/moviepilot-backup.tar.gz
   moviepilot migrate --config-dir /moviepilot-v2/config
   moviepilot doctor
-  moviepilot tool list
+  moviepilot scheduler list
 EOF
 }
 
@@ -89,9 +88,6 @@ Runtime Commands
   config set
   config keys
   config describe
-  tool list
-  tool show
-  tool run
   scheduler list
   scheduler run
 
