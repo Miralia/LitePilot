@@ -64,10 +64,27 @@
 
 - [x] 阶段 0：基线与仓库（分支 `lite`、`upstream` remote、fork 文档、基线测试）
 - [x] 阶段 1：前端源码入库 `web/`、构建脚本、页面裁剪、依赖精简、版本号收敛
-- [ ] 阶段 2：后端减法（站点 → 搜索/订阅 → 智能体/工作流 → 插件 → 鉴权 → 下载器 → 元数据/媒体服务器/通知 → 数据库与配置）
+- [ ] 阶段 2：后端减法
+  - [x] 2.1 站点子系统（含仓内 `SitesHelper` 垫片、索引器、站点字幕、CookieCloud、站点采集器）
+  - [ ] 2.2 搜索 / 订阅 / 种子缓存 / 过滤
+  - [ ] 2.3 智能体 / 工作流 / MCP / 技能
+  - [ ] 2.4 插件体系
+  - [ ] 2.5 鉴权收敛为单管理员 + swizzin 同步
+  - [ ] 2.6 下载器收敛为 qBittorrent
+  - [ ] 2.7 元数据 / 媒体服务器 / 通知收敛
+  - [ ] 2.8 数据库删表迁移与配置键清理
 - [ ] 阶段 3：内置化（下载文件同步、媒体同步删除、媒体库封面生成）
 - [ ] 阶段 4：原生部署与一键迁移重装
 - [ ] 阶段 5：验证、静态检查、冒烟与文档同步
+
+## 站点移除方式（阶段 2.1）
+
+站点能力在上游是仓库外的私有动态资源（`sites.cpython-*.so` + `user.sites.v2.bin`）。本分支改为：
+
+1. 在仓库内提供只读垫片 `app/helper/sites.py`：`auth_level` 恒为 1、索引器枚举恒为空、`check/check_user` 恒返回不可用。
+2. 删除站点能力本体：`app/chain/site.py`、`app/api/endpoints/site.py`、`app/modules/{indexer,subtitle}`、`app/helper/{resource,cookiecloud,browser,cloudflare,doh,ocr,display,cookie}.py`、站点采集器脚本与文档、站点相关定时任务与启动步骤。
+3. 站点数据层（`app/db/site_oper.py` 与 `site*` 模型）暂时保留给后续阶段仍引用它的代码（搜索/订阅/下载器阶段），在 2.8 随迁移一并删除。
+4. 依赖精简：移除 `cloakbrowser`、`PyVirtualDisplay`。
 
 ## 前端（阶段 1 结果）
 

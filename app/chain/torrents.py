@@ -494,15 +494,6 @@ class TorrentsChain(ChainBase):
         :param progress_callback: 资源刷新进度更新回调
         """
 
-        def __is_no_cache_site(_domain: str) -> bool:
-            """
-            判断站点是否不需要缓存
-            """
-            for url_key in settings.NO_CACHE_SITE_KEY.split(','):
-                if url_key in _domain:
-                    return True
-            return False
-
         # 刷新类型
         if not stype:
             stype = settings.SUBSCRIBE_MODE

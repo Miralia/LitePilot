@@ -9,10 +9,6 @@ from app.agent.tools.impl.query_downloaders import QueryDownloadersTool
 from app.agent.tools.impl.query_download_tasks import QueryDownloadTasksTool
 from app.agent.tools.impl.query_library_exists import QueryLibraryExistsTool
 from app.agent.tools.impl.query_library_latest import QueryLibraryLatestTool
-from app.agent.tools.impl.query_sites import QuerySitesTool
-from app.agent.tools.impl.update_site import UpdateSiteTool
-from app.agent.tools.impl.query_site_userdata import QuerySiteUserdataTool
-from app.agent.tools.impl.test_site import TestSiteTool
 from app.agent.tools.impl.query_subscribes import QuerySubscribesTool
 from app.agent.tools.impl.query_subscribe_shares import QuerySubscribeSharesTool
 from app.agent.tools.impl.query_rule_groups import QueryRuleGroupsTool
@@ -37,7 +33,6 @@ from app.agent.tools.impl.query_media_detail import QueryMediaDetailTool
 from app.agent.tools.impl.search_torrents import SearchTorrentsTool
 from app.agent.tools.impl.get_search_results import GetSearchResultsTool
 from app.agent.tools.impl.search_web import SearchWebTool
-from app.agent.tools.impl.recognize_captcha import RecognizeCaptchaTool
 from app.agent.tools.impl.send_message import SendMessageTool
 from app.agent.tools.impl.ask_user_choice import AskUserChoiceTool
 from app.agent.tools.impl.send_local_file import SendLocalFileTool
@@ -54,7 +49,6 @@ from app.agent.tools.impl.run_workflow import RunWorkflowTool
 from app.agent.tools.impl.query_personas import QueryPersonasTool
 from app.agent.tools.impl.switch_persona import SwitchPersonaTool
 from app.agent.tools.impl.update_persona_definition import UpdatePersonaDefinitionTool
-from app.agent.tools.impl.update_site_cookie import UpdateSiteCookieTool
 from app.agent.tools.impl.delete_download_tasks import DeleteDownloadTasksTool
 from app.agent.tools.impl.delete_download_history import DeleteDownloadHistoryTool
 from app.agent.tools.impl.delete_transfer_history import DeleteTransferHistoryTool
@@ -67,7 +61,6 @@ from app.agent.tools.impl.execute_command import ExecuteCommandTool
 from app.agent.tools.impl.edit_file import EditFileTool
 from app.agent.tools.impl.write_file import WriteFileTool
 from app.agent.tools.impl.read_file import ReadFileTool
-from app.agent.tools.impl.browse_webpage import BrowseWebpageTool
 from app.agent.tools.impl.query_installed_plugins import QueryInstalledPluginsTool
 from app.agent.tools.impl.query_market_plugins import QueryMarketPluginsTool
 from app.agent.tools.impl.query_plugin_capabilities import QueryPluginCapabilitiesTool
@@ -111,7 +104,6 @@ class MoviePilotToolFactory:
         SearchTorrentsTool,
         GetSearchResultsTool,
         SearchWebTool,
-        RecognizeCaptchaTool,
         AddDownloadTasksTool,
         QuerySubscribesTool,
         QuerySubscribeSharesTool,
@@ -133,11 +125,6 @@ class MoviePilotToolFactory:
         DeleteTransferHistoryTool,
         UpdateDownloadTasksTool,
         QueryDownloadersTool,
-        QuerySitesTool,
-        UpdateSiteTool,
-        QuerySiteUserdataTool,
-        TestSiteTool,
-        UpdateSiteCookieTool,
         GetRecommendationsTool,
         QueryLibraryExistsTool,
         QueryLibraryLatestTool,
@@ -162,7 +149,6 @@ class MoviePilotToolFactory:
         EditFileTool,
         WriteFileTool,
         ReadFileTool,
-        BrowseWebpageTool,
         QueryInstalledPluginsTool,
         QueryMarketPluginsTool,
         QueryPluginCapabilitiesTool,

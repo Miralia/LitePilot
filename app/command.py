@@ -6,7 +6,6 @@ from typing import Any, Union, Dict, Optional
 from app.chain import ChainBase
 from app.chain.download import DownloadChain
 from app.chain.message import MessageChain
-from app.chain.site import SiteChain
 from app.chain.skills import SkillsChain
 from app.chain.subscribe import SubscribeChain
 from app.chain.system import SystemChain
@@ -54,18 +53,6 @@ class Command(metaclass=Singleton):
         self._commands = {}
         # 内建命令集合
         self._preset_commands = {
-            "/cookiecloud": {
-                "id": "cookiecloud",
-                "type": "scheduler",
-                "description": "同步站点",
-                "category": "站点",
-            },
-            "/sites": {
-                "func": SiteChain().remote_list,
-                "description": "管理站点",
-                "category": "站点",
-                "data": {},
-            },
             "/mediaserver_sync": {
                 "id": "mediaserver_sync",
                 "type": "scheduler",

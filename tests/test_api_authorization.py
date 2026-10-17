@@ -12,7 +12,6 @@ from app.api.endpoints import dashboard as dashboard_endpoint
 from app.api.endpoints import history as history_endpoint
 from app.api.endpoints import login as login_endpoint
 from app.api.endpoints import plugin as plugin_endpoint
-from app.api.endpoints import site as site_endpoint
 from app.api.endpoints import storage as storage_endpoint
 from app.api.endpoints import system as system_endpoint
 from app.api.endpoints import transfer as transfer_endpoint
@@ -90,9 +89,6 @@ def test_manage_page_endpoints_accept_manage_permission():
         storage_endpoint.download,
         storage_endpoint.image,
         storage_endpoint.rename,
-        site_endpoint.update_cookie_by_body,
-        site_endpoint.update_cookie,
-        site_endpoint.refresh_userdata,
         history_endpoint.delete_transfer_history,
         history_endpoint.ai_redo_transfer_history,
         history_endpoint.batch_ai_redo_transfer_history,
@@ -100,22 +96,8 @@ def test_manage_page_endpoints_accept_manage_permission():
         transfer_endpoint.manual_transfer,
         transfer_endpoint.recommend_episode_format,
     ]
-    async_endpoints = [
-        site_endpoint.read_sites,
-        site_endpoint.add_site,
-        site_endpoint.update_site,
-        site_endpoint.update_sites_priority,
-        site_endpoint.read_userdata_latest,
-        site_endpoint.read_userdata,
-        site_endpoint.site_resource,
-        site_endpoint.read_site,
-        site_endpoint.delete_site,
-    ]
-
     for endpoint in sync_endpoints:
         assert _dependency_of(endpoint, "_") is get_current_active_manage_user
-    for endpoint in async_endpoints:
-        assert _dependency_of(endpoint, "_") is get_current_active_manage_user_async
 
 
 def test_system_public_setting_allows_only_non_sensitive_keys(monkeypatch):

@@ -6,7 +6,6 @@ from urllib.parse import urljoin
 from lxml import etree
 
 from app.core.config import settings
-from app.helper.browser import PlaywrightHelper
 from app.log import logger
 from app.utils import rust_accel
 from app.utils.http import RequestUtils
@@ -470,27 +469,18 @@ class RssHelper:
             # RSS请求参数
             rss_params = site_conf.get("params")
             # 请求RSS页面
-            if site_conf.get("render"):
-                html_text = PlaywrightHelper().get_page_source(
-                    url=rss_url,
-                    cookies=cookie,
-                    ua=ua,
-                    proxies=settings.PROXY_SERVER if proxy else None,
-                    timeout=timeout or 60
-                )
+            res = RequestUtils(
+                cookies=cookie,
+                timeout=timeout or 30,
+                ua=ua,
+                proxies=settings.PROXY if proxy else None
+            ).post_res(url=rss_url, data=rss_params)
+            if res:
+                html_text = res.text
+            elif res is not None:
+                return "", f"获取 {url} RSS链接失败，错误码：{res.status_code}，错误原因：{res.reason}"
             else:
-                res = RequestUtils(
-                    cookies=cookie,
-                    timeout=timeout or 30,
-                    ua=ua,
-                    proxies=settings.PROXY if proxy else None
-                ).post_res(url=rss_url, data=rss_params)
-                if res:
-                    html_text = res.text
-                elif res is not None:
-                    return "", f"获取 {url} RSS链接失败，错误码：{res.status_code}，错误原因：{res.reason}"
-                else:
-                    return "", f"获取RSS链接失败：无法连接 {url} "
+                return "", f"获取RSS链接失败：无法连接 {url} "
 
             # 解析HTML
             if html_text:

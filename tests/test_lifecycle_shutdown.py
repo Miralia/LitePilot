@@ -242,8 +242,6 @@ def _patch_module_shutdown_dependencies(monkeypatch) -> dict:
     for name, method_name in (
         ("ModuleManager", "stop"),
         ("EventManager", "stop"),
-        ("DisplayHelper", "stop"),
-        ("DohHelper", "shutdown"),
         ("ThreadHelper", "shutdown"),
         ("RedisHelper", "close"),
     ):

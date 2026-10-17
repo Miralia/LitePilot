@@ -21,7 +21,6 @@ from app import schemas
 from app.chain import ChainBase
 from app.chain.mediaserver import MediaServerChain
 from app.chain.recommend import RecommendChain
-from app.chain.site import SiteChain
 from app.chain.subscribe import SubscribeChain
 from app.chain.transfer import TransferChain
 from app.chain.workflow import WorkflowChain
@@ -280,14 +279,12 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
 
     CONFIG_WATCH = {
         "DEV",
-        "COOKIECLOUD_INTERVAL",
         "MEDIASERVER_SYNC_INTERVAL",
         SystemConfigKey.MediaServers.value,
         "SUBSCRIBE_SEARCH",
         "SUBSCRIBE_SEARCH_INTERVAL",
         "SUBSCRIBE_MODE",
         "SUBSCRIBE_RSS_INTERVAL",
-        "SITEDATA_REFRESH_INTERVAL",
         "AI_AGENT_ENABLE",
         "AI_AGENT_JOB_INTERVAL",
         "DATA_CLEANUP_ENABLE",
@@ -307,10 +304,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
         self._lock = threading.RLock()
         # 各服务的运行状态
         self._jobs = {}
-        # 用户认证失败次数
-        self._auth_count = 0
-        # 用户认证失败消息发送
-        self._auth_message = False
         # 初始化
         self.init()
 
@@ -408,11 +401,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
             # 各服务的运行状态
             mediaserver_chain = MediaServerChain()
             self._jobs = {
-                "cookiecloud": {
-                    "name": "同步CookieCloud站点",
-                    "func": SiteChain().sync_cookies,
-                    "running": False,
-                },
                 "mediaserver_sync": {
                     "name": "同步媒体服务器",
                     "func": mediaserver_chain.sync,
@@ -460,11 +448,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     "func": SchedulerChain().cleanup,
                     "running": False,
                 },
-                "user_auth": {
-                    "name": "用户认证检查",
-                    "func": self.user_auth,
-                    "running": False,
-                },
                 "scheduler_job": {
                     "name": "公共定时服务",
                     "func": SchedulerChain().scheduler_job,
@@ -473,11 +456,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                 "random_wallpager": {
                     "name": "壁纸缓存",
                     "func": WallpaperHelper().get_wallpapers,
-                    "running": False,
-                },
-                "sitedata_refresh": {
-                    "name": "站点数据刷新",
-                    "func": SiteChain().refresh_userdatas,
                     "running": False,
                 },
                 "recommend_refresh": {
@@ -518,21 +496,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                 timezone=settings.TZ,
                 executors={"default": ThreadPoolExecutor(settings.CONF.scheduler)},
             )
-
-            # CookieCloud定时同步
-            if (
-                    settings.COOKIECLOUD_INTERVAL
-                    and str(settings.COOKIECLOUD_INTERVAL).isdigit()
-            ):
-                self._scheduler.add_job(
-                    self.start,
-                    "interval",
-                    id="cookiecloud",
-                    name="同步CookieCloud站点",
-                    minutes=int(settings.COOKIECLOUD_INTERVAL),
-                    next_run_time=datetime.now(pytz.timezone(settings.TZ)) + timedelta(minutes=5),
-                    kwargs={"job_id": "cookiecloud"},
-                )
 
             # 按媒体服务器分别注册自动同步任务
             mediaserver_schedules = self._build_mediaserver_sync_schedules(
@@ -670,27 +633,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     hour=3,
                     minute=30,
                     kwargs={"job_id": "data_cleanup"},
-                )
-
-            # 定时检查用户认证，每隔10分钟
-            self._scheduler.add_job(
-                self.start,
-                "interval",
-                id="user_auth",
-                name="用户认证检查",
-                minutes=10,
-                kwargs={"job_id": "user_auth"},
-            )
-
-            # 站点数据刷新
-            if settings.SITEDATA_REFRESH_INTERVAL:
-                self._scheduler.add_job(
-                    self.start,
-                    "interval",
-                    id="sitedata_refresh",
-                    name="站点数据刷新",
-                    minutes=settings.SITEDATA_REFRESH_INTERVAL * 60,
-                    kwargs={"job_id": "sitedata_refresh"},
                 )
 
             # 推荐缓存
@@ -1502,46 +1444,3 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
 
         await agent_manager.heartbeat_check_jobs()
 
-    def user_auth(self):
-        """
-        用户认证检查
-        """
-        if SitesHelper().auth_level >= 2:
-            return
-        # 最大重试次数
-        __max_try__ = 30
-        if self._auth_count > __max_try__:
-            if not self._auth_message:
-                SchedulerChain().messagehelper.put(
-                    title=f"用户认证失败",
-                    message="用户认证失败次数过多，将不再尝试认证！",
-                    role="system",
-                )
-                self._auth_message = True
-            return
-        logger.info("用户未认证，正在尝试认证...")
-        auth_conf = SystemConfigOper().get(SystemConfigKey.UserSiteAuthParams)
-        if auth_conf:
-            status, msg = SitesHelper().check_user(**auth_conf)
-        else:
-            status, msg = SitesHelper().check_user()
-        if status:
-            self._auth_count = 0
-            logger.info(f"{msg} 用户认证成功")
-            SchedulerChain().post_message(
-                Notification(
-                    mtype=NotificationType.Manual,
-                    title="MoviePilot用户认证成功",
-                    text=f"使用站点：{msg}，如有插件使用异常，请重启MoviePilot。",
-                    link=settings.MP_DOMAIN("#/site"),
-                )
-            )
-            # 认证通过后重新初始化插件
-            PluginManager().init_config()
-            self.init_plugin_jobs()
-
-        else:
-            self._auth_count += 1
-            logger.error(f"用户认证失败，{msg}，共失败 {self._auth_count} 次")
-            if self._auth_count >= __max_try__:
-                logger.error("用户认证失败次数过多，将不再尝试认证！")

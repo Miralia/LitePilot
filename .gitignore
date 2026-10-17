@@ -10,7 +10,6 @@ rust/**/target/
 nginx/
 test.py
 safety_report.txt
-app/helper/sites.py
 app/helper/*.so
 app/helper/*.pyd
 app/helper/*.bin

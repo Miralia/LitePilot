@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.context import Context, MediaInfo
 from app.schemas.download import DownloadTask
 from app.schemas.file import FileItem
-from app.schemas.site import Site
 from app.schemas.subscribe import Subscribe
 
 
@@ -80,7 +79,7 @@ class ActionContext(BaseModel):
     medias: Optional[List[MediaInfo]] = Field(default_factory=list, description="媒体列表")
     fileitems: Optional[List[FileItem]] = Field(default_factory=list, description="文件列表")
     downloads: Optional[List[DownloadTask]] = Field(default_factory=list, description="下载任务列表")
-    sites: Optional[List[Site]] = Field(default_factory=list, description="站点列表")
+    sites: Optional[List[int]] = Field(default_factory=list, description="站点 ID 列表")
     subscribes: Optional[List[Subscribe]] = Field(default_factory=list, description="订阅列表")
     workflow_context: Optional[dict] = Field(default_factory=dict, description="工作流全局上下文")
     node_outputs: Optional[dict] = Field(default_factory=dict, description="节点输出数据")

@@ -30,7 +30,6 @@ def test_meta_cache_expire_does_not_schedule_bulk_cache_clear(monkeypatch):
         "MediaServerChain",
         "RecommendChain",
         "SchedulerChain",
-        "SiteChain",
         "SubscribeChain",
         "TransferChain",
         "WallpaperHelper",
@@ -53,11 +52,9 @@ def test_meta_cache_expire_does_not_schedule_bulk_cache_clear(monkeypatch):
     monkeypatch.setattr(Scheduler, "init_agent_task_jobs", lambda self: None)
     monkeypatch.setattr(Scheduler, "init_plugin_jobs", lambda self: None)
     monkeypatch.setattr(scheduler_module.settings, "DEV", False)
-    monkeypatch.setattr(scheduler_module.settings, "COOKIECLOUD_INTERVAL", 0)
     monkeypatch.setattr(scheduler_module.settings, "SUBSCRIBE_SEARCH", False)
     monkeypatch.setattr(scheduler_module.settings, "SUBSCRIBE_MODE", "rss")
     monkeypatch.setattr(scheduler_module.settings, "SUBSCRIBE_RSS_INTERVAL", 30)
-    monkeypatch.setattr(scheduler_module.settings, "SITEDATA_REFRESH_INTERVAL", 0)
     monkeypatch.setattr(scheduler_module.settings, "MEMORY_GC_INTERVAL", 0)
     monkeypatch.setattr(scheduler_module.settings, "AI_AGENT_ENABLE", False)
     monkeypatch.setattr(scheduler_module.settings, "DATA_CLEANUP_ENABLE", False)
@@ -68,8 +65,6 @@ def test_meta_cache_expire_does_not_schedule_bulk_cache_clear(monkeypatch):
     scheduler._event = threading.Event()
     scheduler._lock = threading.RLock()
     scheduler._jobs = {}
-    scheduler._auth_count = 0
-    scheduler._auth_message = False
 
     scheduler.init()
 

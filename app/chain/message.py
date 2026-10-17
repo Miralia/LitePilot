@@ -18,7 +18,6 @@ from app.chain import ChainBase
 from app.chain.download import DownloadChain
 from app.chain.media import MediaChain
 from app.chain.search import SearchChain
-from app.chain.site import SiteChain, site_interaction_manager
 from app.chain.skills import SkillsChain, skills_interaction_manager
 from app.chain.subscribe import SubscribeChain, subscribe_interaction_manager
 from app.chain.transfer import TransferChain
@@ -376,16 +375,6 @@ class MessageChain(ChainBase):
             )
 
         latest_slash_interaction = self._get_latest_slash_interaction(userid)
-        if latest_slash_interaction == "sites":
-            if SiteChain().handle_text_interaction(
-                    channel=channel,
-                    source=source,
-                    userid=userid,
-                    username=username,
-                    text=text,
-            ):
-                return False
-
         if latest_slash_interaction == "subscribes":
             if SubscribeChain().handle_text_interaction(
                     channel=channel,
@@ -714,17 +703,6 @@ class MessageChain(ChainBase):
         ):
             return False
 
-        if SiteChain().handle_callback_interaction(
-                callback_data=callback_data,
-                channel=channel,
-                source=source,
-                userid=userid,
-                username=username,
-                original_message_id=original_message_id,
-                original_chat_id=original_chat_id,
-        ):
-            return False
-
         if SubscribeChain().handle_callback_interaction(
                 callback_data=callback_data,
                 channel=channel,
@@ -797,7 +775,6 @@ class MessageChain(ChainBase):
         """
         candidates = []
         for name, manager in (
-                ("sites", site_interaction_manager),
                 ("subscribes", subscribe_interaction_manager),
                 ("skills", skills_interaction_manager),
         ):

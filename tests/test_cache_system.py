@@ -138,11 +138,6 @@ def test_init_modules_does_not_clear_package_tool_cache(monkeypatch):
         raise AssertionError("init_modules must not clear package tool cache directly")
 
     monkeypatch.setattr(modules_initializer, "clear_package_tool_cache", fail_if_called)
-    monkeypatch.setattr(modules_initializer, "DisplayHelper", lambda: None)
-    monkeypatch.setattr(modules_initializer, "DohHelper", lambda: None)
-    monkeypatch.setattr(modules_initializer, "SitesHelper", lambda: None)
-    monkeypatch.setattr(modules_initializer, "ResourceHelper", lambda: None)
-    monkeypatch.setattr(modules_initializer, "user_auth", lambda: None)
     monkeypatch.setattr(modules_initializer, "ModuleManager", lambda: None)
     monkeypatch.setattr(modules_initializer.EventManager, "start", lambda self: None)
     monkeypatch.setattr(modules_initializer.MoviePilotServerHelper, "init_plugin_report", lambda: None)
@@ -151,7 +146,6 @@ def test_init_modules_does_not_clear_package_tool_cache(monkeypatch):
     monkeypatch.setattr(modules_initializer.MoviePilotServerHelper, "get_github_user", lambda: None)
     monkeypatch.setattr(modules_initializer, "init_agent", lambda: None)
     monkeypatch.setattr(modules_initializer, "start_frontend", lambda: None)
-    monkeypatch.setattr(modules_initializer, "check_auth", lambda: None)
 
     modules_initializer.init_modules()
 

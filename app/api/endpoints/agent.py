@@ -23,7 +23,6 @@ from app.agent import MoviePilotAgent, ReplyMode, StreamingHandler, agent_manage
 from app.agent.llm.capability import AgentCapabilityManager
 from app.agent.mcp import agent_mcp_manager
 from app.chain.message import MessageChain
-from app.chain.site import site_interaction_manager
 from app.chain.skills import skills_interaction_manager
 from app.chain.subscribe import subscribe_interaction_manager
 from app.command import Command
@@ -1205,7 +1204,6 @@ def _has_web_agent_traditional_interaction(user_id: str) -> bool:
     return any(
         manager.get_by_user(user_id)
         for manager in (
-            site_interaction_manager,
             subscribe_interaction_manager,
             skills_interaction_manager,
             media_interaction_manager,

@@ -336,24 +336,6 @@ class ConfigModel(BaseModel):
     # 检查本地媒体库是否存在资源开关
     LOCAL_EXISTS_SEARCH: bool = True
 
-    # ==================== 站点配置 ====================
-    # 站点数据刷新间隔（小时）
-    SITEDATA_REFRESH_INTERVAL: int = 6
-    # 读取和发送站点消息
-    SITE_MESSAGE: bool = True
-    # 不能缓存站点资源的站点域名，多个使用,分隔
-    NO_CACHE_SITE_KEY: str = "m-team"
-    # OCR服务器地址，用于识别站点验证码
-    OCR_HOST: str = "https://movie-pilot.org"
-    # 仿真类型：cloakbrowser 或 flaresolverr，其他值按 cloakbrowser 处理
-    BROWSER_EMULATION: str = "cloakbrowser"
-    # CloakBrowser 是否启用拟人化输入
-    CLOAKBROWSER_HUMANIZE: bool = True
-    # CloakBrowser 拟人化输入预设：default 或 careful
-    CLOAKBROWSER_HUMAN_PRESET: str = "default"
-    # FlareSolverr 服务地址，例如 http://127.0.0.1:8191
-    FLARESOLVERR_URL: Optional[str] = None
-
     # ==================== 搜索配置 ====================
     # 搜索多个名称
     SEARCH_MULTIPLE_NAME: bool = False
@@ -371,22 +353,6 @@ class ConfigModel(BaseModel):
     AUTO_DOWNLOAD_USER: Optional[str] = None
     # 下载器临时文件后缀
     DOWNLOAD_TMPEXT: list = Field(default_factory=lambda: [".!qb", ".part"])
-
-    # ==================== CookieCloud配置 ====================
-    # CookieCloud是否启动本地服务
-    COOKIECLOUD_ENABLE_LOCAL: Optional[bool] = False
-    # CookieCloud服务器地址
-    COOKIECLOUD_HOST: str = "https://movie-pilot.org/cookiecloud"
-    # CookieCloud用户KEY
-    COOKIECLOUD_KEY: Optional[str] = None
-    # CookieCloud端对端加密密码
-    COOKIECLOUD_PASSWORD: Optional[str] = None
-    # CookieCloud本地上传接口的X-CookieCloud-Auth期望值，留空表示不校验
-    COOKIECLOUD_AUTH_HEADER: Optional[str] = None
-    # CookieCloud同步间隔（分钟）
-    COOKIECLOUD_INTERVAL: Optional[int] = 60 * 24
-    # CookieCloud同步黑名单，多个域名,分割
-    COOKIECLOUD_BLACKLIST: Optional[str] = None
 
     # ==================== 整理配置 ====================
     # 文件整理线程数
