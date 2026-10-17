@@ -223,6 +223,60 @@ export interface DownloadHistory {
 }
 
 // 媒体信息
+// TMDB季信息
+export interface TmdbSeason {
+  // 上映日期
+  air_date?: string
+  // 总集数
+  episode_count?: number
+  // 季名称
+  name?: string
+  // 描述
+  overview?: string
+  // 海报
+  poster_path?: string
+  // 季号
+  season_number?: number
+  // 评分
+  vote_average?: number
+}
+
+// TMDB集信息
+export interface TmdbEpisode {
+  // 上映日期
+  air_date?: string
+  // 集号
+  episode_number?: number
+  // 剧集名称
+  name?: string
+  // 描述
+  overview?: string
+  // 时长
+  runtime?: number
+  // 季号
+  season_number?: number
+  // 海报
+  still_path?: string
+  // 评分
+  vote_average?: number
+  // 演职人员
+  crew: Object[]
+  // 嘉宾
+  guest_stars: Object[]
+}
+
+// 发行信息
+export interface MediaRelease {
+  // 发行日期
+  date: string
+  // 发行地区
+  iso_code: string
+  // 备注
+  note?: string
+  // 发行类型
+  type: number
+}
+
 export interface MediaInfo {
   // 来源：themoviedb、douban、bangumi、anilist
   source?: string
@@ -330,78 +384,6 @@ export interface MediaInfo {
   names?: string[]
   // 剧集组
   episode_group?: string
-}
-
-// 季信息
-export interface MediaSeason {
-  // 上映日期
-  air_date?: string
-  // 总集数
-  episode_count?: number
-  // 季名称
-  name?: string
-  // 描述
-  overview?: string
-  // 海报
-  poster_path?: string
-  // 季号
-  season_number?: number
-  // 评分
-  vote_average?: number
-}
-
-// TMDB季信息
-export interface TmdbSeason {
-  // 上映日期
-  air_date?: string
-  // 总集数
-  episode_count?: number
-  // 季名称
-  name?: string
-  // 描述
-  overview?: string
-  // 海报
-  poster_path?: string
-  // 季号
-  season_number?: number
-  // 评分
-  vote_average?: number
-}
-
-// 发行信息
-export interface MediaRelease {
-  // 发行日期
-  date: string
-  // 发行地区
-  iso_code: string
-  // 备注
-  note?: string
-  // 发行类型
-  type: number
-}
-
-// TMDB集信息
-export interface TmdbEpisode {
-  // 上映日期
-  air_date?: string
-  // 集号
-  episode_number?: number
-  // 剧集名称
-  name?: string
-  // 描述
-  overview?: string
-  // 时长
-  runtime?: number
-  // 季号
-  season_number?: number
-  // 海报
-  still_path?: string
-  // 评分
-  vote_average?: number
-  // 演职人员
-  crew: Object[]
-  // 嘉宾
-  guest_stars: Object[]
 }
 
 // TMDB人物信息
@@ -549,18 +531,6 @@ export interface SiteUserData {
   updated_time?: string
 }
 
-// 缺失剧集信息
-export interface NotExistMediaInfo {
-  // 季
-  season: number
-  // 剧集列表
-  episodes: number[]
-  // 总集数
-  total_episode: number
-  // 开始集
-  start_episode: number
-}
-
 // 插件
 export interface Plugin {
   id: string
@@ -647,58 +617,6 @@ export interface DashboardItem {
   elements: RenderProps[]
   // 渲染方式
   render_mode?: string
-}
-
-// 字幕信息
-export interface SubtitleInfo {
-  // 站点ID
-  site?: number
-  // 站点名称
-  site_name?: string
-  // 站点Cookie
-  site_cookie?: string
-  // 站点UA
-  site_ua?: string
-  // 站点是否使用代理
-  site_proxy?: boolean
-  // 站点优先级
-  site_order?: number
-  // 字幕标题
-  title?: string
-  // 字幕描述
-  description?: string
-  // 字幕下载链接
-  enclosure?: string
-  // 详情页面
-  page_url?: string
-  // 语言
-  language?: string
-  // 语言图标
-  language_icon?: string
-  // 字幕大小
-  size?: number
-  // 发布时间
-  pubdate?: string
-  // 已过时间
-  date_elapsed?: string
-  // 点击/下载次数
-  grabs?: number
-  // 上传者
-  uploader?: string
-  // 举报页面
-  report_url?: string
-  // 种子ID
-  torrent_id?: string
-  // 字幕ID
-  subtitle_id?: string
-  // 下载文件名
-  file_name?: string
-  // 识别元数据
-  meta_info?: MetaInfo
-  // SxxExx
-  season_episode?: string
-  // 集列表
-  episode_list?: number[]
 }
 
 // 识别元数据
@@ -789,8 +707,6 @@ export interface Context {
   meta_info: MetaInfo
   // 媒体信息
   media_info: MediaInfo
-  // 种子信息
-  torrent_info: TorrentInfo
 }
 
 // 用户信息
@@ -817,11 +733,6 @@ export interface User {
   settings: { [key: string]: string | null }
   // 昵称
   nickname?: string
-}
-
-// 头像上传响应数据
-export interface AvatarUploadData {
-  filename: string
 }
 
 // 通行密钥
@@ -1267,49 +1178,19 @@ export interface CustomRule {
   publish_time?: string
 }
 
-// 过滤规则组
-export interface FilterRuleGroup {
-  // 名称
-  name: string
-  // 规则串
-  rule_string?: string
-  // 适用类媒体类型 None-全部 电影/电视剧
-  media_type?: string
-  // # 适用媒体类别 None-全部 对应二级分类
-  category?: string
-}
-
 // 规则测试结果
-export interface RuleTestData {
-  // 原始标题
-  title?: string
-  // 原始副标题
-  subtitle?: string
-  // 规则组名称
-  rulegroup_name?: string
-  // 规则组详情
-  rulegroup?: FilterRuleGroup | null
-  // 识别元数据
-  meta_info?: MetaInfo | null
-  // 媒体信息
-  media_info?: MediaInfo | null
-  // 种子信息
-  torrent_info?: TorrentInfo | null
-  // 优先级
-  priority?: number | null
-  // 是否命中过滤规则
-  matched?: boolean
-}
-
-// 订阅详情
-export interface SubscrbieInfo {
-  // 订阅信息
-  subscribe: Subscribe
-  // 集信息 {集号: {download: 文件路径，library: 文件路径, backdrop: url, title: 标题, description: 描述}}
-  episodes: Record<number, SubscribeEpisodeInfo>
-}
 
 // 整理表单
+// 手动整理预览统计
+export interface ManualTransferPreviewSummary {
+  // 总数
+  total: number
+  // 成功数
+  success: number
+  // 失败数
+  failed: number
+}
+
 export interface TransferForm {
   // 文件项
   fileitem: FileItem
@@ -1371,38 +1252,12 @@ export interface ManualTransferPayload extends Omit<TransferForm, 'fileitem'> {
   fileitems?: FileItem[]
 }
 
-// 手动整理目的路径匹配结果
-export interface ManualTransferTargetPathData {
-  // 目标存储
-  target_storage?: string | null
-  // 目标路径
-  target_path?: string | null
-  // 整理方式
-  transfer_type?: string | null
-  // 刮削
-  scrape?: boolean | null
-  // 媒体库类型子目录
-  library_type_folder?: boolean | null
-  // 媒体库类别子目录
-  library_category_folder?: boolean | null
-}
-
 // 手动整理命中的成功历史摘要
 export interface ManualTransferHistoryInfo {
   // 是否应执行重新整理
   reorganize: boolean
   // 命中的成功历史数量
   history_count: number
-}
-
-// 手动整理预览统计
-export interface ManualTransferPreviewSummary {
-  // 总数
-  total: number
-  // 成功数
-  success: number
-  // 失败数
-  failed: number
 }
 
 // 手动整理预览项
@@ -1556,6 +1411,7 @@ export interface ApiResponse<T = any> {
   data: T
 }
 
+// 分类配置
 // 分类规则
 export interface CategoryRule {
   genre_ids?: string
@@ -1565,7 +1421,6 @@ export interface CategoryRule {
   release_year?: string
 }
 
-// 分类配置
 export interface CategoryConfig {
   movie?: { [key: string]: CategoryRule }
   tv?: { [key: string]: CategoryRule }

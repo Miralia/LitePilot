@@ -12,7 +12,6 @@ from app.core.config import settings
 from app.core.context import Context, TorrentInfo, MediaInfo
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfo
-from app.db.site_oper import SiteOper
 from app.db.systemconfig_oper import SystemConfigOper
 from app.log import logger
 from app.schemas.types import MediaType, SystemConfigKey
@@ -281,18 +280,14 @@ class TorrentHelper:
     @staticmethod
     def sort_torrents(torrent_list: List[Context]) -> List[Context]:
         """
-        对种子对行排序：torrent、site、upload、seeder
+        对种子进行排序：torrent、seeder
         """
         if not torrent_list:
             return []
 
-        # 下载规则
+        # 下载规则（site、upload 依赖站点能力，已随站点子系统删除）
         priority_rule: List[str] = SystemConfigOper().get(
-            SystemConfigKey.TorrentsPriority) or ["torrent", "upload", "seeder"]
-        # 站点上传量
-        site_uploads = {
-            site.name: site.upload for site in SiteOper().get_userdata_latest()
-        }
+            SystemConfigKey.TorrentsPriority) or ["torrent", "seeder"]
 
         def get_sort_str(_context):
             """
@@ -303,10 +298,6 @@ class TorrentHelper:
             _media = _context.media_info
             # 标题
             _title = str(_media.title).ljust(200, ' ')
-            # 站点优先级
-            _site_order = str(999 - (_torrent.site_order or 0)).rjust(3, '0')
-            # 站点上传量
-            _site_upload = str(site_uploads.get(_torrent.site_name) or 0).rjust(30, '0')
             # 资源优先级
             _torrent_order = str(_torrent.pri_order or 0).rjust(3, '0')
             # 资源做种数
@@ -324,10 +315,6 @@ class TorrentHelper:
             for rule in priority_rule:
                 if rule == "torrent":
                     _sort_str += _torrent_order
-                elif rule == "site":
-                    _sort_str += _site_order
-                elif rule == "upload":
-                    _sort_str += _site_upload
                 elif rule == "seeder":
                     _sort_str += _torrent_seeders
             _sort_str += _season_episode
