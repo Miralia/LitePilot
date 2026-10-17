@@ -118,3 +118,20 @@
 - systemd 系统级 unit 启动 `venv/bin/python -m app.main`
 - 前端静态文件由宿主 nginx 直接托管仓库内 `public/`，`/api` 反代后端端口
 - 依赖由 venv + uv 管理，配置目录与数据库可通过 CLI 备份 / 恢复 / 迁移
+
+## 无用残留清理（阶段 5）
+
+按「与现有功能无关的一律删除」原则做了一轮全仓引用审计，只删除全仓零引用或
+仅服务于已删功能的代码，均通过后端测试 / pylint / 前端构建验证：
+
+| 类别 | 清理内容 |
+|---|---|
+| AniList 集成 | 模块、链、接口、`anilist_info`/`anilist_id` 字段、三表列（含迁移 `c3a7f1e9d8b4`）、前端来源与文案 |
+| 未引用模块 | `helper/{nfo,notification,twofa,downloader,rss,package}.py`、`core/auth.py`、`chain/{tvdb,douban,bangumi}.py`、`schemas/{download,monitoring}.py`、`utils/{debounce,web}.py` |
+| 无调用接口 | douban/bangumi 全部浏览接口、tmdb 的 seasons/similar/recommend/collection/credits/person |
+| 枚举与配置 | 11 个无事件的事件类型、9 个无引用的 `SystemConfigKey`、62 个前后端均无引用的 `ConfigModel` 字段 |
+| CLI | 依赖已删 MCP 的 `tool` 命令组；`scheduler` 改为走现存 HTTP 接口 |
+| 功能收敛 | doctor 去掉插件日志分流、安装向导收敛为 qBittorrent + Emby、消息渠道去掉 WebAgent |
+| 前端 | 孤立的远程组件/仪表板渲染组件、零引用类型定义、失效的通知迁移调用、已删功能的文案键 |
+
+迁移新增：`database/versions/c3a7f1e9d8b4_0_1_1.py`（删除 `anilistid` 列，已在生产库副本上验证升级与降级往返）。
