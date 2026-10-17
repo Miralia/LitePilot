@@ -57,20 +57,3 @@ class ListUtils:
         ]
 
 
-class SetUtils:
-    @staticmethod
-    def flatten(nested_sets: Union[Set[Set[Any]], Set[Any]]) -> Set[Any]:
-        """
-        将嵌套的集合展开为单个集合
-
-        :param nested_sets: 嵌套的集合
-        :return: 展开的集合
-        """
-        if not isinstance(nested_sets, set):
-            return set()
-
-        # 检查是否嵌套，若不嵌套直接返回
-        if not any(isinstance(subset, set) for subset in nested_sets):
-            return nested_sets
-
-        return {item for subset in nested_sets if isinstance(subset, set) for item in subset}

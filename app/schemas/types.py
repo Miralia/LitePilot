@@ -64,11 +64,8 @@ class EventType(Enum):
     # 执行命令
     CommandExcute = "command.excute"
     # 站点已删除
-    SiteDeleted = "site.deleted"
     # 站点已更新
-    SiteUpdated = "site.updated"
     # 站点已刷新
-    SiteRefreshed = "site.refreshed"
     # 媒体文件整理完成
     TransferComplete = "transfer.complete"
     # 媒体文件整理失败
@@ -84,7 +81,6 @@ class EventType(Enum):
     # 下载已添加
     DownloadAdded = "download.added"
     # 删除历史记录
-    HistoryDeleted = "history.deleted"
     # 删除下载源文件
     DownloadFileDeleted = "downloadfile.deleted"
     # 删除下载任务
@@ -96,13 +92,9 @@ class EventType(Enum):
     # 发送消息通知
     NoticeMessage = "notice.message"
     # 订阅已添加
-    SubscribeAdded = "subscribe.added"
     # 订阅已调整
-    SubscribeModified = "subscribe.modified"
     # 订阅已删除
-    SubscribeDeleted = "subscribe.deleted"
     # 订阅已完成
-    SubscribeComplete = "subscribe.complete"
     # 系统错误
     SystemError = "system.error"
     # 刮削元数据
@@ -111,20 +103,11 @@ class EventType(Enum):
     ModuleReload = "module.reload"
     # 配置项更新
     ConfigChanged = "config.updated"
-    # 消息交互动作
-    MessageAction = "message.action"
-    # 执行工作流
-    WorkflowExecute = "workflow.execute"
-    # Agent Tokens 用量
-    AgentTokensUsage = "agent.tokens.usage"
 
 
 # EventType中文名称翻译字典
 EVENT_TYPE_NAMES = {
     EventType.CommandExcute: "执行命令",
-    EventType.SiteDeleted: "站点已删除",
-    EventType.SiteUpdated: "站点已更新",
-    EventType.SiteRefreshed: "站点已刷新",
     EventType.TransferComplete: "整理完成",
     EventType.TransferFailed: "整理失败",
     EventType.SubtitleTransferComplete: "字幕整理完成",
@@ -132,23 +115,15 @@ EVENT_TYPE_NAMES = {
     EventType.AudioTransferComplete: "音频整理完成",
     EventType.AudioTransferFailed: "音频整理失败",
     EventType.DownloadAdded: "添加下载",
-    EventType.HistoryDeleted: "删除历史记录",
     EventType.DownloadFileDeleted: "删除下载源文件",
     EventType.DownloadDeleted: "删除下载任务",
     EventType.UserMessage: "收到用户消息",
     EventType.WebhookMessage: "收到Webhook消息",
     EventType.NoticeMessage: "发送消息通知",
-    EventType.SubscribeAdded: "添加订阅",
-    EventType.SubscribeModified: "订阅已调整",
-    EventType.SubscribeDeleted: "订阅已删除",
-    EventType.SubscribeComplete: "订阅已完成",
     EventType.SystemError: "系统错误",
     EventType.MetadataScrape: "刮削元数据",
     EventType.ModuleReload: "模块重载",
     EventType.ConfigChanged: "配置项更新",
-    EventType.MessageAction: "消息交互动作",
-    EventType.WorkflowExecute: "执行工作流",
-    EventType.AgentTokensUsage: "Agent Tokens 用量",
 }
 
 
@@ -207,7 +182,6 @@ class SystemConfigKey(Enum):
     # 搜索站点范围
     IndexerSites = "IndexerSites"
     # 订阅站点范围
-    RssSites = "RssSites"
     # 自定义制作组/字幕组
     CustomReleaseGroups = "CustomReleaseGroups"
     # 自定义占位符
@@ -221,19 +195,12 @@ class SystemConfigKey(Enum):
     # 种子优先级规则
     TorrentsPriority = "TorrentsPriority"
     # 用户自定义规则
-    CustomFilterRules = "CustomFilterRules"
     # 用户规则组
-    UserFilterRuleGroups = "UserFilterRuleGroups"
     # 搜索默认过滤规则组
-    SearchFilterRuleGroups = "SearchFilterRuleGroups"
     # 订阅默认过滤规则组
-    SubscribeFilterRuleGroups = "SubscribeFilterRuleGroups"
     # 订阅默认参数
-    SubscribeDefaultParams = "SubscribeDefaultParams"
     # 洗版默认过滤规则组
-    BestVersionFilterRuleGroups = "BestVersionFilterRuleGroups"
     # 用户自定义CSS
-    UserCustomCSS = "UserCustomCSS"
     # 通知发送时间
     NotificationSendTime = "NotificationSendTime"
     # 通知消息格式模板
@@ -251,7 +218,6 @@ class SystemConfigKey(Enum):
     # 配置向导状态
     SetupWizardState = "SetupWizardState"
     # 绿联影视登录会话缓存
-    UgreenSessionCache = "UgreenSessionCache"
 
 
 # 处理进度Key字典

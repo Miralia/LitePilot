@@ -273,70 +273,10 @@ class Notification(BaseModel):
 
 
 
-class SubscriptionMessage(BaseModel):
-    """
-    客户端订阅消息体
-    """
-
-    title: Optional[str] = None
-    body: Optional[str] = None
-    icon: Optional[str] = None
-    url: Optional[str] = None
-    data: Optional[dict] = Field(default_factory=dict)
 
 
-class AgentWebChatRequest(BaseModel):
-    """
-    Web 智能助手对话请求。
-    """
-
-    class AgentWebChatFile(BaseModel):
-        """
-        Web 智能助手输入附件。
-        """
-
-        ref: str = Field(..., min_length=1)
-        name: Optional[str] = Field(None)
-        mime_type: Optional[str] = Field(None)
-        size: Optional[int] = Field(None)
-        local_path: Optional[str] = Field(None)
-        status: Optional[str] = Field(None)
-
-    # 用户本轮输入
-    text: str = Field(default="")
-    # 展示历史中记录的用户可读文本；为空时使用 text
-    display_text: Optional[str] = Field(None)
-    # 前端会话标识，相同标识复用同一段 Agent 记忆
-    session_id: Optional[str] = Field(None)
-    # 图片 URL 或 data URL 列表
-    images: Optional[List[str]] = Field(default_factory=list)
-    # 语音/音频引用列表
-    audio_refs: Optional[List[str]] = Field(default_factory=list)
-    # 文件附件列表
-    files: Optional[List[AgentWebChatFile]] = Field(default_factory=list)
-    # 用户通过按钮选择时的完整选择快照
-    choice_selection: Optional[Dict[str, Any]] = Field(default=None)
-    # WebAgent 按钮回调关联的原消息 ID，用于传统交互原地编辑卡片
-    original_message_id: Optional[Union[str, int]] = Field(default=None)
-    # WebAgent 按钮回调关联的原聊天 ID，用于传统交互原地编辑卡片
-    original_chat_id: Optional[Union[str, int]] = Field(default=None)
-    # 是否在展示历史中记录本轮用户消息
-    echo_user: bool = Field(default=True)
 
 
-class AgentWebChoiceRequest(BaseModel):
-    """
-    Web 智能助手按钮选择请求。
-    """
-
-    # 前端会话标识，用于保持与原对话窗口的关联
-    session_id: Optional[str] = Field(None)
-    # Agent 工具生成的按钮回调数据
-    callback_data: str = Field(..., min_length=1)
-    # WebAgent 原助手消息 ID，用于传统按钮回调原地编辑
-    original_message_id: Optional[Union[str, int]] = Field(default=None)
-    # WebAgent 原聊天 ID，用于传统按钮回调原地编辑
-    original_chat_id: Optional[Union[str, int]] = Field(default=None)
 
 
 class ChannelCapability(Enum):

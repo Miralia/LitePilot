@@ -15,8 +15,3 @@ def stop_scheduler():
     Scheduler().stop()
 
 
-def restart_scheduler():
-    """
-    重启定时器
-    """
-    Scheduler().init()

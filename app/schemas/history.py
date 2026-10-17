@@ -121,5 +121,3 @@ class TransferHistory(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class BatchTransferHistoryRedoRequest(BaseModel):
-    history_ids: list[int] = Field(default_factory=list)

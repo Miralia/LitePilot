@@ -27,15 +27,6 @@ def count_directory_entries(directory: Path, max_check: int = 10000) -> Tuple[in
     return file_count, dir_count
 
 
-def count_directory_files(directory: Path, max_check: int = 10000) -> int:
-    """
-    统计目录下的文件数量。
-    :param directory: 目录路径
-    :param max_check: 最大检查数量，避免长时间阻塞
-    :return: 文件数量
-    """
-    file_count, _ = count_directory_entries(directory, max_check=max_check)
-    return file_count
 
 
 def check_system_limits() -> Dict[str, Any]:

@@ -181,10 +181,6 @@ async def otp_disable(
 # ==================== PassKey 相关接口 ====================
 
 
-class PassKeyRegistrationStart(schemas.BaseModel):
-    """PassKey注册开始请求"""
-
-    name: str = "通行密钥"
 
 
 class PassKeyRegistrationFinish(schemas.BaseModel):

@@ -325,12 +325,6 @@ def _rust_parse_options(custom_words: List[str] = None) -> dict:
     return _rust_custom_parse_options(tuple(custom_words or []))
 
 
-def clear_rust_parse_options_cache() -> None:
-    """
-    清理 Rust Meta 默认解析配置缓存，供系统配置变更后重载使用。
-    """
-    _rust_default_parse_options.cache_clear()
-    _rust_custom_parse_options.cache_clear()
 
 
 def _meta_from_rust(parsed: dict) -> Optional[MetaBase]:
