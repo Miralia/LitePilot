@@ -3,7 +3,6 @@ from .downloadhistory import DownloadHistory, DownloadFiles
 from .mediaserver import MediaServerItem
 from .message import Message
 from .passkey import PassKey
-from .plugindata import PluginData
 from .site import Site
 from .siteicon import SiteIcon
 from .sitestatistic import SiteStatistic

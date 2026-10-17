@@ -557,36 +557,19 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
 
     @staticmethod
     def select_recognize_source(
-            log_name: str, log_context: str, native_fn, plugin_fn
+            log_name: str, log_context: str, native_fn
     ) -> Optional[MediaInfo]:
         """
-        选择识别模式，插件优先或原生优先
+        执行原生识别（辅助识别随插件体系一并删除）
 
         :param log_name: 用于日志“标题：...”处的名称（如 file_path.name 或 title）
         :param log_context: 用于日志“未识别到...的媒体信息”处的上下文（如 path 或 title）
         :param native_fn: 原生识别函数
-        :param plugin_fn: 插件识别函数
         """
-        mediainfo = None
-        plugin_available = eventmanager.check(ChainEventType.NameRecognize)
-        if settings.RECOGNIZE_PLUGIN_FIRST and plugin_available:
-            # 插件优先
-            logger.info(f"插件识别优先模式已开启。请求辅助识别，标题：{log_name} ...")
-            mediainfo = plugin_fn()
-            if not mediainfo:
-                logger.info(
-                    f"辅助识别未识别到 {log_context} 的媒体信息，尝试使用原生识别 ..."
-                )
-                mediainfo = native_fn()
-        else:
-            # 原生优先
-            logger.info(f"开始识别标题：{log_name} ...")
-            mediainfo = native_fn()
-            if not mediainfo and plugin_available:
-                logger.info(
-                    f"未识别到 {log_context} 的媒体信息，尝试使用辅助识别 ..."
-                )
-                mediainfo = plugin_fn()
+        logger.info(f"开始识别标题：{log_name} ...")
+        mediainfo = native_fn()
+        if not mediainfo:
+            logger.info(f"未识别到 {log_context} 的媒体信息")
         return mediainfo
 
     def recognize_by_meta(
@@ -751,22 +734,11 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 episode_group=episode_group,
             )
 
-        def plugin_recognize() -> Optional[MediaInfo]:
-            """执行辅助识别并保持请求级数据源约束。"""
-            return self.recognize_help(
-                title=title,
-                org_meta=metainfo,
-                share_meta=share_meta,
-                source=source,
-                episode_group=episode_group,
-            )
-
         # 按 config 中设置的识别顺序识别
         mediainfo = self.select_recognize_source(
             log_name=title,
             log_context=title,
             native_fn=native_recognize,
-            plugin_fn=plugin_recognize,
         )
         if not mediainfo:
             return None
@@ -788,67 +760,6 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         text = str(value).strip()
         return int(text) if text.isdigit() else None
 
-    def recognize_help(
-            self,
-            title: str,
-            org_meta: MetaBase,
-            share_meta: MetaBase = None,
-            source: Optional[str] = None,
-            episode_group: Optional[str] = None,
-    ) -> Optional[MediaInfo]:
-        """
-        请求辅助识别，返回媒体信息
-
-        :param title: 标题
-        :param org_meta: 原始元数据
-        :param share_meta: 共享识别查询/上报使用的原始元数据
-        :param source: 请求级识别数据源
-        :param episode_group: 剧集组
-        """
-        # 发送请求事件，等待结果
-        result: Event = eventmanager.send_event(
-            ChainEventType.NameRecognize,
-            {
-                "title": title,
-            },
-        )
-        if not result:
-            return None
-        # 获取返回事件数据
-        event_data = result.event_data or {}
-        logger.info(f"获取到辅助识别结果：{event_data}")
-        # 处理数据格式
-        title, year, season_number, episode_number = None, None, None, None
-        if event_data.get("name"):
-            title = str(event_data["name"]).split("/")[0].strip().replace(".", " ")
-        if event_data.get("year"):
-            year = str(event_data["year"]).split("/")[0].strip()
-        season_number = self._parse_recognize_event_number(event_data.get("season"))
-        episode_number = self._parse_recognize_event_number(event_data.get("episode"))
-        if not title:
-            return None
-        if title == "Unknown":
-            return None
-        if not str(year).isdigit():
-            year = None
-        # 结果赋值
-        if title == org_meta.name and year == org_meta.year:
-            logger.info(f"辅助识别与原始识别结果一致，无需重新识别媒体信息")
-            return None
-        logger.info(f"辅助识别结果与原始识别结果不一致，重新匹配媒体信息 ...")
-        org_meta.name = title
-        org_meta.year = year
-        org_meta.begin_season = season_number
-        org_meta.begin_episode = episode_number
-        if org_meta.begin_season is not None or org_meta.begin_episode is not None:
-            org_meta.type = MediaType.TV
-        # 重新识别
-        return self.recognize_media(
-            meta=org_meta,
-            source=source,
-            share_meta=share_meta,
-            episode_group=episode_group,
-        )
 
     def recognize_by_path(
             self,
@@ -1657,36 +1568,19 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
 
     @staticmethod
     async def async_select_recognize_source(
-            log_name: str, log_context: str, native_fn, plugin_fn
+            log_name: str, log_context: str, native_fn
     ) -> Optional[MediaInfo]:
         """
-        选择识别模式，插件优先或原生优先（异步版本）
+        执行原生识别（异步版本，辅助识别随插件体系一并删除）
 
         :param log_name: 用于日志“标题：...”处的名称（如 file_path.name 或 title）
         :param log_context: 用于日志“未识别到...的媒体信息”处的上下文（如 path 或 title）
         :param native_fn: 原生识别函数
-        :param plugin_fn: 插件识别函数
         """
-        mediainfo = None
-        plugin_available = eventmanager.check(ChainEventType.NameRecognize)
-        if settings.RECOGNIZE_PLUGIN_FIRST and plugin_available:
-            # 插件优先
-            logger.info(f"插件优先模式已开启。请求辅助识别，标题：{log_name} ...")
-            mediainfo = await plugin_fn()
-            if not mediainfo:
-                logger.info(
-                    f"辅助识别未识别到 {log_context} 的媒体信息，尝试使用原生识别"
-                )
-                mediainfo = await native_fn()
-        else:
-            # 原生优先
-            logger.info(f"识别标题：{log_name} ...")
-            mediainfo = await native_fn()
-            if not mediainfo and plugin_available:
-                logger.info(
-                    f"原生识别未识别到 {log_context} 的媒体信息，尝试使用辅助识别"
-                )
-                mediainfo = await plugin_fn()
+        logger.info(f"识别标题：{log_name} ...")
+        mediainfo = await native_fn()
+        if not mediainfo:
+            logger.info(f"原生识别未识别到 {log_context} 的媒体信息")
         return mediainfo
 
     async def async_recognize_by_meta(
@@ -1745,22 +1639,11 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 episode_group=episode_group,
             )
 
-        async def plugin_recognize() -> Optional[MediaInfo]:
-            """异步执行辅助识别并保持请求级数据源约束。"""
-            return await self.async_recognize_help(
-                title=title,
-                org_meta=metainfo,
-                share_meta=share_meta,
-                source=source,
-                episode_group=episode_group,
-            )
-
         # 按 config 中设置的识别顺序识别
         mediainfo = await self.async_select_recognize_source(
             log_name=title,
             log_context=title,
             native_fn=native_recognize,
-            plugin_fn=plugin_recognize,
         )
         if not mediainfo:
             return None
@@ -1771,67 +1654,6 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             await self.async_obtain_images(mediainfo=mediainfo)
         return mediainfo
 
-    async def async_recognize_help(
-            self,
-            title: str,
-            org_meta: MetaBase,
-            share_meta: MetaBase = None,
-            source: Optional[str] = None,
-            episode_group: Optional[str] = None,
-    ) -> Optional[MediaInfo]:
-        """
-        请求辅助识别，返回媒体信息（异步版本）
-
-        :param title: 标题
-        :param org_meta: 原始元数据
-        :param share_meta: 共享识别查询/上报使用的原始元数据
-        :param source: 请求级识别数据源
-        :param episode_group: 剧集组
-        """
-        # 发送请求事件，等待结果
-        result: Event = await eventmanager.async_send_event(
-            ChainEventType.NameRecognize,
-            {
-                "title": title,
-            },
-        )
-        if not result:
-            return None
-        # 获取返回事件数据
-        event_data = result.event_data or {}
-        logger.info(f"获取到辅助识别结果：{event_data}")
-        # 处理数据格式
-        title, year, season_number, episode_number = None, None, None, None
-        if event_data.get("name"):
-            title = str(event_data["name"]).split("/")[0].strip().replace(".", " ")
-        if event_data.get("year"):
-            year = str(event_data["year"]).split("/")[0].strip()
-        season_number = self._parse_recognize_event_number(event_data.get("season"))
-        episode_number = self._parse_recognize_event_number(event_data.get("episode"))
-        if not title:
-            return None
-        if title == "Unknown":
-            return None
-        if not str(year).isdigit():
-            year = None
-        # 结果赋值
-        if title == org_meta.name and year == org_meta.year:
-            logger.info(f"辅助识别与原始识别结果一致，无需重新识别媒体信息")
-            return None
-        logger.info(f"辅助识别结果与原始识别结果不一致，重新匹配媒体信息 ...")
-        org_meta.name = title
-        org_meta.year = year
-        org_meta.begin_season = season_number
-        org_meta.begin_episode = episode_number
-        if org_meta.begin_season is not None or org_meta.begin_episode is not None:
-            org_meta.type = MediaType.TV
-        # 重新识别
-        return await self.async_recognize_media(
-            meta=org_meta,
-            source=source,
-            share_meta=share_meta,
-            episode_group=episode_group,
-        )
 
     async def async_recognize_by_path(
             self,

@@ -285,25 +285,6 @@ class MessageChain(ChainBase):
         ):
             return False
 
-        # 插件消息的事件回调 [PLUGIN]插件ID|内容
-        if callback_data.startswith("[PLUGIN]"):
-            # 提取插件ID和内容
-            plugin_id, content = callback_data.split("|", 1)
-            # 广播给插件处理
-            self.eventmanager.send_event(
-                EventType.MessageAction,
-                {
-                    "plugin_id": plugin_id.replace("[PLUGIN]", ""),
-                    "text": content,
-                    "userid": userid,
-                    "channel": channel,
-                    "source": source,
-                    "original_message_id": original_message_id,
-                    "original_chat_id": original_chat_id,
-                },
-            )
-            return False
-
         logger.error(f"回调数据格式错误：{callback_data}")
         self.post_message(
             Notification(

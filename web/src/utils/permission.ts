@@ -1,5 +1,5 @@
 // 权限类型定义
-export type UserPermissionCategoryKey = 'discovery' | 'search' | 'subscribe' | 'manage'
+export type UserPermissionCategoryKey = 'manage'
 export type UserPermissionKey = UserPermissionCategoryKey | 'admin'
 export type UserPermissionFeatureKey = string
 export type UserPermissionFeatureMap = Record<UserPermissionFeatureKey, boolean>
@@ -14,9 +14,6 @@ export interface UserPermissionFeatureOption {
 }
 
 export interface UserPermissions {
-  discovery: boolean // 发现权限
-  search: boolean // 搜索权限
-  subscribe: boolean // 订阅权限
   manage: boolean // 管理权限
   admin?: boolean // 管理员权限，仅用于前端入口标识，实际由 is_superuser 决定
   features?: UserPermissionFeatureMap // 功能级权限，缺省功能默认继承分类权限
@@ -26,93 +23,11 @@ export type UserPermissionContext = UserPermissions & { is_superuser?: boolean; 
 export type PermissionProtectedItem = { permission?: UserPermissionKey; feature?: UserPermissionFeatureKey }
 
 export const PERMISSION_FEATURE = {
-  DISCOVERY_RECOMMEND: 'discovery.recommend',
-  DISCOVERY_EXPLORE: 'discovery.explore',
-  SEARCH_RESOURCE: 'search.resource',
-  SUBSCRIBE_MOVIE: 'subscribe.movie',
-  SUBSCRIBE_TV: 'subscribe.tv',
-  SUBSCRIBE_CALENDAR: 'subscribe.calendar',
-  SUBSCRIBE_SHARE: 'subscribe.share',
-  MANAGE_WORKFLOW: 'manage.workflow',
-  MANAGE_DOWNLOADING: 'manage.downloading',
   MANAGE_HISTORY: 'manage.history',
   MANAGE_FILEMANAGER: 'manage.filemanager',
-  MANAGE_SITE: 'manage.site',
 } as const
 
 export const USER_PERMISSION_FEATURES: UserPermissionFeatureOption[] = [
-  {
-    key: PERMISSION_FEATURE.DISCOVERY_RECOMMEND,
-    permission: 'discovery',
-    titleKey: 'dialog.userAddEdit.permissions.features.recommend',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.recommend',
-    icon: 'mdi-star-outline',
-    path: '/recommend',
-  },
-  {
-    key: PERMISSION_FEATURE.DISCOVERY_EXPLORE,
-    permission: 'discovery',
-    titleKey: 'dialog.userAddEdit.permissions.features.explore',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.explore',
-    icon: 'mdi-apple-safari',
-    path: '/discover',
-  },
-  {
-    key: PERMISSION_FEATURE.SEARCH_RESOURCE,
-    permission: 'search',
-    titleKey: 'dialog.userAddEdit.permissions.features.resourceSearch',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.resourceSearch',
-    icon: 'mdi-magnify',
-    path: '/resource',
-  },
-  {
-    key: PERMISSION_FEATURE.SUBSCRIBE_MOVIE,
-    permission: 'subscribe',
-    titleKey: 'dialog.userAddEdit.permissions.features.movieSubscribe',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.movieSubscribe',
-    icon: 'mdi-movie-open-outline',
-    path: '/subscribe/movie',
-  },
-  {
-    key: PERMISSION_FEATURE.SUBSCRIBE_TV,
-    permission: 'subscribe',
-    titleKey: 'dialog.userAddEdit.permissions.features.tvSubscribe',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.tvSubscribe',
-    icon: 'mdi-television',
-    path: '/subscribe/tv',
-  },
-  {
-    key: PERMISSION_FEATURE.SUBSCRIBE_CALENDAR,
-    permission: 'subscribe',
-    titleKey: 'dialog.userAddEdit.permissions.features.calendar',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.calendar',
-    icon: 'mdi-calendar',
-    path: '/calendar',
-  },
-  {
-    key: PERMISSION_FEATURE.SUBSCRIBE_SHARE,
-    permission: 'subscribe',
-    titleKey: 'dialog.userAddEdit.permissions.features.subscribeShare',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.subscribeShare',
-    icon: 'mdi-share-variant',
-    path: '/subscribe-share',
-  },
-  {
-    key: PERMISSION_FEATURE.MANAGE_WORKFLOW,
-    permission: 'manage',
-    titleKey: 'dialog.userAddEdit.permissions.features.workflow',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.workflow',
-    icon: 'mdi-state-machine',
-    path: '/workflow',
-  },
-  {
-    key: PERMISSION_FEATURE.MANAGE_DOWNLOADING,
-    permission: 'manage',
-    titleKey: 'dialog.userAddEdit.permissions.features.downloading',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.downloading',
-    icon: 'mdi-download-outline',
-    path: '/downloading',
-  },
   {
     key: PERMISSION_FEATURE.MANAGE_HISTORY,
     permission: 'manage',
@@ -129,24 +44,11 @@ export const USER_PERMISSION_FEATURES: UserPermissionFeatureOption[] = [
     icon: 'mdi-folder-multiple-outline',
     path: '/filemanager',
   },
-  {
-    key: PERMISSION_FEATURE.MANAGE_SITE,
-    permission: 'manage',
-    titleKey: 'dialog.userAddEdit.permissions.features.site',
-    descriptionKey: 'dialog.userAddEdit.permissions.featureDescriptions.site',
-    icon: 'mdi-web',
-    path: '/site',
-  },
 ]
 
 /** 构造功能级权限默认值，新建用户默认不收窄已拥有的分类权限。 */
 export function buildDefaultFeaturePermissions(enabled = true): UserPermissionFeatureMap {
   return Object.fromEntries(USER_PERMISSION_FEATURES.map(feature => [feature.key, enabled]))
-}
-
-/** 构造插件导航的功能权限键，供动态插件入口复用。 */
-export function buildPluginPermissionFeatureKey(pluginId: string, navKey = 'main'): UserPermissionFeatureKey {
-  return `plugin.${pluginId}.${navKey}`
 }
 
 /** 判断传入值是否为可安全读取的普通对象。 */
@@ -163,9 +65,6 @@ export function normalizeUserPermissions(permissions: Partial<UserPermissions> |
   ) as UserPermissionFeatureMap
 
   return {
-    discovery: permissionData.discovery ?? DEFAULT_PERMISSIONS.discovery,
-    search: permissionData.search ?? DEFAULT_PERMISSIONS.search,
-    subscribe: permissionData.subscribe ?? DEFAULT_PERMISSIONS.subscribe,
     manage: permissionData.manage ?? DEFAULT_PERMISSIONS.manage,
     admin: permissionData.admin ?? DEFAULT_PERMISSIONS.admin,
     features,
@@ -182,9 +81,6 @@ export function buildUserPermissionContext(isSuperuser: boolean, permissions: Pa
 
 // 默认权限配置
 export const DEFAULT_PERMISSIONS: UserPermissions = {
-  discovery: true,
-  search: true,
-  subscribe: true,
   manage: false,
   admin: false,
   features: {},
@@ -192,9 +88,6 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
 
 // 管理员权限配置
 export const ADMIN_PERMISSIONS: UserPermissions = {
-  discovery: true,
-  search: true,
-  subscribe: true,
   manage: true,
   admin: true,
   features: buildDefaultFeaturePermissions(),

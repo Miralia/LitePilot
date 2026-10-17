@@ -7,10 +7,9 @@ from app.chain.tmdb import TmdbChain
 from app.core.config import settings
 from app.core.security import verify_token
 from app.db.models.user import User
-from app.db.systemconfig_oper import SystemConfigOper
 from app.db.user_oper import get_current_active_superuser_async
 from app.modules.themoviedb.tmdb_cache import TmdbCache
-from app.schemas.types import MediaType, SystemConfigKey
+from app.schemas.types import MediaType
 
 router = APIRouter()
 
@@ -30,10 +29,6 @@ async def tmdb_recognition_cache(
             "count": len(cache_items),
             "recognized": recognized_count,
             "unrecognized": len(cache_items) - recognized_count,
-            "shared_recognized": SystemConfigOper().get(
-                SystemConfigKey.MediaRecognizeShareCount
-            ) or 0,
-            "shared_recognize_enabled": settings.MEDIA_RECOGNIZE_SHARE,
             "data": cache_items,
         },
     )

@@ -78,30 +78,5 @@ def test_default_recognition_passes_empty_generic_identity() -> None:
     assert call.kwargs["anilistid"] is None
 
 
-def test_module_dispatch_always_reaches_plugins() -> None:
-    """模块调度必须始终先执行插件模块。"""
-    chain = _chain_without_init()
-    chain._ChainBase__execute_plugin_modules = Mock(return_value="plugin")
-    chain._ChainBase__execute_system_modules = Mock(return_value="system")
-
-    result = chain.run_module("search_medias", meta=MetaBase("test"))
-
-    assert result == "plugin"
-    chain._ChainBase__execute_plugin_modules.assert_called_once()
-    chain._ChainBase__execute_system_modules.assert_not_called()
 
 
-def test_explicit_search_source_reaches_plugins() -> None:
-    """请求级搜索来源应进入包含插件的完整模块调度。"""
-    chain = _chain_without_init()
-    chain.run_module = Mock(return_value=[])
-    meta = MetaBase("Frieren")
-
-    result = chain.search_medias(meta, source="anilist")
-
-    assert result == []
-    chain.run_module.assert_called_once_with(
-        "search_medias",
-        meta=meta,
-        source="anilist",
-    )

@@ -10,7 +10,6 @@ from sqlalchemy.orm import sessionmaker
 from app.db import Base
 from app.db.models.downloadhistory import DownloadHistory, DownloadFiles
 from app.db.models.message import Message
-from app.db.models.siteuserdata import SiteUserData
 from app.db.models.transferhistory import TransferHistory
 from app.core.config import settings
 from app.scheduler import SchedulerChain
@@ -38,7 +37,6 @@ class DataCleanupChainTest(unittest.TestCase):
             "DATA_CLEANUP_ENABLE": True,
             "DATA_CLEANUP_MESSAGE_DAYS": 90,
             "DATA_CLEANUP_DOWNLOAD_HISTORY_DAYS": 180,
-            "DATA_CLEANUP_SITE_USERDATA_DAYS": 180,
             "DATA_CLEANUP_TRANSFER_HISTORY_DAYS": 365 * 3,
         }
         defaults.update(overrides)
@@ -126,9 +124,6 @@ class DataCleanupChainTest(unittest.TestCase):
             )
             db.add_all(
                 [
-                    SiteUserData(domain="old-1", name="old-1", updated_day=old_site_day),
-                    SiteUserData(domain="old-2", name="old-2", updated_day=old_site_day),
-                    SiteUserData(domain="keep", name="keep", updated_day=keep_site_day),
                 ]
             )
             db.add_all(
@@ -154,14 +149,12 @@ class DataCleanupChainTest(unittest.TestCase):
         self.assertEqual(report["tables"]["message"]["batches"], 3)
         self.assertEqual(report["tables"]["downloadhistory"]["deleted"], 2)
         self.assertEqual(report["tables"]["downloadfiles"]["deleted"], 3)
-        self.assertEqual(report["tables"]["siteuserdata"]["deleted"], 2)
         self.assertEqual(report["tables"]["transferhistory"]["deleted"], 1)
 
         with self.SessionFactory() as db:
             self.assertEqual(db.query(Message).count(), 1)
             self.assertEqual(db.query(DownloadHistory).count(), 1)
             self.assertEqual(db.query(DownloadFiles).count(), 1)
-            self.assertEqual(db.query(SiteUserData).count(), 1)
             self.assertEqual(db.query(TransferHistory).count(), 1)
 
             keep_download_file = db.query(DownloadFiles).first()

@@ -9,7 +9,6 @@ from app.chain.message import MessageChain
 from app.chain.system import SystemChain
 from app.chain.transfer import TransferChain
 from app.core.event import Event as ManagerEvent, eventmanager, Event
-from app.core.plugin import PluginManager
 from app.helper.message import MessageHelper
 from app.helper.thread import ThreadHelper
 from app.log import logger
@@ -93,14 +92,10 @@ class Command(metaclass=Singleton):
                 "data": {},
             },
         }
-        # 插件命令集合
-        self._plugin_commands = {}
         # 其他命令集合
         self._other_commands = {}
         # 初始化锁
         self._rlock = threading.RLock()
-        # 插件管理
-        self.pluginmanager = PluginManager()
         # 定时服务管理
         self.scheduler = Scheduler()
         # 消息管理器
@@ -122,10 +117,8 @@ class Command(metaclass=Singleton):
         try:
             with self._rlock:
                 logger.debug("Acquired lock for initializing commands in background.")
-                self._plugin_commands = self.__build_plugin_commands(pid)
                 self._commands = {
                     **self._preset_commands,
-                    **self._plugin_commands,
                     **self._other_commands,
                 }
 
@@ -143,9 +136,6 @@ class Command(metaclass=Singleton):
                             f"Command initialization canceled by event: {event_data.source}"
                         )
                         return
-                    # 如果拦截源与插件标识一致时，这里认为需要强制触发注册
-                    if pid is not None and pid == event_data.source:
-                        force_register = True
                     initial_commands = event_data.commands or {}
                     logger.debug(
                         f"Registering command count from event: {len(initial_commands)}"
@@ -202,16 +192,11 @@ class Command(metaclass=Singleton):
                     "description": command.get("description"),
                     "category": command.get("category"),
                 }
-                # 如果有 pid，则添加到命令数据中
-                plugin_id = command.get("pid")
-                if plugin_id:
-                    command_data["pid"] = plugin_id
                 commands[cmd] = command_data
 
         # 初始化命令字典
         commands: Dict[str, dict] = {}
         add_commands(self._preset_commands, "preset")
-        add_commands(self._plugin_commands, "plugin")
         add_commands(self._other_commands, "other")
 
         # 触发事件允许可以拦截和调整命令
@@ -221,27 +206,6 @@ class Command(metaclass=Singleton):
         event = eventmanager.send_event(ChainEventType.CommandRegister, event_data)
         return event, commands
 
-    def __build_plugin_commands(self, _: Optional[str] = None) -> Dict[str, dict]:
-        """
-        构建插件命令
-        """
-        # 为了保证命令顺序的一致性，目前这里没有直接使用 pid 获取单一插件命令，后续如果存在性能问题，可以考虑优化这里的逻辑
-        plugin_commands = {}
-        for command in self.pluginmanager.get_plugin_commands():
-            cmd = command.get("cmd")
-            if cmd:
-                plugin_commands[cmd] = {
-                    "pid": command.get("pid"),
-                    "func": self.send_plugin_event,
-                    "description": command.get("desc"),
-                    "category": command.get("category"),
-                    "show": command.get("show", True),
-                    "data": {
-                        "etype": command.get("event"),
-                        "data": command.get("data"),
-                    },
-                }
-        return plugin_commands
 
     def __run_command(
         self,
@@ -312,7 +276,6 @@ class Command(metaclass=Singleton):
                 if not self._commands:
                     self._commands = {
                         **self._preset_commands,
-                        **self._plugin_commands,
                         **self._other_commands,
                     }
         return self._commands
@@ -385,13 +348,6 @@ class Command(metaclass=Singleton):
                 self.messagehelper.put(
                     title=f"执行命令 {cmd} 出错", message=str(err), role="system"
                 )
-
-    @staticmethod
-    def send_plugin_event(etype: EventType, data: dict) -> None:
-        """
-        发送插件命令
-        """
-        eventmanager.send_event(etype, data)
 
     @eventmanager.register(EventType.CommandExcute)
     def command_event(self, event: ManagerEvent) -> None:

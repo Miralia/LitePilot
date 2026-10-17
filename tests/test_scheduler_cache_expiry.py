@@ -31,7 +31,6 @@ def test_meta_cache_expire_does_not_schedule_bulk_cache_clear(monkeypatch):
         "SchedulerChain",
         "TransferChain",
         "WallpaperHelper",
-        "PluginManager",
     ]:
         monkeypatch.setattr(scheduler_module, name, lambda: generic_chain)
     monkeypatch.setattr(
@@ -45,15 +44,9 @@ def test_meta_cache_expire_does_not_schedule_bulk_cache_clear(monkeypatch):
         lambda **kwargs: background_scheduler,
     )
     monkeypatch.setattr(Scheduler, "stop", lambda self: None)
-    monkeypatch.setattr(Scheduler, "init_plugin_jobs", lambda self: None)
     monkeypatch.setattr(scheduler_module.settings, "DEV", False)
-    monkeypatch.setattr(scheduler_module.settings, "SUBSCRIBE_SEARCH", False)
-    monkeypatch.setattr(scheduler_module.settings, "SUBSCRIBE_MODE", "rss")
-    monkeypatch.setattr(scheduler_module.settings, "SUBSCRIBE_RSS_INTERVAL", 30)
     monkeypatch.setattr(scheduler_module.settings, "MEMORY_GC_INTERVAL", 0)
-    monkeypatch.setattr(scheduler_module.settings, "AI_AGENT_ENABLE", False)
     monkeypatch.setattr(scheduler_module.settings, "DATA_CLEANUP_ENABLE", False)
-    monkeypatch.setattr(scheduler_module.settings, "USAGE_STATISTIC_SHARE", False)
 
     scheduler = object.__new__(Scheduler)
     scheduler._scheduler = None

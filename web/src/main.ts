@@ -14,14 +14,9 @@ import App from '@/App.vue'
 import { PerfectScrollbarPlugin } from 'vue3-perfect-scrollbar'
 
 // 4. 其他插件和功能模块
-import Toast, { TYPE, type PluginOptions } from 'vue-toastification'
+import Toast from 'vue-toastification'
 import ConfirmDialog from '@/composables/useConfirm'
 import { configureApexChartsTheme } from '@/utils/apexCharts'
-import {
-  canUseAgentAssistantBubble,
-  emitAgentAssistantToastBubble,
-  type AgentAssistantBubbleVariant,
-} from '@/utils/agentAssistantBubble'
 import { initializeServiceWorker } from '@/composables/useVersionChecker'
 
 // 5. 注册自定义组件
@@ -34,8 +29,6 @@ import '@/styles/main.scss'
 
 // 7. 状态恢复插件
 import stateRestorePlugin from '@/plugins/stateRestore'
-
-type ToastFilterPayload = Parameters<NonNullable<PluginOptions['filterBeforeCreate']>>[0]
 
 function runWhenBrowserIdle(callback: () => void, timeout = 1500) {
   const requestIdle = globalThis.requestIdleCallback
@@ -59,61 +52,6 @@ function loadRemoteComponentsAfterLogin() {
     .catch(error => {
       console.error('Failed to load remote components', error)
     })
-}
-
-function shouldUseAgentAssistantToastBubble() {
-  const settings = pinia.state.value.globalSettings
-  if (!settings?.initialized) return false
-
-  return (
-    settings.data?.AI_AGENT_ENABLE === true &&
-    settings.data?.AI_AGENT_HIDE_ENTRY !== true &&
-    canUseAgentAssistantBubble()
-  )
-}
-
-function getAgentAssistantToastVariant(type?: ToastFilterPayload['type']): AgentAssistantBubbleVariant {
-  const variants: Record<string, AgentAssistantBubbleVariant> = {
-    [TYPE.DEFAULT]: 'default',
-    [TYPE.ERROR]: 'error',
-    [TYPE.INFO]: 'info',
-    [TYPE.SUCCESS]: 'success',
-    [TYPE.WARNING]: 'warning',
-  }
-
-  return variants[type || TYPE.DEFAULT] || 'default'
-}
-
-function getToastBubbleDuration(type?: ToastFilterPayload['type'], timeout?: ToastFilterPayload['timeout']) {
-  if (typeof timeout === 'number') return timeout
-  if (timeout === false) return undefined
-
-  return type === TYPE.ERROR || type === TYPE.WARNING ? 7000 : 4500
-}
-
-function getToastTextContent(content: ToastFilterPayload['content']) {
-  if (typeof content === 'string') return content
-
-  // 组件型 toast 可能包含操作按钮或复杂布局，无法可靠转成气泡文本时继续使用原生 toast。
-  return ''
-}
-
-function routeToastToAgentAssistantBubble(toast: ToastFilterPayload) {
-  const text = getToastTextContent(toast.content)
-  if (!text || !shouldUseAgentAssistantToastBubble()) return toast
-
-  const variant = getAgentAssistantToastVariant(toast.type)
-
-  emitAgentAssistantToastBubble({
-    id: `toast-${String(toast.id)}`,
-    kind: 'toast',
-    variant,
-    text,
-    duration: getToastBubbleDuration(toast.type, toast.timeout),
-    keepOpen: toast.timeout === false,
-  })
-
-  return false
 }
 
 let remoteComponentsInitialized = false
@@ -174,7 +112,6 @@ app
   .use(Toast, {
     position: 'bottom-right',
     hideProgressBar: true,
-    filterBeforeCreate: routeToastToAgentAssistantBubble,
   })
   .use(ConfirmDialog)
   .use(i18n)

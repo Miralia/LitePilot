@@ -1,10 +1,7 @@
-"""测试引导共享实现（主程序与插件仓同源）。
+"""测试引导共享实现。
 
-主程序 ``tests/conftest.py`` 与各插件仓的极薄 shim（``tests/_bootstrap.py``，仅负责把
-后端定位并加入 ``sys.path``）都委托到这里，使「隔离 CONFIG_DIR / 建表 / 注入插件目录 /
-按目录打 v1·v2 marker / 退出清理」等引导逻辑只在主程序维护一处，所有消费方行为与修复一致。
-其中 :func:`isolate_config_dir` 为主程序与插件仓共用，``prepare_v1/v2_backend`` 与
-:func:`mark_plugin_generation` 为插件仓专用。
+``tests/conftest.py`` 委托到这里完成「隔离 CONFIG_DIR / 建表 / 退出清理」等引导逻辑，
+使引导行为只在主程序维护一处。
 
 本模块只依赖标准库，``import`` 期不连库、不触发 ``app.db``：调用方可安全地「先 import 本模块、
 再隔离 CONFIG_DIR」，不破坏「隔离必须早于首个 ``import app.db``」这一硬约束。
@@ -157,12 +154,11 @@ def ensure_optional_stub(name: str, **attrs) -> None:
 
 
 def prepare_backend() -> None:
-    """隔离 CONFIG_DIR、补 sites 垫片并建表（后端须已在 ``sys.path`` 上）。
+    """隔离 CONFIG_DIR、补 sites 垫片并建表。
 
-    主程序中后端即当前包；插件仓由其 ``tests/_bootstrap.py`` shim 在 import 本模块前
-    先把后端目录注入 ``sys.path``。顺序固定：先隔离 CONFIG_DIR，再补 ``app.helper.sites`` 垫片，
-    最后建表——隔离出的临时库为空，运行期查 ``systemconfig`` 等表会报 no such table，故建表；
-    ``init_db`` 仅 import models + create_all，无 alembic/网络、幂等、毫秒级。
+    顺序固定：先隔离 CONFIG_DIR，再补 ``app.helper.sites`` 垫片，最后建表——隔离出的临时库
+    为空，运行期查 ``systemconfig`` 等表会报 no such table，故建表；``init_db`` 仅 import
+    models + create_all，无 alembic/网络、幂等、毫秒级。
     """
     isolate_config_dir()
     ensure_sites_stub()
@@ -170,42 +166,4 @@ def prepare_backend() -> None:
     init_db()
 
 
-def prepare_v2_backend(plugins_repo: Path) -> None:
-    """v2 插件单测引导：``prepare_backend`` + 把 ``<repo>/plugins.v2`` 注入 ``sys.path``。
 
-    与 :func:`prepare_v1_backend` 互斥：v1/v2 存在同名插件包，同一进程同时加载会相互覆盖，
-    须在各自独立的 pytest 会话中运行。
-
-    :param plugins_repo: 插件仓根目录（由调用方 shim 传入）
-    """
-    prepare_backend()
-    _prepend_sys_path(Path(plugins_repo) / "plugins.v2")
-
-
-def prepare_v1_backend(plugins_repo: Path) -> None:
-    """v1 插件单测引导：``prepare_backend`` + 把 ``<repo>/plugins`` 注入 ``sys.path``（与 v2 互斥）。
-
-    :param plugins_repo: 插件仓根目录（由调用方 shim 传入）
-    """
-    prepare_backend()
-    _prepend_sys_path(Path(plugins_repo) / "plugins")
-
-
-def mark_plugin_generation(items, pytest_module) -> None:
-    """按用例所在目录自动给其打 ``v1`` / ``v2`` marker，供按代筛选与分会话运行。
-
-    优先读取 pytest 7+ 的 ``item.path``，旧版 pytest 缺失该属性时回退到 ``item.fspath``。用
-    「不带前导斜杠」的子串匹配（``tests/v2/`` / ``tests/v1/``），兼容相对路径与绝对路径两种
-    运行方式：以 ``pytest tests/v2`` 等相对路径运行时收集路径可能不含前导斜杠。
-    ``pytest`` 模块由各仓 conftest 传入，避免本模块在非测试态强依赖 pytest。
-
-    :param items: pytest 收集到的用例集合
-    :param pytest_module: 调用方传入的 ``pytest`` 模块对象
-    """
-    for item in items:
-        item_path = getattr(item, "path", None)
-        path = str(item_path if item_path is not None else item.fspath).replace("\\", "/")
-        if "tests/v2/" in path:
-            item.add_marker(pytest_module.mark.v2)
-        elif "tests/v1/" in path:
-            item.add_marker(pytest_module.mark.v1)

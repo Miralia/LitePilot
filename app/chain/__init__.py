@@ -18,7 +18,6 @@ from app.core.context import Context, MediaInfo, SubtitleInfo, TorrentInfo
 from app.core.event import EventManager
 from app.core.meta import MetaBase
 from app.core.module import ModuleManager
-from app.core.plugin import PluginManager
 from app.db.message_oper import MessageOper
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.user_oper import UserOper
@@ -68,7 +67,6 @@ class ChainBase(metaclass=ABCMeta):
         self.messageoper = MessageOper()
         self.messagehelper = MessageHelper()
         self.messagequeue = MessageQueueManager(send_callback=self.run_module)
-        self.pluginmanager = PluginManager()
         self.filecache = FileCache()
         self.async_filecache = AsyncFileCache()
 
@@ -230,31 +228,6 @@ class ChainBase(metaclass=ABCMeta):
         else:
             return ret is None
 
-    def __handle_plugin_error(
-            self, err: Exception, plugin_id: str, plugin_name: str, method: str, **kwargs
-    ):
-        """
-        处理插件模块执行错误
-        """
-        if kwargs.get("raise_exception"):
-            raise err
-        logger.error(
-            f"运行插件 {plugin_id} 模块 {method} 出错：{str(err)}\n{traceback.format_exc()}"
-        )
-        self.messagehelper.put(
-            title=f"{plugin_name} 发生了错误", message=str(err), role="plugin"
-        )
-        self.eventmanager.send_event(
-            EventType.SystemError,
-            {
-                "type": "plugin",
-                "plugin_id": plugin_id,
-                "plugin_name": plugin_name,
-                "plugin_method": method,
-                "error": str(err),
-                "traceback": traceback.format_exc(),
-            },
-        )
 
     def __handle_system_error(
             self, err: Exception, module_id: str, module_name: str, method: str, **kwargs
@@ -294,79 +267,7 @@ class ChainBase(metaclass=ABCMeta):
             raise err
         logger.info(f"{source_type} {source_id}.{method} 已限流，跳过执行：{str(err)}")
 
-    def __execute_plugin_modules(
-            self, method: str, result: Any, *args, **kwargs
-    ) -> Any:
-        """
-        执行插件模块
-        """
-        for plugin, module_dict in self.pluginmanager.get_plugin_modules().items():
-            plugin_id, plugin_name = plugin
-            if method in module_dict:
-                func = module_dict[method]
-                if func:
-                    try:
-                        logger.info(f"请求插件 {plugin_name} 执行：{method} ...")
-                        if self.__is_valid_empty(result):
-                            # 返回None，第一次执行或者需继续执行下一模块
-                            result = func(*args, **kwargs)
-                        elif isinstance(result, list):
-                            # 返回为列表，有多个模块运行结果时进行合并
-                            temp = func(*args, **kwargs)
-                            if isinstance(temp, list):
-                                result.extend(temp)
-                        else:
-                            break
-                    except RateLimitExceededException as err:
-                        self.__handle_rate_limit_error(
-                            err, "插件", plugin_id, method, **kwargs
-                        )
-                    except Exception as err:
-                        self.__handle_plugin_error(
-                            err, plugin_id, plugin_name, method, **kwargs
-                        )
-        return result
 
-    async def __async_execute_plugin_modules(
-            self, method: str, result: Any, *args, **kwargs
-    ) -> Any:
-        """
-        异步执行插件模块
-        """
-        for plugin, module_dict in self.pluginmanager.get_plugin_modules().items():
-            plugin_id, plugin_name = plugin
-            if method in module_dict:
-                func = module_dict[method]
-                if func:
-                    try:
-                        logger.info(f"请求插件 {plugin_name} 执行：{method} ...")
-                        if self.__is_valid_empty(result):
-                            # 返回None，第一次执行或者需继续执行下一模块
-                            if inspect.iscoroutinefunction(func):
-                                result = await func(*args, **kwargs)
-                            else:
-                                # 插件同步函数在异步环境中运行，避免阻塞
-                                result = await run_in_threadpool(func, *args, **kwargs)
-                        elif isinstance(result, list):
-                            # 返回为列表，有多个模块运行结果时进行合并
-                            if inspect.iscoroutinefunction(func):
-                                temp = await func(*args, **kwargs)
-                            else:
-                                # 插件同步函数在异步环境中运行，避免阻塞
-                                temp = await run_in_threadpool(func, *args, **kwargs)
-                            if isinstance(temp, list):
-                                result.extend(temp)
-                        else:
-                            break
-                    except RateLimitExceededException as err:
-                        self.__handle_rate_limit_error(
-                            err, "插件", plugin_id, method, **kwargs
-                        )
-                    except Exception as err:
-                        self.__handle_plugin_error(
-                            err, plugin_id, plugin_name, method, **kwargs
-                        )
-        return result
 
     def __execute_system_modules(
             self, method: str, result: Any, *args, **kwargs
@@ -478,15 +379,8 @@ class ChainBase(metaclass=ABCMeta):
 
         :param method: 模块方法名称
         """
-        # 执行插件模块
-        result = self.__execute_plugin_modules(method, None, *args, **kwargs)
-
-        if not self.__is_valid_empty(result) and not isinstance(result, list):
-            # 插件模块返回结果不为空且不是列表，直接返回
-            return result
-
         # 执行系统模块
-        return self.__execute_system_modules(method, result, *args, **kwargs)
+        return self.__execute_system_modules(method, None, *args, **kwargs)
 
     async def async_run_module(
             self,
@@ -501,18 +395,9 @@ class ChainBase(metaclass=ABCMeta):
 
         :param method: 模块方法名称
         """
-        # 执行插件模块
-        result = await self.__async_execute_plugin_modules(
-            method, None, *args, **kwargs
-        )
-
-        if not self.__is_valid_empty(result) and not isinstance(result, list):
-            # 插件模块返回结果不为空且不是列表，直接返回
-            return result
-
         # 执行系统模块
         return await self.__async_execute_system_modules(
-            method, result, *args, **kwargs
+            method, None, *args, **kwargs
         )
 
     @staticmethod

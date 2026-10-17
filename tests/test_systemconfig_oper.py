@@ -22,7 +22,7 @@ def test_increment_serializes_concurrent_counter_updates(monkeypatch):
         results = list(
             executor.map(
                 lambda _index: oper.increment(
-                    SystemConfigKey.MediaRecognizeShareCount
+                    SystemConfigKey.NotificationClearBefore
                 ),
                 range(100),
             )
@@ -45,7 +45,7 @@ def test_increment_supports_custom_step(monkeypatch):
         lambda _key, value: stored_value.update(value=value),
     )
 
-    result = oper.increment(SystemConfigKey.MediaRecognizeShareCount, step=3)
+    result = oper.increment(SystemConfigKey.NotificationClearBefore, step=3)
 
     assert result == 7
     assert stored_value["value"] == 7

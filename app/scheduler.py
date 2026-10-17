@@ -23,11 +23,9 @@ from app.chain.mediaserver import MediaServerChain
 from app.chain.transfer import TransferChain
 from app.core.config import settings, global_vars
 from app.core.event import Event, eventmanager
-from app.core.plugin import PluginManager
 from app.db import SessionFactory
 from app.db.models.downloadhistory import DownloadHistory, DownloadFiles
 from app.db.models.message import Message
-from app.db.models.siteuserdata import SiteUserData
 from app.db.models.transferhistory import TransferHistory
 from app.db.systemconfig_oper import SystemConfigOper
 from app.helper.image import WallpaperHelper
@@ -166,9 +164,6 @@ class SchedulerChain(ChainBase):
         download_history_days = self._normalize_retention_days(
             settings.DATA_CLEANUP_DOWNLOAD_HISTORY_DAYS
         )
-        site_userdata_days = self._normalize_retention_days(
-            settings.DATA_CLEANUP_SITE_USERDATA_DAYS
-        )
         transfer_history_days = self._normalize_retention_days(
             settings.DATA_CLEANUP_TRANSFER_HISTORY_DAYS
         )
@@ -178,9 +173,6 @@ class SchedulerChain(ChainBase):
         ).strftime("%Y-%m-%d")
         download_history_cutoff = (
                 started_at - timedelta(days=download_history_days)
-        ).strftime("%Y-%m-%d")
-        site_userdata_cutoff = (
-                started_at - timedelta(days=site_userdata_days)
         ).strftime("%Y-%m-%d")
         transfer_history_cutoff = (
                 started_at - timedelta(days=transfer_history_days)
@@ -213,16 +205,6 @@ class SchedulerChain(ChainBase):
                 "cutoff": "follow-parent-history",
                 "handler": lambda db: DownloadFiles.delete_orphans(
                     db=db,
-                    limit=batch_size,
-                ),
-            },
-            {
-                "name": "siteuserdata",
-                "retention_days": site_userdata_days,
-                "cutoff": site_userdata_cutoff,
-                "handler": lambda db: SiteUserData.delete_before(
-                    db=db,
-                    before_day=site_userdata_cutoff,
                     limit=batch_size,
                 ),
             },
@@ -275,18 +257,10 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
         "DEV",
         "MEDIASERVER_SYNC_INTERVAL",
         SystemConfigKey.MediaServers.value,
-        "SUBSCRIBE_SEARCH",
-        "SUBSCRIBE_SEARCH_INTERVAL",
-        "SUBSCRIBE_MODE",
-        "SUBSCRIBE_RSS_INTERVAL",
-        "AI_AGENT_ENABLE",
-        "AI_AGENT_JOB_INTERVAL",
         "DATA_CLEANUP_ENABLE",
         "DATA_CLEANUP_MESSAGE_DAYS",
         "DATA_CLEANUP_DOWNLOAD_HISTORY_DAYS",
-        "DATA_CLEANUP_SITE_USERDATA_DAYS",
         "DATA_CLEANUP_TRANSFER_HISTORY_DAYS",
-        "USAGE_STATISTIC_SHARE",
     }
 
     def __init__(self):
@@ -425,12 +399,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     "func": WallpaperHelper().get_wallpapers,
                     "running": False,
                 },
-                "plugin_market_refresh": {
-                    "name": "插件市场缓存",
-                    "func": PluginManager().async_get_online_plugins,
-                    "running": False,
-                    "kwargs": {"force": True},
-                },
                 "full_gc": {
                     "name": "主动内存回收",
                     "func": self.full_gc,
@@ -516,15 +484,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                 )
 
 
-            # 插件市场缓存
-            self._scheduler.add_job(
-                self.start,
-                "interval",
-                id="plugin_market_refresh",
-                name="插件市场缓存",
-                minutes=30,
-                kwargs={"job_id": "plugin_market_refresh"},
-            )
 
 
             # 主动内存回收
@@ -539,8 +498,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                 )
 
 
-            # 初始化插件服务
-            self.init_plugin_jobs()
 
             # 启动定时服务
             self._scheduler.start()
@@ -821,129 +778,12 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
 
 
 
-    def init_plugin_jobs(self):
-        """
-        初始化插件定时服务
-        """
-        for pid in PluginManager().get_running_plugin_ids():
-            self.update_plugin_job(pid)
-
-    @eventmanager.register(EventType.PluginReload)
-    def on_plugin_reload(self, event: Event) -> None:
-        """插件重载后按当前实例重新注册全部定时服务"""
-        plugin_id = event.event_data.get("plugin_id")
-        if not plugin_id:
-            return
-        self.update_plugin_job(plugin_id)
 
 
 
-    def remove_plugin_job(self, pid: str, job_id: Optional[str] = None):
-        """
-        移除定时服务，可以是单个服务（包括默认服务）或整个插件的所有服务
-        :param pid: 插件 ID
-        :param job_id: 可选，指定要移除的单个服务的 job_id。如果不提供，则移除该插件的所有服务，当移除单个服务时，默认服务也包含在内
-        """
-        if not self._scheduler:
-            return
-        with self._lock:
-            if job_id:
-                # 移除单个服务
-                service = self._jobs.pop(job_id, None)
-                if not service:
-                    return
-                jobs_to_remove = [(job_id, service)]
-            else:
-                # 移除插件的所有服务
-                jobs_to_remove = [
-                    (job_id, service)
-                    for job_id, service in self._jobs.items()
-                    if service.get("pid") == pid
-                ]
-                for job_id, _ in jobs_to_remove:
-                    self._jobs.pop(job_id, None)
-            if not jobs_to_remove:
-                return
-            plugin_name = PluginManager().get_plugin_attr(pid, "plugin_name")
-            # 遍历移除任务
-            for job_id, service in jobs_to_remove:
-                try:
-                    # 在调度器中查找并移除对应的 job
-                    job_removed = False
-                    for job in list(self._scheduler.get_jobs()):
-                        job_id_from_service = job.id.split("|")[0]
-                        if job_id == job_id_from_service:
-                            try:
-                                self._scheduler.remove_job(job.id)
-                                job_removed = True
-                            except JobLookupError:
-                                pass
-                    if job_removed:
-                        logger.info(
-                            f"移除插件服务({plugin_name})：{service.get('name')}"
-                        )  # noqa
-                except Exception as e:
-                    logger.error(f"移除插件服务失败：{str(e)} - {job_id}: {service}")
-                    SchedulerChain().messagehelper.put(
-                        title=f"插件 {plugin_name} 服务移除失败",
-                        message=str(e),
-                        role="system",
-                    )
 
 
-    def update_plugin_job(self, pid: str):
-        """
-        更新插件定时服务
-        """
-        if not self._scheduler or not pid:
-            return
-        # 移除该插件的全部服务
-        self.remove_plugin_job(pid)
-        # 获取插件服务列表
-        with self._lock:
-            plugin_manager = PluginManager()
-            try:
-                plugin_services = plugin_manager.get_plugin_services(pid=pid)
-            except Exception as e:
-                logger.error(
-                    f"运行插件 {pid} 服务失败：{str(e)} - {traceback.format_exc()}"
-                )
-                return
-            # 获取插件名称
-            plugin_name = plugin_manager.get_plugin_attr(pid, "plugin_name")
-            # 开始注册插件服务
-            for service in plugin_services:
-                try:
-                    sid = f"{pid}_{service['id']}"
-                    job_id = sid.split("|")[0]
-                    self.remove_plugin_job(pid, job_id)
-                    self._jobs[job_id] = {
-                        "func": service["func"],
-                        "name": service["name"],
-                        "pid": pid,
-                        "provider_name": plugin_name,
-                        "kwargs": service.get("func_kwargs") or {},
-                        "running": False,
-                    }
-                    self._scheduler.add_job(
-                        self.start,
-                        service["trigger"],
-                        id=sid,
-                        name=service["name"],
-                        **(service.get("kwargs") or {}),
-                        kwargs={"job_id": job_id},
-                        replace_existing=True,
-                    )
-                    logger.info(
-                        f"注册插件{plugin_name}服务：{service['name']} - {service['trigger']}"
-                    )
-                except Exception as e:
-                    logger.error(f"注册插件{plugin_name}服务失败：{str(e)} - {service}")
-                    SchedulerChain().messagehelper.put(
-                        title=f"插件 {plugin_name} 服务注册失败",
-                        message=str(e),
-                        role="system",
-                    )
+
 
     def list(self) -> List[schemas.ScheduleInfo]:
         """

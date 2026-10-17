@@ -439,19 +439,11 @@ class EventManager(metaclass=Singleton):
         if not handlers:
             logger.debug(f"No handlers found for broadcast event: {event}")
             return
-        target_plugin_id = None
-        if event.event_type == EventType.MessageAction and isinstance(event.event_data, dict):
-            target_plugin_id = event.event_data.get("__mp_target_plugin_id")
         # 为每个处理器提供独立的事件实例，防止某个处理器对 event_data 的修改影响其他处理器
         for handler_id, handler in handlers.items():
-            if target_plugin_id and not self.__should_dispatch_to_target_plugin(
-                    handler, handler_id, str(target_plugin_id)
-            ):
-                continue
             # 仅浅拷贝顶层字典，避免不必要的深拷贝开销；这样可以隔离键级别的替换/赋值
             if isinstance(event.event_data, dict):
                 event_data_copy = event.event_data.copy()
-                event_data_copy.pop("__mp_target_plugin_id", None)
             else:
                 event_data_copy = event.event_data
             isolated_event = Event(event_type=event.event_type,
@@ -467,33 +459,6 @@ class EventManager(metaclass=Singleton):
                 # 对于同步函数，在线程池中运行
                 self.__executor.submit(self.__safe_invoke_handler, handler, isolated_event)
 
-    @classmethod
-    def __should_dispatch_to_target_plugin(
-            cls,
-            handler: Callable,
-            handler_identifier: str,
-            target_plugin_id: str,
-    ) -> bool:
-        """
-        限定插件输入事件只投递给目标插件，避免自由文本被其他插件观察到。
-        """
-        class_name, method_name = cls.__parse_handler_names(handler)
-        if class_name != target_plugin_id:
-            return False
-        identifier_parts = (handler_identifier or "").split(".")
-        if len(identifier_parts) < 2:
-            logger.debug(
-                "Target plugin dispatch skipped because handler identifier is invalid: "
-                f"target={target_plugin_id}, handler={handler_identifier}"
-            )
-            return False
-        if identifier_parts[-2:] != [class_name, method_name]:
-            logger.debug(
-                "Target plugin dispatch skipped because handler identifier does not match handler: "
-                f"target={target_plugin_id}, handler={handler_identifier}, parsed={class_name}.{method_name}"
-            )
-            return False
-        return True
 
     def __safe_invoke_handler(self, handler: Callable, event: Event):
         """
@@ -527,26 +492,11 @@ class EventManager(metaclass=Singleton):
         """
         class_name, method_name = self.__parse_handler_names(handler)
 
-        from app.core.plugin import PluginManager
         from app.core.module import ModuleManager
 
-        plugin_manager = PluginManager()
         module_manager = ModuleManager()
 
-        if class_name in plugin_manager.get_plugin_ids():
-            # 插件处理器
-            plugin = plugin_manager.running_plugins.get(class_name)
-            if not plugin:
-                return
-            method = getattr(plugin, method_name, None)
-            if not method:
-                return
-            try:
-                method(event)
-            except Exception as e:
-                self.__handle_event_error(event=event, module_name=plugin.name,
-                                          class_name=class_name, method_name=method_name, e=e)
-        elif class_name in module_manager.get_module_ids():
+        if class_name in module_manager.get_module_ids():
             # 模块处理器
             module = module_manager.get_running_module(class_name)
             if not module:
@@ -588,15 +538,11 @@ class EventManager(metaclass=Singleton):
         """
         class_name, method_name = self.__parse_handler_names(handler)
 
-        from app.core.plugin import PluginManager
         from app.core.module import ModuleManager
 
-        plugin_manager = PluginManager()
         module_manager = ModuleManager()
 
-        if class_name in plugin_manager.get_plugin_ids():
-            await self.__invoke_plugin_method_async(plugin_manager, class_name, method_name, event)
-        elif class_name in module_manager.get_module_ids():
+        if class_name in module_manager.get_module_ids():
             await self.__invoke_module_method_async(module_manager, class_name, method_name, event)
         else:
             if not class_name:
@@ -623,25 +569,6 @@ class EventManager(metaclass=Singleton):
             return "", names[0]
         return names[0], names[1]
 
-    async def __invoke_plugin_method_async(self, handler: Any, class_name: str, method_name: str, event: Event):
-        """
-        异步调用插件方法
-        """
-        plugin = handler.running_plugins.get(class_name)
-        if not plugin:
-            return
-        method = getattr(plugin, method_name, None)
-        if not method:
-            return
-        try:
-            if inspect.iscoroutinefunction(method):
-                await method(event)
-            else:
-                # 插件同步函数在异步环境中运行，避免阻塞
-                await run_in_threadpool(method, event)
-        except Exception as e:
-            self.__handle_event_error(event=event, module_name=plugin.name,
-                                      class_name=class_name, method_name=method_name, e=e)
 
     async def __invoke_module_method_async(self, handler: Any, class_name: str, method_name: str, event: Event):
         """
@@ -778,7 +705,7 @@ class EventManager(metaclass=Singleton):
         """
         事件注册装饰器，用于将函数注册为事件的处理器
         :param etype:
-            - 单个事件类型成员 (如 EventType.MetadataScrape, ChainEventType.PluginAction)
+            - 单个事件类型成员 (如 EventType.MetadataScrape)
             - 事件类型类 (EventType, ChainEventType)
             - 或事件类型成员的列表
         :param priority: 可选，链式事件的优先级，默认为 DEFAULT_EVENT_PRIORITY

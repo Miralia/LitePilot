@@ -2,7 +2,6 @@
 import type { SystemNotification } from '@/api/types'
 import api from '@/api'
 import { appUnreadMessageCount, clearUnreadMessages } from '@/utils/badge'
-import { emitAgentAssistantNotificationBubble } from '@/utils/agentAssistantBubble'
 import { formatDateDifference } from '@core/utils/formatters'
 import { useBackground } from '@/composables/useBackground'
 import { useToast } from 'vue-toastification'
@@ -387,7 +386,6 @@ function handleMessage(event: MessageEvent) {
 
     if (mergeNotifications([notification], { prepend: true, read: false })) {
       hasNewMessage.value = true
-      emitAgentAssistantNotificationBubble(notification)
     }
   } catch (error) {
     console.error('解析通知失败:', error)

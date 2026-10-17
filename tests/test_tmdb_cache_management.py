@@ -273,14 +273,7 @@ def test_tmdb_cache_endpoint_returns_management_statistics(monkeypatch):
         "recognized": {"id": 1, "title": "Alpha", "type": MediaType.MOVIE},
         "unrecognized": {"id": 0},
     })
-    get_system_config = Mock(return_value=7)
     monkeypatch.setattr(tmdb_endpoint, "TmdbCache", lambda: cache)
-    monkeypatch.setattr(
-        tmdb_endpoint,
-        "SystemConfigOper",
-        lambda: type("SystemConfigStub", (), {"get": get_system_config})(),
-    )
-    monkeypatch.setattr(tmdb_endpoint.settings, "MEDIA_RECOGNIZE_SHARE", True)
 
     response = asyncio.run(tmdb_endpoint.tmdb_recognition_cache(None))
 
@@ -288,11 +281,6 @@ def test_tmdb_cache_endpoint_returns_management_statistics(monkeypatch):
     assert response.data["count"] == 2
     assert response.data["recognized"] == 1
     assert response.data["unrecognized"] == 1
-    assert response.data["shared_recognized"] == 7
-    assert response.data["shared_recognize_enabled"] is True
-    get_system_config.assert_called_once_with(
-        SystemConfigKey.MediaRecognizeShareCount
-    )
 
 
 def test_tmdb_cache_delete_endpoint_reports_missing_item(monkeypatch):

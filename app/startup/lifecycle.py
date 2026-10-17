@@ -22,37 +22,25 @@ from app.chain.system import SystemChain
 from app.core.config import global_vars, settings
 from app.helper.system import SystemHelper
 from app.log import logger, LoggerManager
-from app.startup.command_initializer import init_command, stop_command, restart_command
+from app.startup.command_initializer import init_command, stop_command
 from app.startup.modules_initializer import init_modules, stop_modules
 from app.startup.monitor_initializer import stop_monitor, init_monitor
-from app.startup.plugins_initializer import init_plugins, stop_plugins, sync_plugins
 from app.startup.routers_initializer import init_routers
 from app.startup.scheduler_initializer import (
     stop_scheduler,
     init_scheduler,
-    init_plugin_scheduler,
 )
 from app.utils.http import aclose_shared_async_transports
 
 
 async def init_extra():
     """
-    同步插件及重启相关依赖服务
+    完成重启后的收尾工作
     """
-    if settings.MOVIEPILOT_SAFE_MODE:
-        SystemHelper().set_system_modified()
-        SystemChain().restart_finish()
-        return
-    if await sync_plugins():
-        # 重新注册插件定时服务
-        init_plugin_scheduler()
-        # 重新注册命令
-        restart_command()
     # 设置系统已修改标志
     SystemHelper().set_system_modified()
     # 重启完成
     SystemChain().restart_finish()
-    # 上报当前安装版本
 
 
 async def run_shutdown_step(name: str, callback: Callable[[], object]) -> None:
@@ -78,44 +66,35 @@ async def lifespan(app: FastAPI):
     # 初始化模块
     init_modules()
     if settings.MOVIEPILOT_SAFE_MODE:
-        print("MoviePilot safe mode enabled: skip plugins, scheduler, monitor, commands and workflow.")
+        print("MoviePilot safe mode enabled: skip scheduler, monitor and commands.")
     else:
-        # 恢复插件备份
-        SystemChain().restore_plugins()
-        # 初始化插件
-        init_plugins()
         # 初始化定时器
         init_scheduler()
         # 初始化监控器
         init_monitor()
         # 初始化命令
         init_command()
-        # 初始化工作流
-    # 插件同步到本地
-    sync_plugins_task = asyncio.create_task(init_extra())
+    # 重启收尾
+    restart_finish_task = asyncio.create_task(init_extra())
     try:
         # 在此处 yield，表示应用已经启动，控制权交回 FastAPI 主事件循环
         yield
     finally:
         print("Shutting down...")
         global_vars.stop_system()
-        # 取消同步插件任务
+        # 取消重启收尾任务
         try:
-            sync_plugins_task.cancel()
-            await sync_plugins_task
+            restart_finish_task.cancel()
+            await restart_finish_task
         except asyncio.CancelledError:
             pass
         except Exception as e:
             print(str(e))
         try:
             if not settings.MOVIEPILOT_SAFE_MODE:
-                await run_shutdown_step(
-                    "插件备份", lambda: SystemChain().backup_plugins()
-                )
                 await run_shutdown_step("命令服务", stop_command)
                 await run_shutdown_step("监控器", stop_monitor)
                 await run_shutdown_step("定时器", stop_scheduler)
-                await run_shutdown_step("插件", stop_plugins)
             await run_shutdown_step("模块服务", stop_modules)
             await run_shutdown_step(
                 "共享异步 HTTP 连接池",

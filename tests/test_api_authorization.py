@@ -11,7 +11,6 @@ from starlette.responses import Response
 from app.api.endpoints import dashboard as dashboard_endpoint
 from app.api.endpoints import history as history_endpoint
 from app.api.endpoints import login as login_endpoint
-from app.api.endpoints import plugin as plugin_endpoint
 from app.api.endpoints import storage as storage_endpoint
 from app.api.endpoints import system as system_endpoint
 from app.api.endpoints import transfer as transfer_endpoint
@@ -73,11 +72,6 @@ def test_dashboard_endpoints_require_superuser():
     assert _dependency_of(dashboard_endpoint.network, "_") is get_current_active_superuser
 
 
-def test_plugin_dashboard_endpoints_require_superuser():
-    """插件仪表板接口必须只允许管理员访问。"""
-    assert _dependency_of(plugin_endpoint.plugin_dashboard_meta, "_") is get_current_active_superuser
-    assert _dependency_of(plugin_endpoint.plugin_dashboard_by_key, "_") is get_current_active_superuser
-    assert _dependency_of(plugin_endpoint.plugin_dashboard, "_") is get_current_active_superuser
 
 
 def test_manage_page_endpoints_accept_manage_permission():
@@ -118,12 +112,6 @@ def test_system_public_setting_allows_only_non_sensitive_keys(monkeypatch):
 
     assert response.success is True
     assert response.data == {"value": [{"path": "/downloads"}]}
-    assert calls == [SystemConfigKey.Directories]
-
-    response = asyncio.run(system_endpoint.get_public_setting("PLUGIN_MARKET"))
-
-    assert response.success is True
-    assert response.data == {"value": system_endpoint.settings.PLUGIN_MARKET}
     assert calls == [SystemConfigKey.Directories]
 
     with pytest.raises(HTTPException) as exc_info:
@@ -187,64 +175,8 @@ def test_login_sets_resource_token_cookie(monkeypatch):
     assert payload.purpose == "resource"
 
 
-def test_plugin_static_file_requires_resource_token_by_default(monkeypatch):
-    """普通插件静态资源必须校验资源令牌。"""
-    calls = []
-
-    class FakePluginManager:
-        """返回空认证提供方的插件管理器桩。"""
-
-        def get_plugin_auth_providers(self):
-            """返回插件认证入口列表。"""
-            return []
-
-    monkeypatch.setattr(plugin_endpoint, "PluginManager", FakePluginManager)
-    monkeypatch.setattr(plugin_endpoint, "verify_resource_token", lambda token: calls.append(token))
-
-    plugin_endpoint._verify_plugin_static_file_access(
-        plugin_id="DemoPlugin",
-        filepath="dist/remoteEntry.js",
-        resource_token="resource-token",
-    )
-
-    assert calls == ["resource-token"]
 
 
-def test_plugin_auth_remote_files_allow_anonymous_bootstrap(monkeypatch):
-    """插件登录认证远程组件需要允许登录前匿名加载。"""
-    calls = []
-
-    class FakePluginManager:
-        """返回认证插件 remote 信息的插件管理器桩。"""
-
-        def get_plugin_auth_providers(self):
-            """返回插件认证入口列表。"""
-            return [
-                {
-                    "remote": {
-                        "id": "AuthPlugin",
-                        "url": "/plugin/file/AuthPlugin/dist/remoteEntry.js",
-                    }
-                }
-            ]
-
-    monkeypatch.setattr(plugin_endpoint, "PluginManager", FakePluginManager)
-    monkeypatch.setattr(plugin_endpoint, "verify_resource_token", lambda token: calls.append(token))
-
-    plugin_endpoint._verify_plugin_static_file_access(
-        plugin_id="AuthPlugin",
-        filepath="dist/remoteEntry.js",
-    )
-    plugin_endpoint._verify_plugin_static_file_access(
-        plugin_id="AuthPlugin",
-        filepath="dist/assets/chunk.js",
-    )
-    plugin_endpoint._verify_plugin_static_file_access(
-        plugin_id="authplugin",
-        filepath="dist/assets/chunk.js",
-    )
-
-    assert calls == []
 
 
 def test_upload_avatar_rejects_other_user_for_non_superuser():

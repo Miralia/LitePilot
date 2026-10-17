@@ -67,8 +67,6 @@ def test_download_moviepilot_logs_packages_latest_ten_log_files(isolated_log_pat
         (isolated_log_path / f"moviepilot.log.{index}").write_text(f"old-{index}", encoding="utf-8")
     (isolated_log_path / "moviepilot.log").write_text("current", encoding="utf-8")
     (isolated_log_path / "moviepilot.txt").write_text("ignored", encoding="utf-8")
-    (isolated_log_path / "plugins").mkdir()
-    (isolated_log_path / "plugins" / "demo.log").write_text("plugin", encoding="utf-8")
 
     response = asyncio.run(system_endpoint.download_logging(name="moviepilot", _=SimpleNamespace()))
     body = asyncio.run(_read_streaming_body(response))
@@ -83,33 +81,9 @@ def test_download_moviepilot_logs_packages_latest_ten_log_files(isolated_log_pat
     assert len(names) == 10
     assert f"{moviepilot_zip_root}/moviepilot.log" in names
     assert "moviepilot.log" not in names
-    assert "plugins/demo.log" not in names
     assert "moviepilot.txt" not in names
 
 
-def test_download_plugin_logs_packages_plugin_files_only(isolated_log_path):
-    """传入插件 ID 时只下载该插件滚动日志，最多打包 10 个文件。"""
-    plugin_dir = isolated_log_path / "plugins"
-    plugin_dir.mkdir()
-    for index in range(11):
-        (plugin_dir / f"demoplugin.log.{index}").write_text(f"plugin-{index}", encoding="utf-8")
-    (plugin_dir / "demoplugin.log").write_text("current", encoding="utf-8")
-    (plugin_dir / "other.log").write_text("other", encoding="utf-8")
-    (isolated_log_path / "moviepilot.log").write_text("main", encoding="utf-8")
-
-    response = asyncio.run(system_endpoint.download_logging(name="DemoPlugin", _=SimpleNamespace()))
-    body = asyncio.run(_read_streaming_body(response))
-
-    with zipfile.ZipFile(io.BytesIO(body)) as archive:
-        names = archive.namelist()
-
-    plugin_zip_root = response.headers["Content-Disposition"].split('filename="', 1)[1].removesuffix('.zip"')
-    assert len(names) == 10
-    assert f"{plugin_zip_root}/demoplugin.log" in names
-    assert "demoplugin.log" not in names
-    assert "plugins/demoplugin.log" not in names
-    assert "plugins/other.log" not in names
-    assert "moviepilot.log" not in names
 
 
 def test_download_log_zip_generation_runs_outside_event_loop_thread(monkeypatch, isolated_log_path):

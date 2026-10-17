@@ -8,7 +8,6 @@ from .history import *
 from .mediaserver import *
 from .message import *
 from .monitoring import *
-from .plugin import *
 from .response import *
 from .system import *
 from .system import *

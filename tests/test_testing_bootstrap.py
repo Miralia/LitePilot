@@ -38,25 +38,3 @@ def test_isolate_config_cleanup_uses_loaded_db_module_without_late_import(monkey
     assert import_calls == []
 
 
-def test_mark_plugin_generation_prefers_pathlib_item_path():
-    """pytest 新版 item.path 可独立驱动 v1/v2 marker 标记。"""
-
-    class FakeItem:
-        """只暴露 pytest 7+ 的 path 属性，模拟新版收集对象。"""
-
-        def __init__(self, value: str):
-            self.path = Path(value)
-            self.markers = []
-
-        def add_marker(self, marker):
-            """记录被添加的 marker。"""
-            self.markers.append(marker)
-
-    pytest_module = types.SimpleNamespace(mark=types.SimpleNamespace(v1="v1", v2="v2"))
-    v2_item = FakeItem("/repo/tests/v2/test_demo.py")
-    v1_item = FakeItem("/repo/tests/v1/test_demo.py")
-
-    bootstrap.mark_plugin_generation([v2_item, v1_item], pytest_module)
-
-    assert v2_item.markers == ["v2"]
-    assert v1_item.markers == ["v1"]

@@ -59,33 +59,6 @@ const releaseDialogTitle = ref('')
 // 变更日志对话框内容
 const releaseDialogBody = ref('')
 
-// 版本统计对话框
-const versionStatisticDialog = ref(false)
-
-// 版本统计加载状态
-const versionStatisticLoading = ref(false)
-
-// 版本统计数据
-const versionStatistic = ref<any>({})
-
-const MIN_VISIBLE_VERSION_INSTALLS = 10
-
-/** 过滤安装实例过少的版本，避免在版本统计中展示孤立记录。 */
-function filterVersionStatistics(items: unknown) {
-  if (!Array.isArray(items)) return []
-
-  return items.filter(item => Number(item?.count || 0) >= MIN_VISIBLE_VERSION_INSTALLS)
-}
-
-// 后端版本统计
-const backendVersionStatistics = computed(() => filterVersionStatistics(versionStatistic.value?.backend_versions))
-
-// 前端版本统计
-const frontendVersionStatistics = computed(() => filterVersionStatistics(versionStatistic.value?.frontend_versions))
-
-// 活跃用户统计
-const activeUsers = computed(() => versionStatistic.value?.active_users ?? {})
-
 // 系统运行秒数
 const systemUptimeSeconds = computed(() => {
   if (systemUptimeBaseSeconds.value === null) return null
@@ -101,15 +74,6 @@ const systemUptimeText = computed(() => {
 
   return formatUptimeDuration(systemUptimeSeconds.value)
 })
-
-/** 格式化版本安装统计数字为千分位展示。 */
-function formatVersionStatisticNumber(value: unknown) {
-  const numberValue = Number(value ?? 0)
-
-  if (!Number.isFinite(numberValue)) return '0'
-
-  return numberValue.toLocaleString()
-}
 
 /** 将秒数保存为运行时间基准，并记录本地同步时间。 */
 function syncSystemUptime(seconds: number | null) {
@@ -195,28 +159,6 @@ function showReleaseDialog(title: string, body: string) {
   releaseDialogTitle.value = title
   releaseDialogBody.value = body ? md.render(body) : ''
   releaseDialog.value = true
-}
-
-// 查询版本统计
-async function queryVersionStatistic() {
-  if (!systemEnv.value.USAGE_STATISTIC_SHARE) return
-  versionStatisticLoading.value = true
-  try {
-    const result: { [key: string]: any } = await api.get('system/usage/statistic')
-
-    versionStatistic.value = result.data ?? {}
-  } catch (error) {
-    console.log(error)
-    versionStatistic.value = {}
-  } finally {
-    versionStatisticLoading.value = false
-  }
-}
-
-// 打开版本统计对话框
-async function showVersionStatisticDialog() {
-  versionStatisticDialog.value = true
-  await queryVersionStatistic()
 }
 
 // 查询系统环境变量
@@ -315,18 +257,6 @@ onBeforeUnmount(() => {
                             {{ t('setting.about.latest') }}
                           </span>
                         </a>
-                        <VTooltip v-if="systemEnv.USAGE_STATISTIC_SHARE" :text="t('setting.about.versionStatistic')">
-                          <template #activator="{ props }">
-                            <VBtn
-                              v-bind="props"
-                              icon="mdi-chart-bar"
-                              size="x-small"
-                              variant="text"
-                              class="ms-2 flex-shrink-0"
-                              @click="showVersionStatisticDialog"
-                            />
-                          </template>
-                        </VTooltip>
                       </span>
                     </dd>
                   </div>
@@ -531,86 +461,6 @@ onBeforeUnmount(() => {
         <VCardText class="markdown-body" v-html="releaseDialogBody" />
       </VCard>
     </VDialog>
-    <VDialog v-if="versionStatisticDialog" v-model="versionStatisticDialog" width="680" scrollable max-height="85vh">
-      <VCard>
-        <VCardItem>
-          <VDialogCloseBtn @click="versionStatisticDialog = false" />
-          <VCardTitle>
-            <VIcon icon="mdi-chart-bar" class="me-2" />
-            {{ t('setting.about.versionStatisticTitle') }}
-          </VCardTitle>
-        </VCardItem>
-        <VDivider />
-        <VProgressLinear v-if="versionStatisticLoading" indeterminate color="primary" />
-        <VCardText>
-          <div class="version-stat-summary">
-            <div>
-              <div class="text-caption text-medium-emphasis">{{ t('setting.about.totalInstallUsers') }}</div>
-              <div class="version-stat-number">{{ formatVersionStatisticNumber(versionStatistic.total_users) }}</div>
-            </div>
-            <div>
-              <div class="text-caption text-medium-emphasis">{{ t('setting.about.activeToday') }}</div>
-              <div class="version-stat-number">{{ formatVersionStatisticNumber(activeUsers.today) }}</div>
-            </div>
-            <div>
-              <div class="text-caption text-medium-emphasis">{{ t('setting.about.active7Days') }}</div>
-              <div class="version-stat-number">{{ formatVersionStatisticNumber(activeUsers.last_7_days) }}</div>
-            </div>
-            <div>
-              <div class="text-caption text-medium-emphasis">{{ t('setting.about.active30Days') }}</div>
-              <div class="version-stat-number">{{ formatVersionStatisticNumber(activeUsers.last_30_days) }}</div>
-            </div>
-          </div>
-          <div class="mt-5">
-            <div class="text-subtitle-2 mb-2">{{ t('setting.about.backendVersionStatistic') }}</div>
-            <VTable density="compact">
-              <thead>
-                <tr>
-                  <th>{{ t('setting.about.version') }}</th>
-                  <th class="text-end">{{ t('setting.about.users') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in backendVersionStatistics" :key="`backend-${item.version}`">
-                  <td>
-                    <code>{{ item.version }}</code>
-                  </td>
-                  <td class="text-end">{{ formatVersionStatisticNumber(item.count) }}</td>
-                </tr>
-                <tr v-if="!backendVersionStatistics.length">
-                  <td colspan="2" class="text-medium-emphasis">{{ t('setting.about.noVersionStatisticData') }}</td>
-                </tr>
-              </tbody>
-            </VTable>
-          </div>
-          <div class="mt-5">
-            <div class="text-subtitle-2 mb-2">{{ t('setting.about.frontendVersionStatistic') }}</div>
-            <VTable density="compact">
-              <thead>
-                <tr>
-                  <th>{{ t('setting.about.version') }}</th>
-                  <th class="text-end">{{ t('setting.about.users') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in frontendVersionStatistics" :key="`frontend-${item.version}`">
-                  <td>
-                    <code>{{ item.version }}</code>
-                  </td>
-                  <td class="text-end">{{ formatVersionStatisticNumber(item.count) }}</td>
-                </tr>
-                <tr v-if="!frontendVersionStatistics.length">
-                  <td colspan="2" class="text-medium-emphasis">{{ t('setting.about.noVersionStatisticData') }}</td>
-                </tr>
-              </tbody>
-            </VTable>
-          </div>
-          <div v-if="versionStatistic.updated_at" class="mt-4 text-caption text-medium-emphasis">
-            {{ t('setting.about.lastUpdated') }}: {{ versionStatistic.updated_at }}
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
   </VDialog>
 </template>
 
@@ -625,18 +475,6 @@ onBeforeUnmount(() => {
 
 .section {
   margin-block: 0.5rem 2.5rem;
-}
-
-.version-stat-summary {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-}
-
-.version-stat-number {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 2rem;
 }
 
 .markdown-body :deep(h1),

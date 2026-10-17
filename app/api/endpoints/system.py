@@ -35,12 +35,6 @@ from app.db.user_oper import (
 )
 from app.helper.image import ImageHelper
 from app.helper.locale import LocaleHelper
-from app.helper.market import (
-    PLUGIN_MARKET_WIKI_URL,
-    extract_plugin_market_repos_from_wiki,
-    merge_plugin_market_repos,
-    split_plugin_market_repo_urls,
-)
 from app.helper.message import MessageHelper
 from app.helper.progress import ProgressHelper
 from app.helper.system import SystemHelper
@@ -65,33 +59,12 @@ _PUBLIC_SYSTEM_CONFIG_KEYS = {
         SystemConfigKey.Storages,
         SystemConfigKey.IndexerSites,
         SystemConfigKey.EpisodeFormatRuleTable,
-        SystemConfigKey.DefaultMovieSubscribeConfig,
-        SystemConfigKey.DefaultTvSubscribeConfig,
-        SystemConfigKey.FollowSubscribers,
     )
 }
-_PUBLIC_SETTINGS_KEYS = {"PLUGIN_MARKET"}
 _LOG_DOWNLOAD_LIMIT = 10
 _LOG_DOWNLOAD_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
-
-
-def _is_allowed_plugin_market_wiki_url(wiki_url: str) -> bool:
-    """
-    校验插件市场 Wiki 地址是否属于固定文档源。
-    """
-    parsed_url = urlparse(wiki_url)
-    if parsed_url.scheme != "https":
-        return False
-    if (parsed_url.hostname or "").lower() != "raw.githubusercontent.com":
-        return False
-    return bool(
-        re.fullmatch(
-            r"/jxxghp/MoviePilot-Wiki/[^/]+/plugin\.md",
-            parsed_url.path,
-        )
-    )
 
 
 def _match_nettest_prefix(url: str, prefix: str) -> bool:
@@ -319,21 +292,18 @@ def _collect_named_log_files(name: str) -> list[Path]:
     """
     根据前端传入的日志标识收集可下载日志文件。
 
-    `moviepilot` 固定表示主程序日志，其余标识按插件 ID 处理并映射到
-    `plugins/<plugin_id>.log*`。这里不接收路径或后缀，避免下载入口变成任意
+    只支持 `moviepilot` 主程序日志，不接收路径或后缀，避免下载入口变成任意
     日志文件选择器；滚动日志按当前文件优先、备份文件按修改时间倒序补足。
     """
     normalized_name = (name or "").strip().lower()
     if not normalized_name or not _LOG_DOWNLOAD_NAME_PATTERN.fullmatch(normalized_name):
         raise HTTPException(status_code=404, detail="Not Found")
 
-    log_root = settings.LOG_PATH
-    if normalized_name == "moviepilot":
-        log_dir = log_root
-        log_prefix = "moviepilot.log"
-    else:
-        log_dir = log_root / "plugins"
-        log_prefix = f"{normalized_name}.log"
+    if normalized_name != "moviepilot":
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    log_dir = settings.LOG_PATH
+    log_prefix = "moviepilot.log"
 
     if not log_dir.exists() or not log_dir.is_dir():
         raise HTTPException(status_code=404, detail="Not Found")
@@ -650,8 +620,6 @@ async def get_env_setting(
     return schemas.Response(success=True, data=info)
 
 
-
-
 @router.get("/ping", summary="服务存活检测", response_model=schemas.Response)
 async def ping(_: User = Depends(get_current_active_user_async)) -> schemas.Response:
     """
@@ -728,79 +696,10 @@ async def get_public_setting(
     """
     查询普通用户可读取的非敏感系统设置
     """
-    if key in _PUBLIC_SETTINGS_KEYS:
-        return schemas.Response(success=True, data={"value": getattr(settings, key)})
     if key not in _PUBLIC_SYSTEM_CONFIG_KEYS:
         raise HTTPException(status_code=404, detail="配置项不存在")
     value = SystemConfigOper().get(_PUBLIC_SYSTEM_CONFIG_KEYS[key])
     return schemas.Response(success=True, data={"value": value})
-
-
-@router.post(
-    "/setting/PLUGIN_MARKET/sync-wiki",
-    summary="从Wiki同步插件市场仓库",
-    response_model=schemas.Response,
-)
-async def sync_plugin_market_from_wiki(
-    request: Optional[schemas.PluginMarketSyncRequest] = Body(default=None),
-    _: User = Depends(get_current_active_superuser_async),
-) -> schemas.Response:
-    """
-    从 Wiki 插件文档同步插件市场仓库地址。
-    """
-    wiki_url = (request.wiki_url if request else None) or PLUGIN_MARKET_WIKI_URL
-    wiki_url = wiki_url.strip()
-    if not _is_allowed_plugin_market_wiki_url(wiki_url):
-        return schemas.Response(success=False, message="不支持的 Wiki 同步地址")
-
-    res = await AsyncRequestUtils(
-        ua=settings.USER_AGENT,
-        proxies=settings.PROXY,
-        timeout=30,
-        content_type=None,
-        accept_type="text/plain,*/*",
-    ).get_res(wiki_url)
-    if res is None:
-        return schemas.Response(success=False, message="无法访问 Wiki 插件仓库清单")
-    if res.status_code != 200:
-        return schemas.Response(
-            success=False,
-            message=f"访问 Wiki 插件仓库清单失败，状态码：{res.status_code}",
-        )
-
-    wiki_repos = extract_plugin_market_repos_from_wiki(res.text)
-    if not wiki_repos:
-        return schemas.Response(success=False, message="未在 Wiki 中识别到插件仓库地址")
-
-    local_repos = split_plugin_market_repo_urls(settings.PLUGIN_MARKET)
-    local_repo_keys = {repo.lower() for repo in local_repos}
-    added_count = len([repo for repo in wiki_repos if repo.lower() not in local_repo_keys])
-    merged_repos = merge_plugin_market_repos(local_repos, wiki_repos)
-    merged_value = ",".join(merged_repos)
-
-    success, message = settings.update_setting("PLUGIN_MARKET", merged_value)
-    if success:
-        await eventmanager.async_send_event(
-            etype=EventType.ConfigChanged,
-            data=ConfigChangeEventData(
-                key="PLUGIN_MARKET", value=merged_value, change_type="update"
-            ),
-        )
-    elif success is None:
-        success = True
-
-    return schemas.Response(
-        success=success,
-        message=message,
-        data={
-            "value": merged_value,
-            "repos": merged_repos,
-            "wiki_repos": wiki_repos,
-            "added_count": added_count,
-            "total_count": len(merged_repos),
-            "source_url": wiki_url,
-        },
-    )
 
 
 @router.get("/setting/{key}", summary="查询系统设置", response_model=schemas.Response)
@@ -1018,8 +917,6 @@ async def latest_version(_: schemas.TokenPayload = Depends(verify_token)):
         if ver_json:
             return schemas.Response(success=True, data=ver_json)
     return schemas.Response(success=False)
-
-
 
 
 @router.get(

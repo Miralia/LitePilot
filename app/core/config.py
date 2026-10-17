@@ -152,8 +152,6 @@ class ConfigModel(BaseModel):
     DATA_CLEANUP_MESSAGE_DAYS: int = 90
     # 下载历史表保留天数，0为不清理
     DATA_CLEANUP_DOWNLOAD_HISTORY_DAYS: int = 180
-    # 站点用户数据表保留天数，0为不清理
-    DATA_CLEANUP_SITE_USERDATA_DAYS: int = 180
     # 整理历史表保留天数，0为不清理
     DATA_CLEANUP_TRANSFER_HISTORY_DAYS: int = 365 * 3
 
@@ -379,7 +377,6 @@ class ConfigModel(BaseModel):
     # 新增已入库媒体是否跟随TMDB信息变化
     SCRAP_FOLLOW_TMDB: bool = True
     # 优先使用辅助识别
-    RECOGNIZE_PLUGIN_FIRST: bool = False
     # 共享使用媒体识别数据
     MEDIA_RECOGNIZE_SHARE: bool = True
 
@@ -394,29 +391,6 @@ class ConfigModel(BaseModel):
     WALLPAPER: str = "tmdb"
     # 自定义壁纸api地址
     CUSTOMIZE_WALLPAPER_API_URL: Optional[str] = None
-
-    # ==================== 插件配置 ====================
-    # 插件市场仓库地址，多个地址使用,分隔，地址以/结尾
-    PLUGIN_MARKET: str = (
-        "https://github.com/jxxghp/MoviePilot-Plugins"
-    )
-    # 插件安装数据共享
-    PLUGIN_STATISTIC_SHARE: bool = True
-    # 安装版本统计上报
-    USAGE_STATISTIC_SHARE: bool = True
-    # 是否开启插件热加载
-    PLUGIN_AUTO_RELOAD: bool = False
-    # 本地插件仓库目录，多个地址使用,分隔
-    PLUGIN_LOCAL_REPO_PATHS: Optional[str] = None
-
-    # ==================== 技能配置 ====================
-    # 技能市场仓库地址，多个地址使用,分隔
-    SKILL_MARKET: str = (
-        "https://clawhub.ai,"
-        "https://github.com/openai/skills,"
-        "https://github.com/anthropics/skills,"
-        "https://github.com/vercel-labs/agent-skills"
-    )
 
     # ==================== Github & PIP ====================
     # Github token，提高请求api限流阈值 ghp_****
@@ -914,10 +888,6 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
     @property
     def ROOT_PATH(self):
         return Path(__file__).parents[2]
-
-    @property
-    def PLUGIN_DATA_PATH(self):
-        return self.CONFIG_PATH / "plugins"
 
     @property
     def LOG_PATH(self):

@@ -26,23 +26,18 @@ def _patch_lifespan(monkeypatch, *, failing_step: str | None = None) -> dict:
     for name in (
         "init_routers",
         "init_modules",
-        "init_plugins",
         "init_scheduler",
         "init_monitor",
         "init_command",
     ):
         monkeypatch.setattr(lifecycle, name, MagicMock())
 
-    system_chain = MagicMock()
-    monkeypatch.setattr(lifecycle, "SystemChain", MagicMock(return_value=system_chain))
     monkeypatch.setattr(lifecycle, "init_extra", AsyncMock())
 
     shutdown_steps = {
-        "backup_plugins": system_chain.backup_plugins,
         "stop_command": MagicMock(),
         "stop_monitor": MagicMock(),
         "stop_scheduler": MagicMock(),
-        "stop_plugins": MagicMock(),
         "stop_modules": AsyncMock(),
         "close_http": AsyncMock(),
     }
@@ -50,7 +45,6 @@ def _patch_lifespan(monkeypatch, *, failing_step: str | None = None) -> dict:
         "stop_command",
         "stop_monitor",
         "stop_scheduler",
-        "stop_plugins",
     ):
         monkeypatch.setattr(lifecycle, name, shutdown_steps[name])
     monkeypatch.setattr(lifecycle, "stop_modules", shutdown_steps["stop_modules"])
@@ -74,11 +68,9 @@ def _patch_lifespan(monkeypatch, *, failing_step: str | None = None) -> dict:
 @pytest.mark.parametrize(
     "failing_step",
     [
-        "backup_plugins",
         "stop_command",
         "stop_monitor",
         "stop_scheduler",
-        "stop_plugins",
         "stop_modules",
         "close_http",
     ],
@@ -207,7 +199,6 @@ def test_command_restart_failure_does_not_publish_stop_request(monkeypatch):
 
     stop_event = threading.Event()
     monkeypatch.setattr(global_vars, "STOP_EVENT", stop_event)
-    monkeypatch.setattr(SystemChain, "backup_plugins", MagicMock())
     restart = MagicMock(return_value=(False, "restart failed"))
     monkeypatch.setattr("app.chain.system.SystemHelper.restart", restart)
 

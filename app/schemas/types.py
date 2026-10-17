@@ -61,12 +61,6 @@ class DownloadTaskState(Enum):
 
 # 异步广播事件
 class EventType(Enum):
-    # 插件需要重载
-    PluginReload = "plugin.reload"
-    # 触发插件动作
-    PluginAction = "plugin.action"
-    # 插件触发事件
-    PluginTriggered = "plugin.triggered"
     # 执行命令
     CommandExcute = "command.excute"
     # 站点已删除
@@ -127,9 +121,6 @@ class EventType(Enum):
 
 # EventType中文名称翻译字典
 EVENT_TYPE_NAMES = {
-    EventType.PluginReload: "插件重载",
-    EventType.PluginAction: "触发插件动作",
-    EventType.PluginTriggered: "触发插件事件",
     EventType.CommandExcute: "执行命令",
     EventType.SiteDeleted: "站点已删除",
     EventType.SiteUpdated: "站点已更新",
@@ -163,8 +154,6 @@ EVENT_TYPE_NAMES = {
 
 # 同步链式事件
 class ChainEventType(Enum):
-    # 插件数据重置前
-    PluginDataReset = "plugin.data.reset"
     # 名称识别
     NameRecognize = "name.recognize"
     # 认证验证
@@ -247,42 +236,20 @@ class SystemConfigKey(Enum):
     SubscribeDefaultParams = "SubscribeDefaultParams"
     # 洗版默认过滤规则组
     BestVersionFilterRuleGroups = "BestVersionFilterRuleGroups"
-    # 订阅统计
-    SubscribeReport = "SubscribeReport"
     # 用户自定义CSS
     UserCustomCSS = "UserCustomCSS"
-    # 用户已安装的插件
-    UserInstalledPlugins = "UserInstalledPlugins"
-    # 插件文件夹分组配置
-    PluginFolders = "PluginFolders"
-    # 默认电影订阅规则
-    DefaultMovieSubscribeConfig = "DefaultMovieSubscribeConfig"
-    # 默认电视剧订阅规则
-    DefaultTvSubscribeConfig = "DefaultTvSubscribeConfig"
-    # 用户站点认证参数
-    UserSiteAuthParams = "UserSiteAuthParams"
-    # Follow订阅分享者
-    FollowSubscribers = "FollowSubscribers"
     # 通知发送时间
     NotificationSendTime = "NotificationSendTime"
-    # AI智能体配置
-    AIAgentConfig = "AIAgentConfig"
-    # AI智能体外部MCP服务器配置
-    AIAgentMcpServers = "AIAgentMcpServers"
     # 通知消息格式模板
     NotificationTemplates = "NotificationTemplates"
     # 通知中心清理时间
     NotificationClearBefore = "NotificationClearBefore"
     # 刮削开关设置
     ScrapingSwitchs = "ScrapingSwitchs"
-    # 插件安装统计
-    PluginInstallReport = "PluginInstallReport"
     # 配置向导状态
     SetupWizardState = "SetupWizardState"
     # 绿联影视登录会话缓存
     UgreenSessionCache = "UgreenSessionCache"
-    # 共享媒体识别成功次数
-    MediaRecognizeShareCount = "MediaRecognizeShareCount"
 
 
 # 处理进度Key字典
@@ -315,9 +282,7 @@ class NotificationType(Enum):
     MediaServer = "媒体服务器"
     # 处理失败需要人工干预
     Manual = "手动处理"
-    # 插件消息
-    Plugin = "插件"
-    # 智能体消息
+    # 智能体流式消息
     Agent = "智能体"
     # 其它消息
     Other = "其它"
