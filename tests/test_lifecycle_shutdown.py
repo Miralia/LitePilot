@@ -30,7 +30,6 @@ def _patch_lifespan(monkeypatch, *, failing_step: str | None = None) -> dict:
         "init_scheduler",
         "init_monitor",
         "init_command",
-        "init_workflow",
     ):
         monkeypatch.setattr(lifecycle, name, MagicMock())
 
@@ -40,7 +39,6 @@ def _patch_lifespan(monkeypatch, *, failing_step: str | None = None) -> dict:
 
     shutdown_steps = {
         "backup_plugins": system_chain.backup_plugins,
-        "stop_workflow": MagicMock(),
         "stop_command": MagicMock(),
         "stop_monitor": MagicMock(),
         "stop_scheduler": MagicMock(),
@@ -49,7 +47,6 @@ def _patch_lifespan(monkeypatch, *, failing_step: str | None = None) -> dict:
         "close_http": AsyncMock(),
     }
     for name in (
-        "stop_workflow",
         "stop_command",
         "stop_monitor",
         "stop_scheduler",
@@ -78,7 +75,6 @@ def _patch_lifespan(monkeypatch, *, failing_step: str | None = None) -> dict:
     "failing_step",
     [
         "backup_plugins",
-        "stop_workflow",
         "stop_command",
         "stop_monitor",
         "stop_scheduler",
@@ -224,14 +220,11 @@ def test_command_restart_failure_does_not_publish_stop_request(monkeypatch):
 
 def test_stop_modules_continues_after_internal_owner_failures(monkeypatch):
     """模块关闭编排中的多个失败不能阻断其余清理"""
-    stop_agent = AsyncMock(side_effect=RuntimeError("agent failed"))
-    monkeypatch.setattr(modules_initializer, "stop_agent", stop_agent)
     dependencies = _patch_module_shutdown_dependencies(monkeypatch)
     dependencies["module"].side_effect = RuntimeError("module failed")
 
     asyncio.run(modules_initializer.stop_modules())
 
-    stop_agent.assert_awaited_once_with()
     for dependency in dependencies.values():
         _assert_completed_once(dependency)
 

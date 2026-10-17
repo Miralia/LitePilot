@@ -20,7 +20,6 @@ from fastapi.responses import StreamingResponse
 from app import schemas
 from app.chain.media import MediaChain
 from app.chain.mediaserver import MediaServerChain
-from app.chain.search import SearchChain
 from app.chain.system import SystemChain
 from app.core.config import global_vars, settings
 from app.core.event import eventmanager
@@ -44,8 +43,6 @@ from app.helper.market import (
 )
 from app.helper.message import MessageHelper
 from app.helper.progress import ProgressHelper
-from app.helper.rule import RuleHelper
-from app.helper.server import MoviePilotServerHelper
 from app.helper.system import SystemHelper
 from app.log import logger
 from app.scheduler import Scheduler
@@ -78,45 +75,6 @@ _LOG_DOWNLOAD_LIMIT = 10
 _LOG_DOWNLOAD_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
-def _validate_llm_server_tool_config(env: dict) -> Optional[str]:
-    """校验强制服务端联网搜索配置，返回用户可读错误信息。"""
-    from app.agent.llm.server_tools import (
-        ServerToolRegistry,
-        ServerToolUnavailableError,
-    )
-
-    mode = ServerToolRegistry.normalize_web_search_mode(
-        env.get(
-            "LLM_WEB_SEARCH_MODE",
-            getattr(settings, "LLM_WEB_SEARCH_MODE", "local"),
-        )
-    )
-    if mode != "builtin":
-        return None
-
-    provider = str(
-        env.get("LLM_PROVIDER", getattr(settings, "LLM_PROVIDER", "")) or ""
-    ).strip()
-    model = str(
-        env.get("LLM_MODEL", getattr(settings, "LLM_MODEL", "")) or ""
-    ).strip()
-    base_url = env.get("LLM_BASE_URL", getattr(settings, "LLM_BASE_URL", None))
-    capability = ServerToolRegistry.get_capability(
-        provider=provider,
-        model=model,
-        base_url=str(base_url or "").strip() or None,
-        tool_id="web_search",
-    )
-    if capability:
-        return None
-
-    return str(
-        ServerToolUnavailableError(
-            provider=provider,
-            model=model,
-            tool_id="web_search",
-        )
-    )
 
 
 def _is_allowed_plugin_market_wiki_url(wiki_url: str) -> bool:
@@ -664,30 +622,10 @@ async def get_user_global_setting(_: User = Depends(get_current_active_user_asyn
     # 业务功能相关的配置字段
     info = settings.model_dump(
         include={
-            "AI_AGENT_ENABLE",
-            "AI_AGENT_HIDE_ENTRY",
-            "LLM_SUPPORT_AUDIO_INPUT",
-            "LLM_SUPPORT_AUDIO_OUTPUT",
             "RECOGNIZE_SOURCE",
-            "SEARCH_SOURCE",
-            "AI_RECOMMEND_ENABLED",
         }
     )
-    # 智能助手总开关未开启，智能推荐状态强制返回False
-    if not settings.AI_AGENT_ENABLE:
-        info["AI_RECOMMEND_ENABLED"] = False
-        info["LLM_SUPPORT_AUDIO_INPUT"] = False
-        info["LLM_SUPPORT_AUDIO_OUTPUT"] = False
 
-    # 追加用户唯一ID和订阅分享管理权限
-    share_admin = await MoviePilotServerHelper.async_is_admin_user()
-    info.update(
-        {
-            "USER_UNIQUE_ID": MoviePilotServerHelper.get_user_uuid(),
-            "SUBSCRIBE_SHARE_MANAGE": share_admin,
-            "WORKFLOW_SHARE_MANAGE": share_admin,
-        }
-    )
     return schemas.Response(success=True, data=info)
 
 
@@ -712,12 +650,6 @@ async def get_env_setting(
     return schemas.Response(success=True, data=info)
 
 
-@router.get("/usage/statistic", summary="查询安装版本统计报表", response_model=schemas.Response)
-async def usage_statistic(_: User = Depends(get_current_active_user_async)):
-    """
-    查询安装版本统计报表
-    """
-    return schemas.Response(success=True, data=await MoviePilotServerHelper.async_get_usage_statistic())
 
 
 @router.get("/ping", summary="服务存活检测", response_model=schemas.Response)
@@ -735,10 +667,6 @@ async def set_env_setting(
     """
     更新系统环境变量（仅管理员）
     """
-    validation_error = _validate_llm_server_tool_config(env)
-    if validation_error:
-        return schemas.Response(success=False, message=validation_error)
-
     result = settings.update_settings(env=env)
     # 统计成功和失败的结果
     success_updates = {k: v for k, v in result.items() if v[0]}
@@ -1092,75 +1020,6 @@ async def latest_version(_: schemas.TokenPayload = Depends(verify_token)):
     return schemas.Response(success=False)
 
 
-@router.get("/ruletest", summary="过滤规则测试", response_model=schemas.Response)
-def ruletest(
-    title: str,
-    rulegroup_name: str,
-    subtitle: Optional[str] = None,
-    _: schemas.TokenPayload = Depends(verify_token),
-):
-    """
-    过滤规则测试，规则类型 1-订阅，2-洗版，3-搜索
-    """
-    metainfo = MetaInfo(title=title, subtitle=subtitle)
-    torrent = schemas.TorrentInfo(
-        title=title,
-        description=subtitle,
-    )
-    # 查询规则组详情
-    rulegroup = RuleHelper().get_rule_group(rulegroup_name)
-    result_data = {
-        "title": title,
-        "subtitle": subtitle,
-        "rulegroup_name": rulegroup_name,
-        "rulegroup": rulegroup.model_dump() if rulegroup else None,
-        "meta_info": metainfo.to_dict(),
-        "media_info": None,
-        "torrent_info": torrent.model_dump(),
-        "priority": None,
-        "matched": False,
-    }
-    if not rulegroup:
-        return schemas.Response(
-            success=False,
-            message=f"过滤规则组 {rulegroup_name} 不存在！",
-            data=result_data,
-        )
-
-    # 根据标题查询媒体信息
-    media_info = MediaChain().recognize_by_meta(
-        metainfo,
-        obtain_images=False,
-    )
-    result_data["media_info"] = media_info.to_dict() if media_info else None
-    if not media_info:
-        return schemas.Response(
-            success=False,
-            message="未识别到媒体信息！",
-            data=result_data,
-        )
-
-    # 过滤
-    result = SearchChain().filter_torrents(
-        rule_groups=[rulegroup.name], torrent_list=[torrent], mediainfo=media_info
-    )
-    if not result:
-        return schemas.Response(
-            success=False,
-            message="不符合过滤规则！",
-            data=result_data,
-        )
-    result_data.update(
-        {
-            "matched": True,
-            "priority": 100 - result[0].pri_order + 1,
-            "torrent_info": result[0].model_dump(),
-        }
-    )
-    return schemas.Response(
-        success=True,
-        data=result_data,
-    )
 
 
 @router.get(

@@ -23,7 +23,6 @@ from app.db.message_oper import MessageOper
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.user_oper import UserOper
 from app.helper.message import MessageHelper, MessageQueueManager, MessageTemplateHelper
-from app.helper.server import MoviePilotServerHelper
 from app.helper.service import ServiceConfigHelper
 from app.log import logger
 from app.schemas import (
@@ -517,70 +516,12 @@ class ChainBase(metaclass=ABCMeta):
         )
 
     @staticmethod
-    def _can_use_media_recognize_share(
-            meta: Optional[MetaBase],
-            tmdbid: Optional[int],
-            doubanid: Optional[str],
-            bangumiid: Optional[int],
-            anilistid: Optional[int],
-    ) -> bool:
-        """
-        仅在名称识别场景下使用共享识别，显式ID识别不再重复回查
-        """
-        return bool(
-            settings.MEDIA_RECOGNIZE_SHARE
-            and meta
-            and not any([tmdbid, doubanid, bangumiid, anilistid])
-        )
 
     @staticmethod
-    def _snapshot_recognize_cache_meta(meta: Optional[MetaBase]) -> Optional[MetaBase]:
-        """
-        保存共享识别前的本地缓存关键元数据，用于共享成功后回填正缓存覆盖负缓存。
-        """
-        if not meta:
-            return None
-        return copy.deepcopy(meta)
 
-    def _update_local_recognize_cache(
-            self,
-            meta: Optional[MetaBase],
-            mediainfo: Optional[MediaInfo],
-    ) -> None:
-        """
-        共享识别成功后回填本地识别缓存，避免名称负缓存导致后续重复回查共享。
-        """
-        if not meta or not mediainfo:
-            return
-        self.run_module(
-            "update_recognize_cache",
-            meta=meta,
-            mediainfo=mediainfo,
-        )
 
-    async def _async_update_local_recognize_cache(
-            self,
-            meta: Optional[MetaBase],
-            mediainfo: Optional[MediaInfo],
-    ) -> None:
-        """
-        异步回填本地识别缓存。
-        """
-        if not meta or not mediainfo:
-            return
-        await self.async_run_module(
-            "async_update_recognize_cache",
-            meta=meta,
-            mediainfo=mediainfo,
-        )
 
     @staticmethod
-    def _record_media_recognize_share_hit() -> None:
-        """记录一次共享媒体识别成功命中，统计失败不影响识别结果。"""
-        try:
-            SystemConfigOper().increment(SystemConfigKey.MediaRecognizeShareCount)
-        except Exception as err:
-            logger.error(f"记录共享媒体识别命中次数失败：{str(err)}")
 
     @staticmethod
     def _resolve_media_source_params(
@@ -705,43 +646,8 @@ class ChainBase(metaclass=ABCMeta):
                 **module_kwargs,
             )
         if mediainfo:
-            if not mediainfo.recognize_cache_hit:
-                MoviePilotServerHelper.report_recognize_share(
-                    meta=meta,
-                    mediainfo=mediainfo,
-                    keyword_meta=share_query_meta,
-                )
             return mediainfo
 
-        if not source and self._can_use_media_recognize_share(
-                share_query_meta, tmdbid, doubanid, bangumiid, anilistid
-        ):
-            shared_cache_meta = self._snapshot_recognize_cache_meta(meta)
-            shared_item = MoviePilotServerHelper.query_recognize_share(
-                meta=meta,
-                mtype=mtype,
-                keyword_meta=share_query_meta,
-            )
-            shared_params = MoviePilotServerHelper.to_recognize_params(shared_item)
-            if shared_params:
-                with fresh(not cache):
-                    mediainfo = self.run_module(
-                        "recognize_media",
-                        meta=meta,
-                        mtype=shared_params.get("mtype") or mtype,
-                        source=shared_params.get("source"),
-                        mediaid=shared_params.get("mediaid"),
-                        tmdbid=shared_params.get("tmdbid"),
-                        doubanid=shared_params.get("doubanid"),
-                        bangumiid=shared_params.get("bangumiid"),
-                        anilistid=shared_params.get("anilistid"),
-                        episode_group=episode_group,
-                        cache=cache,
-                    )
-                if mediainfo:
-                    self._update_local_recognize_cache(shared_cache_meta, mediainfo)
-                    self._record_media_recognize_share_hit()
-                    return mediainfo
         return None
 
     async def async_recognize_media(
@@ -815,43 +721,8 @@ class ChainBase(metaclass=ABCMeta):
                 **module_kwargs,
             )
         if mediainfo:
-            if not mediainfo.recognize_cache_hit:
-                await MoviePilotServerHelper.async_report_recognize_share(
-                    meta=meta,
-                    mediainfo=mediainfo,
-                    keyword_meta=share_query_meta,
-                )
             return mediainfo
 
-        if not source and self._can_use_media_recognize_share(
-                share_query_meta, tmdbid, doubanid, bangumiid, anilistid
-        ):
-            shared_cache_meta = self._snapshot_recognize_cache_meta(meta)
-            shared_item = await MoviePilotServerHelper.async_query_recognize_share(
-                meta=meta,
-                mtype=mtype,
-                keyword_meta=share_query_meta,
-            )
-            shared_params = MoviePilotServerHelper.to_recognize_params(shared_item)
-            if shared_params:
-                async with async_fresh(not cache):
-                    mediainfo = await self.async_run_module(
-                        "async_recognize_media",
-                        meta=meta,
-                        mtype=shared_params.get("mtype") or mtype,
-                        source=shared_params.get("source"),
-                        mediaid=shared_params.get("mediaid"),
-                        tmdbid=shared_params.get("tmdbid"),
-                        doubanid=shared_params.get("doubanid"),
-                        bangumiid=shared_params.get("bangumiid"),
-                        anilistid=shared_params.get("anilistid"),
-                        episode_group=episode_group,
-                        cache=cache,
-                    )
-                if mediainfo:
-                    await self._async_update_local_recognize_cache(shared_cache_meta, mediainfo)
-                    await run_in_threadpool(self._record_media_recognize_share_hit)
-                    return mediainfo
         return None
 
     def match_doubaninfo(

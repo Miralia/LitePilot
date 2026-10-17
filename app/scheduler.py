@@ -20,15 +20,11 @@ from sqlalchemy.orm import Session
 from app import schemas
 from app.chain import ChainBase
 from app.chain.mediaserver import MediaServerChain
-from app.chain.recommend import RecommendChain
-from app.chain.subscribe import SubscribeChain
 from app.chain.transfer import TransferChain
-from app.chain.workflow import WorkflowChain
 from app.core.config import settings, global_vars
 from app.core.event import Event, eventmanager
 from app.core.plugin import PluginManager
 from app.db import SessionFactory
-from app.db.agenttask_oper import AgentTaskOper
 from app.db.models.downloadhistory import DownloadHistory, DownloadFiles
 from app.db.models.message import Message
 from app.db.models.siteuserdata import SiteUserData
@@ -37,11 +33,10 @@ from app.db.systemconfig_oper import SystemConfigOper
 from app.helper.image import WallpaperHelper
 from app.helper.message import MessageHelper
 from app.helper.progress import ProgressHelper
-from app.helper.server import MoviePilotServerHelper
 from app.helper.service import ServiceConfigHelper
 from app.helper.sites import SitesHelper  # noqa
 from app.log import logger
-from app.schemas import Notification, NotificationType, Workflow
+from app.schemas import Notification, NotificationType
 from app.schemas.types import EventType, SystemConfigKey
 from app.utils.gc import get_memory_usage
 from app.utils.mixins import ConfigReloadMixin
@@ -50,7 +45,6 @@ from app.utils.timer import TimerUtils
 
 lock = threading.Lock()
 SCHEDULER_PROGRESS_PREFIX = "scheduler"
-AGENT_TASK_JOB_PREFIX = "agent-task"
 
 
 class SchedulerChain(ChainBase):
@@ -406,33 +400,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     "func": mediaserver_chain.sync,
                     "running": False,
                 },
-                "subscribe_tmdb": {
-                    "name": "订阅元数据更新",
-                    "func": SubscribeChain().check,
-                    "running": False,
-                },
-                "subscribe_search": {
-                    "name": "订阅搜索补全",
-                    "func": SubscribeChain().search,
-                    "running": False,
-                    "kwargs": {"state": "R"},
-                },
-                "new_subscribe_search": {
-                    "name": "新增订阅搜索",
-                    "func": SubscribeChain().search,
-                    "running": False,
-                    "kwargs": {"state": "N"},
-                },
-                "subscribe_refresh": {
-                    "name": "订阅刷新",
-                    "func": SubscribeChain().refresh,
-                    "running": False,
-                },
-                "subscribe_follow": {
-                    "name": "关注的订阅分享",
-                    "func": SubscribeChain().follow,
-                    "running": False,
-                },
                 "transfer": {
                     "name": "下载文件整理",
                     "func": TransferChain().process,
@@ -458,35 +425,15 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     "func": WallpaperHelper().get_wallpapers,
                     "running": False,
                 },
-                "recommend_refresh": {
-                    "name": "推荐缓存",
-                    "func": RecommendChain().refresh_recommend,
-                    "running": False,
-                },
                 "plugin_market_refresh": {
                     "name": "插件市场缓存",
                     "func": PluginManager().async_get_online_plugins,
                     "running": False,
                     "kwargs": {"force": True},
                 },
-                "subscribe_calendar_cache": {
-                    "name": "订阅日历缓存",
-                    "func": SubscribeChain().cache_calendar,
-                    "running": False,
-                },
                 "full_gc": {
                     "name": "主动内存回收",
                     "func": self.full_gc,
-                    "running": False,
-                },
-                "agent_heartbeat": {
-                    "name": "智能体定时任务",
-                    "func": self.agent_heartbeat,
-                    "running": False,
-                },
-                "usage_report": {
-                    "name": "安装版本统计上报",
-                    "func": MoviePilotServerHelper.report_usage,
                     "running": False,
                 },
             }
@@ -520,77 +467,10 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     kwargs={"job_id": job_id},
                 )
 
-            # 新增订阅时搜索（5分钟检查一次）
-            self._scheduler.add_job(
-                self.start,
-                "interval",
-                id="new_subscribe_search",
-                name="新增订阅搜索",
-                minutes=5,
-                kwargs={"job_id": "new_subscribe_search"},
-            )
 
-            # 检查更新订阅TMDB数据（每隔6小时）
-            self._scheduler.add_job(
-                self.start,
-                "interval",
-                id="subscribe_tmdb",
-                name="订阅元数据更新",
-                hours=6,
-                kwargs={"job_id": "subscribe_tmdb"},
-            )
 
-            # 订阅状态每隔24小时搜索一次
-            if settings.SUBSCRIBE_SEARCH:
-                self._scheduler.add_job(
-                    self.start,
-                    "interval",
-                    id="subscribe_search",
-                    name="订阅搜索补全",
-                    hours=settings.SUBSCRIBE_SEARCH_INTERVAL,
-                    kwargs={"job_id": "subscribe_search"},
-                )
 
-            if settings.SUBSCRIBE_MODE == "spider":
-                # 站点首页种子定时刷新模式
-                triggers = TimerUtils.random_scheduler(num_executions=32)
-                for trigger in triggers:
-                    self._scheduler.add_job(
-                        self.start,
-                        "cron",
-                        id=f"subscribe_refresh|{trigger.hour}:{trigger.minute}",
-                        name="订阅刷新",
-                        hour=trigger.hour,
-                        minute=trigger.minute,
-                        kwargs={"job_id": "subscribe_refresh"},
-                    )
-            else:
-                # RSS订阅模式
-                if (
-                        not settings.SUBSCRIBE_RSS_INTERVAL
-                        or not str(settings.SUBSCRIBE_RSS_INTERVAL).isdigit()
-                ):
-                    settings.SUBSCRIBE_RSS_INTERVAL = 30
-                elif int(settings.SUBSCRIBE_RSS_INTERVAL) < 5:
-                    settings.SUBSCRIBE_RSS_INTERVAL = 5
-                self._scheduler.add_job(
-                    self.start,
-                    "interval",
-                    id="subscribe_refresh",
-                    name="RSS订阅刷新",
-                    minutes=int(settings.SUBSCRIBE_RSS_INTERVAL),
-                    kwargs={"job_id": "subscribe_refresh"},
-                )
 
-            # 关注订阅分享（每1小时）
-            self._scheduler.add_job(
-                self.start,
-                "interval",
-                id="subscribe_follow",
-                name="关注的订阅分享",
-                hours=1,
-                kwargs={"job_id": "subscribe_follow"},
-            )
 
             # 下载器文件转移（每5分钟）
             self._scheduler.add_job(
@@ -635,16 +515,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     kwargs={"job_id": "data_cleanup"},
                 )
 
-            # 推荐缓存
-            self._scheduler.add_job(
-                self.start,
-                "interval",
-                id="recommend_refresh",
-                name="推荐缓存",
-                hours=24,
-                next_run_time=datetime.now(pytz.timezone(settings.TZ)) + timedelta(seconds=5),
-                kwargs={"job_id": "recommend_refresh"},
-            )
 
             # 插件市场缓存
             self._scheduler.add_job(
@@ -656,16 +526,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                 kwargs={"job_id": "plugin_market_refresh"},
             )
 
-            # 订阅日历缓存
-            self._scheduler.add_job(
-                self.start,
-                "interval",
-                id="subscribe_calendar_cache",
-                name="订阅日历缓存",
-                hours=6,
-                next_run_time=datetime.now(pytz.timezone(settings.TZ)) + timedelta(minutes=2),
-                kwargs={"job_id": "subscribe_calendar_cache"},
-            )
 
             # 主动内存回收
             if settings.MEMORY_GC_INTERVAL:
@@ -678,34 +538,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     kwargs={"job_id": "full_gc"},
                 )
 
-            # 智能体定时任务检查
-            if settings.AI_AGENT_ENABLE and settings.AI_AGENT_JOB_INTERVAL:
-                self._scheduler.add_job(
-                    self.start,
-                    "interval",
-                    id="agent_heartbeat",
-                    name="智能体定时任务",
-                    hours=settings.AI_AGENT_JOB_INTERVAL,
-                    kwargs={"job_id": "agent_heartbeat"},
-                )
-
-            # 安装版本统计上报
-            if settings.USAGE_STATISTIC_SHARE:
-                self._scheduler.add_job(
-                    self.start,
-                    "interval",
-                    id="usage_report",
-                    name="安装版本统计上报",
-                    hours=12,
-                    kwargs={"job_id": "usage_report"},
-                )
-
-            # 初始化工作流服务
-            self.init_workflow_jobs()
-
-            # 恢复 Agent 自主定时任务
-            if settings.AI_AGENT_ENABLE:
-                self.init_agent_task_jobs()
 
             # 初始化插件服务
             self.init_plugin_jobs()
@@ -982,159 +814,12 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                 # 运行结束
                 self.__finish_job(job_id=job_id, success=success, error=error)
 
-    @staticmethod
-    def _get_agent_task_job_id(task_id: int) -> str:
-        """生成 Agent 自主定时任务的调度器 Job ID。"""
-        return f"{AGENT_TASK_JOB_PREFIX}-{task_id}"
 
-    def start_agent_task(self, task_id: int) -> bool:
-        """
-        将指定 Agent 自主定时任务提交到运行时调度器立即执行。
 
-        :param task_id: Agent 自主定时任务 ID
-        :return: 任务存在且未运行时返回 True，否则返回 False
-        """
-        job_id = self._get_agent_task_job_id(task_id)
-        with self._lock:
-            job = self._jobs.get(job_id)
-            if not job or job.get("running"):
-                return False
-        self.start(job_id)
-        return True
 
-    def init_agent_task_jobs(self) -> None:
-        """
-        从数据库恢复所有启用的 Agent 自主定时任务。
-        """
-        oper = AgentTaskOper()
-        for task in oper.list(enabled=True):
-            if task.last_status == "running":
-                oper.update(
-                    task_id=task.id,
-                    payload={
-                        "last_status": "waiting",
-                        "last_result": "服务重启后恢复调度",
-                    },
-                )
-            self.update_agent_task_job(task.id)
 
-    def update_agent_task_job(self, task_id: int) -> Optional[str]:
-        """
-        按数据库中的最新配置新增或替换 Agent 自主定时任务。
 
-        :param task_id: Agent 定时任务 ID
-        :return: 下一次执行时间，不可调度时返回 None
-        """
-        self.remove_agent_task_job(task_id)
-        task = AgentTaskOper().get(task_id)
-        if (
-                not settings.AI_AGENT_ENABLE
-                or not task
-                or not task.enabled
-                or not self._scheduler
-        ):
-            return None
 
-        trigger_value = (
-            task.cron_expression if task.trigger_type == "cron" else task.run_at
-        )
-        try:
-            trigger = TimerUtils.build_schedule_trigger(
-                trigger_type=task.trigger_type,
-                trigger_value=trigger_value,
-                timezone_name=settings.TZ,
-            )
-        except (TypeError, ValueError) as err:
-            logger.error(f"Agent 定时任务 {task_id} 的触发配置无效：{str(err)}")
-            return None
-
-        job_id = self._get_agent_task_job_id(task_id)
-        with self._lock:
-            self._jobs[job_id] = {
-                "name": task.name,
-                "provider_name": "[Agent]",
-                "func": self.execute_agent_task,
-                "running": False,
-                "kwargs": {"task_id": task_id},
-            }
-            self._scheduler.add_job(
-                self.start,
-                trigger=trigger,
-                id=job_id,
-                name=task.name,
-                kwargs={"job_id": job_id, "task_id": task_id},
-                coalesce=True,
-                max_instances=1,
-                misfire_grace_time=None,
-                replace_existing=True,
-            )
-        return self.get_agent_task_next_run(task_id)
-
-    def remove_agent_task_job(self, task_id: int) -> None:
-        """
-        从运行时调度器移除 Agent 自主定时任务。
-
-        :param task_id: Agent 定时任务 ID
-        """
-        job_id = self._get_agent_task_job_id(task_id)
-        with self._lock:
-            self._jobs.pop(job_id, None)
-            if not self._scheduler:
-                return
-            try:
-                self._scheduler.remove_job(job_id)
-            except JobLookupError:
-                pass
-
-    def get_agent_task_next_run(self, task_id: int) -> Optional[str]:
-        """
-        查询 Agent 自主定时任务的下一次执行时间。
-
-        :param task_id: Agent 定时任务 ID
-        :return: 带时区的 ISO 8601 时间，不再执行时返回 None
-        """
-        job_id = self._get_agent_task_job_id(task_id)
-        if self._scheduler:
-            job = self._scheduler.get_job(job_id)
-            next_run_time = getattr(job, "next_run_time", None) if job else None
-            if next_run_time:
-                return next_run_time.isoformat(timespec="seconds")
-
-        task = AgentTaskOper().get(task_id)
-        if not task or not task.enabled:
-            return None
-        trigger_value = (
-            task.cron_expression if task.trigger_type == "cron" else task.run_at
-        )
-        try:
-            next_run_time = TimerUtils.get_schedule_next_run_time(
-                trigger_type=task.trigger_type,
-                trigger_value=trigger_value,
-                timezone_name=settings.TZ,
-            )
-        except (TypeError, ValueError):
-            return None
-        return (
-            next_run_time.isoformat(timespec="seconds")
-            if next_run_time
-            else None
-        )
-
-    async def execute_agent_task(self, task_id: int) -> tuple[bool, str]:
-        """
-        唤醒 Agent 执行指定自主定时任务。
-
-        :param task_id: Agent 定时任务 ID
-        :return: 执行是否成功及结果摘要
-        """
-        from app.agent import agent_manager
-
-        try:
-            return await agent_manager.execute_scheduled_task(task_id)
-        finally:
-            task = AgentTaskOper().get(task_id)
-            if task and task.trigger_type == "date" and not task.enabled:
-                self.remove_agent_task_job(task_id)
 
     def init_plugin_jobs(self):
         """
@@ -1151,44 +836,7 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
             return
         self.update_plugin_job(plugin_id)
 
-    def init_workflow_jobs(self):
-        """
-        初始化工作流定时服务
-        """
-        for workflow in WorkflowChain().get_timer_workflows() or []:
-            self.update_workflow_job(workflow)
 
-    def remove_workflow_job(self, workflow: Workflow):
-        """
-        移除工作流服务
-        """
-        if not self._scheduler:
-            return
-        with self._lock:
-            job_id = f"workflow-{workflow.id}"
-            service = self._jobs.pop(job_id, {})
-            if not service:
-                return
-            try:
-                # 在调度器中查找并移除对应的 job
-                job_removed = False
-                for job in list(self._scheduler.get_jobs()):
-                    if job_id == job.id:
-                        try:
-                            self._scheduler.remove_job(job.id)
-                            job_removed = True
-                        except JobLookupError:
-                            pass
-                        break
-                if job_removed:
-                    logger.info(f"移除工作流服务：{service.get('name')}")
-            except Exception as e:
-                logger.error(f"移除工作流服务失败：{str(e)} - {job_id}: {service}")
-                SchedulerChain().messagehelper.put(
-                    title=f"工作流 {workflow.name} 服务移除失败",
-                    message=str(e),
-                    role="system",
-                )
 
     def remove_plugin_job(self, pid: str, job_id: Optional[str] = None):
         """
@@ -1242,40 +890,6 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                         role="system",
                     )
 
-    def update_workflow_job(self, workflow: Workflow):
-        """
-        更新工作流定时服务
-        """
-        if not self._scheduler:
-            return
-        # 移除该工作流的全部服务
-        self.remove_workflow_job(workflow)
-        # 添加工作流服务
-        with self._lock:
-            try:
-                job_id = f"workflow-{workflow.id}"
-                self._jobs[job_id] = {
-                    "func": WorkflowChain().process,
-                    "name": workflow.name,
-                    "provider_name": "工作流",
-                    "running": False,
-                }
-                self._scheduler.add_job(
-                    self.start,
-                    trigger=CronTrigger.from_crontab(workflow.timer),
-                    id=job_id,
-                    name=workflow.name,
-                    kwargs={"job_id": job_id, "workflow_id": workflow.id},
-                    replace_existing=True,
-                )
-                logger.info(f"注册工作流服务：{workflow.name} - {workflow.timer}")
-            except Exception as e:
-                logger.error(f"注册工作流服务失败：{workflow.name} - {str(e)}")
-                SchedulerChain().messagehelper.put(
-                    title=f"工作流 {workflow.name} 服务注册失败",
-                    message=str(e),
-                    role="system",
-                )
 
     def update_plugin_job(self, pid: str):
         """
@@ -1435,12 +1049,4 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
             f"主动内存回收完成，回收对象数: {collected}，释放内存: {memory_freed:.2f} MB"
         )
 
-    @staticmethod
-    async def agent_heartbeat():
-        """
-        智能体心跳唤醒：检查并执行待处理的定时任务
-        """
-        from app.agent import agent_manager
-
-        await agent_manager.heartbeat_check_jobs()
 

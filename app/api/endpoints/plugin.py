@@ -30,7 +30,6 @@ from app.db.user_oper import (
     get_current_active_superuser_async,
 )
 from app.factory import app
-from app.helper.server import MoviePilotServerHelper
 from app.helper.plugin import PluginHelper
 from app.log import logger
 from app.scheduler import Scheduler
@@ -489,7 +488,7 @@ async def statistic(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
     插件安装统计
     """
-    return await MoviePilotServerHelper.async_get_plugin_statistic()
+    return {}
 
 
 @router.get(
@@ -504,12 +503,7 @@ async def plugin_ratings(
     """
     批量查询插件平均分、评分人数和当前安装实例评分。
     """
-    requested_ids = plugin_ids.split(",") if plugin_ids is not None else None
-    ratings = await MoviePilotServerHelper.async_get_plugin_ratings(requested_ids)
-    return {
-        plugin_id: schemas.PluginRating.model_validate(rating)
-        for plugin_id, rating in ratings.items()
-    }
+    return {}
 
 
 @router.get(
@@ -524,8 +518,7 @@ async def plugin_rating(
     """
     查询单个插件平均分、评分人数和当前安装实例评分。
     """
-    rating = await MoviePilotServerHelper.async_get_plugin_rating(plugin_id)
-    return schemas.PluginRating.model_validate(rating)
+    return schemas.PluginRating(plugin_id=plugin_id, rating=0, votes=0)
 
 
 @router.post(
@@ -548,13 +541,7 @@ async def rate_plugin(
             detail=f"插件 {plugin_id} 未安装，无法评分",
         )
 
-    rating = await MoviePilotServerHelper.async_submit_plugin_rating(
-        plugin_id,
-        payload.rating,
-    )
-    if rating is None:
-        return schemas.Response(success=False, message="连接MoviePilot服务器失败")
-    return schemas.Response(success=True, data=rating)
+    return schemas.Response(success=False, message="插件评分依赖 MoviePilot 社区服务，本分支已移除")
 
 
 @router.get(
@@ -595,7 +582,6 @@ async def install(
             )
             if compatible_message:
                 return schemas.Response(success=False, message=compatible_message)
-        await MoviePilotServerHelper.async_install_plugin_reg(plugin_id=plugin_id, repo_url=repo_url)
     else:
         # 插件不存在或需要强制安装，下载安装并注册插件
         if repo_url:
@@ -605,7 +591,6 @@ async def install(
             # 安装失败则直接响应
             if not state:
                 return schemas.Response(success=False, message=msg)
-            await MoviePilotServerHelper.async_install_plugin_reg(plugin_id=plugin_id, repo_url=repo_url)
         else:
             # repo_url 为空时，也直接响应
             return schemas.Response(

@@ -9,9 +9,7 @@ from app.core.module import ModuleManager
 from app.core.event import EventManager
 from app.helper.thread import ThreadHelper
 from app.helper.message import stop_message
-from app.helper.server import MoviePilotServerHelper
 from app.db import close_database
-from app.startup.agent_initializer import init_agent, stop_agent
 
 
 def start_frontend():
@@ -90,7 +88,6 @@ async def stop_modules():
         except Exception as err:
             logger.error(f"关闭{name}失败：{err}")
 
-    await run_step("AI智能体", stop_agent)
     await run_step("模块", lambda: ModuleManager().stop())
     await run_step("事件消费", lambda: EventManager().stop())
     await run_step("线程池", lambda: ThreadHelper().shutdown())
@@ -110,12 +107,5 @@ def init_modules():
     ModuleManager()
     # 启动事件消费
     EventManager().start()
-    # 初始化共享服务端状态
-    MoviePilotServerHelper.init_plugin_report()
-    MoviePilotServerHelper.init_subscribe_report()
-    MoviePilotServerHelper.get_user_uuid()
-    MoviePilotServerHelper.get_github_user()
-    # 初始化AI智能体
-    init_agent()
     # 启动前端服务
     start_frontend()

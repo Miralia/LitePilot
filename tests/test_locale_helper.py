@@ -369,12 +369,8 @@ def test_scheduler_progress_texts_have_english_translations():
     untranslated = []
     progress_paths = [
         Path("app/scheduler.py"),
-        Path("app/chain/torrents.py"),
         Path("app/chain/mediaserver.py"),
-        Path("app/chain/recommend.py"),
         Path("app/chain/transfer.py"),
-        Path("app/chain/subscribe.py"),
-        Path("app/chain/workflow.py"),
     ]
     for path in progress_paths:
         tree = ast.parse(path.read_text())

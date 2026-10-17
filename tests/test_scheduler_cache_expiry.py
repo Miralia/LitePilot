@@ -28,12 +28,9 @@ def test_meta_cache_expire_does_not_schedule_bulk_cache_clear(monkeypatch):
     generic_chain = Mock()
     for name in [
         "MediaServerChain",
-        "RecommendChain",
         "SchedulerChain",
-        "SubscribeChain",
         "TransferChain",
         "WallpaperHelper",
-        "WorkflowChain",
         "PluginManager",
     ]:
         monkeypatch.setattr(scheduler_module, name, lambda: generic_chain)
@@ -48,8 +45,6 @@ def test_meta_cache_expire_does_not_schedule_bulk_cache_clear(monkeypatch):
         lambda **kwargs: background_scheduler,
     )
     monkeypatch.setattr(Scheduler, "stop", lambda self: None)
-    monkeypatch.setattr(Scheduler, "init_workflow_jobs", lambda self: None)
-    monkeypatch.setattr(Scheduler, "init_agent_task_jobs", lambda self: None)
     monkeypatch.setattr(Scheduler, "init_plugin_jobs", lambda self: None)
     monkeypatch.setattr(scheduler_module.settings, "DEV", False)
     monkeypatch.setattr(scheduler_module.settings, "SUBSCRIBE_SEARCH", False)

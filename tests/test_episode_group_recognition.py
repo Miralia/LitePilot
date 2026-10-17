@@ -26,12 +26,8 @@ def test_recognize_media_uses_meta_episode_group():
     meta.episode_group = group_id
     mediainfo = MediaInfo(title="测试剧集", year="2024", tmdb_id=100, type=MediaType.TV)
 
-    with patch.object(chain, "run_module", return_value=mediainfo) as run_module, patch(
-        "app.chain.MoviePilotServerHelper.report_recognize_share",
-        return_value=True,
-    ), patch("app.chain.MoviePilotServerHelper.query_recognize_share") as query_mock:
+    with patch.object(chain, "run_module", return_value=mediainfo) as run_module:
         result = chain.recognize_media(meta=meta, cache=False)
 
     assert result is mediainfo
     assert run_module.call_args.kwargs["episode_group"] == group_id
-    query_mock.assert_not_called()

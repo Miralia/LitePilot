@@ -328,6 +328,7 @@
     "压缩包内容为空": "Archive content is empty",
     "压缩包中无可写入文件": "Archive contains no writable files",
     "连接MoviePilot服务器失败": "Failed to connect to MoviePilot server",
+    "插件评分依赖 MoviePilot 社区服务，本分支已移除": "Plugin rating depends on the MoviePilot community service, which this branch has removed",
     "当前没有开启订阅数据共享功能": "Subscription data sharing is not enabled",
     "当前没有开启工作流数据共享功能": "Workflow data sharing is not enabled",
     "请分享有动作和流程的工作流": "Please share a workflow that contains actions and flows",

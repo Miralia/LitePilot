@@ -45,16 +45,12 @@ def test_explicit_source_recognition_reaches_plugins_with_all_ids() -> None:
     )
     chain.run_module = Mock(return_value=media)
 
-    with patch(
-        "app.chain.MoviePilotServerHelper.report_recognize_share",
-        return_value=False,
-    ):
-        result = chain.recognize_media(
-            source="anilist",
-            mediaid="154587",
-            tmdbid=999,
-            mtype=MediaType.TV,
-        )
+    result = chain.recognize_media(
+        source="anilist",
+        mediaid="154587",
+        tmdbid=999,
+        mtype=MediaType.TV,
+    )
 
     assert result is media
     call = chain.run_module.call_args
@@ -73,11 +69,7 @@ def test_default_recognition_passes_empty_generic_identity() -> None:
     meta.cn_name = "测试电影"
     meta.type = MediaType.MOVIE
 
-    with patch(
-        "app.chain.MoviePilotServerHelper.report_recognize_share",
-        return_value=False,
-    ):
-        result = chain.recognize_media(meta=meta)
+    result = chain.recognize_media(meta=meta)
 
     assert result is media
     call = chain.run_module.call_args

@@ -170,7 +170,7 @@ def test_user_helper_message_does_not_enter_sse_queue() -> None:
     assert helper.get() is None
 
 
-def test_notification_post_message_is_persisted_without_sse_queue() -> None:
+def test_notification_post_message_is_persisted_without_sse_queue(monkeypatch) -> None:
     """
     业务通知通过消息链发送时只登记数据库，不进入前端 SSE 队列。
     """
@@ -179,8 +179,8 @@ def test_notification_post_message_is_persisted_without_sse_queue() -> None:
     _reset_message_helper(helper)
     chain = ChainBase()
 
-    chain.messagequeue.send_message = Mock()
-    chain.eventmanager.send_event = Mock()
+    monkeypatch.setattr(chain.messagequeue, "send_message", Mock())
+    monkeypatch.setattr(chain.eventmanager, "send_event", Mock())
 
     chain.post_message(
         Notification(
@@ -198,7 +198,7 @@ def test_notification_post_message_is_persisted_without_sse_queue() -> None:
     chain.messagequeue.send_message.assert_called_once()
 
 
-def test_agent_notification_post_message_is_persisted_without_sse_queue() -> None:
+def test_agent_notification_post_message_is_persisted_without_sse_queue(monkeypatch) -> None:
     """
     智能体消息通过消息链发送时登记数据库，但不进入前端 SSE 队列。
     """
@@ -207,8 +207,8 @@ def test_agent_notification_post_message_is_persisted_without_sse_queue() -> Non
     _reset_message_helper(helper)
     chain = ChainBase()
 
-    chain.messagequeue.send_message = Mock()
-    chain.eventmanager.send_event = Mock()
+    monkeypatch.setattr(chain.messagequeue, "send_message", Mock())
+    monkeypatch.setattr(chain.eventmanager, "send_event", Mock())
 
     chain.post_message(
         Notification(
@@ -226,15 +226,15 @@ def test_agent_notification_post_message_is_persisted_without_sse_queue() -> Non
     chain.messagequeue.send_message.assert_called_once()
 
 
-def test_transient_notification_post_message_skips_history_but_dispatches() -> None:
+def test_transient_notification_post_message_skips_history_but_dispatches(monkeypatch) -> None:
     """
     标记为不保存历史的过程消息应跳过数据库登记，但仍正常派发。
     """
     _clear_messages()
     chain = ChainBase()
 
-    chain.messagequeue.send_message = Mock()
-    chain.eventmanager.send_event = Mock()
+    monkeypatch.setattr(chain.messagequeue, "send_message", Mock())
+    monkeypatch.setattr(chain.eventmanager, "send_event", Mock())
 
     chain.post_message(
         Notification(
@@ -250,7 +250,7 @@ def test_transient_notification_post_message_skips_history_but_dispatches() -> N
     chain.messagequeue.send_message.assert_called_once()
 
 
-def test_transient_media_and_torrent_lists_skip_history_but_dispatch() -> None:
+def test_transient_media_and_torrent_lists_skip_history_but_dispatch(monkeypatch) -> None:
     """
     传统交互候选列表标记为不保存历史时，只发送到渠道，不写入消息表。
     """

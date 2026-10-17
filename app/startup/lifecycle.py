@@ -20,7 +20,6 @@ except Exception:
 
 from app.chain.system import SystemChain
 from app.core.config import global_vars, settings
-from app.helper.server import MoviePilotServerHelper
 from app.helper.system import SystemHelper
 from app.log import logger, LoggerManager
 from app.startup.command_initializer import init_command, stop_command, restart_command
@@ -33,7 +32,6 @@ from app.startup.scheduler_initializer import (
     init_scheduler,
     init_plugin_scheduler,
 )
-from app.startup.workflow_initializer import init_workflow, stop_workflow
 from app.utils.http import aclose_shared_async_transports
 
 
@@ -55,7 +53,6 @@ async def init_extra():
     # 重启完成
     SystemChain().restart_finish()
     # 上报当前安装版本
-    await MoviePilotServerHelper.async_report_usage()
 
 
 async def run_shutdown_step(name: str, callback: Callable[[], object]) -> None:
@@ -94,7 +91,6 @@ async def lifespan(app: FastAPI):
         # 初始化命令
         init_command()
         # 初始化工作流
-        init_workflow()
     # 插件同步到本地
     sync_plugins_task = asyncio.create_task(init_extra())
     try:
@@ -116,7 +112,6 @@ async def lifespan(app: FastAPI):
                 await run_shutdown_step(
                     "插件备份", lambda: SystemChain().backup_plugins()
                 )
-                await run_shutdown_step("工作流", stop_workflow)
                 await run_shutdown_step("命令服务", stop_command)
                 await run_shutdown_step("监控器", stop_monitor)
                 await run_shutdown_step("定时器", stop_scheduler)

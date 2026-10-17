@@ -9,7 +9,6 @@ from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from app.core.metainfo import MetaInfo
 from app.chain import ChainBase
-from app.helper.server import MoviePilotServerHelper
 from app.modules.themoviedb import TheMovieDbModule
 from app.modules.themoviedb.tmdbv3api.tmdb import TMDb
 from app.schemas.types import MediaType
@@ -61,19 +60,10 @@ _PATCHERS: list = []
 
 
 def setUpModule():
-    """整文件生效：离线化 TMDB HTTP 与共享识别 API，确保零真实请求。
-
-    ChainBase.async_recognize_media 在识别成功后会经 MoviePilotServerHelper 向
-    MP 服务器（movie-pilot.org）的「共享识别 API」上报/查询；识别失败时还会反向
-    查询。这两条链路与 TMDB 目录无关，必须一并打桩，否则 Chain 端到端用例仍会真发请求。
-    """
+    """整文件生效：离线化 TMDB HTTP，确保零真实请求。"""
     _PATCHERS.extend([
         patch.object(TMDb, "request", _replay_request),
         patch.object(TMDb, "async_request", _replay_async_request),
-        patch.object(MoviePilotServerHelper, "async_report_recognize_share", new=AsyncMock(return_value=None)),
-        patch.object(MoviePilotServerHelper, "async_query_recognize_share", new=AsyncMock(return_value=None)),
-        patch.object(MoviePilotServerHelper, "report_recognize_share", new=MagicMock(return_value=None)),
-        patch.object(MoviePilotServerHelper, "query_recognize_share", new=MagicMock(return_value=None)),
     ])
     started = []
     try:

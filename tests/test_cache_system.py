@@ -140,11 +140,6 @@ def test_init_modules_does_not_clear_package_tool_cache(monkeypatch):
     monkeypatch.setattr(modules_initializer, "clear_package_tool_cache", fail_if_called)
     monkeypatch.setattr(modules_initializer, "ModuleManager", lambda: None)
     monkeypatch.setattr(modules_initializer.EventManager, "start", lambda self: None)
-    monkeypatch.setattr(modules_initializer.MoviePilotServerHelper, "init_plugin_report", lambda: None)
-    monkeypatch.setattr(modules_initializer.MoviePilotServerHelper, "init_subscribe_report", lambda: None)
-    monkeypatch.setattr(modules_initializer.MoviePilotServerHelper, "get_user_uuid", lambda: None)
-    monkeypatch.setattr(modules_initializer.MoviePilotServerHelper, "get_github_user", lambda: None)
-    monkeypatch.setattr(modules_initializer, "init_agent", lambda: None)
     monkeypatch.setattr(modules_initializer, "start_frontend", lambda: None)
 
     modules_initializer.init_modules()

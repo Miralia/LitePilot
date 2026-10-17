@@ -6,7 +6,6 @@ import pytest
 from app.modules import _MessageBase
 from app.modules.discord import DiscordModule
 from app.modules.feishu import FeishuModule
-from app.modules.filter import FilterModule
 from app.modules.plex import PlexModule
 from app.modules.qqbot import QQBotModule
 from app.modules.slack import SlackModule
@@ -103,37 +102,6 @@ def test_tmdb_reload_closes_old_client_when_cache_save_fails():
     init_module.assert_called_once_with()
 
 
-def test_filter_reload_uses_shared_module_lifecycle_lock():
-    """过滤规则重载必须经过模块基类的串行 stop 和 init。"""
-    module = FilterModule()
-    reload_started = threading.Event()
-    reload_finished = threading.Event()
-    call_order = []
-
-    def reload_module():
-        reload_started.set()
-        module.on_config_changed()
-        reload_finished.set()
-
-    with patch(
-        "app.modules.filter.clear_rust_parse_options_cache",
-        side_effect=lambda: call_order.append("stop"),
-    ), patch.object(
-        module, "init_module", side_effect=lambda: call_order.append("init")
-    ):
-        module._reload_lock.acquire()
-        try:
-            reload_thread = threading.Thread(target=reload_module)
-            reload_thread.start()
-            assert reload_started.wait(1)
-            assert not reload_finished.wait(0.1)
-        finally:
-            module._reload_lock.release()
-
-        assert reload_finished.wait(1)
-        reload_thread.join()
-
-    assert call_order == ["stop", "init"]
 
 
 @pytest.mark.parametrize(
