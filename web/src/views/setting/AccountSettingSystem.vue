@@ -50,6 +50,7 @@ const SystemSettings = ref<any>({
     DATA_CLEANUP_ENABLE: false,
     DOWNLOAD_FILE_SYNC: true,
     SYNC_DEL_BY_MEDIA_SERVER: false,
+    LIBRARY_COVER_GENERATOR: false,
     DATA_CLEANUP_MESSAGE_DAYS: 90,
     DATA_CLEANUP_DOWNLOAD_HISTORY_DAYS: 180,
     DATA_CLEANUP_TRANSFER_HISTORY_DAYS: 365 * 3,
@@ -807,6 +808,14 @@ useSilentSettingRefresh(
                     v-model="SystemSettings.Advanced.SYNC_DEL_BY_MEDIA_SERVER"
                     :label="t('setting.system.syncDelByMediaServer')"
                     :hint="t('setting.system.syncDelByMediaServerHint')"
+                    persistent-hint
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <VSwitch
+                    v-model="SystemSettings.Advanced.LIBRARY_COVER_GENERATOR"
+                    :label="t('setting.system.libraryCoverGenerator')"
+                    :hint="t('setting.system.libraryCoverGeneratorHint')"
                     persistent-hint
                   />
                 </VCol>

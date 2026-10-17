@@ -246,6 +246,8 @@ class SystemConfigKey(Enum):
     DownloadFileSync = "DownloadFileSync"
     # 媒体服务器删除同步开关
     SyncDelByMediaServer = "SyncDelByMediaServer"
+    # 媒体库封面生成开关
+    LibraryCoverGenerator = "LibraryCoverGenerator"
     # 配置向导状态
     SetupWizardState = "SetupWizardState"
     # 绿联影视登录会话缓存

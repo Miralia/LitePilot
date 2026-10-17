@@ -21,6 +21,7 @@ from app import schemas
 from app.chain import ChainBase
 from app.chain.mediaserver import MediaServerChain
 from app.chain.downloadfilesync import DownloadFileSyncChain
+from app.chain.mediacover import MediaCoverChain
 from app.chain.transfer import TransferChain
 from app.core.config import settings, global_vars
 from app.core.event import Event, eventmanager
@@ -259,6 +260,7 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
         "MEDIASERVER_SYNC_INTERVAL",
         SystemConfigKey.MediaServers.value,
         SystemConfigKey.DownloadFileSync.value,
+        SystemConfigKey.LibraryCoverGenerator.value,
         "DATA_CLEANUP_ENABLE",
         "DATA_CLEANUP_MESSAGE_DAYS",
         "DATA_CLEANUP_DOWNLOAD_HISTORY_DAYS",
@@ -386,6 +388,11 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     "func": DownloadFileSyncChain().process,
                     "running": False,
                 },
+                "library_cover_generator": {
+                    "name": "媒体库封面生成",
+                    "func": MediaCoverChain().process,
+                    "running": False,
+                },
                 "clear_cache": {
                     "name": "缓存清理",
                     "func": self.clear_cache,
@@ -501,6 +508,17 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                 name="下载文件同步",
                 minutes=5,
                 kwargs={"job_id": "download_file_sync"},
+            )
+
+            # 媒体库封面生成（插件能力内置化）
+            self._scheduler.add_job(
+                self.start,
+                "cron",
+                id="library_cover_generator",
+                name="媒体库封面生成",
+                hour=4,
+                minute=0,
+                kwargs={"job_id": "library_cover_generator"},
             )
 
             # 主动内存回收

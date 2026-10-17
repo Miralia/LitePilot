@@ -64,16 +64,21 @@
 
 - [x] 阶段 0：基线与仓库（分支 `lite`、`upstream` remote、fork 文档、基线测试）
 - [x] 阶段 1：前端源码入库 `web/`、构建脚本、页面裁剪、依赖精简、版本号收敛
-- [ ] 阶段 2：后端减法
+- [x] 阶段 2：后端减法
   - [x] 2.1 站点子系统（含仓内 `SitesHelper` 垫片、索引器、站点字幕、CookieCloud、站点采集器）
   - [x] 2.2 搜索 / 订阅 / 种子缓存 / 过滤
   - [x] 2.3 智能体 / 工作流 / MCP / 技能（与 2.2 互相纠缠，合并删除）
   - [x] 2.4 插件体系（含插件市场、插件认证票据、插件数据表）
-  - [ ] 2.5 鉴权收敛为单管理员 + swizzin 同步
-  - [ ] 2.6 下载器收敛为 qBittorrent
-  - [ ] 2.7 元数据 / 媒体服务器 / 通知收敛
-  - [ ] 2.8 数据库删表迁移与配置键清理
-- [ ] 阶段 3：内置化（下载文件同步、媒体同步删除、媒体库封面生成）
+  - [x] 2.5 鉴权收敛为单管理员 + swizzin 同步
+  - [x] 2.6 下载器收敛为 qBittorrent
+  - [x] 2.7 元数据 / 媒体服务器 / 通知收敛
+  - [x] 2.8 数据库删表迁移与配置键清理
+  - [x] 2.9 前端插件残留清理（仪表板远程组件、插件联邦认证、插件示例工程）
+- [ ] 阶段 3：内置化
+  - [x] 3.1 下载文件同步（原 `syncdownloadfiles` 插件，定时任务 + `downloadfiles` 落库）
+  - [x] 3.2 媒体同步删除（原 `samediasyncdel` 插件，监听 Emby 深度删除事件，仅本地存储）
+  - [x] 3.3 媒体库封面生成（原 `mediacovergenerator` 插件，只保留静态风格 2、字体固定霞鹜真楷、
+        素材取媒体库最近入库条目，无历史无缓存）
 - [ ] 阶段 4：原生部署与一键迁移重装
 - [ ] 阶段 5：验证、静态检查、冒烟与文档同步
 
@@ -99,7 +104,7 @@
 | 设置页标签 | 仅保留 `system`（系统 + 下载器 + 媒体服务器）、`directory`（目录 + 存储）、`notification`（通知） |
 | 依赖精简 | 移除 `@fullcalendar/*`、`@vue-flow/*`、`three` 之外的日历/工作流依赖、`body-scroll-lock`、`mousetrap`、`js-cookie` 及其 `@types`（共 18 项） |
 | 版本标记 | `version.py` 的 `APP_VERSION`（现为 `v0.1.0`）写入 `public/version.txt`；已移除 `FRONTEND_VERSION` 常量 |
-| 验证 | `yarn typecheck` 通过、`yarn test:run` 732 通过、`yarn build` 通过、`scripts/build-frontend.sh` 产物校验通过 |
+| 验证 | `scripts/build-frontend.sh` 产物校验通过；`yarn typecheck` 通过、`yarn test:run` 648 通过、`yarn build` 通过 |
 
 注意：`web/public/` 是 Vite 的静态资源源目录，与仓库根目录的构建产物 `public/` 不是同一个东西。
 

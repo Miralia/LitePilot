@@ -1176,6 +1176,8 @@ export default {
       downloadFileSyncHint: 'Periodically sync downloader torrent file lists for transfer and sync-delete',
       syncDelByMediaServer: 'Media Server Delete Sync',
       syncDelByMediaServerHint: 'Clean up transfer history, library files and download tasks after media server deletion',
+      libraryCoverGenerator: 'Library Cover Generation',
+      libraryCoverGeneratorHint: 'Generate library covers from the latest added item poster (fixed style, LXGW ZhenKai font)',
       globalImageCache: 'Global Image Cache',
       globalImageCacheHint: 'Cache media images locally to improve image loading speed',
       bigMemoryMode: 'Large Memory Mode',

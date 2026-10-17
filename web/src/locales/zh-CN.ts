@@ -1165,6 +1165,8 @@ export default {
       downloadFileSyncHint: '定时同步下载器中的种子文件列表，供整理与同步删除使用',
       syncDelByMediaServer: '媒体服务器删除同步',
       syncDelByMediaServerHint: '媒体服务器删除媒体后，同步清理整理记录、媒体库文件与下载任务',
+      libraryCoverGenerator: '媒体库封面生成',
+      libraryCoverGeneratorHint: '以媒体库最近入库条目海报为素材生成媒体库封面（固定风格，字体霞鹜真楷）',
       globalImageCache: '全局图片缓存',
       globalImageCacheHint: '将媒体图片缓存到本地，提升图片加载速度',
       bigMemoryMode: '大内存模式',
