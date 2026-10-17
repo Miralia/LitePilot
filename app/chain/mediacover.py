@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.db.systemconfig_oper import SystemConfigOper
 from app.helper.mediaserver import MediaServerHelper
 from app.log import logger
-from app.modules.coverstyle.static_2 import create_style_static_2
+from app.helper.coverstyle import create_style_static_2
 from app.schemas.mediaserver import MediaServerLibrary, MediaServerPlayItem
 from app.schemas.types import MediaType, SystemConfigKey
 from app.utils.http import RequestUtils

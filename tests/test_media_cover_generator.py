@@ -10,7 +10,7 @@ import pytest
 from PIL import Image
 
 from app.chain.mediacover import MediaCoverChain
-from app.modules.coverstyle.static_2 import (
+from app.helper.coverstyle import (
     align_image_right,
     create_diagonal_mask,
     create_style_static_2,
