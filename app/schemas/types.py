@@ -278,7 +278,6 @@ class MessageChannel(Enum):
     """
     Telegram = "Telegram"
     Web = "Web"
-    WebAgent = "WebAgent"
 
 
 # 下载器类型

@@ -130,20 +130,6 @@ def test_system_helper_message_only_enters_sse_queue() -> None:
     assert realtime_message["text"] == "调度任务执行失败"
 
 
-def test_plugin_helper_message_deduplicates_recent_sse_messages() -> None:
-    """
-    短时间内相同插件实时消息只应推送一次，不写入通知历史。
-    """
-    _clear_messages()
-    helper = MessageHelper()
-    _reset_message_helper(helper)
-
-    helper.put("站点刷流任务出错，获取下载器实例失败，请检查配置", role="plugin", title="站点刷流")
-    helper.put("站点刷流任务出错，获取下载器实例失败，请检查配置", role="plugin", title="站点刷流")
-
-    assert MessageOper().list_by_page(page=1, count=10) == []
-    assert json.loads(helper.get())["title"] == "站点刷流"
-    assert helper.get() is None
 
 
 def test_agent_helper_message_does_not_enter_sse_queue() -> None:

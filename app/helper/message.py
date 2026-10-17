@@ -823,19 +823,16 @@ class MessageHelper(metaclass=Singleton):
         self._recent_notification_keys.set(key, True)
         return False
 
-    def put(self, message: Any, role: str = "plugin", title: str = None, note: Union[list, dict] = None):
+    def put(self, message: Any, role: str = "system", title: str = None, note: Union[list, dict] = None):
         """
         存消息
         :param message: 消息
-        :param role: 消息通道 system：系统消息，plugin：插件消息
+        :param role: 消息通道，当前仅支持 system
         :param title: 标题
         :param note: 附件json
         """
-        if role not in ["system", "plugin"]:
+        if role != "system":
             return
-        # 没有标题时获取插件名称
-        if role == "plugin" and not title:
-            title = "插件通知"
         if self._is_recent_system_notification(message, role, title=title, note=note):
             return
         self.sys_queue.put(json.dumps({

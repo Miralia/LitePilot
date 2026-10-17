@@ -364,21 +364,6 @@ class ChannelCapabilityManager:
             },
             fallback_enabled=True,
         ),
-        MessageChannel.WebAgent: ChannelCapabilities(
-            channel=MessageChannel.WebAgent,
-            capabilities={
-                ChannelCapability.INLINE_BUTTONS,
-                ChannelCapability.CALLBACK_QUERIES,
-                ChannelCapability.MESSAGE_EDITING,
-                ChannelCapability.MARKDOWN,
-                ChannelCapability.RICH_TEXT,
-                ChannelCapability.IMAGES,
-                ChannelCapability.LINKS,
-                ChannelCapability.AUDIO_OUTPUT,
-                ChannelCapability.FILE_SENDING,
-            },
-            fallback_enabled=False,
-        ),
     }
 
     @classmethod
