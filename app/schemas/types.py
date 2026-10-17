@@ -308,28 +308,15 @@ class MessageChannel(Enum):
     """
     消息渠道
     """
-    Wechat = "微信"
-    Feishu = "飞书"
-    WechatClawBot = "微信ClawBot"
     Telegram = "Telegram"
-    Slack = "Slack"
-    Discord = "Discord"
-    SynologyChat = "SynologyChat"
-    VoceChat = "VoceChat"
     Web = "Web"
     WebAgent = "WebAgent"
-    WebPush = "WebPush"
-    QQ = "QQ"
 
 
 # 下载器类型
 class DownloaderType(Enum):
     # Qbittorrent
     Qbittorrent = "Qbittorrent"
-    # Transmission
-    Transmission = "Transmission"
-    # Rtorrent
-    Rtorrent = "Rtorrent"
     # Aria2
     # Aria2 = "Aria2"
 
@@ -338,26 +325,12 @@ class DownloaderType(Enum):
 class MediaServerType(Enum):
     # Emby
     Emby = "Emby"
-    # 极影视
-    ZSpace = "ZSpace"
-    # Jellyfin
-    Jellyfin = "Jellyfin"
-    # Plex
-    Plex = "Plex"
-    # 飞牛影视
-    TrimeMedia = "TrimeMedia"
-    # 绿联影视
-    Ugreen = "Ugreen"
 
 
 # 识别器类型
 class MediaRecognizeType(Enum):
-    # 豆瓣
-    Douban = "豆瓣"
     # TMDB
     TMDB = "TheMovieDb"
-    # TVDB
-    TVDB = "TheTvDb"
     # bangumi
     Bangumi = "Bangumi"
     # AniList
@@ -374,12 +347,9 @@ class UserConfigKey(Enum):
 class StorageSchema(Enum):
     # 存储类型
     Local = "local"
-    Alipan = "alipan"
-    U115 = "u115"
-    Rclone = "rclone"
-    Alist = "alist"
-    AlistGo = "alistgo"
     SMB = "smb"
+    # 自定义（WebDAV 等由用户自建挂载，目录层面统一按本地处理）
+    Custom = "custom"
 
 
 # 模块类型

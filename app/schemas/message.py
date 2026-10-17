@@ -269,38 +269,8 @@ class Notification(BaseModel):
         return items
 
 
-class NotificationSwitch(BaseModel):
-    """
-    消息开关
-    """
-
-    # 消息类型
-    mtype: Optional[str] = None
-    # 微信开关
-    wechat: Optional[bool] = False
-    # 飞书开关
-    feishu: Optional[bool] = False
-    # TG开关
-    telegram: Optional[bool] = False
-    # Slack开关
-    slack: Optional[bool] = False
-    # SynologyChat开关
-    synologychat: Optional[bool] = False
-    # VoceChat开关
-    vocechat: Optional[bool] = False
-    # WebPush开关
-    webpush: Optional[bool] = False
-    # QQ开关
-    qq: Optional[bool] = False
 
 
-class Subscription(BaseModel):
-    """
-    客户端消息订阅
-    """
-
-    endpoint: Optional[str] = None
-    keys: Optional[dict] = Field(default_factory=dict)
 
 
 class SubscriptionMessage(BaseModel):
@@ -444,115 +414,6 @@ class ChannelCapabilityManager:
             # Telegram 文本消息限制 4096 字符，预留空间给 MarkdownV2 转义和标题
             max_message_length=3500,
         ),
-        MessageChannel.Wechat: ChannelCapabilities(
-            channel=MessageChannel.Wechat,
-            capabilities={
-                ChannelCapability.IMAGES,
-                ChannelCapability.LINKS,
-                ChannelCapability.AUDIO_OUTPUT,
-                ChannelCapability.MENU_COMMANDS,
-            },
-            fallback_enabled=True,
-        ),
-        MessageChannel.Feishu: ChannelCapabilities(
-            channel=MessageChannel.Feishu,
-            capabilities={
-                ChannelCapability.INLINE_BUTTONS,
-                ChannelCapability.MESSAGE_EDITING,
-                ChannelCapability.CALLBACK_QUERIES,
-                ChannelCapability.MARKDOWN,
-                ChannelCapability.RICH_TEXT,
-                ChannelCapability.IMAGES,
-                ChannelCapability.LINKS,
-                ChannelCapability.AUDIO_OUTPUT,
-                ChannelCapability.FILE_SENDING,
-                ChannelCapability.PROCESSING_STATUS,
-            },
-            max_buttons_per_row=3,
-            max_button_rows=8,
-            max_button_text_length=20,
-            max_message_length=30000,
-            fallback_enabled=True,
-        ),
-        MessageChannel.WechatClawBot: ChannelCapabilities(
-            channel=MessageChannel.WechatClawBot,
-            capabilities={
-                ChannelCapability.MARKDOWN,
-                ChannelCapability.IMAGES,
-                ChannelCapability.LINKS,
-                ChannelCapability.FILE_SENDING,
-            },
-            max_message_length=2800,
-            fallback_enabled=True,
-        ),
-        MessageChannel.Slack: ChannelCapabilities(
-            channel=MessageChannel.Slack,
-            capabilities={
-                ChannelCapability.INLINE_BUTTONS,
-                ChannelCapability.MESSAGE_EDITING,
-                ChannelCapability.MESSAGE_DELETION,
-                ChannelCapability.CALLBACK_QUERIES,
-                ChannelCapability.MARKDOWN,
-                ChannelCapability.RICH_TEXT,
-                ChannelCapability.IMAGES,
-                ChannelCapability.LINKS,
-                ChannelCapability.MENU_COMMANDS,
-                ChannelCapability.FILE_SENDING,
-                ChannelCapability.PROCESSING_STATUS,
-            },
-            max_buttons_per_row=3,
-            max_button_rows=8,
-            max_button_text_length=25,
-            # Slack 消息限制 40000 字符，预留空间给格式化
-            max_message_length=39000,
-            fallback_enabled=True,
-        ),
-        MessageChannel.Discord: ChannelCapabilities(
-            channel=MessageChannel.Discord,
-            capabilities={
-                ChannelCapability.INLINE_BUTTONS,
-                ChannelCapability.MESSAGE_EDITING,
-                ChannelCapability.MESSAGE_DELETION,
-                ChannelCapability.CALLBACK_QUERIES,
-                ChannelCapability.MARKDOWN,
-                ChannelCapability.RICH_TEXT,
-                ChannelCapability.IMAGES,
-                ChannelCapability.LINKS,
-                ChannelCapability.FILE_SENDING,
-                ChannelCapability.PROCESSING_STATUS,
-            },
-            max_buttons_per_row=5,
-            max_button_rows=5,
-            max_button_text_length=80,
-            # Discord 消息限制 2000 字符
-            max_message_length=1800,
-            fallback_enabled=True,
-        ),
-        MessageChannel.SynologyChat: ChannelCapabilities(
-            channel=MessageChannel.SynologyChat,
-            capabilities={
-                ChannelCapability.MARKDOWN,
-                ChannelCapability.RICH_TEXT,
-                ChannelCapability.IMAGES,
-                ChannelCapability.LINKS,
-            },
-            fallback_enabled=True,
-        ),
-        MessageChannel.VoceChat: ChannelCapabilities(
-            channel=MessageChannel.VoceChat,
-            capabilities={
-                ChannelCapability.MARKDOWN,
-                ChannelCapability.RICH_TEXT,
-                ChannelCapability.IMAGES,
-                ChannelCapability.LINKS,
-            },
-            fallback_enabled=True,
-        ),
-        MessageChannel.WebPush: ChannelCapabilities(
-            channel=MessageChannel.WebPush,
-            capabilities={ChannelCapability.LINKS},
-            fallback_enabled=True,
-        ),
         MessageChannel.Web: ChannelCapabilities(
             channel=MessageChannel.Web,
             capabilities={
@@ -577,20 +438,6 @@ class ChannelCapabilityManager:
                 ChannelCapability.FILE_SENDING,
             },
             fallback_enabled=False,
-        ),
-        MessageChannel.QQ: ChannelCapabilities(
-            channel=MessageChannel.QQ,
-            capabilities={
-                ChannelCapability.RICH_TEXT,
-                ChannelCapability.IMAGES,
-                ChannelCapability.LINKS,
-                ChannelCapability.INLINE_BUTTONS,
-                ChannelCapability.CALLBACK_QUERIES,
-            },
-            max_buttons_per_row=5,
-            max_button_rows=5,
-            max_button_text_length=30,
-            fallback_enabled=True,
         ),
     }
 

@@ -131,7 +131,7 @@ def ensure_optional_stub(name: str, **attrs) -> None:
     """为可选第三方依赖补占位模块（仅在缺失时），可带属性。
 
     用例 import 的 app 代码会牵入可选三方库（如 psutil / dateparser / Pinyin2Hanzi /
-    qbittorrentapi / transmission_rpc），CI / 全新环境可能未安装。本函数在该库缺失时补一个带
+    qbittorrentapi），CI / 全新环境可能未安装。本函数在该库缺失时补一个带
     指定属性的占位，使 import 不致失败；若已真实安装则保留真实模块、不覆盖。占位为进程级常驻
     （与 import 生命周期一致、不作用域还原），是「让可选 import 不失败」的垫片——与
     :func:`stub_modules`（作用域内打桩并还原）属不同用途，故不收进 stub_modules。

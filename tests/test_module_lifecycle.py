@@ -4,18 +4,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 from app.modules import _MessageBase
-from app.modules.discord import DiscordModule
-from app.modules.feishu import FeishuModule
-from app.modules.plex import PlexModule
-from app.modules.qqbot import QQBotModule
-from app.modules.slack import SlackModule
 from app.modules.telegram import TelegramModule
 from app.modules.telegram.telegram import Telegram
-from app.modules.themoviedb import TheMovieDbModule
-from app.modules.trimemedia import TrimeMediaModule
-from app.modules.ugreen import UgreenModule
-from app.modules.wechat import WechatModule
-from app.modules.wechatclawbot import WechatClawBotModule
 
 
 def test_config_reload_stops_before_initializing_latest_generation():
@@ -88,18 +78,6 @@ def test_config_reload_initializes_latest_generation_after_stop_failure():
     assert call_order == ["stop", "init"]
 
 
-def test_tmdb_reload_closes_old_client_when_cache_save_fails():
-    """TMDB 缓存保存失败时仍须关闭旧客户端并初始化最新配置。"""
-    module = TheMovieDbModule()
-    module.cache = Mock()
-    module.cache.save.side_effect = OSError("cache write failed")
-    module.tmdb = Mock()
-
-    with patch.object(module, "init_module") as init_module:
-        module.on_config_changed()
-
-    module.tmdb.close.assert_called_once_with()
-    init_module.assert_called_once_with()
 
 
 
@@ -107,16 +85,7 @@ def test_tmdb_reload_closes_old_client_when_cache_save_fails():
 @pytest.mark.parametrize(
     ("module_type", "stop_method", "requires_authentication"),
     [
-        (DiscordModule, "stop", False),
-        (FeishuModule, "stop", False),
-        (QQBotModule, "stop", False),
-        (SlackModule, "stop", False),
         (TelegramModule, "stop", False),
-        (WechatModule, "stop", False),
-        (WechatClawBotModule, "stop", False),
-        (PlexModule, "close", False),
-        (TrimeMediaModule, "disconnect", True),
-        (UgreenModule, "disconnect", True),
     ],
 )
 def test_module_stop_isolates_each_service_instance(

@@ -68,7 +68,7 @@ class DownloaderConf(BaseModel):
 
     # 名称
     name: Optional[str] = None
-    # 类型 qbittorrent/transmission/rtorrent
+    # 类型 qbittorrent
     type: Optional[str] = None
     # 是否默认
     default: Optional[bool] = False
@@ -87,7 +87,7 @@ class NotificationConf(BaseModel):
 
     # 名称
     name: Optional[str] = None
-    # 类型 telegram/wechat/feishu/vocechat/synologychat/slack/webpush/qqbot
+    # 类型 telegram
     type: Optional[str] = None
     # 配置
     config: Optional[dict] = Field(default_factory=dict)

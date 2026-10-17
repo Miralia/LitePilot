@@ -33,18 +33,18 @@ def test_from_uri_adds_root_for_relative_path() -> None:
     assert file_uri.path == "/downloads/movies"
 
 
-def test_from_uri_parses_storage_prefix() -> None:
+def test_from_uri_parses_smb_storage_prefix() -> None:
     """带存储前缀的 URI 应拆分出存储类型并保留 POSIX 路径。"""
-    file_uri = FileURI.from_uri("u115:/media/anime")
+    file_uri = FileURI.from_uri("smb:/media/anime")
 
-    assert file_uri.storage == "u115"
+    assert file_uri.storage == "smb"
     assert file_uri.path == "/media/anime"
-    assert file_uri.uri == "u115:/media/anime"
+    assert file_uri.uri == "smb:/media/anime"
 
 
 def test_from_uri_storage_prefix_with_relative_path() -> None:
     """远端存储的无前导斜杠路径补全为绝对路径。"""
-    file_uri = FileURI.from_uri("rclone:media/anime")
+    file_uri = FileURI.from_uri("smb:media/anime")
 
-    assert file_uri.storage == "rclone"
+    assert file_uri.storage == "smb"
     assert file_uri.path == "/media/anime"

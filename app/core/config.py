@@ -1056,14 +1056,6 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
         # 如果传入了指定的仓库名称，则返回该仓库的请求头信息，否则返回默认请求头
         return headers.get(repo, self.GITHUB_HEADERS)
 
-    @property
-    def VAPID(self):
-        return {
-            "subject": f"mailto:{self.SUPERUSER}@movie-pilot.org",
-            "publicKey": "BH3w49sZA6jXUnE-yt4jO6VKh73lsdsvwoJ6Hx7fmPIDKoqGiUl2GEoZzy-iJfn4SfQQcx7yQdHf9RknwrL_lSM",
-            "privateKey": "JTixnYY0vEw97t9uukfO3UWKfHKJdT5kCQDiv3gu894",
-        }
-
     def MP_DOMAIN(self, url: str = None):
         if not self.APP_DOMAIN:
             return None
@@ -1112,12 +1104,6 @@ class GlobalVar(object):
 
     # 系统停止事件
     STOP_EVENT: threading.Event = threading.Event()
-    # webpush订阅
-    SUBSCRIPTIONS: List[dict] = []
-    # webpush订阅读写锁
-    SUBSCRIPTIONS_LOCK: threading.Lock = threading.Lock()
-    # 需应急停止的工作流
-    EMERGENCY_STOP_WORKFLOWS: List[int] = []
     # 需应急停止文件整理
     EMERGENCY_STOP_TRANSFER: List[str] = []
     # 当前事件循环
@@ -1145,61 +1131,11 @@ class GlobalVar(object):
         """
         return self.STOP_EVENT.is_set()
 
-    def get_subscriptions(self):
-        """
-        获取webpush订阅
-        """
-        with self.SUBSCRIPTIONS_LOCK:
-            return list(self.SUBSCRIPTIONS)
 
-    def push_subscription(self, subscription: dict):
-        """
-        添加或更新webpush订阅。
-        """
-        endpoint = subscription.get("endpoint") if subscription else None
-        if not endpoint:
-            return
-        with self.SUBSCRIPTIONS_LOCK:
-            for index, current in enumerate(self.SUBSCRIPTIONS):
-                if current.get("endpoint") == endpoint:
-                    self.SUBSCRIPTIONS[index] = subscription
-                    return
-            self.SUBSCRIPTIONS.append(subscription)
 
-    def remove_subscription(self, subscription: dict) -> bool:
-        """
-        根据 endpoint 移除webpush订阅，返回是否实际删除。
-        """
-        endpoint = subscription.get("endpoint") if subscription else None
-        if not endpoint:
-            return False
-        with self.SUBSCRIPTIONS_LOCK:
-            before_count = len(self.SUBSCRIPTIONS)
-            self.SUBSCRIPTIONS[:] = [
-                current for current in self.SUBSCRIPTIONS
-                if current.get("endpoint") != endpoint
-            ]
-            return len(self.SUBSCRIPTIONS) != before_count
 
-    def stop_workflow(self, workflow_id: int):
-        """
-        停止工作流
-        """
-        if workflow_id not in self.EMERGENCY_STOP_WORKFLOWS:
-            self.EMERGENCY_STOP_WORKFLOWS.append(workflow_id)
 
-    def workflow_resume(self, workflow_id: int):
-        """
-        恢复工作流
-        """
-        if workflow_id in self.EMERGENCY_STOP_WORKFLOWS:
-            self.EMERGENCY_STOP_WORKFLOWS.remove(workflow_id)
 
-    def is_workflow_stopped(self, workflow_id: int) -> bool:
-        """
-        是否停止工作流
-        """
-        return self.is_system_stopped or workflow_id in self.EMERGENCY_STOP_WORKFLOWS
 
     def stop_transfer(self, path: str):
         """

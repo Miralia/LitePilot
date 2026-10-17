@@ -10,7 +10,6 @@ from typing import Optional, Any, Tuple, List, Set, Union, Dict
 
 from fastapi.concurrency import run_in_threadpool
 from qbittorrentapi import TorrentFilesList
-from transmission_rpc import File
 
 from app.core.cache import FileCache, AsyncFileCache, fresh, async_fresh
 from app.core.config import settings
@@ -1327,7 +1326,7 @@ class ChainBase(metaclass=ABCMeta):
 
     def torrent_files(
             self, tid: str, downloader: Optional[str] = None
-    ) -> Optional[Union[TorrentFilesList, List[File]]]:
+    ) -> Optional[TorrentFilesList]:
         """
         获取种子文件
         :param tid:  种子Hash
@@ -1679,21 +1678,6 @@ class ChainBase(metaclass=ABCMeta):
         :param metadata: 其他消息元数据
         :return: 编辑是否成功
         """
-        if channel == MessageChannel.WebAgent:
-            try:
-                from app.helper.agent import edit_web_agent_message
-
-                return edit_web_agent_message(
-                    user_id=str((metadata or {}).get("userid") or ""),
-                    message_id=message_id,
-                    title=title,
-                    text=text,
-                    buttons=buttons,
-                )
-            except Exception as err:
-                logger.debug(f"编辑 WebAgent 消息失败: {err}")
-                return False
-
         return self.run_module(
             "edit_message",
             channel=channel,
