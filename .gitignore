@@ -27,7 +27,8 @@ config/temp/
 config/cache/
 config/.cache/
 .runtime/
-public/
+# 仅忽略仓库根目录的前端构建产物；web/ 下的前端源码（含 web/public）需要入库
+/public/
 .moviepilot.env
 *.pyc
 *.log
@@ -50,3 +51,8 @@ pylint-report.json
 
 # Superpowers 设计/计划文档（本地协作产物，不纳入仓库）
 docs/superpowers/
+
+# 前端源码依赖（web/ 为前端源码，构建产物输出到仓库根目录 public/）
+web/node_modules/
+web/dist/
+web/dev-dist/
