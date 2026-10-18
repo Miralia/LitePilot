@@ -652,6 +652,20 @@ useSilentSettingRefresh(
     <VCol cols="12">
       <VCard>
         <VCardItem>
+          <VCardTitle>{{ t('setting.builtin.sectionTitle') }}</VCardTitle>
+          <VCardSubtitle>{{ t('setting.builtin.sectionDesc') }}</VCardSubtitle>
+        </VCardItem>
+        <VCardText>
+          <BuiltinFeatureSettings />
+        </VCardText>
+      </VCard>
+    </VCol>
+  </VRow>
+
+  <VRow>
+    <VCol cols="12">
+      <VCard>
+        <VCardItem>
           <VCardTitle>{{ t('setting.system.downloaders') }}</VCardTitle>
           <VCardSubtitle>{{ t('setting.system.downloadersDesc') }}</VCardSubtitle>
         </VCardItem>
@@ -793,9 +807,6 @@ useSilentSettingRefresh(
           <VWindowItem value="system">
             <div>
               <VRow>
-                <VCol cols="12">
-                  <BuiltinFeatureSettings />
-                </VCol>
                 <VCol cols="12" md="6">
                   <VSwitch
                     v-model="SystemSettings.Advanced.GLOBAL_IMAGE_CACHE"

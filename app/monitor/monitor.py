@@ -468,8 +468,27 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
             return
         if not self._dispatcher.is_transfer_candidate_path(Path(event_path)):
             return
+        # 监听到新的媒体文件时，先同步一次下载器，保证刚入库的记录不会因
+        # 等待下一个同步周期而缺失（例如入库后立刻删除）
+        self._trigger_download_sync(event_path)
         # 整理文件
         self._dispatcher.handle_file(storage="local", event_path=Path(event_path), file_size=file_size)
+
+    @staticmethod
+    def _trigger_download_sync(event_path: str) -> None:
+        """
+        按需触发下载文件同步，失败不影响整理主流程。
+
+        :param event_path: 触发同步的文件路径，仅用于日志
+        """
+        try:
+            from app.chain.downloadfilesync import (  # pylint: disable=import-outside-toplevel
+                DownloadFileSyncChain,
+            )
+
+            DownloadFileSyncChain().trigger_sync(reason=event_path)
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"按需同步下载器失败：{err}")
 
     def stop(self):
         """

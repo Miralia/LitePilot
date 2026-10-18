@@ -483,6 +483,8 @@ export default {
   },
   setting: {
     builtin: {
+      sectionTitle: '内置功能',
+      sectionDesc: '下载文件同步、媒体服务器联动删除、媒体库封面生成与技术信息探测',
       save: '保存',
       saveSuccess: '内置功能配置已保存',
       saveFailed: '内置功能配置保存失败',
@@ -496,6 +498,9 @@ export default {
       maxTorrentsHint: '限制每轮处理的种子数量，0 表示不限制；首次运行建议设置上限',
       downloaders: '限制下载器',
       downloadersHint: '留空表示同步全部下载器',
+      triggerThrottle: '监控触发节流（秒）',
+      triggerThrottleHint:
+        '目录监控发现新文件时立即同步一次下载器；同一窗口内只触发一次，0 表示不节流',
       pruneMissing: '清理已失效种子的文件记录',
       syncDelTitle: '媒体服务器联动删除',
       syncDelGuide:

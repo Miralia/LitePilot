@@ -21,6 +21,7 @@ interface DownloadFileSyncConf {
   downloaders: string[]
   max_torrents: number
   prune_missing: boolean
+  trigger_throttle_seconds: number
 }
 
 /** 媒体服务器联动删除配置 */
@@ -60,6 +61,7 @@ const conf = ref<DownloadFileSyncConf>({
   downloaders: [],
   max_torrents: 200,
   prune_missing: false,
+  trigger_throttle_seconds: 30,
 })
 const delConf = ref<SyncDelConf>({
   enabled: false,
@@ -199,6 +201,17 @@ onMounted(loadAll)
             min="0"
             :label="t('setting.builtin.maxTorrents')"
             :hint="t('setting.builtin.maxTorrentsHint')"
+            persistent-hint
+            :disabled="!conf.enabled"
+          />
+        </VCol>
+        <VCol cols="12" md="6">
+          <VTextField
+            v-model.number="conf.trigger_throttle_seconds"
+            type="number"
+            min="0"
+            :label="t('setting.builtin.triggerThrottle')"
+            :hint="t('setting.builtin.triggerThrottleHint')"
             persistent-hint
             :disabled="!conf.enabled"
           />

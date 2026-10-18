@@ -186,6 +186,8 @@ class DownloadFileSyncConf(BaseModel):
     max_torrents: int = 200
     # 同步后是否清理已不存在的种子的文件记录
     prune_missing: bool = False
+    # 目录监控触发同步的节流窗口（秒），0 表示不节流
+    trigger_throttle_seconds: int = 30
 
 
 class SyncDelByMediaServerConf(BaseModel):

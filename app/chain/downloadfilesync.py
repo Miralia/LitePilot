@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -10,12 +11,17 @@ from app.schemas.types import SystemConfigKey, TorrentStatus
 
 
 class DownloadFileSyncChain(ChainBase):
+    # 上次按需同步时间，用于节流：目录监控可能瞬时触发多次
+    _last_trigger_at: float = 0.0
     """
     下载文件同步链
 
     定时读取下载器中处于「可转移」状态的种子文件列表，落库为下载文件记录，
     供整理链判断种子是否完成、以及媒体同步删除时反查种子来源使用。
     原为独立插件能力，本分支内置为定时任务。
+
+    除定时轮询外，目录监控发现新媒体文件时也会触发一次按需同步：
+    这样刚入库就删除的场景不会因为等不到下一个同步周期而丢失对应记录。
     """
 
     def _sync_torrent_files(self, torrent_hash: str, downloader: Optional[str]) -> int:
@@ -69,6 +75,28 @@ class DownloadFileSyncChain(ChainBase):
                 f"下载文件同步：种子 {torrent_hash} 新增 {len(file_items)} 条文件记录"
             )
         return len(file_items)
+
+    def trigger_sync(self, reason: str = "") -> None:
+        """
+        目录监控发现新内容时按需触发一次同步。
+
+        与定时任务的差别：带节流，避免一次批量入库触发几十次同步；
+        未启用时直接返回，不产生额外开销。
+
+        :param reason: 触发原因，仅用于日志
+        """
+        conf = download_file_sync_conf()
+        if not conf.enabled:
+            return
+        # 节流窗口：同一窗口内只同步一次
+        throttle = max(0, int(conf.trigger_throttle_seconds or 0))
+        now = time.monotonic()
+        if throttle and now - self._last_trigger_at < throttle:
+            logger.debug(f"下载文件同步按需触发过于频繁，跳过（{reason}）")
+            return
+        type(self)._last_trigger_at = now
+        logger.info(f"目录监控发现新内容，立即同步下载器（{reason}）")
+        self.process()
 
     def process(self) -> None:
         """

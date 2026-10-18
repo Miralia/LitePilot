@@ -99,3 +99,28 @@ def test_cover_conf_custom_values():
     assert conf.width == 1280
     assert conf.zh_font_size == 120
     assert conf.libraries == ["电影"]
+
+def test_trigger_throttle_default():
+    """按需同步的节流窗口应有合理默认值。"""
+    conf = DownloadFileSyncConf()
+    assert conf.trigger_throttle_seconds == 30
+
+
+def test_trigger_throttle_can_be_disabled():
+    """配置为 0 时应表示不节流。"""
+    conf = load_conf(
+        SystemConfigKey.DownloadFileSync,
+        DownloadFileSyncConf,
+        _FakeOper({"enabled": True, "trigger_throttle_seconds": 0}),
+    )
+    assert conf.trigger_throttle_seconds == 0
+
+
+def test_probe_conf_defaults():
+    """技术信息探测默认开启，且两项覆盖都打开。"""
+    from app.schemas.system import MediaInfoProbeConf
+
+    conf = load_conf(SystemConfigKey.MediaInfoProbe, MediaInfoProbeConf, _FakeOper(None))
+    assert conf.enabled is True
+    assert conf.override_resolution is True
+    assert conf.override_source is True
