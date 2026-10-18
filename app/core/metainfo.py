@@ -418,6 +418,24 @@ def _meta_from_rust(parsed: dict) -> Optional[MetaBase]:
     return meta
 
 
+# Rust 扩展不认识的位深写法：动漫圈常用的 Ma10p / Hi10P 等 Np 形式。
+# 命中时改用 Python 解析，否则这类标记会被并进标题导致媒体搜索失败。
+_RUST_UNSUPPORTED_BIT_RE = re.compile(
+    r"(?:^|[^A-Za-z0-9])(?:MA|HI)(?:8|10|12|16)P(?![A-Za-z0-9])",
+    re.IGNORECASE,
+)
+
+
+def _has_unsupported_bit_tag(title: str) -> bool:
+    """
+    判断标题是否含有 Rust 扩展不支持的位深标记。
+
+    :param title: 原始标题
+    :return: 命中 Ma10p / Hi10P 这类写法时返回 True
+    """
+    return bool(_RUST_UNSUPPORTED_BIT_RE.search(title or ""))
+
+
 def _requires_python_metainfo(
     title: str,
     custom_words: Optional[List[str]] = None,
@@ -445,7 +463,7 @@ def MetaInfo(title: str, subtitle: Optional[str] = None, custom_words: List[str]
     :return: MetaAnime、MetaVideo
     """
     rust_meta = None
-    if not _requires_python_metainfo(title, custom_words):
+    if not _requires_python_metainfo(title, custom_words) and not _has_unsupported_bit_tag(title):
         rust_meta = _meta_from_rust(
             rust_accel.parse_metainfo(title, subtitle, _rust_parse_options(custom_words))
         )
