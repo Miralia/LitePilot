@@ -31,7 +31,7 @@ FRONTEND_VERSION_FILE = FRONTEND_DIR / "version.txt"
 HEALTH_PATH = "/api/v1/system/global"
 HEALTH_TOKEN = "moviepilot"
 FRONTEND_HEALTH_PATH = "/version.txt"
-BACKEND_RELEASES_API = "https://api.github.com/repos/jxxghp/MoviePilot/releases"
+BACKEND_RELEASES_API = "https://api.github.com/repos/Miralia/LitePilot/releases"
 LOCAL_HOSTS = {"0.0.0.0", "::", "::1", "", "localhost"}
 MANAGED_ACTIVE_STATES = {"running", "starting"}
 AUTO_UPDATE_ENABLED_VALUES = {"true", "release", "dev"}
@@ -291,7 +291,7 @@ def _resolve_auto_update_targets(mode: str) -> Optional[str]:
     else:
         backend_ref = _latest_release_tag(
             BACKEND_RELEASES_API,
-            repo="jxxghp/MoviePilot",
+            repo="Miralia/LitePilot",
             prefix=backend_prefix,
         )
     return backend_ref
@@ -644,7 +644,7 @@ def _start_backend_service(timeout: int, safe: bool = False) -> Dict[str, Any]:
     if state in {"running", "starting"} and runtime and process:
         return {"status": state, "runtime": runtime, "process": process, "health": health_payload, "started": False}
     if state == "running-unmanaged":
-        raise click.ClickException("检测到本地端口上已有 MoviePilot 后端正在运行，但不是由当前 CLI 管理，请先手动停止它")
+        raise click.ClickException("检测到本地端口上已有 LitePilot 后端正在运行，但不是由当前 CLI 管理，请先手动停止它")
 
     _ensure_local_api_token()
     _clear_json_file(BACKEND_RUNTIME_FILE)
@@ -671,7 +671,7 @@ def _start_frontend_service(timeout: int, backend_port: int) -> Dict[str, Any]:
     if state in {"running", "starting"} and runtime and process:
         return {"status": state, "runtime": runtime, "process": process, "health": health_payload, "started": False}
     if state == "running-unmanaged":
-        raise click.ClickException("检测到本地端口上已有 MoviePilot 前端正在运行，但不是由当前 CLI 管理，请先手动停止它")
+        raise click.ClickException("检测到本地端口上已有 LitePilot 前端正在运行，但不是由当前 CLI 管理，请先手动停止它")
 
     _clear_json_file(FRONTEND_RUNTIME_FILE)
     process = _spawn_frontend_process(backend_port=backend_port)
@@ -749,14 +749,14 @@ def _installed_frontend_version() -> Optional[str]:
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 def cli() -> None:
-    """MoviePilot 本地 CLI"""
+    """LitePilot 本地 CLI"""
 
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.option("--timeout", default=60, show_default=True, help="等待后端与前端就绪的秒数")
 @click.option("--safe", is_flag=True, help="安全模式启动，仅保留核心 API，跳过插件和后台任务")
 def start(timeout: int, safe: bool) -> None:
-    """后台启动本地 MoviePilot 前后端服务"""
+    """后台启动本地 LitePilot 前后端服务"""
     _ensure_frontend_not_running_alone(timeout=min(timeout, 15))
     backend_state, _, _, _ = _managed_backend_status()
     frontend_state, _, _, _ = _managed_frontend_status()
@@ -779,7 +779,7 @@ def start(timeout: int, safe: bool) -> None:
     backend_version = ((backend_health.get("data") or {}) if isinstance(backend_health, dict) else {}).get("BACKEND_VERSION", APP_VERSION)
     frontend_version = ((frontend_result.get("health") or {}) if isinstance(frontend_result.get("health"), dict) else {}).get("version") or _installed_frontend_version() or "unknown"
 
-    click.echo("MoviePilot 已启动" if backend_result.get("started") or frontend_result.get("started") else "MoviePilot 已在运行")
+    click.echo("LitePilot 已启动" if backend_result.get("started") or frontend_result.get("started") else "LitePilot 已在运行")
     click.echo(f"Backend PID: {backend_result['process'].pid}")
     click.echo(f"Backend URL: {_backend_base_url(backend_runtime)}")
     click.echo(f"Frontend PID: {frontend_result['process'].pid}")
@@ -794,12 +794,12 @@ def start(timeout: int, safe: bool) -> None:
 @click.option("--timeout", default=30, show_default=True, help="等待服务退出的秒数")
 @click.option("--force", is_flag=True, help="超时后强制结束进程")
 def stop(timeout: int, force: bool) -> None:
-    """停止本地 MoviePilot 前后端服务"""
+    """停止本地 LitePilot 前后端服务"""
     frontend_result = _stop_frontend_service(timeout=timeout, force=force)
     backend_result = _stop_backend_service(timeout=timeout, force=force)
 
     if not frontend_result.get("stopped") and not backend_result.get("stopped"):
-        click.echo("MoviePilot 当前未运行")
+        click.echo("LitePilot 当前未运行")
         return
     if frontend_result.get("stopped"):
         click.echo(f"前端已停止 (PID: {frontend_result['pid']})")
@@ -812,25 +812,25 @@ def stop(timeout: int, force: bool) -> None:
 @click.option("--stop-timeout", default=30, show_default=True, help="停止服务时等待退出的秒数")
 @click.option("--force", is_flag=True, help="停止超时后强制结束进程")
 def restart(start_timeout: int, stop_timeout: int, force: bool) -> None:
-    """重启本地 MoviePilot 前后端服务"""
+    """重启本地 LitePilot 前后端服务"""
     _stop_frontend_service(timeout=stop_timeout, force=force)
     _stop_backend_service(timeout=stop_timeout, force=force)
     _best_effort_auto_update()
     backend_result = _start_backend_service(timeout=start_timeout)
     frontend_result = _start_frontend_service(timeout=start_timeout, backend_port=int(backend_result["runtime"]["port"]))
-    click.echo("MoviePilot 已重启")
+    click.echo("LitePilot 已重启")
     click.echo(f"Backend URL: {_backend_base_url(backend_result['runtime'])}")
     click.echo(f"Frontend URL: {_frontend_base_url(frontend_result['runtime'])}")
 
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 def status() -> None:
-    """查看本地 MoviePilot 前后端服务状态"""
+    """查看本地 LitePilot 前后端服务状态"""
     backend_state, backend_runtime, backend_process, backend_health = _managed_backend_status()
     frontend_state, frontend_runtime, frontend_process, frontend_health = _managed_frontend_status()
 
     if backend_state == "stopped" and frontend_state == "stopped":
-        click.echo("MoviePilot 未运行")
+        click.echo("LitePilot 未运行")
         installed_frontend = _installed_frontend_version()
         if installed_frontend:
             click.echo(f"已安装前端版本: {installed_frontend}")
@@ -901,7 +901,7 @@ def logs(lines: int, follow: bool, stdio: bool, frontend_log: bool) -> None:
 @click.option("--fix", is_flag=True, help="执行白名单安全修复")
 @click.option("--deep", is_flag=True, help="执行可能较慢的深度检查")
 def doctor(json_output: bool, fix: bool, deep: bool) -> None:
-    """离线诊断本地 MoviePilot 运行环境，插件日志告警不影响整体状态"""
+    """离线诊断本地 LitePilot 运行环境，插件日志告警不影响整体状态"""
     from app.doctor import run_doctor
     from app.doctor.formatters import format_json_report, format_text_report
 
@@ -1169,7 +1169,7 @@ def restore(archive: Path, config_dir: Optional[Path], overwrite: bool) -> None:
 
     backend_state, _, _, _ = _managed_backend_status()
     if backend_state != "stopped":
-        raise click.ClickException("请先停止 MoviePilot 再恢复配置，避免数据库写入冲突")
+        raise click.ClickException("请先停止 LitePilot 再恢复配置，避免数据库写入冲突")
     try:
         result = restore_backup(archive=archive, config_dir=config_dir, overwrite=overwrite)
     except (FileNotFoundError, FileExistsError, ValueError) as err:
@@ -1194,7 +1194,7 @@ def migrate(config_dir: Optional[Path]) -> None:
 
     backend_state, _, _, _ = _managed_backend_status()
     if backend_state != "stopped":
-        raise click.ClickException("请先停止 MoviePilot 再执行迁移")
+        raise click.ClickException("请先停止 LitePilot 再执行迁移")
 
     target = settings.CONFIG_PATH.expanduser().resolve()
     if target == source.resolve():
@@ -1226,7 +1226,7 @@ def migrate(config_dir: Optional[Path]) -> None:
 @cli.command(context_settings=CONTEXT_SETTINGS)
 def version() -> None:
     """显示版本信息"""
-    click.echo(f"MoviePilot CLI: {APP_VERSION}")
+    click.echo(f"LitePilot CLI: {APP_VERSION}")
 
     healthy_backend, payload = _backend_health(runtime=_backend_runtime())
     if healthy_backend:

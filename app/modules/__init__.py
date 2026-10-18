@@ -358,11 +358,11 @@ class _DownloaderBase(ServiceBase[TService, DownloaderConf]):
 
     def normalize_return_path(self, path: Path, downloader: Optional[str]) -> str:
         """
-        将下载器返回的路径反向映射为 MoviePilot 可访问的存储路径。
+        将下载器返回的路径反向映射为 LitePilot 可访问的存储路径。
 
         :param path: 下载器返回的路径
         :param downloader: 下载器名称
-        :return: MoviePilot 可访问的路径
+        :return: LitePilot 可访问的路径
         """
         normalized_path = path.as_posix()
         conf = self.get_config(downloader)

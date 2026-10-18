@@ -288,9 +288,9 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
             logger.error("解决方案:")
             for tip in get_system_optimization_tips():
                 logger.error(f"  {tip}")
-            logger.error("执行上述命令后重启 MoviePilot")
+            logger.error("执行上述命令后重启 LitePilot")
         elif "permission" in err_msg.lower():
-            logger.error("权限错误，请检查 MoviePilot 是否有足够的权限访问监控目录")
+            logger.error("权限错误，请检查 LitePilot 是否有足够的权限访问监控目录")
         elif isinstance(err, (FileNotFoundError, NotADirectoryError)):
             logger.error("监控目录当前不可用，网络存储/FUSE 挂载可能尚未就绪，将自动重试")
         elif monitor_mode != "compatibility":

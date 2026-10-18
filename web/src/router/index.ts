@@ -55,14 +55,6 @@ const router = createRouter({
           },
         },
         {
-          path: '/profile',
-          component: () => import('../pages/profile.vue'),
-          meta: {
-            keepAlive: true,
-            requiresAuth: true,
-          },
-        },
-        {
           path: '/setting',
           component: () => import('../pages/setting.vue'),
           meta: {

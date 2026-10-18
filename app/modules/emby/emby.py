@@ -243,7 +243,7 @@ class Emby:
         url = f"{self._host}emby/Users/AuthenticateByName"
         try:
             res = RequestUtils(headers={
-                'X-Emby-Authorization': f'MediaBrowser Client="MoviePilot", '
+                'X-Emby-Authorization': f'MediaBrowser Client="LitePilot", '
                                         f'Device="requests", '
                                         f'DeviceId="1", '
                                         f'Version="1.0.0", '

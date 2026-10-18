@@ -5,7 +5,6 @@ import { openSharedDialog } from '@/composables/useSharedDialog'
 import { useBackground } from '@/composables/useBackground'
 import { useI18n } from 'vue-i18n'
 
-const AboutDialog = defineAsyncComponent(() => import('@/components/dialog/AboutDialog.vue'))
 
 const props = defineProps({
   // 是否允许刷新数据
@@ -53,10 +52,6 @@ function formatRuntime(totalSeconds: number) {
 }
 
 /** 打开关于页复用现有版本检查能力。 */
-function openVersionDetails() {
-  openSharedDialog(AboutDialog, {}, {}, { closeOn: ['close', 'update:modelValue'] })
-}
-
 useDataRefresh('dashboard-system-info', loadSystemInfo, 60000, true)
 
 onMounted(() => {
@@ -93,9 +88,6 @@ onBeforeUnmount(() => {
       <div class="dashboard-system-footer">
         <span>{{ t('dashboard.systemInfo.version') }}</span>
         <strong>{{ systemInfo?.version || '—' }}</strong>
-        <VBtn size="small" variant="text" color="primary" class="dashboard-grid-no-drag" @click="openVersionDetails">
-          {{ t('dashboard.systemInfo.checkUpdate') }}
-        </VBtn>
       </div>
     </VCardText>
   </VCard>

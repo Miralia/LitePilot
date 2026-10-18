@@ -37,7 +37,7 @@ from app.db.init import init_db, update_db
 setproctitle.setproctitle(settings.PROJECT_NAME)
 
 
-class MoviePilotServer(uvicorn.Server):
+class LitePilotServer(uvicorn.Server):
     """在 Uvicorn 开始优雅退出前发布应用协作停止标志"""
 
     def handle_exit(self, sig, frame) -> None:
@@ -46,7 +46,7 @@ class MoviePilotServer(uvicorn.Server):
 
 
 # uvicorn服务
-Server = MoviePilotServer(Config(app, host=settings.HOST, port=settings.PORT,
+Server = LitePilotServer(Config(app, host=settings.HOST, port=settings.PORT,
                                  reload=settings.DEV, workers=multiprocessing.cpu_count() * 2 + 1,
                                  timeout_graceful_shutdown=60))
 

@@ -22,7 +22,7 @@ class SwizzinUserSync(metaclass=Singleton):
     swizzin 用户同步
 
     本分支不再维护多用户与权限体系：用户身份以宿主机 swizzin 为唯一来源，
-    MoviePilot 只保留与 swizzin 同名的账号，并在启动与登录时按需补齐。
+    LitePilot 只保留与 swizzin 同名的账号，并在启动与登录时按需补齐。
     """
 
     @staticmethod

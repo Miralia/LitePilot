@@ -26,7 +26,7 @@ const themedLogoSvg = computed(() =>
   <span
     class="theme-logo-mark"
     :role="props.decorative ? undefined : 'img'"
-    :aria-label="props.decorative ? undefined : 'MoviePilot'"
+    :aria-label="props.decorative ? undefined : 'LitePilot'"
     :aria-hidden="props.decorative || undefined"
   >
     <span class="theme-logo-mark__svg" v-html="themedLogoSvg" />

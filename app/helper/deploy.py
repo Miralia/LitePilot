@@ -17,8 +17,8 @@ DEFAULT_BACKEND_PORT = 3001
 
 SYSTEMD_UNIT_TEMPLATE = """\
 [Unit]
-Description=MoviePilot 内容库维护服务
-Documentation=https://github.com/Miralia/MoviePilot
+Description=LitePilot 内容库维护服务
+Documentation=https://github.com/Miralia/LitePilot
 Wants=network-online.target
 After=network-online.target
 
@@ -40,7 +40,7 @@ WantedBy=multi-user.target
 """
 
 NGINX_SITE_TEMPLATE = """\
-# MoviePilot 站点配置：静态产物由 nginx 托管，接口反代到后端。
+# LitePilot 站点配置：静态产物由 nginx 托管，接口反代到后端。
 # 注意：前端以 api/v1/ 相对路径发起请求，子路径部署时必须让该前缀同样反代到后端，
 # 否则浏览器会把 {prefix}api/v1/... 解析成 {prefix}login/... 之类并落到静态处理。
 location {prefix}api/ {{

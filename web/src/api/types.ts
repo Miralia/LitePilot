@@ -548,9 +548,9 @@ export interface DashboardSystemInfo {
   hostname: string
   // 操作系统名称
   operating_system: string
-  // MoviePilot 运行时间，单位秒
+  // LitePilot 运行时间，单位秒
   runtime: number
-  // MoviePilot 后端版本
+  // LitePilot 后端版本
   version: string
 }
 

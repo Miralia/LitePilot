@@ -386,7 +386,7 @@ class QbittorrentModule(_ModuleBase, _DownloaderBase[Qbittorrent]):
                 TorrentQueryStatus.COMPLETED,
                 TorrentQueryStatus.PAUSED,
         ):
-            # 获取完整任务列表，由 MoviePilot 统一归一实际下载器状态。
+            # 获取完整任务列表，由 LitePilot 统一归一实际下载器状态。
             for name, server in servers.items():
                 torrents, _ = server.get_torrents(tags=query_tags) or []
                 try:

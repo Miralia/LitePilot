@@ -389,7 +389,7 @@ function resolveProbeFailureReason(error: unknown): ConnectionFailureReason {
   return 'server-unreachable'
 }
 
-/** 按退避间隔安排下一次 MoviePilot 服务探测。 */
+/** 按退避间隔安排下一次 LitePilot 服务探测。 */
 function scheduleConnectionRetry() {
   clearConnectionRetryTimer()
 

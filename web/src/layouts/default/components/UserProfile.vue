@@ -23,7 +23,6 @@ import {
 } from '@/composables/useThemeCustomizer'
 import { buildUserPermissionContext, hasPermission } from '@/utils/permission'
 
-const AboutDialog = defineAsyncComponent(() => import('@/components/dialog/AboutDialog.vue'))
 const CustomCssDialog = defineAsyncComponent(() => import('@/components/dialog/CustomCssDialog.vue'))
 const GlassSettingsDialog = defineAsyncComponent(() => import('@/components/dialog/GlassSettingsDialog.vue'))
 const ProgressDialog = defineAsyncComponent(() => import('@/components/dialog/ProgressDialog.vue'))
@@ -208,12 +207,6 @@ async function showRestartDialog() {
 }
 
 /** 显示关于共享弹窗。 */
-function showAboutDialog() {
-  if (!canAdmin.value) return
-
-  openSharedDialog(AboutDialog, {}, {}, { closeOn: ['close', 'update:modelValue'] })
-}
-
 // 从用户 Store中获取信息
 const superUser = computed(() => userStore.superUser)
 const userPermissions = computed(() => buildUserPermissionContext(userStore.superUser, userStore.permissions))
@@ -541,14 +534,6 @@ onUnmounted(() => {
         </VListItem>
         <VDivider class="mb-2" />
         <div class="px-2">
-          <!-- 👉 Profile -->
-          <VListItem link @click="router.push('/profile')" class="mb-1 rounded-lg" hover>
-            <template #prepend>
-              <VIcon icon="mdi-account-outline" />
-            </template>
-            <VListItemTitle>{{ t('user.profile') }}</VListItemTitle>
-          </VListItem>
-
           <VListItem
             v-if="canAdmin"
             link
@@ -662,20 +647,8 @@ onUnmounted(() => {
           </VMenu>
 
           <!-- 👉 FAQ -->
-          <VListItem href="https://movie-pilot.org" target="_blank" class="mb-1 rounded-lg" hover>
-            <template #prepend>
-              <VIcon icon="mdi-help-circle-outline" />
-            </template>
-            <VListItemTitle>{{ t('user.helpDocs') }}</VListItemTitle>
-          </VListItem>
 
           <!-- 👉 About -->
-          <VListItem v-if="canAdmin" @click="showAboutDialog" class="mb-1 rounded-lg" hover>
-            <template #prepend>
-              <VIcon icon="mdi-information-outline" />
-            </template>
-            <VListItemTitle>{{ t('setting.about.title') }}</VListItemTitle>
-          </VListItem>
 
           <!-- Divider -->
           <VDivider v-if="canAdmin" class="my-3" />

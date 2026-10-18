@@ -91,7 +91,7 @@ export default defineConfig(({ command, mode, isPreview }) => ({
     }),
     !isTestMode(mode) &&
       federation({
-        name: 'MoviePilot',
+        name: 'LitePilot',
         filename: 'remoteEntry.js',
         // @ts-ignore
         remotes: {
@@ -119,9 +119,9 @@ export default defineConfig(({ command, mode, isPreview }) => ({
           type: 'module',
         },
         manifest: {
-          'name': 'MoviePilot',
-          'short_name': 'MoviePilot',
-          'description': 'MoviePilot - 智能影视媒体库管理工具',
+          'name': 'LitePilot',
+          'short_name': 'LitePilot',
+          'description': 'LitePilot - 智能影视媒体库管理工具',
           'start_url': './',
           'scope': './',
           'display': 'standalone',
@@ -212,14 +212,14 @@ export default defineConfig(({ command, mode, isPreview }) => ({
               'sizes': '512x512',
               'type': 'image/png',
               'form_factor': 'wide',
-              'label': 'MoviePilot 主界面',
+              'label': 'LitePilot 主界面',
             },
             {
               'src': './android-chrome-192x192.png',
               'sizes': '192x192',
               'type': 'image/png',
               'form_factor': 'narrow',
-              'label': 'MoviePilot 移动端',
+              'label': 'LitePilot 移动端',
             },
           ],
           'protocol_handlers': [

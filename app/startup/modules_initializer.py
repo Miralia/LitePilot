@@ -63,7 +63,7 @@ def clear_temp():
 
 def clear_package_tool_cache():
     """
-    清理 pip/uv 包下载缓存，只处理 MoviePilot 管理的工具子目录。
+    清理 pip/uv 包下载缓存，只处理 LitePilot 管理的工具子目录。
     """
     days = settings.PACKAGE_CACHE_DAYS
     if days <= 0:

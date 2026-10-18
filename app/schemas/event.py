@@ -293,7 +293,7 @@ class TransferOverwriteCheckEventData(ChainEventData):
         target_size (Optional[int]): 由插件提供的目标文件真实大小，覆盖
             target_item.size 用于 size 模式比较；为 None 时表示不修改
         overwrite (Optional[bool]): 由插件直接给出的覆盖决策，非 None 时
-            将完全跳过 MoviePilot 内置的 size/never/latest 等比较逻辑
+            将完全跳过 LitePilot 内置的 size/never/latest 等比较逻辑
         source (str): 处理来源
         reason (str): 处理原因，描述插件做出决策或修改的原因
     """

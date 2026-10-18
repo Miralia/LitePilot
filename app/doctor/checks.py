@@ -255,7 +255,7 @@ def _can_connect(host: str, port: int, timeout: float = 1.0) -> tuple[bool, str]
 
 def _is_moviepilot_backend_payload(payload: Any) -> bool:
     """
-    判断本地健康接口响应是否来自 MoviePilot 后端。
+    判断本地健康接口响应是否来自 LitePilot 后端。
     """
     if not isinstance(payload, dict) or payload.get("success") is False:
         return False
@@ -267,7 +267,7 @@ def _is_moviepilot_backend_payload(payload: Any) -> bool:
 
 def _backend_health_payload(port: int, timeout: float = BACKEND_HEALTH_TIMEOUT) -> Optional[dict[str, Any]]:
     """
-    读取本机后端健康接口响应，用于识别非 CLI 管理的 MoviePilot 进程。
+    读取本机后端健康接口响应，用于识别非 CLI 管理的 LitePilot 进程。
     """
     query = urlencode({"token": BACKEND_HEALTH_TOKEN})
     url = f"http://{_client_host(settings.HOST)}:{port}{BACKEND_HEALTH_PATH}?{query}"
@@ -550,7 +550,7 @@ def _check_port(
             severity=DoctorSeverity.Info,
             status=DoctorFindingStatus.Ok,
             title=f"{name} 端口监听正常",
-            detail=f"端口 {port} 由 MoviePilot 管理进程监听：{'; '.join(descriptions)}",
+            detail=f"端口 {port} 由 LitePilot 管理进程监听：{'; '.join(descriptions)}",
             recommendation="无需处理。",
             context={"port": port, "pids": [process.pid for process in occupants]},
         )
@@ -562,7 +562,7 @@ def _check_port(
             finding_id=f"port.{name}_listening_unmanaged",
             severity=DoctorSeverity.Info,
             status=DoctorFindingStatus.Ok,
-            title=f"{name} 端口由 MoviePilot 相关进程监听",
+            title=f"{name} 端口由 LitePilot 相关进程监听",
             detail=f"端口 {port} 监听进程：{'; '.join(_process_description(process) for process in expected_processes)}",
             recommendation="如果这是 Docker 或非 CLI 管理启动方式，可忽略 runtime 文件缺失。",
             context={"port": port, "pids": [process.pid for process in expected_processes]},
@@ -576,7 +576,7 @@ def _check_port(
                 finding_id=f"port.{name}_listening_unmanaged",
                 severity=DoctorSeverity.Info,
                 status=DoctorFindingStatus.Ok,
-                title=f"{name} 端口由 MoviePilot 后端监听",
+                title=f"{name} 端口由 LitePilot 后端监听",
                 detail=f"端口 {port} 健康接口响应正常；监听进程：{'; '.join(descriptions)}",
                 recommendation="Docker 或非 CLI 管理启动方式下，后端端口被当前服务监听属于正常状态。",
                 context={
@@ -593,7 +593,7 @@ def _check_port(
         status=DoctorFindingStatus.Failed,
         title=f"{name} 端口被其他进程占用",
         detail=f"端口 {port} 当前监听进程：{'; '.join(descriptions)}",
-        recommendation="停止占用进程，或修改 MoviePilot 的端口配置后重启。",
+        recommendation="停止占用进程，或修改 LitePilot 的端口配置后重启。",
         context={"port": port, "pids": [process.pid for process in occupants]},
     )
 
@@ -811,7 +811,7 @@ def _check_logs(runner: DoctorRunnerProtocol) -> None:
             severity=DoctorSeverity.Warn,
             status=DoctorFindingStatus.Degraded,
             title="未找到运行日志",
-            detail=f"{settings.LOG_PATH} 下没有可读取的 MoviePilot 日志。",
+            detail=f"{settings.LOG_PATH} 下没有可读取的 LitePilot 日志。",
             recommendation="如果服务尚未启动过可忽略；否则请确认 CONFIG_DIR 和日志目录权限。",
         )
         return

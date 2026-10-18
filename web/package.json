@@ -1,5 +1,5 @@
 {
-  "name": "moviepilot",
+  "name": "litepilot",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -25,7 +25,7 @@
     "test:format-config": "vitest run tests/config/format-changed.spec.ts tests/config/frontend-workflow.spec.ts",
     "build:icons": "tsc -b src/@iconify && node src/@iconify/build-icons.js",
     "postinstall": "npm run build:icons",
-    "pkg": "pkg . -t node18-win-x64 -o MoviePilot-Frontend.exe"
+    "pkg": "pkg . -t node18-win-x64 -o LitePilot-Frontend.exe"
   },
   "pkg": {
     "assets": [

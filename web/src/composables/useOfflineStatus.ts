@@ -10,14 +10,14 @@ const connectionReason = ref<ConnectionFailureReason | null>(null)
 const connectionCheckRequestId = ref(0)
 const serverSuccessSequence = ref(0)
 
-/** 管理 MoviePilot 服务的全局连接状态。 */
+/** 管理 LitePilot 服务的全局连接状态。 */
 export function useGlobalOfflineStatus() {
   const isOnline = computed(() => connectionStatus.value === 'online')
   const isChecking = computed(() => connectionStatus.value === 'checking')
   const isOffline = computed(() => connectionStatus.value === 'offline')
   const canPerformNetworkAction = computed(() => connectionStatus.value !== 'offline')
 
-  /** 记录任意 MoviePilot API 成功响应并恢复在线状态。 */
+  /** 记录任意 LitePilot API 成功响应并恢复在线状态。 */
   function markServerOnline() {
     connectionStatus.value = 'online'
     connectionReason.value = null
@@ -30,7 +30,7 @@ export function useGlobalOfflineStatus() {
     if (reason) connectionReason.value = reason
   }
 
-  /** 在权威探测失败后标记 MoviePilot 服务不可达。 */
+  /** 在权威探测失败后标记 LitePilot 服务不可达。 */
   function markServerOffline(reason: ConnectionFailureReason = 'server-unreachable') {
     connectionStatus.value = 'offline'
     connectionReason.value = reason
@@ -42,7 +42,7 @@ export function useGlobalOfflineStatus() {
     connectionCheckRequestId.value += 1
   }
 
-  /** 请求立即检查 MoviePilot 服务连接。 */
+  /** 请求立即检查 LitePilot 服务连接。 */
   function requestConnectionCheck(reason?: ConnectionFailureReason) {
     markConnectionChecking(reason)
     connectionCheckRequestId.value += 1
@@ -66,7 +66,7 @@ export function useGlobalOfflineStatus() {
   }
 }
 
-/** 为单个组件提供 MoviePilot 服务连接状态。 */
+/** 为单个组件提供 LitePilot 服务连接状态。 */
 export function useOfflineStatus() {
   const status = useGlobalOfflineStatus()
 

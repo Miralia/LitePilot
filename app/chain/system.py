@@ -56,25 +56,18 @@ class SystemChain(ChainBase):
 
     def __get_version_message(self) -> str:
         """
-        获取版本信息文本
+        获取版本信息文本（仅本地版本，不再查询远程发布）
         """
-        server_release_version = self.__get_server_release_version()
-        front_release_version = self.__get_front_release_version()
         server_local_version = self.get_server_local_version()
         front_local_version = self.get_frontend_version()
-        if server_release_version == server_local_version:
-            title = f"当前后端版本：{server_local_version}，已是最新版本\n"
-        else:
-            title = f"当前后端版本：{server_local_version}，远程版本：{server_release_version}\n"
-        if front_release_version == front_local_version:
-            title += f"当前前端版本：{front_local_version}，已是最新版本"
-        else:
-            title += f"当前前端版本：{front_local_version}，远程版本：{front_release_version}"
-        return title
+        return (
+            f"当前后端版本：{server_local_version}\n"
+            f"当前前端版本：{front_local_version}"
+        )
 
     def version(self, channel: MessageChannel, userid: Union[int, str], source: Optional[str] = None):
         """
-        查看当前版本、远程版本
+        查看当前版本
         """
         self.post_message(Notification(
             channel=channel,
@@ -107,60 +100,6 @@ class SystemChain(ChainBase):
                 userid=userid,
                 save_history=False))
             self.remove_cache(self._restart_file)
-
-    @staticmethod
-    def __get_server_release_version():
-        """
-        获取后端V2最新版本
-        """
-        try:
-            # 获取所有发布的版本列表
-            response = RequestUtils(
-                proxies=settings.PROXY,
-                headers=settings.GITHUB_HEADERS
-            ).get_res("https://api.github.com/repos/jxxghp/MoviePilot/releases")
-            if response:
-                releases = [release['tag_name'] for release in response.json()]
-                v2_releases = [tag for tag in releases if re.match(r"^v2\.", tag)]
-                if not v2_releases:
-                    logger.warn("获取v2后端最新版本版本出错！")
-                else:
-                    # 找到最新的v2版本
-                    latest_v2 = sorted(v2_releases, key=lambda s: list(map(int, re.findall(r'\d+', s))))[-1]
-                    logger.info(f"获取到后端最新版本：{latest_v2}")
-                    return latest_v2
-            else:
-                logger.error("无法获取后端版本信息，请检查网络连接或GitHub API请求。")
-        except Exception as err:
-            logger.error(f"获取后端最新版本失败：{str(err)}")
-        return None
-
-    @staticmethod
-    def __get_front_release_version():
-        """
-        获取前端V2最新版本
-        """
-        try:
-            # 获取所有发布的版本列表
-            response = RequestUtils(
-                proxies=settings.PROXY,
-                headers=settings.GITHUB_HEADERS
-            ).get_res("https://api.github.com/repos/jxxghp/MoviePilot-Frontend/releases")
-            if response:
-                releases = [release['tag_name'] for release in response.json()]
-                v2_releases = [tag for tag in releases if re.match(r"^v2\.", tag)]
-                if not v2_releases:
-                    logger.warn("获取v2前端最新版本版本出错！")
-                else:
-                    # 找到最新的v2版本
-                    latest_v2 = sorted(v2_releases, key=lambda s: list(map(int, re.findall(r'\d+', s))))[-1]
-                    logger.info(f"获取到前端最新版本：{latest_v2}")
-                    return latest_v2
-            else:
-                logger.error("无法获取前端版本信息，请检查网络连接或GitHub API请求。")
-        except Exception as err:
-            logger.error(f"获取前端最新版本失败：{str(err)}")
-        return None
 
     @staticmethod
     def get_server_local_version():

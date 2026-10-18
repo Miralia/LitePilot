@@ -305,7 +305,7 @@ class NettestSecurityTest(unittest.TestCase):
             async def get_res(self, url, allow_redirects=True):
                 captured["url"] = url
                 captured["allow_redirects"] = allow_redirects
-                return SimpleNamespace(status_code=200, text="MoviePilot README")
+                return SimpleNamespace(status_code=200, text="LitePilot README")
 
         with patch.object(system_endpoint, "AsyncRequestUtils", FakeAsyncRequestUtils), patch.object(
             system_endpoint.settings,
@@ -323,7 +323,7 @@ class NettestSecurityTest(unittest.TestCase):
         self.assertTrue(resp.success)
         self.assertEqual(
             captured["url"],
-            "https://ghproxy.example/https://github.com/jxxghp/MoviePilot/blob/v2/README.md",
+            "https://ghproxy.example/https://github.com/Miralia/LitePilot/blob/v2/README.md",
         )
         self.assertFalse(captured["allow_redirects"])
         self.assertTrue(captured["init_kwargs"]["verify"])

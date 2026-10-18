@@ -20,7 +20,7 @@ from version import APP_VERSION
 
 class DoctorRunner:
     """
-    MoviePilot 离线诊断运行器，负责组合检查项并生成报告。
+    LitePilot 离线诊断运行器，负责组合检查项并生成报告。
     """
 
     def __init__(self, *, fix: bool = False, deep: bool = False):

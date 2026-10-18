@@ -2329,7 +2329,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                                 mediainfo.category = downloadhis.media_category
 
                     else:
-                        # 非MoviePilot下载的任务，按文件识别
+                        # 非LitePilot下载的任务，按文件识别
                         mediainfo = None
 
                     # 执行异步整理，匹配源目录

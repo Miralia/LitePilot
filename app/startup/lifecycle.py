@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
     # 初始化模块
     init_modules()
     if settings.MOVIEPILOT_SAFE_MODE:
-        print("MoviePilot safe mode enabled: skip scheduler, monitor and commands.")
+        print("LitePilot safe mode enabled: skip scheduler, monitor and commands.")
     else:
         # 初始化定时器
         init_scheduler()

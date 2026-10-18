@@ -104,7 +104,7 @@ class LocalDirectoryWatcher:
         self._mark_activity()
         self._thread = threading.Thread(
             target=self._run,
-            name=f"MoviePilot-DirectoryWatcher-{self._watch_path.name}",
+            name=f"LitePilot-DirectoryWatcher-{self._watch_path.name}",
             daemon=True
         )
         self._thread.start()

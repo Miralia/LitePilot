@@ -51,7 +51,7 @@ def test_doctor_formatters_include_status_and_finding(tmp_path, monkeypatch):
     text = format_text_report(report)
     json_text = format_json_report(report)
 
-    assert "MoviePilot Doctor" in text
+    assert "LitePilot Doctor" in text
     assert "测试诊断项" in text
     assert '"schema_version": 1' in json_text
     assert '"test.demo"' in json_text

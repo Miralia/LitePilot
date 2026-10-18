@@ -17,12 +17,12 @@ export interface ConnectionAwareRequestConfig extends AxiosRequestConfig {
 // 声明全局变量类型
 declare global {
   interface Window {
-    MoviePilotAPI: typeof api
+    LitePilotAPI: typeof api
   }
 }
 
 // 将 API 实例暴露到全局，供插件使用
-window.MoviePilotAPI = api
+window.LitePilotAPI = api
 
 // 初始化请求优化器（必须在其他拦截器之前）
 initializeRequestOptimizer(api)
@@ -36,7 +36,7 @@ api.interceptors.request.use(config => {
     config.headers.Authorization = `Bearer ${authStore.token}`
   }
   const locale = getCurrentLocale()
-  config.headers['X-MoviePilot-Locale'] = locale
+  config.headers['X-LitePilot-Locale'] = locale
   config.headers['Accept-Language'] = locale
   return config
 })
@@ -79,7 +79,7 @@ function normalizeLocalizedMessage(payload: any): any {
 // 添加响应拦截器
 api.interceptors.response.use(
   response => {
-    // 任意 API 成功响应都可以证明 MoviePilot 服务当前可达。
+    // 任意 API 成功响应都可以证明 LitePilot 服务当前可达。
     globalOfflineStatus.markServerOnline()
     return normalizeLocalizedMessage(response.data)
   },

@@ -57,7 +57,7 @@ class ConfigModel(BaseModel):
 
     # ==================== 基础应用配置 ====================
     # 项目名称
-    PROJECT_NAME: str = "MoviePilot"
+    PROJECT_NAME: str = "LitePilot"
     # 域名 格式；https://movie-pilot.org
     APP_DOMAIN: str = ""
     # API路径

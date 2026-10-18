@@ -102,8 +102,8 @@ def _build_nettest_rules() -> list[dict[str, Any]]:
     tmdb_key = settings.TMDB_API_KEY
     tmdb_domain = settings.TMDB_API_DOMAIN or "api.themoviedb.org"
 
-    github_readme_url = "https://github.com/jxxghp/MoviePilot/blob/v2/README.md"
-    raw_readme_url = "https://raw.githubusercontent.com/jxxghp/MoviePilot/v2/README.md"
+    github_readme_url = "https://github.com/Miralia/LitePilot/blob/v2/README.md"
+    raw_readme_url = "https://raw.githubusercontent.com/Miralia/LitePilot/v2/README.md"
 
     rules = [
         {
@@ -171,7 +171,7 @@ def _build_nettest_rules() -> list[dict[str, Any]]:
                 "https://github.com/",
                 *((f"{github_proxy}https://github.com/",) if github_proxy else ()),
             ],
-            "expected_text": "MoviePilot",
+            "expected_text": "LitePilot",
             "invalid_message": "Github加速代理已失效，请检查配置"
             if github_proxy
             else "无效响应",
@@ -215,7 +215,7 @@ def _build_nettest_rules() -> list[dict[str, Any]]:
                     else ()
                 ),
             ],
-            "expected_text": "MoviePilot",
+            "expected_text": "LitePilot",
             "invalid_message": "Github加速代理已失效，请检查配置"
             if github_proxy
             else "无效响应",
@@ -849,23 +849,6 @@ async def download_logging(
     按日志标识下载主程序或插件滚动日志，返回 zip 文件。
     """
     return await _build_log_zip_response(name)
-
-
-@router.get(
-    "/versions", summary="查询Github所有Release版本", response_model=schemas.Response
-)
-async def latest_version(_: schemas.TokenPayload = Depends(verify_token)):
-    """
-    查询Github所有Release版本
-    """
-    version_res = await AsyncRequestUtils(
-        proxies=settings.PROXY, headers=settings.GITHUB_HEADERS
-    ).get_res(f"https://api.github.com/repos/jxxghp/MoviePilot/releases")
-    if version_res is not None and version_res.status_code == 200:
-        ver_json = version_res.json()
-        if ver_json:
-            return schemas.Response(success=True, data=ver_json)
-    return schemas.Response(success=False)
 
 
 @router.get(

@@ -699,7 +699,7 @@ class SystemUtils:
         """
         获取仪表板展示所需的系统摘要信息。
 
-        运行时间以当前 MoviePilot 进程为基准，避免宿主机或容器长期运行时间
+        运行时间以当前 LitePilot 进程为基准，避免宿主机或容器长期运行时间
         掩盖服务最近一次重启。
         """
         return schemas.DashboardSystemInfo(
@@ -763,7 +763,7 @@ class SystemUtils:
     @staticmethod
     def memory_usage() -> schemas.DashboardMemoryInfo:
         """
-        获取当前 MoviePilot 进程内存与系统缓存、可用和总内存信息。
+        获取当前 LitePilot 进程内存与系统缓存、可用和总内存信息。
         """
         memory = psutil.virtual_memory()
         total = max(0, int(memory.total))

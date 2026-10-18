@@ -68,7 +68,7 @@ onBeforeUnmount(() => {
     :class="{ 'prismatic-logo--animated': props.animate }"
     :style="logoMaskStyle"
     role="img"
-    aria-label="MoviePilot"
+    aria-label="LitePilot"
     @pointermove="handlePointerMove"
     @pointerleave="resetPointerResponse"
   >

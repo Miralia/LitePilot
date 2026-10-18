@@ -455,7 +455,7 @@ class SecurityUtils:
         """
         移除 URL fragment 中的资源签名信息，得到真正要请求的地址。
 
-        签名放在 fragment 中，浏览器会把它传给 MoviePilot，但 HTTP 客户端
+        签名放在 fragment 中，浏览器会把它传给 LitePilot，但 HTTP 客户端
         请求外部资源前不能把这些内部参数带过去。
         """
         if not url:

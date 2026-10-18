@@ -105,7 +105,7 @@ def test_uvicorn_signal_publishes_stop_before_server_exit(monkeypatch):
         lambda _self, _sig, _frame: calls.append("uvicorn"),
     )
 
-    server = object.__new__(main.MoviePilotServer)
+    server = object.__new__(main.LitePilotServer)
     server.handle_exit(signal.SIGTERM, None)
 
     assert calls == ["stop", "uvicorn"]
@@ -154,7 +154,7 @@ def test_uvicorn_preserves_stop_requested_before_serve(monkeypatch):
         assert main.global_vars.is_system_stopped
 
     monkeypatch.setattr(main.uvicorn.Server, "serve", serve)
-    server = object.__new__(main.MoviePilotServer)
+    server = object.__new__(main.LitePilotServer)
     asyncio.run(server.serve())
 
 

@@ -78,7 +78,7 @@ class DoctorFinding:
 @dataclass
 class DoctorReport:
     """
-    MoviePilot 离线诊断报告。
+    LitePilot 离线诊断报告。
     """
 
     generated_at: datetime

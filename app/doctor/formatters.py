@@ -24,7 +24,7 @@ def format_text_report(report: DoctorReport) -> str:
     将诊断报告格式化为面向用户阅读的文本。
     """
     lines = [
-        "MoviePilot Doctor",
+        "LitePilot Doctor",
         "",
         f"状态: {STATUS_LABELS.get(report.status.value, report.status.value)}",
         f"版本: {report.version}",

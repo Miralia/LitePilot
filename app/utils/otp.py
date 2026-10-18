@@ -8,8 +8,8 @@ class OtpUtils:
     def generate_secret_key(username: str) -> Tuple[str, str]:
         try:
             secret = pyotp.random_base32()
-            uri = pyotp.totp.TOTP(secret).provisioning_uri(name='MoviePilot',
-                                                           issuer_name='MoviePilot(' + username + ')')
+            uri = pyotp.totp.TOTP(secret).provisioning_uri(name='LitePilot',
+                                                           issuer_name='LitePilot(' + username + ')')
             return secret, uri
         except Exception as err:
             print(str(err))

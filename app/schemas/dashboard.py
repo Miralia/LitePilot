@@ -71,13 +71,13 @@ class DashboardMemoryInfo(BaseModel):
 
     # 总内存字节数
     total: int = 0
-    # 当前 MoviePilot 进程使用内存字节数
+    # 当前 LitePilot 进程使用内存字节数
     used: int = 0
     # 缓存与缓冲区占用字节数
     cached: int = 0
     # 可用内存字节数
     available: int = 0
-    # 当前 MoviePilot 进程使用内存占总内存百分比
+    # 当前 LitePilot 进程使用内存占总内存百分比
     usage: float = 0.0
 
 
@@ -140,7 +140,7 @@ class DashboardSystemInfo(BaseModel):
     hostname: str
     # 操作系统名称
     operating_system: str
-    # MoviePilot 运行时间，单位秒
+    # LitePilot 运行时间，单位秒
     runtime: int
-    # MoviePilot 后端版本
+    # LitePilot 后端版本
     version: str
