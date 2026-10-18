@@ -13,7 +13,7 @@ from app.helper.builtinconf import sync_del_by_media_server_conf
 from app.log import logger
 from app.schemas import FileItem
 from app.schemas.message import Notification
-from app.schemas.types import EventType, MediaType, NotificationType
+from app.schemas.types import EventType, MediaImageType, MediaType, NotificationType
 
 # 各媒体服务器 / 插件上报的删除事件名
 DELETE_EVENTS = frozenset({"deep.delete", "media_del"})
@@ -109,12 +109,13 @@ class MediaServerDelChain(ChainBase):
             ),
         )
 
-    def _delete_source(self, history, conf=None) -> None:
+    def _delete_source(self, history, conf=None) -> Tuple[str, Optional[str]]:
         """
-        删除整理记录的源文件与媒体库文件，并按需删除下载任务。
+        删除整理记录的源文件与媒体库文件，并按需处理下载任务。
 
         :param history: 整理历史记录
         :param conf: 联动删除配置，为空时读取当前配置
+        :return: (种子处理结果, 种子hash)。结果为 deleted/paused/kept/none/error
         """
         conf = conf or sync_del_by_media_server_conf()
         storagechain = StorageChain()
@@ -142,20 +143,22 @@ class MediaServerDelChain(ChainBase):
                 self._remove_empty_parents(src_path)
 
         # 源文件已全部删除时，删除下载器任务；可由配置关闭
-        if conf.delete_torrent and history.download_hash:
-            self.downloadhis.delete_file_by_fullpath(fullpath=history.src)
-            remain = self.downloadhis.get_files_by_hash(download_hash=history.download_hash, state=1)
-            if remain:
-                logger.info(
-                    f"种子 {history.download_hash} 仍有 {len(remain)} 个文件，保留下载任务"
-                )
-                return
-            logger.info(f"种子 {history.download_hash} 文件已全部删除，删除下载任务")
-            if DownloadChain().remove_downloading(hash_str=history.download_hash):
-                self.eventmanager.send_event(
-                    EventType.DownloadDeleted,
-                    {"hash": history.download_hash},
-                )
+        torrent_hash = history.download_hash
+        if not (conf.delete_torrent and torrent_hash):
+            return "none", torrent_hash
+        self.downloadhis.delete_file_by_fullpath(fullpath=history.src)
+        remain = self.downloadhis.get_files_by_hash(download_hash=torrent_hash, state=1)
+        if remain:
+            logger.info(f"种子 {torrent_hash} 仍有 {len(remain)} 个文件，保留下载任务")
+            return "kept", torrent_hash
+        logger.info(f"种子 {torrent_hash} 文件已全部删除，删除下载任务")
+        if DownloadChain().remove_downloading(hash_str=torrent_hash):
+            self.eventmanager.send_event(
+                EventType.DownloadDeleted,
+                {"hash": torrent_hash},
+            )
+            return "deleted", torrent_hash
+        return "error", torrent_hash
 
     def sync_del(
             self,
@@ -200,6 +203,7 @@ class MediaServerDelChain(ChainBase):
         deleted = 0
         failed = 0
         dry_run_items: List[str] = []
+        torrent_stats = {"deleted": 0, "kept": 0, "error": 0}
         for history in histories:
             # 记录由 tmdbid + 季 + 集精确定位，直接遵循媒体服务器的删除意图，
             # 不再用标题做二次校验（译名写法差异会造成误跳过）
@@ -212,7 +216,9 @@ class MediaServerDelChain(ChainBase):
                 continue
             try:
                 self.transferhis.delete(history.id)
-                self._delete_source(history, conf=conf)
+                state, _hash = self._delete_source(history, conf=conf)
+                if state in torrent_stats:
+                    torrent_stats[state] += 1
                 deleted += 1
             except Exception as err:
                 failed += 1
@@ -224,6 +230,11 @@ class MediaServerDelChain(ChainBase):
             deleted=deleted,
             failed=failed,
             dry_run_items=dry_run_items,
+            torrent_stats=torrent_stats,
+            tmdb_id=tmdb_id,
+            media_type=media_type,
+            season_num=season_num,
+            episode_num=episode_num,
         )
 
     def _notify_result(
@@ -233,44 +244,103 @@ class MediaServerDelChain(ChainBase):
             deleted: int,
             failed: int,
             dry_run_items: List[str],
+            torrent_stats: Optional[dict] = None,
+            tmdb_id: Optional[int] = None,
+            media_type: Optional[str] = None,
+            season_num: Optional[str] = None,
+            episode_num: Optional[str] = None,
     ) -> None:
         """
         把本次联动删除的结果发送到通知渠道。
+
+        通知内容对齐原插件：附带封面图，并说明种子是删除、暂停还是保留。
 
         :param msg: 删除对象的描述
         :param conf: 联动删除配置
         :param deleted: 成功删除的记录数
         :param failed: 删除失败的记录数
         :param dry_run_items: 试运行模式下待删除项
+        :param torrent_stats: 种子处理统计
+        :param tmdb_id: TMDB ID，用于取图
+        :param media_type: 媒体类型
+        :param season_num: 季号
+        :param episode_num: 集号
         """
         try:
+            stats = torrent_stats or {}
             if conf.dry_run:
                 if not dry_run_items:
                     return
                 title = "媒体库同步删除（试运行）"
-                lines = [f"{msg}", f"待删除记录 {len(dry_run_items)} 个"]
+                lines = [msg, f"待删除记录 {len(dry_run_items)} 个"]
                 lines.extend(f"· {item}" for item in dry_run_items[:10])
                 if len(dry_run_items) > 10:
                     lines.append(f"… 另有 {len(dry_run_items) - 10} 条")
+                image = None
             else:
                 if not (deleted or failed):
                     return
-                title = "媒体库同步删除完成"
-                lines = [f"{msg}", f"删除记录 {deleted} 个"]
+                title = "媒体库同步删除任务完成"
+                lines = [msg, f"删除记录 {deleted} 个"]
+                if stats.get("deleted"):
+                    lines.append(f"删除种子 {stats['deleted']} 个")
+                if stats.get("kept"):
+                    lines.append(f"保留种子 {stats['kept']} 个（仍有未删除文件）")
+                if stats.get("error"):
+                    lines.append(f"删种失败 {stats['error']} 个")
                 if failed:
-                    lines.append(f"删除失败 {failed} 个")
+                    lines.append(f"删除记录失败 {failed} 个")
+                image = self._obtain_notify_image(
+                    tmdb_id=tmdb_id,
+                    media_type=media_type,
+                    season_num=season_num,
+                    episode_num=episode_num,
+                )
             lines.append(f"时间 {time.strftime('%Y-%m-%d %H:%M:%S')}")
             self.post_message(
                 Notification(
                     mtype=NotificationType.Manual,
                     title=title,
                     text="\n".join(lines),
+                    image=image,
                 )
             )
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"发送联动删除通知失败：{err}")
 
-    @staticmethod
+    def _obtain_notify_image(
+            self,
+            tmdb_id: Optional[int],
+            media_type: Optional[str],
+            season_num: Optional[str] = None,
+            episode_num: Optional[str] = None,
+    ) -> str:
+        """
+        取通知用剧照，取不到时退回默认图标。
+
+        :param tmdb_id: TMDB ID
+        :param media_type: 媒体类型
+        :param season_num: 季号
+        :param episode_num: 集号
+        :return: 图片地址
+        """
+        default_icon = "https://emby.media/notificationicon.png"
+        if not tmdb_id:
+            return default_icon
+        mtype = MediaType.MOVIE if media_type in ("Movie", "MOV") else MediaType.TV
+        try:
+            image = self.obtain_specific_image(
+                mediaid=tmdb_id,
+                mtype=mtype,
+                image_type=MediaImageType.Backdrop,
+                season=int(season_num) if str(season_num or "").isdigit() else None,
+                episode=int(episode_num) if str(episode_num or "").isdigit() else None,
+            )
+            return image or default_icon
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"获取通知图片失败，使用默认图标：{err}")
+            return default_icon
+
     def _resolve_tmdb_id(event_data, server_name: Optional[str]) -> Optional[int]:
         """
         单集或单季事件缺少 TMDB ID 时，从媒体服务器补齐。

@@ -28,6 +28,7 @@ from app.db.models.transferhistory import TransferHistory
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.transferhistory_oper import TransferHistoryOper
 from app.helper.directory import DirectoryHelper
+from app.helper.mediaserver import MediaServerHelper
 from app.helper.format import EpisodeFormatRuleHelper, FormatParser
 from app.helper.progress import ProgressHelper
 from app.log import logger
@@ -1209,6 +1210,8 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             __notify()
             if not task.transfer_batch_id:
                 self.__send_metadata_scrape_event(task, transferinfo)
+            # 入库后刷新媒体服务器媒体库，否则媒体服务器不知道有新文件
+            self.__refresh_media_server_library(task, transferinfo)
 
         # 只要该种子的所有任务都已整理完成，则设置种子状态为已整理
         self.__mark_torrent_completed_if_done(task.download_hash, task.downloader)
@@ -1345,6 +1348,60 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         except Exception as e:
             logger.error(f"检查种子 {download_hash} 下载进度失败：{e}")
             return False
+
+    def __refresh_media_server_library(
+            self, task: TransferTask, transferinfo: TransferInfo
+    ) -> None:
+        """
+        入库完成后刷新媒体服务器对应的媒体库。
+
+        媒体服务器不会主动发现磁盘上新增的文件，需要显式触发扫描才会收录。
+        这里按整理目标路径定位所属媒体库并刷新；失败只记录日志，不影响整理结果。
+
+        :param task: 整理任务
+        :param transferinfo: 整理结果信息
+        """
+        try:
+            servers = MediaServerHelper().get_services()
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"获取媒体服务器失败，跳过媒体库刷新：{err}")
+            return
+        if not servers:
+            return
+
+        target_diritem = getattr(transferinfo, "target_diritem", None)
+        target_path = (
+            str(getattr(target_diritem, "path", "") or "")
+            or str(getattr(transferinfo, "target_dir", "") or "")
+        )
+        if not target_path:
+            return
+
+        if task.mediainfo:
+            # 用识别到的主标题与年份定位，避免季集目录干扰匹配
+            title = task.mediainfo.title
+            year = task.mediainfo.year
+            mtype = task.mediainfo.type
+        else:
+            title = task.meta.name if task.meta else None
+            year = task.meta.year if task.meta else None
+            mtype = MediaType.TV if task.meta and task.meta.begin_season is not None else MediaType.MOVIE
+        if not title:
+            return
+
+        item = schemas.RefreshMediaItem(
+            title=title,
+            year=year,
+            type=mtype,
+            category=task.meta.category if task.meta else None,
+            target_path=target_path,
+        )
+        for name, service in servers.items():
+            try:
+                service.instance.refresh_library_by_items([item])
+                logger.info(f"已通知 {name} 刷新媒体库：{title}")
+            except Exception as err:  # pylint: disable=broad-except
+                logger.warning(f"刷新 {name} 媒体库失败：{err}")
 
     def __send_metadata_scrape_event(
             self, task: TransferTask, transferinfo: TransferInfo

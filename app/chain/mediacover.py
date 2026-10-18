@@ -79,24 +79,18 @@ class MediaCoverChain(ChainBase):
 
     def _latest_source_image(self, server: str, library: MediaServerLibrary) -> Optional[bytes]:
         """
-        取该媒体库中最近入库条目的海报作为封面素材。
+        取该媒体库中最近入库条目的剧照作为封面素材。
+
+        素材必须来自媒体库自身：早期实现用全局 latest()，会把所有媒体库混在一起，
+        结果每个库的封面都是同一张图。
 
         :param server: 媒体服务器名称
         :param library: 媒体库信息
         :return: 图片二进制内容，无法获取时返回 None
         """
-        # latest() 返回带海报的播放条目；items() 给的是不含 image 的媒体库条目
-        latest_items: List[MediaServerPlayItem] = MediaServerChain().latest(
-            server=server, count=20
-        ) or []
-        image_url = ""
-        for item in latest_items:
-            candidate = (item.image or "").strip()
-            if candidate:
-                image_url = candidate
-                break
+        image_url = self._pick_library_image(server, library)
         if not image_url:
-            logger.warn(f"媒体库 {library.name} 没有可用于生成封面的海报")
+            logger.warn(f"媒体库 {library.name} 没有可用于生成封面的素材")
             return None
         try:
             response = RequestUtils(proxies=settings.PROXY, timeout=30).get_res(image_url)
@@ -211,6 +205,63 @@ class MediaCoverChain(ChainBase):
                     logger.info(f"媒体库 {library.name} 封面已更新")
                 else:
                     logger.error(f"媒体库 {library.name} 封面上传失败")
+
+    @staticmethod
+    def _pick_library_image(server: str, library: MediaServerLibrary) -> str:
+        """
+        在指定媒体库内挑选最近入库条目的剧照地址。
+
+        直接查 Emby 的 Items 接口并按 DateCreated 倒序，确保素材来自这个库自己，
+        且是该库最近入库的内容。优先 Backdrop（横图，适合做封面底图），
+        没有再退回 Primary 海报。
+
+        :param server: 媒体服务器名称
+        :param library: 媒体库信息
+        :return: 图片地址，取不到返回空串
+        """
+        services = MediaServerHelper().get_services(name_filters=[server])
+        service = services.get(server)
+        if not service:
+            return ""
+        instance = service.instance
+        library_id = library.item_id or library.id
+        if not library_id:
+            return ""
+
+        host = getattr(instance, "_host", "") or ""
+        apikey = getattr(instance, "_apikey", "") or ""
+        user = getattr(instance, "user", "") or ""
+        if not host or not apikey:
+            return ""
+        url = f"{host}emby/Users/{user}/Items"
+        params = {
+            "ParentId": library_id,
+            "Recursive": "true",
+            "IncludeItemTypes": "Movie,Series",
+            "SortBy": "DateCreated",
+            "SortOrder": "Descending",
+            "Limit": 30,
+            "Fields": "BackdropImageTags,ImageTags,SeriesId,SeriesPrimaryImageTag",
+            "api_key": apikey,
+        }
+        try:
+            response = RequestUtils(timeout=20).get_res(url, params=params)
+        except Exception as err:  # pylint: disable=broad-except
+            logger.warning(f"读取媒体库 {library.name} 条目失败：{err}")
+            return ""
+        if not response or response.status_code != 200:
+            logger.warning(f"读取媒体库 {library.name} 条目失败：HTTP {getattr(response, 'status_code', '?')}")
+            return ""
+        for item in (response.json() or {}).get("Items") or []:
+            tags = item.get("BackdropImageTags") or []
+            image_id = item.get("Id")
+            if tags and image_id:
+                return f"{host}emby/Items/{image_id}/Images/Backdrop/0?tag={tags[0]}&api_key={apikey}"
+            series_tag = item.get("SeriesPrimaryImageTag")
+            series_id = item.get("SeriesId")
+            if series_tag and series_id:
+                return f"{host}emby/Items/{series_id}/Images/Primary?tag={series_tag}&api_key={apikey}"
+        return ""
 
     @staticmethod
     def _upload_cover(instance, library: MediaServerLibrary, cover: bytes) -> bool:

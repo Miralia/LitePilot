@@ -101,3 +101,35 @@ def test_display_short_with_custom_word(platforms):
     platforms.apply_custom(words=["MYS = My Stream"], display_mode=DISPLAY_SHORT)
 
     assert platforms.get_streaming_platform_name("My Stream") == "MYS"
+
+def _reload_streaming_platforms(mode: str):
+    """按指定输出形态重新加载平台表。"""
+    from app.core.meta import streamingplatform
+
+    streamingplatform.StreamingPlatforms().ensure_loaded()
+
+    from app.db.systemconfig_oper import SystemConfigOper
+    from app.schemas.types import SystemConfigKey
+
+    SystemConfigOper().set(SystemConfigKey.StreamingPlatformDisplay, mode)
+    streamingplatform.StreamingPlatforms().ensure_loaded()
+
+
+@pytest.mark.parametrize(
+    ("title", "short", "full"),
+    [
+        ("Show.2024.1080p.NF.WEB-DL.x264-GRP.mkv", "NF", "Netflix"),
+        ("Show.2024.1080p.Netflix.WEB-DL.x264-GRP.mkv", "NF", "Netflix"),
+        ("Show.2024.1080p.AMZN.WEB-DL.x264-GRP.mkv", "AMZN", "Amazon"),
+        ("Show.2024.1080p.CR.WEB-DL.x264-GRP.mkv", "CR", "Crunchyroll"),
+    ],
+)
+def test_rust_path_respects_display_mode(title, short, full):
+    """Rust 识别路径也要遵守简写/全称开关，不能固定输出全称。"""
+    from app.core.metainfo import MetaInfo
+
+    _reload_streaming_platforms("short")
+    assert MetaInfo(title).web_source == short
+
+    _reload_streaming_platforms("full")
+    assert MetaInfo(title).web_source == full

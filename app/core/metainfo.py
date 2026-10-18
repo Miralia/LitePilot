@@ -393,6 +393,28 @@ def _meta_from_rust(parsed: dict) -> Optional[MetaBase]:
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(f"按词表重算制作组失败，沿用解析结果：{err}")
 
+    # Rust 解析内置了平台表，但不感知用户的简写/全称设置，也不感知自定义词表。
+    # 这里按当前配置重算一次，否则页面开关对这条路径完全无效。
+    try:
+        from app.core.meta.streamingplatform import (  # pylint: disable=import-outside-toplevel
+            StreamingPlatforms,
+        )
+
+        platforms = StreamingPlatforms()
+        platforms.ensure_loaded()
+        parsed_source = parsed.get("web_source")
+        if parsed_source:
+            meta.web_source = platforms.get_display_name(parsed_source)
+        else:
+            # Rust 未识别到平台时，用当前词表在原始标题上再匹配一次
+            detected = platforms.detect_from_text(
+                parsed.get("org_string") or parsed.get("title") or ""
+            )
+            if detected:
+                meta.web_source = detected
+    except Exception as err:  # pylint: disable=broad-except
+        logger.debug(f"按词表重算流媒体平台失败，沿用解析结果：{err}")
+
     return meta
 
 

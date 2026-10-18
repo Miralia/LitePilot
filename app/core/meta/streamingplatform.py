@@ -1,3 +1,4 @@
+import re
 from typing import Dict, List, Optional, Tuple
 
 from app.log import logger
@@ -438,6 +439,39 @@ class StreamingPlatforms(metaclass=Singleton):
         if not resolved:
             return None
         return self._short_lookup.get(key, resolved)
+
+    def get_display_name(self, platform_code: str) -> Optional[str]:
+        """
+        把任意写法（简称或全称）转换成当前输出形态的展示名。
+
+        Rust 解析路径只返回内置表的全称，用户开启简称后需要用这里重新归一，
+        否则页面开关对这条路径无效。
+
+        :param platform_code: 平台简称或全称
+        :return: 按当前输出形态的展示名，未知时原样返回
+        """
+        if not platform_code:
+            return platform_code
+        resolved = self._lookup_cache.get(str(platform_code).upper())
+        return resolved or platform_code
+
+    def detect_from_text(self, text: str) -> Optional[str]:
+        """
+        从标题文本中识别流媒体平台，按当前输出形态返回展示名。
+
+        :param text: 原始标题
+        :return: 展示名，未识别到返回 None
+        """
+        if not text:
+            return None
+        # 按分隔符切分后逐段匹配，避免把标题里的普通单词误判成平台
+        for token in re.split(r"[\s\.\[\]\(\)【】_]+", str(text)):
+            if not token:
+                continue
+            resolved = self._lookup_cache.get(token.upper())
+            if resolved:
+                return resolved
+        return None
 
     def get_lookup_cache(self) -> dict:
         """
