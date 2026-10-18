@@ -1211,7 +1211,10 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             if not task.transfer_batch_id:
                 self.__send_metadata_scrape_event(task, transferinfo)
             # 入库后刷新媒体服务器媒体库，否则媒体服务器不知道有新文件
-            self.__refresh_media_server_library(task, transferinfo)
+            try:
+                self.__refresh_media_server_library(task, transferinfo)
+            except Exception as err:  # pylint: disable=broad-except
+                logger.warning(f"媒体库刷新异常（不影响入库）：{err}")
 
         # 只要该种子的所有任务都已整理完成，则设置种子状态为已整理
         self.__mark_torrent_completed_if_done(task.download_hash, task.downloader)
@@ -1362,6 +1365,21 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         :param transferinfo: 整理结果信息
         """
         try:
+            self._refresh_media_server_library_impl(task, transferinfo)
+        except Exception as err:  # pylint: disable=broad-except
+            # 刷新只是锦上添花，任何异常都不能让整理任务失败
+            logger.warning(f"刷新媒体库失败（不影响入库）：{err}")
+
+    def _refresh_media_server_library_impl(
+            self, task: TransferTask, transferinfo: TransferInfo
+    ) -> None:
+        """
+        媒体库刷新的实际实现。
+
+        :param task: 整理任务
+        :param transferinfo: 整理结果信息
+        """
+        try:
             servers = MediaServerHelper().get_services()
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(f"获取媒体服务器失败，跳过媒体库刷新：{err}")
@@ -1389,11 +1407,14 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         if not title:
             return
 
+        # category 属于目录配置（如「日番」），MetaVideo 上并没有这个字段，
+        # 取不到就留空，库定位会自动退回按路径匹配
+        category = getattr(getattr(task, "directory", None), "media_category", None)
         item = schemas.RefreshMediaItem(
             title=title,
             year=year,
             type=mtype,
-            category=task.meta.category if task.meta else None,
+            category=category,
             target_path=target_path,
         )
         for name, service in servers.items():
