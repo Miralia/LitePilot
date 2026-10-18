@@ -162,12 +162,17 @@ class Emby:
             if hidden and self._sync_libraries and "all" not in self._sync_libraries \
                     and library.get("Id") not in self._sync_libraries:
                 continue
-            if library.get("CollectionType") == "movies":
+            collection_type = library.get("CollectionType")
+            if collection_type == "movies":
                 library_type = MediaType.MOVIE.value
-            elif library.get("CollectionType") == "tvshows":
+            elif collection_type == "tvshows":
                 library_type = MediaType.TV.value
-            else:
+            elif collection_type:
                 library_type = MediaType.UNKNOWN.value
+            else:
+                # 部分 Emby 实例不返回 CollectionType（含混合内容库），
+                # 此时按库内实际条目推断，否则整库会被判为未知而无法参与封面等功能
+                library_type = self.__guess_library_type(library.get("Id"))
             image = self.__get_local_image_by_id(library.get("Id"))
             server_id = library.get("ServerId") or self.serverid
             server_query = f"serverId={server_id}&" if server_id else ""
@@ -741,6 +746,45 @@ class Emby:
         except Exception as e:
             logger.error(f"连接/Users/{self.user}/Items/{itemid}出错：" + str(e))
         return None
+
+    def __guess_library_type(self, parent: Union[str, int]) -> str:
+        """
+        按库内实际条目推断媒体库类型。
+
+        :param parent: 媒体库 ID
+        :return: MediaType 值，无法判断时返回 UNKNOWN
+        """
+        if not parent or not self._host or not self._apikey:
+            return MediaType.UNKNOWN.value
+        url = f"{self._host}emby/Users/{self.user}/Items"
+        params = {
+            "ParentId": parent,
+            "Recursive": "true",
+            "IncludeItemTypes": "Movie,Series",
+            "Limit": 20,
+            "Fields": "Type",
+            "api_key": self._apikey,
+        }
+        try:
+            response = RequestUtils(timeout=15).get_res(url, params=params)
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"推断媒体库 {parent} 类型失败：{err}")
+            return MediaType.UNKNOWN.value
+        if not response or response.status_code != 200:
+            return MediaType.UNKNOWN.value
+        items = (response.json() or {}).get("Items") or []
+        has_movie = any(item.get("Type") == "Movie" for item in items)
+        has_series = any(item.get("Type") == "Series" for item in items)
+        if has_movie and not has_series:
+            return MediaType.MOVIE.value
+        if has_series and not has_movie:
+            return MediaType.TV.value
+        # 混合库优先按剧集处理，与 Emby 的 tvshows 语义接近
+        if has_series:
+            return MediaType.TV.value
+        if has_movie:
+            return MediaType.MOVIE.value
+        return MediaType.UNKNOWN.value
 
     def get_items_count(self, parent: Union[str, int]) -> Optional[int]:
         """
