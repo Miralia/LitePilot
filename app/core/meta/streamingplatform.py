@@ -455,6 +455,49 @@ class StreamingPlatforms(metaclass=Singleton):
         resolved = self._lookup_cache.get(str(platform_code).upper())
         return resolved or platform_code
 
+    # 来源标记：平台代码只在这些标记附近出现时才算数
+    WEB_SOURCE_MARKERS = frozenset({"WEB", "DL", "WEBDL", "WEBRIP", "WEB-DL"})
+
+    def detect_with_web_context(
+        self,
+        text: str,
+        exclude_words: Optional[List[str]] = None,
+    ) -> Optional[str]:
+        """
+        只在来源标记附近识别流媒体平台。
+
+        平台代码多为两三个字母，标题本身很容易撞车（例如剧名
+        `Ao no Hako` 里的 `Ao`）。因此要求：平台代码必须与
+        WEB / WEB-DL / WEBRip 这类来源标记相邻出现，否则不算数。
+
+        :param text: 原始标题
+        :param exclude_words: 需要排除的词（通常是已识别出的作品名分词）
+        :return: 展示名，未识别到返回 None
+        """
+        if not text:
+            return None
+        excluded = {
+            str(word).upper() for word in (exclude_words or []) if word
+        }
+        tokens = [
+            token
+            for token in re.split(r"[\s\.\[\]\(\)【】_/\\-]+", str(text))
+            if token
+        ]
+        for index, token in enumerate(tokens):
+            if token.upper() in excluded:
+                continue
+            resolved = self._lookup_cache.get(token.upper())
+            if not resolved:
+                continue
+            # 平台代码自身就是 WEB 标记时跳过，避免把 WEBRip 当成平台
+            if token.upper() in self.WEB_SOURCE_MARKERS:
+                continue
+            window = tokens[max(0, index - 2): index + 3]
+            if any(word.upper() in self.WEB_SOURCE_MARKERS for word in window):
+                return resolved
+        return None
+
     def detect_from_text(self, text: str) -> Optional[str]:
         """
         从标题文本中识别流媒体平台，按当前输出形态返回展示名。

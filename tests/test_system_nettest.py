@@ -64,18 +64,6 @@ with stub_modules(_STUB_MODULES):
 
 
 class NettestSecurityTest(unittest.TestCase):
-    def test_get_env_setting_reports_rust_available_and_enabled_separately(self):
-        """
-        系统配置接口应分别返回 Rust 扩展可用性和当前实际启用状态。
-        """
-        with patch.object(system_endpoint.rust_accel, "is_available", return_value=True), patch.object(
-            system_endpoint.rust_accel, "is_enabled", return_value=False
-        ):
-            resp = asyncio.run(system_endpoint.get_env_setting(_="token"))
-
-        self.assertTrue(resp.success)
-        self.assertTrue(resp.data["RUST_ACCEL_AVAILABLE"])
-        self.assertFalse(resp.data["RUST_ACCEL_ENABLED"])
 
     def test_fetch_image_allows_signed_private_url(self):
         """

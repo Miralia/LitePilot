@@ -5,6 +5,7 @@ import anitopy
 from app.core.meta.customization import CustomizationMatcher
 from app.core.meta.metabase import MetaBase
 from app.core.meta.releasegroup import ReleaseGroupsMatcher
+from app.core.meta.streamingplatform import StreamingPlatforms
 from app.log import logger
 from app.utils.string import StringUtils
 from app.utils.zhconv import convert as zhconv_convert
@@ -196,6 +197,20 @@ class MetaAnime(MetaBase):
                 # 来源类型：anitopy 不解析来源，这里按内置规则从原始标题提取，
                 # 否则动画资源永远拿不到 BluRay / WEB-DL / WebRip 等来源信息
                 self.resource_type = self.extract_resource_type(original_title) or None
+                # 流媒体平台：要求平台代码邻近 WEB 来源标记，避免剧名撞车
+                # （例如 `Ao no Hako` 里的 `Ao` 不能当成平台）
+                platforms = StreamingPlatforms()
+                platforms.ensure_loaded()
+                self.web_source = platforms.detect_with_web_context(
+                    original_title,
+                    exclude_words=[
+                        self.cn_name,
+                        self.en_name,
+                        getattr(self, "_name", None),
+                    ],
+                )
+                # 特效：同样由原始标题提取，与 MetaVideo 保持一致
+                self.resource_effect = self.extract_effect(original_title) or None
                 # 自定义占位符
                 self.customization = CustomizationMatcher().match(title=original_title) or None
                 # 视频编码：anitopy 覆盖有限，缺失时从原始标题兜底提取

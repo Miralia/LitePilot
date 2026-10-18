@@ -162,8 +162,7 @@ def test_torrent_title_match_ignores_question_mark_variants():
 
 def test_python_metainfo_fallback_preserves_xxx_movie_title():
     """Python 兜底解析不应删除合法 xXx 片名。"""
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo("xXx 2002 1080p AMZN WEB-DL H.264 DDP 5.1-FROGWeb")
+    meta = MetaInfo("xXx 2002 1080p AMZN WEB-DL H.264 DDP 5.1-FROGWeb")
 
     assert meta.en_name == "Xxx"
     assert meta.year == "2002"
@@ -174,11 +173,10 @@ def test_python_metainfo_fallback_preserves_xxx_movie_title():
 
 def test_python_subtitle_episode_range_fin_with_chinese_season():
     """Python 兜底解析应识别副标题中 [01-26Fin] 格式的集数范围（#6103）。"""
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(
-            title="JoJos Bizarre Adventure S01 2012 1080i BluRay x264 FLAC 2.0-AnimeF@ADE",
-            subtitle="JOJO的奇妙冒险 第一季 / JoJo's Bizarre Adventure [01-26Fin] [简繁字幕]",
-        )
+    meta = MetaInfo(
+        title="JoJos Bizarre Adventure S01 2012 1080i BluRay x264 FLAC 2.0-AnimeF@ADE",
+        subtitle="JOJO的奇妙冒险 第一季 / JoJo's Bizarre Adventure [01-26Fin] [简繁字幕]",
+    )
 
     assert meta.type == MediaType.TV
     assert meta.begin_season == 1
@@ -203,11 +201,10 @@ def test_subtitle_episode_range_fin_with_default_parser():
 
 def test_python_subtitle_episode_range_fin_without_chinese_marker():
     """副标题无中文季集标记时也应识别 [01-38Fin] 集数范围。"""
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(
-            title="Some Show S01 2022 1080p WEB-DL H264-GRP",
-            subtitle="Some Show [01-38Fin]",
-        )
+    meta = MetaInfo(
+        title="Some Show S01 2022 1080p WEB-DL H264-GRP",
+        subtitle="Some Show [01-38Fin]",
+    )
 
     assert meta.begin_episode == 1
     assert meta.end_episode == 38
@@ -216,15 +213,14 @@ def test_python_subtitle_episode_range_fin_without_chinese_marker():
 
 def test_python_subtitle_episode_range_end_variant():
     """END/完结 等完结标记变体同样应识别为集数范围。"""
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta_end = MetaInfo(
-            title="Some Show S01 2022 1080p WEB-DL H264-GRP",
-            subtitle="Some Show 01-24 END",
-        )
-        meta_cn = MetaInfo(
-            title="Some Show S01 2022 1080p WEB-DL H264-GRP",
-            subtitle="某剧 01-12完结",
-        )
+    meta_end = MetaInfo(
+        title="Some Show S01 2022 1080p WEB-DL H264-GRP",
+        subtitle="Some Show 01-24 END",
+    )
+    meta_cn = MetaInfo(
+        title="Some Show S01 2022 1080p WEB-DL H264-GRP",
+        subtitle="某剧 01-12完结",
+    )
 
     assert meta_end.begin_episode == 1
     assert meta_end.end_episode == 24
@@ -234,11 +230,10 @@ def test_python_subtitle_episode_range_end_variant():
 
 def test_python_subtitle_year_range_not_treated_as_episodes():
     """年份范围（如 2019-2020）不得误识别为集数。"""
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(
-            title="Some Collection 2020 1080p WEB-DL H264-GRP",
-            subtitle="A Collection [2019-2020Fin]",
-        )
+    meta = MetaInfo(
+        title="Some Collection 2020 1080p WEB-DL H264-GRP",
+        subtitle="A Collection [2019-2020Fin]",
+    )
 
     assert meta.begin_episode is None
     assert meta.total_episode == 0
@@ -247,11 +242,10 @@ def test_python_subtitle_year_range_not_treated_as_episodes():
 def test_python_subtitle_episode_range_fin_rejects_numeric_suffix():
     """Python 兜底解析不得把带数字后缀的完结范围截断识别为集数。"""
     for subtitle in ("Some Show [01-26Fin]2", "Some Show 01-26Fin 2"):
-        with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-            meta = MetaInfo(
-                title="Some Show S01 2022 1080p WEB-DL H264-GRP",
-                subtitle=subtitle,
-            )
+        meta = MetaInfo(
+            title="Some Show S01 2022 1080p WEB-DL H264-GRP",
+            subtitle=subtitle,
+        )
 
         assert meta.begin_episode is None
         assert meta.total_episode == 0
@@ -272,11 +266,10 @@ def test_custom_words_episode_offset_supports_multiplication_expression():
         r"Ha.Ha.Ha.Ha.Ha.2026.S06E([0-1][0-9]).Part1 => 哈哈哈哈哈 (2020){[tmdbid=112732;type=tv]} S06E\1.Part1 && S06 <> .Part1 >> 2*EP-1"
     ]
 
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(
-            title="Ha.Ha.Ha.Ha.Ha.2026.S06E03.Part1",
-            custom_words=custom_words,
-        )
+    meta = MetaInfo(
+        title="Ha.Ha.Ha.Ha.Ha.2026.S06E03.Part1",
+        custom_words=custom_words,
+    )
 
     assert meta.name == "哈哈哈哈哈"
     assert meta.tmdbid == 112732
@@ -289,8 +282,7 @@ def test_custom_words_episode_offset_supports_repeated_ep_expression():
     """测试集数偏移表达式支持重复使用 EP 占位符。"""
     custom_words = ["旧名 => 新名 && 第 <> 集 >> EP+EP-1"]
 
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(title="旧名 第03集", custom_words=custom_words)
+    meta = MetaInfo(title="旧名 第03集", custom_words=custom_words)
 
     assert meta.name == "新名"
     assert meta.episode == "E05"
@@ -301,8 +293,7 @@ def test_custom_words_episode_offset_rejects_implicit_ep_expression():
     """测试集数偏移表达式不把 2EP 当作隐式乘法或字符串拼接。"""
     custom_words = ["旧名 => 新名 && 第 <> 集 >> 2EP"]
 
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(title="旧名 第03集", custom_words=custom_words)
+    meta = MetaInfo(title="旧名 第03集", custom_words=custom_words)
 
     assert meta.name == "新名"
     assert meta.episode == "E03"
@@ -329,8 +320,7 @@ def test_custom_words_support_special_season_zero_parameter():
         "Test Show => 测试剧 {[tmdbid=12345;type=tv;s=0]}"
     ]
 
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(title="Test Show 01", custom_words=custom_words)
+    meta = MetaInfo(title="Test Show 01", custom_words=custom_words)
 
     assert meta.tmdbid == 12345
     assert meta.type.value == "电视剧"
@@ -348,8 +338,7 @@ def test_find_metainfo_supports_episode_group_parameter():
 def test_find_metainfo_does_not_support_episode_group_alias():
     """测试 e_group 不会被当作剧集组参数识别。"""
     group_id = "5ad0ec240e0a26303f00d84d"
-    with patch("app.core.metainfo.rust_accel.find_metainfo", return_value=None):
-        _, metainfo = find_metainfo(f"物语系列 {{[tmdbid=46195;type=tv;e_group={group_id};s=1]}}")
+    _, metainfo = find_metainfo(f"物语系列 {{[tmdbid=46195;type=tv;e_group={group_id};s=1]}}")
     assert metainfo["episode_group"] is None
 
 
@@ -362,8 +351,7 @@ def test_video_bit_extracted_for_video_title():
 
 def test_special_season_zero_enables_whole_season_resource_parsing():
     """只有 S00、没有集号的整季标题仍应识别后续编码信息。"""
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(title="Demo Show S00 X265 AAC")
+    meta = MetaInfo(title="Demo Show S00 X265 AAC")
 
     assert meta.begin_season == 0
     assert meta.video_encode == "x265"
@@ -416,11 +404,10 @@ def test_anime_parser_ignores_empty_and_invalid_season_values():
 
 def test_hdr_vivid_effect_extracted_for_video_title():
     """测试合并写法 HDRVivid 可识别为资源效果。"""
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(
-            title="Never-Ending Summer 2026 S01E18-S01E19 2160p WEB-DL 50Fps "
-                  "HDRVivid H265 10bit AAC-XXWEB"
-        )
+    meta = MetaInfo(
+        title="Never-Ending Summer 2026 S01E18-S01E19 2160p WEB-DL 50Fps "
+            "HDRVivid H265 10bit AAC-XXWEB"
+    )
 
     assert meta.resource_type == "WEB-DL"
     assert meta.resource_effect == "HDRVivid"
@@ -440,8 +427,7 @@ def test_video_bit_extracted_for_anime_title():
 
 def test_streaming_platform_word_kept_in_movie_title():
     """测试正式片名中的流媒体平台词不会被预置清理规则移除。"""
-    with patch("app.core.metainfo.rust_accel.parse_metainfo", return_value=None):
-        meta = MetaInfo(title="Amazon Forever 2004 1080p WEB-DL")
+    meta = MetaInfo(title="Amazon Forever 2004 1080p WEB-DL")
     assert meta.name == "Amazon Forever"
     assert meta.year == "2004"
 

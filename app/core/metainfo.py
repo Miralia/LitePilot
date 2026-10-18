@@ -14,7 +14,6 @@ from app.core.meta.infopath import (
 from app.core.meta.words import WordsMatcher
 from app.log import logger
 from app.schemas.types import MediaType
-from app.utils import rust_accel
 
 
 _ANIME_BRACKET_RE = re.compile(r'【[+0-9XVPI-]+】\s*【', re.IGNORECASE)
@@ -50,11 +49,6 @@ _EXTENDED_MEDIA_ID_RE_LIST = {
         re.compile(r'\{bangumi[=\-](\d+)\}'),
     ),
 }
-_EXTENDED_MEDIA_ID_TAG_RE = re.compile(
-    r'(?:bangumi(?:id)?)[=\-]\d+',
-    re.IGNORECASE,
-)
-_RUST_PARSE_OPTIONS_CACHE_KEY = "_cache_key"
 
 
 def _empty_metainfo() -> dict:
@@ -90,26 +84,6 @@ def _apply_range_total(metainfo: dict, begin_key: str, end_key: str, total_key: 
         metainfo[total_key] = 1
 
 
-def _rust_parse_options_cache_key(options: dict) -> str:
-    """
-    生成 Rust Meta 配置缓存键，避免扩展层每次重新展开大配置。
-    """
-    digest = hashlib.blake2b(digest_size=16)
-
-    def update(value) -> None:
-        digest.update(repr(value).encode("utf-8"))
-        digest.update(b"\0")
-
-    streaming_platforms = options.get("streaming_platforms") or {}
-    update(tuple(options.get("custom_words") or []))
-    update(tuple(options.get("media_exts") or []))
-    update(options.get("release_groups") or "")
-    update(tuple(options.get("customization") or []))
-    update(tuple(sorted(
-        (str(key), str(value))
-        for key, value in streaming_platforms.items()
-    )))
-    return digest.hexdigest()
 
 
 def _find_metainfo_python(title: str) -> Tuple[str, dict]:
@@ -277,278 +251,8 @@ def _build_meta_info(
     return meta
 
 
-@lru_cache(maxsize=1)
-def _rust_default_parse_options() -> dict:
-    """
-    缓存 Rust Meta 默认解析配置，避免热路径反复读取配置并复制流媒体平台大表。
-    """
-    from app.core.meta.customization import CustomizationMatcher
-    from app.core.meta.releasegroup import ReleaseGroupsMatcher
-    from app.core.meta.streamingplatform import StreamingPlatforms
-    from app.db.systemconfig_oper import SystemConfigOper
-    from app.schemas.types import SystemConfigKey
-
-    systemconfig = SystemConfigOper()
-    release_groups = ReleaseGroupsMatcher().get_release_groups()
-
-    customization = CustomizationMatcher.normalize_customization(
-        systemconfig.get(SystemConfigKey.Customization)
-    )
-    options = {
-        "custom_words": systemconfig.get(SystemConfigKey.CustomIdentifiers) or [],
-        "media_exts": settings.RMT_MEDIAEXT + settings.RMT_SUBEXT + settings.RMT_AUDIOEXT,
-        "release_groups": release_groups,
-        "customization": customization,
-        "streaming_platforms": StreamingPlatforms().get_lookup_cache(),
-    }
-    options[_RUST_PARSE_OPTIONS_CACHE_KEY] = _rust_parse_options_cache_key(options)
-    return options
 
 
-@lru_cache(maxsize=256)
-def _rust_custom_parse_options(custom_words: Tuple[str, ...]) -> dict:
-    """
-    缓存带自定义识别词的 Rust Meta 配置，避免同一组识别词重复构造配置对象。
-    """
-    options = dict(_rust_default_parse_options())
-    options["custom_words"] = list(custom_words)
-    options[_RUST_PARSE_OPTIONS_CACHE_KEY] = _rust_parse_options_cache_key(options)
-    return options
-
-
-def _rust_parse_options(custom_words: List[str] = None) -> dict:
-    """
-    收集 Rust Meta 解析所需的运行时配置，避免 Rust 层直接访问数据库和 settings。
-    """
-    if custom_words is None:
-        return _rust_default_parse_options()
-    return _rust_custom_parse_options(tuple(custom_words or []))
-
-
-
-
-def _meta_from_rust(parsed: dict) -> Optional[MetaBase]:
-    """
-    将 Rust 解析结果灌回现有 MetaVideo/MetaAnime 对象，保留下游属性和方法兼容性。
-    """
-    if not parsed:
-        return None
-    meta = MetaAnime("") if parsed.get("kind") == "anime" else MetaVideo("")
-    type_map = {
-        MediaType.MOVIE.value: MediaType.MOVIE,
-        MediaType.TV.value: MediaType.TV,
-        MediaType.COLLECTION.value: MediaType.COLLECTION,
-        MediaType.UNKNOWN.value: MediaType.UNKNOWN,
-    }
-    fields = {
-        "isfile": parsed.get("isfile") or False,
-        "title": parsed.get("title") or "",
-        "org_string": parsed.get("org_string"),
-        "subtitle": parsed.get("subtitle"),
-        "type": type_map.get(parsed.get("type"), MediaType.UNKNOWN),
-        "cn_name": parsed.get("cn_name"),
-        "en_name": parsed.get("en_name"),
-        "original_name": parsed.get("original_name"),
-        "year": parsed.get("year"),
-        "total_season": parsed.get("total_season") or 0,
-        "begin_season": parsed.get("begin_season"),
-        "end_season": parsed.get("end_season"),
-        "total_episode": parsed.get("total_episode") or 0,
-        "begin_episode": parsed.get("begin_episode"),
-        "end_episode": parsed.get("end_episode"),
-        "part": parsed.get("part"),
-        "resource_type": parsed.get("resource_type"),
-        "resource_effect": parsed.get("resource_effect"),
-        "resource_pix": parsed.get("resource_pix"),
-        "resource_team": parsed.get("resource_team"),
-        "customization": parsed.get("customization"),
-        "web_source": parsed.get("web_source"),
-        "video_encode": parsed.get("video_encode"),
-        "video_bit": parsed.get("video_bit"),
-        "audio_encode": parsed.get("audio_encode"),
-        "apply_words": parsed.get("apply_words") or [],
-        "tmdbid": parsed.get("tmdbid"),
-        "doubanid": parsed.get("doubanid"),
-        "media_source": parsed.get("media_source"),
-        "media_id": parsed.get("media_id"),
-        "episode_group": parsed.get("episode_group"),
-        "fps": parsed.get("fps"),
-    }
-    for key, value in fields.items():
-        setattr(meta, key, value)
-
-    # Rust 解析只给出单个 resource_team，且不感知词表配置。
-    # 这里用当前词表重算一次，使合作发布（&）能拆成多个组，
-    # 也让用户在词表页面新增/删除的组立即生效。
-    try:
-        from app.core.meta.releasegroup import (  # pylint: disable=import-outside-toplevel
-            ReleaseGroupsMatcher,
-        )
-
-        teams = ReleaseGroupsMatcher().match_list(
-            title=parsed.get("org_string") or parsed.get("title") or ""
-        )
-        meta.resource_teams = list(teams)
-        meta.resource_team = "&".join(teams) or None
-    except Exception as err:  # pylint: disable=broad-except
-        logger.debug(f"按词表重算制作组失败，沿用解析结果：{err}")
-
-    # Rust 解析内置了平台表，但不感知用户的简写/全称设置，也不感知自定义词表。
-    # 这里按当前配置重算一次，否则页面开关对这条路径完全无效。
-    try:
-        from app.core.meta.streamingplatform import (  # pylint: disable=import-outside-toplevel
-            StreamingPlatforms,
-        )
-
-        platforms = StreamingPlatforms()
-        platforms.ensure_loaded()
-        parsed_source = parsed.get("web_source")
-        if parsed_source:
-            meta.web_source = platforms.get_display_name(parsed_source)
-        else:
-            # Rust 未识别到平台时，用当前词表在原始标题上再匹配一次
-            detected = platforms.detect_from_text(
-                parsed.get("org_string") or parsed.get("title") or ""
-            )
-            if detected:
-                meta.web_source = detected
-    except Exception as err:  # pylint: disable=broad-except
-        logger.debug(f"按词表重算流媒体平台失败，沿用解析结果：{err}")
-
-    # Rust 对部分写法覆盖不全（例如来源写在方括号内、EAC3 等音频编码），
-    # 这些字段为空时用 Python 解析补齐，只填空缺、不覆盖 Rust 已有结果。
-    # Rust 未覆盖的字段统一由 Python 补齐，保证两条路径输出一致：
-    # 编码、位深、帧率等也是通知与重命名依赖的信息，缺一项就会显示不全
-    _fillable = (
-        "resource_type",
-        "resource_effect",
-        "audio_encode",
-        "resource_pix",
-        "video_encode",
-        "video_bit",
-        "fps",
-    )
-    if any(not getattr(meta, name, None) for name in _fillable):
-        try:
-            fallback = _build_meta_info(
-                title=parsed.get("org_string") or parsed.get("title") or "",
-            )
-            if fallback:
-                for name in _fillable:
-                    if not getattr(meta, name, None) and getattr(fallback, name, None):
-                        setattr(meta, name, getattr(fallback, name))
-                        logger.debug(
-                            f"Rust 未识别 {name}，按 Python 解析补齐：{getattr(fallback, name)}"
-                        )
-        except Exception as err:  # pylint: disable=broad-except
-            logger.debug(f"补齐解析字段失败，沿用 Rust 结果：{err}")
-
-    # 与 Python 路径保持一致，统一收敛输出写法
-    try:
-        meta.finalize()
-    except Exception as err:  # pylint: disable=broad-except
-        logger.debug(f"统一输出写法失败，沿用解析结果：{err}")
-
-    return meta
-
-
-# Rust 扩展不认识的位深写法：动漫圈常用的 Ma10p / Hi10P 等 Np 形式。
-# 命中时改用 Python 解析，否则这类标记会被并进标题导致媒体搜索失败。
-_RUST_UNSUPPORTED_BIT_RE = re.compile(
-    r"(?:^|[^A-Za-z0-9])(?:MA|HI)(?:8|10|12|16)P(?![A-Za-z0-9])",
-    re.IGNORECASE,
-)
-
-
-# Rust 扩展会把标题结尾单独的 `0` 当成集数丢弃（如 Jujutsu Kaisen 0），
-# 而这类编号是电影标题的一部分。命中时回退 Python 解析。
-_RUST_UNSUPPORTED_TRAILING_ZERO_RE = re.compile(
-    r"(?:^|[\s._\-\[\]()【】])(?:19|20)\d{2}[\s._-]*$"
-    r"|[^\d]0(?:[\s._\-\[\]()【】]|$)",
-)
-
-
-def _has_trailing_zero_title(title: str) -> bool:
-    """
-    判断标题是否以单独的数字 0 结尾（Rust 会误判为集数）。
-
-    :param title: 原始标题
-    :return: 命中时返回 True
-    """
-    text = (title or "").strip()
-    if not text:
-        return False
-    # 去掉扩展名后再判断结尾
-    stem = text.rsplit(".", 1)[0] if "." in text else text
-    stem = stem.strip()
-    return bool(re.search(r"(?<![\d])0$", stem))
-
-
-# Rust 会把小数集号（18.5）按 `.` 拆成两段数字并拼进标题，
-# 结果形如 "Anime Name 18 5"。命中时回退 Python 解析。
-_RUST_DECIMAL_EPISODE_RE = re.compile(
-    r"(?<!\d)\d{1,4}[._]\d{1,2}(?!\d)",
-)
-
-
-def _has_decimal_episode(title: str) -> bool:
-    """
-    判断标题是否含小数集号（如 18.5、06.5）。
-
-    :param title: 原始标题
-    :return: 命中时返回 True
-    """
-    # 只在最后一段像媒体扩展名时才去掉它，避免把 `18.5` 误当扩展名截断
-    text = title or ""
-    stem = re.sub(r"\.(?:mkv|mp4|avi|ts|m2ts|mov|wmv|flv|webm|iso|rmvb|mpg|mpeg)$",
-                  "", text, flags=re.IGNORECASE)
-    return bool(_RUST_DECIMAL_EPISODE_RE.search(stem))
-
-
-# Rust 扩展不认识 YUV422P / YUV444P 这类色彩采样标记，会直接丢弃，
-# 导致通知「质量」缺少该信息。命中时回退 Python 解析。
-_RUST_UNSUPPORTED_CHROMA_RE = re.compile(
-    r"(?:^|[^A-Za-z0-9])YUV(?:422|444)P\d*(?![A-Za-z0-9])",
-    re.IGNORECASE,
-)
-
-
-def _has_chroma_tag(title: str) -> bool:
-    """
-    判断标题是否含色彩采样标记（YUV422P / YUV444P）。
-
-    :param title: 原始标题
-    :return: 命中时返回 True
-    """
-    return bool(_RUST_UNSUPPORTED_CHROMA_RE.search(title or ""))
-
-
-def _has_unsupported_bit_tag(title: str) -> bool:
-    """
-    判断标题是否含有 Rust 扩展不支持的位深标记。
-
-    :param title: 原始标题
-    :return: 命中 Ma10p / Hi10P 这类写法时返回 True
-    """
-    return bool(_RUST_UNSUPPORTED_BIT_RE.search(title or ""))
-
-
-def _requires_python_metainfo(
-    title: str,
-    custom_words: Optional[List[str]] = None,
-) -> bool:
-    """
-    判断标题或临时识别词是否包含当前Rust扩展尚未支持的数据源ID标签。
-
-    :param title: 原始标题
-    :param custom_words: 临时识别词
-    :return: 是否必须使用Python解析器
-    """
-    candidates = [title or "", *(custom_words or [])]
-    contains_extended_id = any(
-        _EXTENDED_MEDIA_ID_TAG_RE.search(candidate) for candidate in candidates
-    )
-    return contains_extended_id and not rust_accel.supports_extended_media_ids()
 
 
 def MetaInfo(title: str, subtitle: Optional[str] = None, custom_words: List[str] = None) -> MetaBase:
@@ -559,19 +263,6 @@ def MetaInfo(title: str, subtitle: Optional[str] = None, custom_words: List[str]
     :param custom_words: 自定义识别词列表
     :return: MetaAnime、MetaVideo
     """
-    rust_meta = None
-    if (
-            not _requires_python_metainfo(title, custom_words)
-            and not _has_unsupported_bit_tag(title)
-            and not _has_trailing_zero_title(title)
-            and not _has_decimal_episode(title)
-            and not _has_chroma_tag(title)
-    ):
-        rust_meta = _meta_from_rust(
-            rust_accel.parse_metainfo(title, subtitle, _rust_parse_options(custom_words))
-        )
-    if rust_meta:
-        return rust_meta
     meta = _build_meta_info(title=title, subtitle=subtitle, custom_words=custom_words)
     if meta.apply_words:
         original_meta = _build_meta_info(title=title, subtitle=subtitle)
@@ -587,16 +278,6 @@ def MetaInfoPath(path: Path, custom_words: List[str] = None) -> MetaBase:
     :param path: 路径
     :param custom_words: 自定义识别词列表
     """
-    path_context = " ".join(
-        [path.name, path.parent.name, path.parent.parent.name]
-    )
-    rust_meta = None
-    if not _requires_python_metainfo(path_context, custom_words):
-        rust_meta = _meta_from_rust(
-            rust_accel.parse_metainfo_path(str(path), _rust_parse_options(custom_words))
-        )
-    if rust_meta:
-        return rust_meta
     # 文件元数据，不包含后缀
     file_meta = MetaInfo(title=path.name, custom_words=custom_words)
     if should_use_parent_title_for_file_stem(path.stem, path.parent.name, file_meta):
@@ -637,9 +318,4 @@ def find_metainfo(title: str) -> Tuple[str, dict]:
     """
     从标题中提取媒体信息
     """
-    rust_result = None
-    if not _requires_python_metainfo(title):
-        rust_result = rust_accel.find_metainfo(title)
-    if rust_result:
-        return rust_result["title"], rust_result["metainfo"]
     return _find_metainfo_python(title)

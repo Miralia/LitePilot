@@ -294,3 +294,49 @@ def test_chroma_appears_with_hdr_same_level():
     effect = MetaVideo("Movie.2024.1080p.DoVi.HDR.YUV444P-GRP").resource_effect or ""
     parts = effect.split()
     assert "DoVi" in parts and "YUV444P" in parts
+
+
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        # 剧名里的平台代码撞车：必须邻近 WEB 标记才算数
+        (
+            "[Erai-raws] Ao no Hako Season 2 - 03 [1080p NF WEBRip HEVC EAC3]"
+            "[MultiSub][A693EAF6]",
+            "Netflix",
+        ),
+        ("Show.2024.1080p.NF.WEB-DL.x264-GRP", "Netflix"),
+        ("Show.2024.1080p.AMZN.WEB-DL.DDP5.1.H.264-GRP", "Amazon"),
+        ("[Group] Show - 01 [1080p][CR WEB-DL]", "Crunchyroll"),
+        # 没有 WEB 来源标记时不识别平台
+        ("Ao no Hako - 03 [1080p]", None),
+        ("Ao no Hako S02 1080p BluRay", None),
+    ],
+)
+def test_web_source_requires_web_marker(title, expected):
+    """平台代码必须邻近 WEB 来源标记，避免剧名撞车。"""
+    from app.core.meta import MetaAnime, MetaVideo
+    from app.core.metainfo import MetaInfo
+
+    for parser in (MetaVideo, MetaInfo):
+        assert parser(title).web_source == expected, f"{parser.__name__} 不一致"
+
+
+@pytest.mark.parametrize(
+    ("title", "field", "expected"),
+    [
+        # anitopy 覆盖有限，编码与音频需在 Python 侧兜底
+        ("[NC-Raws] 王者天下 第四季 - 17 (Baha 1920x1080 AVC AAC MP4)", "video_encode", "AVC"),
+        ("[NC-Raws] 王者天下 第四季 - 17 (Baha 1920x1080 AVC AAC MP4)", "audio_encode", "AAC"),
+        (
+            "[云歌字幕组][7月新番][欢迎来到实力至上主义的教室 第二季][01][X264 10bit][1080p]",
+            "video_encode",
+            "x264",
+        ),
+    ],
+)
+def test_anime_codec_fallback(title, field, expected):
+    """动漫路径的编码信息需与普通路径一致。"""
+    from app.core.meta import MetaAnime
+
+    assert getattr(MetaAnime(title), field) == expected

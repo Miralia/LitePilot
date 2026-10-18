@@ -42,7 +42,6 @@ from app.schemas import ConfigChangeEventData
 from app.schemas.types import SystemConfigKey, EventType
 from app.utils.crypto import HashUtils
 from app.utils.http import RequestUtils, AsyncRequestUtils
-from app.utils import rust_accel
 from app.utils.security import SecurityUtils
 from app.utils.url import UrlUtils
 from version import APP_VERSION
@@ -563,8 +562,6 @@ async def get_env_setting(
         {
             "VERSION": APP_VERSION,
             "FRONTEND_VERSION": SystemChain().get_frontend_version(),
-            "RUST_ACCEL_AVAILABLE": rust_accel.is_available(),
-            "RUST_ACCEL_ENABLED": rust_accel.is_enabled(),
         }
     )
     return schemas.Response(success=True, data=info)

@@ -717,6 +717,35 @@ class MetaBase(object):
                     re.IGNORECASE), None),
     ]
 
+    # 特效/画质标记：与 MetaVideo 的识别范围保持一致
+    _EFFECT_TOKEN_RE = re.compile(
+        r"(?<![A-Za-z0-9])("
+        r"HDR10\+|HDR10Plus|HDR10P|HDRVivid|HDR|HLG|SDR|EDR|DoVi|DOVI|DV|"
+        r"3D|REPACK|YUV4[24]4P\d*"
+        r")(?![A-Za-z0-9])",
+        re.IGNORECASE,
+    )
+
+    @staticmethod
+    def extract_effect(value: Optional[str]) -> Optional[str]:
+        """
+        从标题中提取特效/画质标记。
+
+        供 anitopy 路径（MetaAnime）使用：anitopy 不解析这类信息，
+        需要与 MetaVideo 保持一致的输出。
+
+        :param value: 原始标题
+        :return: 用空格连接的规范化特效串，未识别到返回 None
+        """
+        if not value:
+            return None
+        found: List[str] = []
+        for match in MetaBase._EFFECT_TOKEN_RE.finditer(str(value)):
+            token = normalize_effect(match.group(1))
+            if token and token not in found:
+                found.append(token)
+        return " ".join(found) if found else None
+
     @staticmethod
     def extract_video_encode(value: Optional[str]) -> Optional[str]:
         """
