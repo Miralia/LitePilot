@@ -92,8 +92,8 @@ class ConfigModel(BaseModel):
     RESOURCE_SECRET_KEY: str = secrets.token_urlsafe(32)
     # 允许的域名
     ALLOWED_HOSTS: list = Field(default_factory=lambda: ["*"])
-    # TOKEN过期时间
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    # TOKEN过期时间：默认一年，避免自用环境频繁重新登录（可用环境变量覆盖）
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 365
     # RESOURCE_TOKEN过期时间
     RESOURCE_ACCESS_TOKEN_EXPIRE_SECONDS: int = 60 * 30
     # 超级管理员初始用户名

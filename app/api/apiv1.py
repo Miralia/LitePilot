@@ -1,11 +1,10 @@
 from fastapi import APIRouter
 
-from app.api.endpoints import auth, login, user, webhook, message, \
+from app.api.endpoints import login, user, webhook, message, \
     media, tmdb, history, system, dashboard, \
     transfer, mediaserver, storage, mfa
 
 api_router = APIRouter()
-api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(login.router, prefix="/login", tags=["login"])
 api_router.include_router(user.router, prefix="/user", tags=["user"])
 api_router.include_router(mfa.router, prefix="/mfa", tags=["mfa"])

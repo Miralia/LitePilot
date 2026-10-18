@@ -94,27 +94,6 @@ const currentLocale = ref(getCurrentLocale())
 // 登录按钮 loading
 const loading = ref(false)
 
-// PassKey 登录按钮 loading
-const passkeyLoading = ref(false)
-
-// Conditional UI 的 AbortController
-let conditionalAbortController: AbortController | null = null
-
-// 手动模式的 AbortController（用于防止重复点击）
-let manualAbortController: AbortController | null = null
-
-// 标记当前是否有手动模式的 PassKey 请求正在进行
-let isManualPassKeyActive = false
-
-interface LoginAuthProvider {
-  id: string
-  type: 'system'
-  method?: string
-  name: string
-  icon?: string
-  enabled?: boolean
-}
-
 interface ApiErrorPayload {
   message?: unknown
   message_i18n?: unknown
@@ -142,14 +121,6 @@ function getErrorMessage(error: unknown): string | undefined {
 function asApiError(error: unknown): AxiosError<ApiErrorPayload> {
   return error as AxiosError<ApiErrorPayload>
 }
-
-// 登录认证提供方
-const authProviders = ref<LoginAuthProvider[]>([])
-
-const systemPasskeyProvider = computed(() =>
-  authProviders.value.find(provider => provider.type === 'system' && provider.method === 'passkey'),
-)
-const showPasskeyLogin = computed(() => !!systemPasskeyProvider.value?.enabled)
 
 // 获取登录表单中的原生账号和密码输入框。
 function getLoginCredentialInputs() {
@@ -182,8 +153,6 @@ function normalizeMfaMethods(value: unknown): MfaMethod[] {
 }
 
 function enterMfaStep(methodsValue: unknown) {
-  conditionalAbortController?.abort()
-  conditionalAbortController = null
   mfaMethods.value = normalizeMfaMethods(methodsValue)
   form.value.otp_password = ''
   if (!mfaMethods.value.length) {
@@ -198,8 +167,6 @@ function enterMfaStep(methodsValue: unknown) {
 
 // 用户主动返回账号密码步骤时清理未完成的二次验证。
 function leaveMfaStep() {
-  manualAbortController?.abort()
-  manualAbortController = null
   mfaOtpLoading.value = false
   mfaMethods.value = []
   form.value.otp_password = ''
@@ -208,30 +175,12 @@ function leaveMfaStep() {
 }
 
 // 加载未登录可用的认证提供方。
-async function loadAuthProviders() {
-  try {
-    const result = (await api.get('auth/providers')) as LoginAuthProvider[]
-    authProviders.value = Array.isArray(result) ? result : []
-  } catch (error) {
-    console.error('加载认证提供方失败:', error)
-    authProviders.value = []
-  }
-}
 
-// PassKey 认证核心函数 - 处理 WebAuthn 认证流程
-interface PassKeyAuthOptions {
-  username?: string // 可选用户名，用于限制当前直接登录可选择的凭证
-  isConditional?: boolean // 是否为 Conditional UI 模式
-  signal?: AbortSignal // AbortController 信号
-}
-
-// PassKey API 响应类型
-interface PassKeyStartResponse {
+interface LoginStartResponse {
   options: string // JSON 字符串
   transaction_token: string
 }
-
-interface PassKeyFinishResponse {
+interface LoginResponse {
   access_token: string
   super_user: boolean
   user_id: number
@@ -241,192 +190,6 @@ interface PassKeyFinishResponse {
   permissions: Record<string, boolean>
   wizard: boolean
 }
-
-// 执行 PassKey WebAuthn 认证并返回登录完成信息。
-async function authenticateWithPassKey(options: PassKeyAuthOptions = {}): Promise<PassKeyFinishResponse> {
-  const { username, isConditional = false, signal } = options
-
-  // 1. 开始认证流程
-  const startResponse = (await api.post(
-    '/mfa/passkey/authenticate/start',
-    username ? { username } : {},
-  )) as ApiResponse<PassKeyStartResponse>
-
-  if (!startResponse.success) {
-    throw new Error(startResponse.message || 'PassKey start failed')
-  }
-
-  const { options: optionsStr, transaction_token: transactionToken } = startResponse.data
-  const publicKeyOptions = JSON.parse(optionsStr) as SerializedPublicKeyRequestOptions
-
-  // 2. 调用WebAuthn API
-  const credentialRequestOptions: CredentialRequestOptions = {
-    publicKey: {
-      ...publicKeyOptions,
-      challenge: base64UrlToUint8Array(publicKeyOptions.challenge),
-      allowCredentials: publicKeyOptions.allowCredentials?.map(cred => ({
-        ...cred,
-        id: base64UrlToUint8Array(cred.id),
-      })),
-    },
-  }
-
-  // 如果是 Conditional UI 模式，添加 mediation 和 signal
-  if (isConditional) {
-    credentialRequestOptions.mediation = 'conditional'
-    if (signal) {
-      credentialRequestOptions.signal = signal
-    }
-  }
-
-  const credential = await navigator.credentials.get(credentialRequestOptions)
-
-  // Conditional UI 模式下，用户选择通行密钥后才显示 loading
-  if (isConditional) {
-    passkeyLoading.value = true
-  }
-
-  if (!credential) {
-    throw new Error('No credential selected')
-  }
-
-  // 3. 转换credential为可传输格式
-  const publicKeyCredential = credential as PublicKeyCredential
-  const assertionResponse = publicKeyCredential.response as AuthenticatorAssertionResponse
-  const credentialJSON = {
-    id: publicKeyCredential.id,
-    rawId: bufferToBase64Url(publicKeyCredential.rawId),
-    type: publicKeyCredential.type,
-    response: {
-      authenticatorData: bufferToBase64Url(assertionResponse.authenticatorData),
-      clientDataJSON: bufferToBase64Url(assertionResponse.clientDataJSON),
-      signature: bufferToBase64Url(assertionResponse.signature),
-      userHandle: assertionResponse.userHandle ? bufferToBase64Url(assertionResponse.userHandle) : null,
-    },
-  }
-
-  // 4. 完成认证
-  const finishResponse = (await api.post('/mfa/passkey/authenticate/finish', {
-    credential: credentialJSON,
-    transaction_token: transactionToken,
-  })) as PassKeyFinishResponse
-
-  if (!finishResponse || !finishResponse.access_token) {
-    throw new Error('PassKey finish failed: No access token')
-  }
-
-  return finishResponse
-}
-
-// 统一处理 PassKey 认证流程
-async function handlePassKeyAuth(
-  authOptions: PassKeyAuthOptions,
-  setLoading: (loading: boolean) => void,
-  onSuccess: (response: PassKeyFinishResponse) => Promise<void>,
-) {
-  const { isConditional = false } = authOptions
-  errorMessage.value = ''
-
-  // 检查浏览器环境
-  if (!window.PublicKeyCredential) {
-    if (!isConditional) {
-      if (!window.isSecureContext) {
-        errorMessage.value = t('login.passkeySecureContextRequired')
-      } else {
-        errorMessage.value = t('login.passkeyNotSupported')
-      }
-    }
-    return
-  }
-
-  // 如果是手动触发(非 Conditional UI)
-  if (!isConditional) {
-    // 取消之前的 Conditional UI 请求
-    if (conditionalAbortController) {
-      conditionalAbortController.abort()
-      conditionalAbortController = null
-    }
-
-    // 取消之前的手动请求（防止重复点击）
-    if (manualAbortController) {
-      manualAbortController.abort()
-    }
-
-    // 创建新的 AbortController
-    manualAbortController = new AbortController()
-
-    // 标记手动请求为活跃状态，并立即设置 loading
-    isManualPassKeyActive = true
-    setLoading(true)
-  }
-
-  try {
-    const finishResponse = await authenticateWithPassKey({
-      ...authOptions,
-      signal:
-        isConditional && conditionalAbortController
-          ? conditionalAbortController.signal
-          : !isConditional && manualAbortController
-            ? manualAbortController.signal
-            : undefined,
-    })
-
-    await onSuccess(finishResponse)
-  } catch (error: unknown) {
-    const errorName = error instanceof Error ? error.name : ''
-    const message = getErrorMessage(error)
-
-    // Conditional UI 模式下：
-    // 1. 如果 loading 为 false，说明错误发生在用户选择密钥之前（如初始化失败、用户取消等），此时应静默
-    // 2. 如果是 AbortError，始终静默
-    if (isConditional && (!passkeyLoading.value || errorName === 'AbortError')) {
-      console.warn('[PassKey] Conditional UI silenced error:', error)
-      return
-    }
-
-    // 手动模式下的 AbortError 也应该静默（用户重复点击导致）
-    if (!isConditional && errorName === 'AbortError') {
-      console.warn('[PassKey] Manual request aborted (likely due to rapid clicking):', error)
-      return
-    }
-
-    // 设置错误信息
-    if (errorName === 'NotAllowedError') {
-      errorMessage.value = t('login.passkeyAuthCanceled')
-    } else if (errorName === 'NotSupportedError') {
-      errorMessage.value = t('login.passkeyNotSupported')
-    } else if (message?.includes('start failed')) {
-      errorMessage.value = t('login.passkeyLoginStartFailed')
-    } else {
-      errorMessage.value = t('login.authFailure')
-    }
-  } finally {
-    // 清除 loading 状态
-    if (!isConditional) {
-      // 手动模式：始终清除，并取消手动活跃标记
-      isManualPassKeyActive = false
-      setLoading(false)
-      manualAbortController = null
-    } else {
-      // Conditional UI 模式：只有在没有手动请求活跃时才清除
-      if (!isManualPassKeyActive && passkeyLoading.value) {
-        passkeyLoading.value = false
-      }
-    }
-  }
-}
-
-// 使用PassKey登录 (支持 Conditional UI)
-async function loginWithPassKey(isConditional = false) {
-  await handlePassKeyAuth(
-    { isConditional },
-    val => (passkeyLoading.value = val),
-    async response => {
-      await handleLoginSuccess(response)
-    },
-  )
-}
-
 // 订阅推送通知
 async function subscribeForPushNotifications() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
@@ -480,7 +243,7 @@ async function afterLogin(
 }
 
 // 处理登录成功
-async function handleLoginSuccess(response: PassKeyFinishResponse) {
+async function handleLoginSuccess(response: LoginResponse) {
   const userPayload: userState = {
     superUser: response.super_user,
     userID: response.user_id,
@@ -510,7 +273,7 @@ async function handleLoginSuccess(response: PassKeyFinishResponse) {
   await afterLogin(userPayload.superUser, userPayload, filteredMenus)
 }
 
-async function requestPasswordLogin(): Promise<PassKeyFinishResponse> {
+async function requestPasswordLogin(): Promise<LoginResponse> {
   const formData = new FormData()
   formData.append('username', form.value.username)
   formData.append('password', form.value.password)
@@ -520,7 +283,7 @@ async function requestPasswordLogin(): Promise<PassKeyFinishResponse> {
     headers: {
       Accept: 'application/json',
     },
-  })) as PassKeyFinishResponse
+  })) as LoginResponse
 }
 
 function setLoginError(error: unknown) {
@@ -610,53 +373,9 @@ onMounted(async () => {
     return
   }
 
-  // 加载系统和插件声明的未登录认证入口
-  await loadAuthProviders()
-
-  // 初始化 Conditional UI 的 PassKey 自动填充
-  await initConditionalPasskey()
 })
 
-// 初始化 Conditional UI 的 PassKey 自动填充
-async function initConditionalPasskey() {
-  // 检查浏览器是否支持 WebAuthn 和 Conditional UI
-  if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) {
-    return
-  }
 
-  try {
-    const available = await PublicKeyCredential.isConditionalMediationAvailable()
-    if (!available) {
-      return
-    }
-
-    // 安全防御：如果已存在 controller，先 abort 掉旧的，防止重复调用产生幽灵请求
-    if (conditionalAbortController) {
-      conditionalAbortController.abort()
-      conditionalAbortController = null
-    }
-
-    // 创建 AbortController 用于取消请求
-    conditionalAbortController = new AbortController()
-
-    // 启动 Conditional UI 模式的 PassKey 认证
-    await loginWithPassKey(true)
-  } catch (error) {
-    console.error('[PassKey] Failed to initialize Conditional UI:', error)
-  }
-}
-
-// 组件卸载时清理
-onUnmounted(() => {
-  if (conditionalAbortController) {
-    conditionalAbortController.abort()
-    conditionalAbortController = null
-  }
-  if (manualAbortController) {
-    manualAbortController.abort()
-    manualAbortController = null
-  }
-})
 </script>
 
 <template>
@@ -781,24 +500,6 @@ onUnmounted(() => {
                   {{ t('login.login') }}
                 </VBtn>
 
-                <!-- or divider -->
-                <div v-if="showPasskeyLogin" class="or-divider my-5">
-                  <span class="or-divider-text">{{ t('login.orDivider') }}</span>
-                </div>
-
-                <!-- passkey login button -->
-                <VBtn
-                  v-if="showPasskeyLogin"
-                  block
-                  variant="outlined"
-                  color="success"
-                  class="passkey-btn"
-                  prepend-icon="material-symbols:passkey"
-                  :loading="passkeyLoading"
-                  @click="loginWithPassKey(false)"
-                >
-                  {{ t('login.loginWithPasskey') }}
-                </VBtn>
                 <VAlert v-if="errorMessage" type="error" variant="tonal" class="mt-4 login-alert">
                   {{ errorMessage }}
                 </VAlert>
@@ -1198,19 +899,6 @@ onUnmounted(() => {
 }
 
 /* Passkey 按钮 */
-.passkey-btn {
-  border-radius: 12px;
-  font-weight: 500;
-  transition:
-    background 200ms ease,
-    border-color 200ms ease,
-    transform 150ms ease;
-
-  &:hover {
-    transform: translateY(-1px);
-  }
-}
-
 /* 插件认证按钮 */
 .plugin-auth-btn {
   border-radius: 12px;
@@ -1253,11 +941,6 @@ onUnmounted(() => {
 /* 错误提示 */
 .login-alert {
   border-radius: 12px;
-}
-
-/* 浅色主题下 passkey 按钮保持绿色辨识度 */
-:deep(.v-theme--light) .passkey-btn.v-btn--variant-outlined {
-  color: rgb(86, 170, 0) !important;
 }
 
 /* ===================== 卡片页脚 ===================== */

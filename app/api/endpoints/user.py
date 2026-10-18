@@ -20,18 +20,6 @@ from app.helper.swizzin import SwizzinUserSync
 router = APIRouter()
 
 
-@router.get("/", summary="所有用户", response_model=List[schemas.User])
-async def list_users(
-    db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_superuser_async),
-) -> Any:
-    """
-    查询用户列表，返回前先与 swizzin 用户同步
-    """
-    SwizzinUserSync().sync()
-    return await current_user.async_list(db)
-
-
 
 
 @router.put("/", summary="更新当前用户", response_model=schemas.Response)
@@ -73,31 +61,6 @@ async def read_current_user(
     return current_user
 
 
-@router.post(
-    "/avatar/{user_id}", summary="上传用户头像", response_model=schemas.Response
-)
-async def upload_avatar(
-    user_id: int,
-    db: AsyncSession = Depends(get_async_db),
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_active_user_async),
-) -> schemas.Response:
-    """
-    上传用户头像
-    """
-    if current_user.id != user_id and not current_user.is_superuser:
-        raise HTTPException(status_code=400, detail="用户权限不足")
-
-    # 将文件转换为Base64
-    file_base64 = base64.b64encode(file.file.read())
-    # 更新到用户表
-    user = await User.async_get(db, user_id)
-    if not user:
-        return schemas.Response(success=False, message="用户不存在")
-    await user.async_update(db, {"avatar": f"data:image/ico;base64,{file_base64}"})
-    return schemas.Response(success=True, data={"filename": file.filename})
-
-
 @router.get("/config/{key}", summary="查询用户配置", response_model=schemas.Response)
 def get_config(key: str, current_user: User = Depends(get_current_active_user)):
     """
@@ -118,29 +81,3 @@ def set_config(
     """
     UserConfigOper().set(username=current_user.name, key=key, value=value)
     return schemas.Response(success=True)
-
-
-
-
-
-
-@router.get("/{username}", summary="用户详情", response_model=schemas.User)
-async def read_user_by_name(
-    username: str,
-    current_user: User = Depends(get_current_active_user_async),
-    db: AsyncSession = Depends(get_async_db),
-) -> Any:
-    """
-    查询用户详情
-    """
-    user = await current_user.async_get_by_name(db, name=username)
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="用户不存在",
-        )
-    if user == current_user:
-        return user
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=400, detail="用户权限不足")
-    return user
