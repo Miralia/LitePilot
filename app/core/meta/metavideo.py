@@ -147,6 +147,10 @@ class MetaVideo(MetaBase):
             self._index += 1  # 更新当前处理的token索引
             # Part
             self.__init_part(token, tokens)
+            # 视频位深需要先于标题判断：`Ma10p`、`10bit` 这类标记若先被
+            # 吃进标题，名称会带上杂质导致媒体搜索失败
+            if self._continue_flag:
+                self.__init_video_bit(token)
             # 标题
             if self._continue_flag:
                 self.__init_name(token, media_exts)
@@ -171,9 +175,6 @@ class MetaVideo(MetaBase):
             # 视频编码
             if self._continue_flag:
                 self.__init_video_encode(token)
-            # 视频位深
-            if self._continue_flag:
-                self.__init_video_bit(token)
             # 音频编码
             if self._continue_flag:
                 self.__init_audio_encode(token)
@@ -739,14 +740,12 @@ class MetaVideo(MetaBase):
     def __init_video_bit(self, token: str):
         """
         识别视频位深。
+
+        位深标记（如 `Ma10p`、`10bit`）本身就是强特征，且常出现在分辨率之前，
+        因此不再要求「必须已有年份/分辨率/来源」作为前置条件，
+        否则 `[Ma10p_1080p]` 这类先出位深、后出分辨率的写法会漏识别。
         """
         if not self.name:
-            return
-        if not self.year \
-                and not self.resource_pix \
-                and not self.resource_type \
-                and self.begin_season is None \
-                and not self.begin_episode:
             return
         video_bit = self.extract_video_bit(token)
         if not video_bit:

@@ -31,8 +31,11 @@ SUBTITLE_EPISODE_RANGE_FIN_RE = re.compile(
     r"(?:\s*\](?!\d)|(?!\s*(?:\]\d|\d))\s*)",
     re.IGNORECASE,
 )
+# 位深标记：常规写法是 `10bit`；动漫圈还常用 `Ma10p`、`Hi10P` 表示 10bit 编码规格。
+# 后者的 `p` 必须限定在 MA/Hi 这类前缀之后，否则会与分辨率里的逐行标记 `1080p` 混淆。
 VIDEO_BIT_RE = re.compile(
-    r"(?<![A-Za-z0-9])(?P<bit>8|10|12|16)[\s._-]*bits?(?![A-Za-z0-9])",
+    r"(?<![A-Za-z0-9])(?P<bit>8|10|12|16)[\s._-]*bits?(?![A-Za-z0-9])"
+    r"|(?:MA|HI)(?P<bit_p>8|10|12|16)P(?![A-Za-z0-9])",
     re.IGNORECASE,
 )
 
@@ -545,7 +548,8 @@ class MetaBase(object):
         bit_match = VIDEO_BIT_RE.search(value)
         if not bit_match:
             return None
-        return f"{bit_match.group('bit')}bit"
+        bit = bit_match.group("bit") or bit_match.group("bit_p")
+        return f"{bit}bit" if bit else None
 
     def is_in_season(self, season: Union[list, int, str]) -> bool:
         """

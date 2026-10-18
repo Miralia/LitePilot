@@ -366,6 +366,40 @@ def create_shadow_mask(size, split_top=0.5, split_bottom=0.33, feather_size=40):
     return mask
 
 
+def _fit_font_size(
+        draw,
+        text: str,
+        font_path: str,
+        font,
+        max_width: int,
+) -> "ImageFont.FreeTypeFont":
+    """
+    在给定最大宽度内求合适的字号。
+
+    标题长度差异很大（短标题 2 字、长标题 10 字以上），固定字号会让长标题
+    溢出画布被裁掉。这里按实际文本宽度求解能放下的最大字号。
+
+    :param draw: ImageDraw 实例，用于测量文本
+    :param text: 待渲染文本
+    :param font_path: 字体文件路径，用于按新字号重建字体
+    :param font: 原始字体对象
+    :param max_width: 允许的最大文本宽度
+    :return: 适配后的字体对象
+    """
+    if not text or not max_width or max_width <= 0:
+        return font
+    bbox = draw.textbbox((0, 0), text, font=font)
+    width = bbox[2] - bbox[0]
+    if width <= max_width or width <= 0:
+        return font
+    # 按宽度比例估算新字号，并留一点余量避免浮点边界
+    fitted = max(12, int(font.size * max_width / width * 0.98))
+    try:
+        return ImageFont.truetype(font_path, fitted)
+    except OSError:
+        return font
+
+
 def create_style_static_2(
     image_path,
     title,
@@ -510,6 +544,9 @@ def create_style_static_2(
         # 计算左侧区域的中心 X 位置 (画布宽度的四分之一处)
         left_area_center_x = int(canvas_size[0] * 0.25)
         left_area_center_y = canvas_size[1] // 2
+        # 文本可用宽度：左侧斜线把画面分成两半，标题需完整落在左半区内并留边距，
+        # 否则文字会溢出画布被裁掉（长标题尤其明显）
+        text_max_width = int(canvas_size[0] * 0.46)
         
         # zh_font_size = int(canvas_size[1] * 0.17 * float(zh_font_size_ratio))
         # en_font_size = int(canvas_size[1] * 0.07 * float(en_font_size_ratio))
@@ -523,8 +560,15 @@ def create_style_static_2(
         shadow_offset = 14
         shadow_alpha = 72
         
+        # 中文标题超宽时按比例缩小字号，保证完整显示而不是被画布裁掉
+        zh_font = _fit_font_size(
+            draw=draw, text=title_zh, font_path=zh_font_path,
+            font=zh_font, max_width=text_max_width,
+        )
+        read_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+
         # 计算中文标题的位置
-        zh_bbox = draw.textbbox((0, 0), title_zh, font=zh_font)
+        zh_bbox = read_draw.textbbox((0, 0), title_zh, font=zh_font)
         zh_text_w = zh_bbox[2] - zh_bbox[0]
         zh_text_h = zh_bbox[3] - zh_bbox[1]
         

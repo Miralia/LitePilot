@@ -117,3 +117,36 @@ def test_regex_prefix_is_honored():
     m = ReleaseGroupsMatcher()
 
     assert m.match_list(title="Show.2024-ABCSub") == ["ABCSub"]
+
+@pytest.mark.parametrize(
+    ("title", "expected_name", "expected_bit"),
+    [
+        # 动漫圈常见的 Np 位深写法，且常出现在分辨率之前
+        ("[VCB-Studio] Jujutsu Kaisen [Ma10p_1080p][x265_flac].mkv",
+         "Jujutsu Kaisen", "10bit"),
+        ("[BeanSub&FZSD&VCB-Studio] Gekijouban Jujutsu Kaisen 0 [Ma10p_1080p][x265_flac].mkv",
+         "Gekijouban Jujutsu Kaisen", "10bit"),
+        ("[Nekomoe kissaten&VCB-Studio] Fushigi no Kuni de Alice to [Ma10p_1080p][x265_flac].mkv",
+         "Fushigi No Kuni De Alice To", "10bit"),
+        # 常规 10bit 写法
+        ("[Group] Show [10bit][1080p]", "Show", "10bit"),
+        # 8bit 同样适用
+        ("[Group] Show [Ma8p][1080p]", "Show", "8bit"),
+    ],
+)
+def test_video_bit_is_stripped_from_name(title, expected_name, expected_bit):
+    """位深标记应被识别出来，且不能残留在标题里。"""
+    from app.core.meta import MetaVideo
+
+    meta = MetaVideo(title)
+    assert meta.video_bit == expected_bit
+    assert meta.name == expected_name
+
+
+def test_resolution_not_confused_with_bit_depth():
+    """分辨率里的 p 不能被误判为位深。"""
+    from app.core.meta import MetaVideo
+
+    for title in ("Movie.2024.1080p.BluRay.x264", "Movie.2024.2160p.WEB-DL"):
+        meta = MetaVideo(title)
+        assert meta.video_bit is None
