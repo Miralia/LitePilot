@@ -184,6 +184,8 @@ class SystemConfigKey(Enum):
     CustomStreamingPlatforms = "CustomStreamingPlatforms"
     # 流媒体平台输出形态（全称/简称）
     StreamingPlatformDisplay = "StreamingPlatformDisplay"
+    # 媒体文件技术信息探测
+    MediaInfoProbe = "MediaInfoProbe"
     # 种子优先级规则
     TorrentsPriority = "TorrentsPriority"
     # 用户自定义规则

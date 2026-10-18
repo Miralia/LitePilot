@@ -33,6 +33,14 @@ interface SyncDelConf {
   dry_run: boolean
 }
 
+/** 媒体文件技术信息探测配置 */
+interface ProbeConf {
+  enabled: boolean
+  override_resolution: boolean
+  override_source: boolean
+  log_failure: boolean
+}
+
 /** 媒体库封面生成配置 */
 interface CoverConf {
   enabled: boolean
@@ -61,6 +69,13 @@ const delConf = ref<SyncDelConf>({
   remove_empty_dirs: true,
   dry_run: false,
 })
+const probeConf = ref<ProbeConf>({
+  enabled: true,
+  override_resolution: true,
+  override_source: true,
+  log_failure: false,
+})
+
 const coverConf = ref<CoverConf>({
   enabled: false,
   run_hour: 4,
@@ -95,6 +110,7 @@ async function loadAll() {
     conf.value = await loadConf('DownloadFileSync', conf.value)
     delConf.value = await loadConf('SyncDelByMediaServer', delConf.value)
     coverConf.value = await loadConf('LibraryCoverGenerator', coverConf.value)
+    probeConf.value = await loadConf('MediaInfoProbe', probeConf.value)
 
     const downloaders: any = await api.get('system/setting/Downloaders')
     downloaderOptions.value = (downloaders?.data?.value ?? []).map((item: any) => item.name)
@@ -136,6 +152,7 @@ async function save() {
       saveConf('DownloadFileSync', conf.value),
       saveConf('SyncDelByMediaServer', delConf.value),
       saveConf('LibraryCoverGenerator', coverConf.value),
+      saveConf('MediaInfoProbe', probeConf.value),
     ])
     if (results.every(Boolean)) {
       $toast.success(t('setting.builtin.saveSuccess'))
@@ -267,6 +284,46 @@ onMounted(loadAll)
             :hint="t('setting.builtin.dryRunHint')"
             persistent-hint
             :disabled="!delConf.enabled"
+          />
+        </VCol>
+      </VRow>
+    </VCardText>
+  </VCard>
+
+  <VCard variant="tonal" class="mb-4">
+    <VCardItem>
+      <VCardTitle>{{ t('setting.builtin.probeTitle') }}</VCardTitle>
+      <VCardSubtitle>{{ t('setting.builtin.probeGuide') }}</VCardSubtitle>
+    </VCardItem>
+    <VCardText>
+      <VRow>
+        <VCol cols="12" md="3">
+          <VSwitch v-model="probeConf.enabled" :label="t('setting.builtin.enabled')" hide-details />
+        </VCol>
+        <VCol cols="12" md="9">
+          <VCheckbox
+            v-model="probeConf.override_resolution"
+            :label="t('setting.builtin.overrideResolution')"
+            :hint="t('setting.builtin.overrideResolutionHint')"
+            persistent-hint
+            :disabled="!probeConf.enabled"
+          />
+        </VCol>
+        <VCol cols="12" md="6">
+          <VCheckbox
+            v-model="probeConf.override_source"
+            :label="t('setting.builtin.overrideSource')"
+            :hint="t('setting.builtin.overrideSourceHint')"
+            persistent-hint
+            :disabled="!probeConf.enabled"
+          />
+        </VCol>
+        <VCol cols="12" md="6">
+          <VCheckbox
+            v-model="probeConf.log_failure"
+            :label="t('setting.builtin.logFailure')"
+            :disabled="!probeConf.enabled"
+            hide-details
           />
         </VCol>
       </VRow>

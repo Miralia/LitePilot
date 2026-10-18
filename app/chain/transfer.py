@@ -19,6 +19,9 @@ from app.core.context import MediaInfo
 from app.core.event import eventmanager
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfoPath
+from app.helper.builtinconf import load_conf
+from app.helper.mediainfo import probe_media
+from app.schemas.system import MediaInfoProbeConf
 from app.db.downloadhistory_oper import DownloadHistoryOper
 from app.db.models.downloadhistory import DownloadHistory, DownloadFiles
 from app.db.models.transferhistory import TransferHistory
@@ -2879,7 +2882,46 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             )
             if not path_meta:
                 return None
+            path_meta = _apply_mediainfo_probe(path_meta, source_path)
             return _apply_meta_overrides(path_meta, source_path)
+
+        def _apply_mediainfo_probe(
+                current_meta: MetaBase, source_path: Path
+        ) -> MetaBase:
+            """
+            用 mediainfo 探测到的真实技术信息校正标题解析结果。
+
+            仅在开启探测且文件存在时生效；任何异常都退回原解析结果，
+            不影响整理主流程。
+            """
+            try:
+                probe_conf = load_conf(
+                    SystemConfigKey.MediaInfoProbe, MediaInfoProbeConf
+                )
+            except Exception:  # pylint: disable=broad-except
+                return current_meta
+            if not probe_conf.enabled or not source_path.is_file():
+                return current_meta
+
+            try:
+                info = probe_media(source_path)
+            except Exception as err:  # pylint: disable=broad-except
+                if probe_conf.log_failure:
+                    logger.warning(f"mediainfo 探测异常：{source_path} - {err}")
+                return current_meta
+
+            if not info:
+                if probe_conf.log_failure:
+                    logger.warning(f"mediainfo 未能解析：{source_path}")
+                return current_meta
+
+            # 分辨率以真实文件为准：标题里的 1080p 可能是错的
+            if probe_conf.override_resolution and info.get("resolution"):
+                current_meta.resource_pix = info["resolution"]
+            # 来源：标题里没有 ProRes/DCP/Master 这类标记时由文件补齐
+            if probe_conf.override_source and info.get("source") and not current_meta.resource_type:
+                current_meta.resource_type = info["source"]
+            return current_meta
 
         def _apply_meta_overrides(
                 current_meta: MetaBase, source_path: Path

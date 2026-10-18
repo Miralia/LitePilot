@@ -509,6 +509,15 @@ export default {
       removeEmptyDirs: '清理产生的空目录',
       dryRun: '试运行（只记录不删除）',
       dryRunHint: '开启后仅打印将要删除的内容，便于确认匹配是否正确',
+      probeTitle: '媒体文件技术信息探测',
+      probeGuide:
+        '整理时用 mediainfo 读取真实文件的宽高、编码与 HDR 信息，用于校正标题解析结果。分辨率按 Vit 的分档规则判定（含 DCI 2K/4K 等特殊规格）。需要系统安装 mediainfo。',
+      overrideResolution: '用探测结果校正分辨率',
+      overrideResolutionHint:
+        '标题里写的 1080p 未必准确，开启后以文件真实尺寸为准（如宽画幅会抬到 1440p）',
+      overrideSource: '用探测结果补全来源',
+      overrideSourceHint: '标题没有 ProRes / DCP / Master 标记时，按文件格式补齐',
+      logFailure: '探测失败时记录告警日志',
       coverTitle: '媒体库封面生成',
       coverGuide:
         '取媒体库最近入库条目的海报，按固定风格渲染封面并回写媒体服务器。字体固定为霞鹜真楷，首次运行会自动下载。尺寸与字号可按需微调。',

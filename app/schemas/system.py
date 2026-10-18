@@ -231,3 +231,21 @@ class LibraryCoverGeneratorConf(BaseModel):
     # 背景模糊半径与配色占比
     blur_size: int = 50
     color_ratio: float = 0.8
+
+
+class MediaInfoProbeConf(BaseModel):
+    """
+    媒体文件技术信息探测配置。
+
+    整理时调用 mediainfo 读取真实文件的宽高、编码、HDR 等信息，
+    用于校正标题解析结果，并可按需写入 NFO。
+    """
+
+    # 是否启用
+    enabled: bool = True
+    # 是否用探测结果覆盖标题解析出的分辨率
+    override_resolution: bool = True
+    # 是否用探测结果补全来源（ProRes / DCP / Master 等标题里可能没有的类型）
+    override_source: bool = True
+    # 探测失败时是否记录告警日志
+    log_failure: bool = False

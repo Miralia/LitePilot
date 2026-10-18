@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 import regex as re
 
 from app.db.systemconfig_oper import SystemConfigOper
+from app.log import logger
 from app.schemas.types import SystemConfigKey
 from app.utils.singleton import Singleton
 
@@ -14,6 +15,10 @@ _REGEX_STRUCTURE = _std_re.compile(r"\(\?:|\(\?=|\(\?!|\\[dDwWsS]|\[\^?[^\]]*\]|
 
 # @ 上游部分的停止字符：常规分段符都算，避免把标题前缀当成组名
 _UPSTREAM_STOP_CHARS = frozenset("[]【】￡@&/\\ ._-")
+
+# 组名长度上限：真实组名很少超过这个长度，超长条目多是把多个组拼在一起
+# 的脏数据（如 SeaDex 里用 = 与 - 串起来的联合发布），保留会拖慢匹配且永不命中
+_MAX_GROUP_NAME_LEN = 40
 
 # 组名分段的边界符：@ 回溯上游时遇到这些字符即停止
 _GROUP_BOUNDARIES = frozenset("[]【】￡@&/\\ \t")
@@ -171,6 +176,12 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
         for name in words:
             cleaned = name.strip()
             if not cleaned:
+                continue
+            # 跳过疑似多组拼接的脏数据，避免它进入匹配规则却永不命中。
+            # 正则片段不计长度限制：它们本身可以很长且语义明确。
+            is_regex = cleaned.startswith("re:") or is_regex_pattern(cleaned)
+            if len(cleaned) > _MAX_GROUP_NAME_LEN and not is_regex:
+                logger.debug(f"跳过超长组名（疑似多组拼接）：{cleaned[:48]}...")
                 continue
             if cleaned.startswith("re:"):
                 # 显式声明为正则片段
