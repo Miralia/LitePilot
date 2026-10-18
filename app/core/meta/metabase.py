@@ -46,6 +46,12 @@ _EFFECT_ALIASES = {
     "HDRVIVID": "HDRVivid",
     "VIVID": "HDRVivid",
 }
+
+# 色彩采样：只保留 4:2:2 与 4:4:4 两类高位深色度
+_CHROMA_ALIASES = {
+    "YUV422P": "YUV422P",
+    "YUV444P": "YUV444P",
+}
 _AUDIO_ALIASES = {
     # Dolby Digital Plus 的多种写法统一为 DD+
     "DDP": "DD+",
@@ -91,7 +97,15 @@ def normalize_effect(value: Optional[str]) -> Optional[str]:
     """把 HDR/特效写法收敛为唯一标准写法。"""
     if not value:
         return value
-    return _EFFECT_ALIASES.get(str(value).strip().upper(), value)
+    text = str(value).strip()
+    upper = text.upper()
+    if upper in _EFFECT_ALIASES:
+        return _EFFECT_ALIASES[upper]
+    # YUV422P10 这类带位深后缀的写法，收敛为 YUV422P
+    for alias, canonical in _CHROMA_ALIASES.items():
+        if upper.startswith(alias):
+            return canonical
+    return text
 
 
 def normalize_audio(value: Optional[str]) -> Optional[str]:
@@ -595,7 +609,13 @@ class MetaBase(object):
         三条解析路径（MetaVideo / MetaAnime / Rust 加速）都在完成时调用一次，
         避免各处分别实现导致写法漂移。对应原先依赖「自定义识别词」的改写逻辑。
         """
-        self.resource_effect = normalize_effect(self.resource_effect)
+        if self.resource_effect:
+            parts = [
+                normalize_effect(part)
+                for part in str(self.resource_effect).split()
+                if part
+            ]
+            self.resource_effect = " ".join(p for p in parts if p) or None
         self.audio_encode = normalize_audio(self.audio_encode)
         self.resource_pix = normalize_pix(self.resource_pix)
         self.resource_type = normalize_source(self.resource_type)

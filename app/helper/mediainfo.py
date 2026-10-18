@@ -101,6 +101,32 @@ def _pick_track(tracks: List[dict], kind: str) -> Optional[dict]:
     return None
 
 
+def _detect_chroma(video: Optional[dict]) -> str:
+    """
+    从视频轨道提取色彩采样格式。
+
+    MediaInfo 用 ChromaSubsampling 描述采样方式（如 `4:2:2`），
+    结合 ColorSpace=YUV 归一为发布名 YUV422P / YUV444P。
+    4:2:0 是最常见的默认值，不作为发布信息标注。
+
+    :param video: 视频轨道信息
+    :return: YUV422P / YUV444P，不满足条件时返回空串
+    """
+    if not video:
+        return ""
+    color_space = _first(video, "ColorSpace", "colour_space").upper()
+    subsampling = _first(video, "ChromaSubsampling", "chroma_subsampling")
+    if not subsampling:
+        return ""
+    # 例：`4:2:2`、`4:2:0 (Type 0)`、`4:4:4`
+    normalized = subsampling.replace(" ", "").split("(")[0]
+    if "4:4:4" in normalized:
+        return "YUV444P" if not color_space or "YUV" in color_space else ""
+    if "4:2:2" in normalized:
+        return "YUV422P" if not color_space or "YUV" in color_space else ""
+    return ""
+
+
 def _detect_source(file_name: str, video: Optional[dict]) -> str:
     """
     判定发布来源（ProRes / DCP / Master 等特殊类型）。
@@ -187,6 +213,8 @@ def probe_media(path: Path) -> Optional[dict]:
         "video_codec": _first(video, "Format", "CodecID") if video else "",
         "video_profile": _first(video, "Format_Profile", "Format profile") if video else "",
         "bit_depth": _first(video, "BitDepth") if video else "",
+        # 色彩采样：仅 4:2:2 / 4:4:4 有意义，4:2:0 为常态不标注
+        "chroma": _detect_chroma(video) if video else "",
         "hdr": _first(video, "HDR_Format", "HDR format") if video else "",
         "frame_rate": _first(video, "FrameRate", "Frame rate") if video else "",
         "bit_rate": _first(video, "BitRate", "Bit rate") if video else "",

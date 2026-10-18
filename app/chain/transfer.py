@@ -3067,6 +3067,14 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 current_meta.video_encode = _correct_codec(info["video_codec"])
             if probe_conf.enabled and info.get("audio_codec"):
                 current_meta.audio_encode = _correct_codec(info["audio_codec"])
+            # 色彩采样与 DoVi/HDR 同级，追加到效果字段；
+            # 标题未标注而文件确实是 4:2:2 / 4:4:4 时补齐
+            chroma = str(info.get("chroma") or "").strip()
+            if probe_conf.enabled and chroma:
+                effects = str(current_meta.resource_effect or "").split()
+                if chroma not in effects:
+                    effects.append(chroma)
+                    current_meta.resource_effect = " ".join(effects)
             return current_meta
 
         def _apply_meta_overrides(

@@ -51,7 +51,12 @@ class MetaVideo(MetaBase):
     _roman_numerals = r"^(?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$"
     _source_re = (r"^BLURAY$|^HDTV$|^UHDTV$|^HDDVD$|^WEBRIP$|^DVDRIP$|^BDRIP$|^BLU$|^WEB$|^BD$"
                   r"|^HDRip$|^REMUX$|^UHD$|^PRORES$|^DCP$|^MASTER$")
-    _effect_re = r"^SDR$|^HDR\d*$|^HDRVIVID$|^DOLBY$|^DOVI$|^DV$|^3D$|^REPACK$|^HLG$|^HDR10(\+|Plus)$|^HDR10P$|^VIVID$|^EDR$|^HQ$"
+    _effect_re = (
+        r"^SDR$|^HDR\d*$|^HDRVIVID$|^DOLBY$|^DOVI$|^DV$|^3D$|^REPACK$"
+        r"|^HLG$|^HDR10(\+|Plus)$|^HDR10P$|^VIVID$|^EDR$|^HQ$"
+        # 色彩采样格式：与 DoVi/HDR 同级，只关注高位深色度（4:2:2 / 4:4:4）
+        r"|^YUV422P\d*$|^YUV444P\d*$"
+    )
     _resources_type_re = r"%s|%s" % (_source_re, _effect_re)
     _name_no_begin_re = r"^[\[【].+?[\]】]"
     _name_no_chinese_re = r".*版|.*字幕"

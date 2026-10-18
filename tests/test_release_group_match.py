@@ -264,3 +264,33 @@ def test_video_encode_excludes_bit_depth(title, expected):
 
     assert MetaVideo(title).video_encode == expected
     assert MetaInfo(title).video_encode == expected
+
+
+@pytest.mark.parametrize(
+    ("title", "expected_effect"),
+    [
+        # 色彩采样与 DoVi/HDR 同级，出现在效果字段
+        ("[Mira] Princess mononoke 1997 (DCP 2K DD+ YUV444P x265)", "YUV444P"),
+        ("[Kawatare] 100 Meters 2025 (DCP 1080p DD+ YUV422P x265)", "YUV422P"),
+        # 带位深后缀时收敛到基础名
+        ("Movie.2024.1080p.YUV422P10-GRP", "YUV422P"),
+        ("Movie.2024.1080p.yuv444p-GRP", "YUV444P"),
+    ],
+)
+def test_chroma_subsampling_recognized(title, expected_effect):
+    """YUV422P / YUV444P 应作为效果字段被识别。"""
+    from app.core.meta import MetaVideo
+    from app.core.metainfo import MetaInfo
+
+    for parser in (MetaVideo, MetaInfo):
+        effect = parser(title).resource_effect or ""
+        assert expected_effect in effect.split(), f"{parser.__name__}: {effect!r}"
+
+
+def test_chroma_appears_with_hdr_same_level():
+    """色彩采样与 DoVi/HDR 同时出现时互不覆盖。"""
+    from app.core.meta import MetaVideo
+
+    effect = MetaVideo("Movie.2024.1080p.DoVi.HDR.YUV444P-GRP").resource_effect or ""
+    parts = effect.split()
+    assert "DoVi" in parts and "YUV444P" in parts
