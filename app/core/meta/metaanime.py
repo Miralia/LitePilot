@@ -185,9 +185,17 @@ class MetaAnime(MetaBase):
                     if str(self.resource_pix).isdigit():
                         self.resource_pix = str(self.resource_pix) + "p"
                 # 制作组/字幕组
-                self.resource_team = \
-                    ReleaseGroupsMatcher().match(title=original_title) or \
-                    anitopy_info_origin.get("release_group") or None
+                _matcher = ReleaseGroupsMatcher()
+                _teams = _matcher.match_list(title=original_title)
+                self.resource_teams = list(_teams)
+                self.resource_team = (
+                    "&".join(_teams)
+                    or anitopy_info_origin.get("release_group")
+                    or None
+                )
+                # 来源类型：anitopy 不解析来源，这里按内置规则从原始标题提取，
+                # 否则动画资源永远拿不到 BluRay / WEB-DL / WebRip 等来源信息
+                self.resource_type = self.extract_resource_type(original_title) or None
                 # 自定义占位符
                 self.customization = CustomizationMatcher().match(title=original_title) or None
                 # 视频编码
@@ -208,6 +216,8 @@ class MetaAnime(MetaBase):
                     self.init_subtitle(self.subtitle)
             if not self.type:
                 self.type = MediaType.TV
+            # 统一收敛输出写法（大小写/同义写法）
+            self.finalize()
         except Exception as e:
             logger.error(f"解析动漫信息失败：{str(e)} - {traceback.format_exc()}")
 

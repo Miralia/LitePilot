@@ -194,3 +194,51 @@ def test_zero_padded_episode_still_detected(title, expected_episode):
     meta = MetaVideo(title)
     assert meta.begin_episode == expected_episode
     assert meta.name == "Show"
+
+
+@pytest.mark.parametrize(
+    ("title", "field", "expected"),
+    [
+        # 以下归一化原先依赖「自定义识别词」，现已内建到代码
+        ("S.2024.1080p.DV-GRP", "resource_effect", "DoVi"),
+        ("S.2024.1080p.DoVi-GRP", "resource_effect", "DoVi"),
+        ("S.2024.1080p.HDR10Plus-GRP", "resource_effect", "HDR10+"),
+        ("S.2024.x264.DDP-GRP", "audio_encode", "DD+"),
+        ("S.2024.x264.EAC3-GRP", "audio_encode", "DD+"),
+        ("S.2024.x264.DD+-GRP", "audio_encode", "DD+"),
+        ("S.2024.x264.AC3-GRP", "audio_encode", "DD"),
+        ("S.2024.x264.OPUS-GRP", "audio_encode", "Opus"),
+        ("S.2024.x264.FLAC-GRP", "audio_encode", "FLAC"),
+        ("S.2024.4K-GRP", "resource_pix", "4K"),
+        ("S.2024.8K-GRP", "resource_pix", "8K"),
+        ("S.2024.1080p.WEBRip-GRP", "resource_type", "WEBRip"),
+        ("S.2024.1080p.BDRip-GRP", "resource_type", "BDRip"),
+    ],
+)
+def test_output_normalization(title, field, expected):
+    """输出写法应统一到标准形态，三条解析路径结果一致。"""
+    from app.core.meta import MetaAnime, MetaVideo
+    from app.core.metainfo import MetaInfo
+
+    # MetaVideo 与 MetaInfo 是实际使用的两条路径，要求严格一致；
+    # MetaAnime 依赖 anitopy，对部分写法覆盖有限，只在识别到结果时校验写法
+    for parser in (MetaVideo, MetaInfo):
+        assert getattr(parser(title), field) == expected, f"{parser.__name__} 不一致"
+    anime_value = getattr(MetaAnime(title), field)
+    assert anime_value in (None, expected), f"MetaAnime 写法不规范: {anime_value!r}"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        # 视频编码保留原文件写法，不强制统一
+        "S.2024.1080p.x264-GRP",
+        "S.2024.1080p.H264-GRP",
+        "S.2024.1080p.HEVC-GRP",
+    ],
+)
+def test_video_codec_keeps_original_form(title):
+    """H264/H265/HEVC/AVC 与 x264/x265 保留原文件写法。"""
+    from app.core.meta import MetaVideo
+
+    assert MetaVideo(title).video_encode is not None

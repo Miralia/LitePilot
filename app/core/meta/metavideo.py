@@ -71,7 +71,13 @@ class MetaVideo(MetaBase):
     _resources_pix_re = r"^[SBUHD]*(\d{3,4}[PI]+)|\d{3,4}X(\d{3,4})"
     _resources_pix_re2 = r"(^[248]+K)"
     _video_encode_re = r"^(H26[45])$|^(x26[45])$|^AVC$|^HEVC$|^VC\d?$|^MPEG\d?$|^Xvid$|^DivX$|^AV1$|^HDR\d*$|^AVS(\+|[23])$"
-    _audio_encode_re = r"^DTS\d?$|^DTSHD$|^DTSHDMA$|^Atmos$|^TrueHD\d?$|^AC3$|^\dAudios?$|^DDP\d?$|^DD\+\d?$|^DD\d?$|^LPCM\d?$|^AAC\d?$|^FLAC\d?$|^HD\d?$|^MA\d?$|^HR\d?$|^Opus\d?$|^Vorbis\d?$|^AV[3S]A$"
+    _audio_encode_re = (
+        r"^DTS\d?$|^DTSHD$|^DTSHDMA$|^Atmos$|^TrueHD\d?$"
+        r"|^AC3$|^EAC3$|^EAC-?3$|^\dAudios?$"
+        r"|^DDP\d?$|^DD\+\d?$|^DD\d?$|^EAC3$"
+        r"|^LPCM\d?$|^AAC\d?$|^FLAC\d?$|^HD\d?$|^MA\d?$|^HR\d?$"
+        r"|^Opus\d?$|^Vorbis\d?$|^AV[3S]A$"
+    )
     _fps_re = r"(\d{2,3})(?=FPS)"
     _season_pattern = re.compile(_season_re, re.IGNORECASE)
     _episode_pattern = re.compile(_episode_re, re.IGNORECASE)
@@ -145,6 +151,34 @@ class MetaVideo(MetaBase):
         token = tokens.get_next()
         while token:
             self._index += 1  # 更新当前处理的token索引
+            # 小数集号（如 18.5、06.5）：Tokens 按 `.` 切成 `18` 与 `5`，
+            # 若不提前消费，两段数字都会拼进标题，形成 "Anime Name 18 5" 这类污染
+            if token.isdigit() and (self.cn_name or self.en_name) \
+                    and self._last_token_type not in ("audioencode", "videoencode"):
+                all_tokens = tokens.tokens
+                pos = self._index - 1
+                if 0 <= pos < len(all_tokens) - 1:
+                    nxt = all_tokens[pos + 1]
+                    if nxt.isdigit() and len(nxt) <= 2 and self._is_decimal_episode(token, nxt):
+                        # 只消费整数段与小数段本身，随后继续正常处理下一个 token
+                        # （可能是 SxxExx，不能一并跳过）
+                        self._last_token_type = "episode"
+                        self._continue_flag = True
+                        self._stop_name_flag = True
+                        tokens.get_next()  # 跳过整数段
+                        token = tokens.get_next() or ""  # 跳过小数段
+                        self._index += 1
+                        if not token:
+                            break
+                        self._index += 1
+            # CRC32 校验和（如 [CRC]、[CF1029D9]、[05FE2255]）与特典标签（OVA/SP）
+            # 属于发布信息，不应进入标题；否则名称会变成 "Anime Name Crc" 之类
+            if self._is_release_noise(token):
+                self._stop_name_flag = True
+                token = tokens.get_next() or ""
+                if not token:
+                    break
+                self._index += 1
             # Part
             self.__init_part(token, tokens)
             # 视频位深需要先于标题判断：`Ma10p`、`10bit` 这类标记若先被
@@ -223,6 +257,8 @@ class MetaVideo(MetaBase):
         self.customization = CustomizationMatcher().match(title=original_title) or None
         if not self.video_bit:
             self.video_bit = self.extract_video_bit(self.video_encode)
+        # 统一收敛输出写法（大小写/同义写法）
+        self.finalize()
 
     @staticmethod
     def __get_title_from_description(description: str) -> Optional[str]:
@@ -367,6 +403,38 @@ class MetaVideo(MetaBase):
                 else:
                     self.en_name = token
                 self._last_token_type = "enname"
+
+    # 纯十六进制校验和（8 位）与常见的校验和/特典占位词
+    _CRC_TOKEN_RE = re.compile(r"^[0-9A-F]{8}$", re.IGNORECASE)
+    _RELEASE_NOISE_WORDS = frozenset({"CRC", "CRC32", "OVA", "OAD", "SP", "NCOP", "NCED"})
+
+    @classmethod
+    def _is_release_noise(cls, token: str) -> bool:
+        """
+        判断 token 是否为发布信息噪音（校验和、特典标签）。
+
+        :param token: 待判断的 token
+        :return: 属于噪音时返回 True
+        """
+        if not token:
+            return False
+        text = token.strip()
+        if not text:
+            return False
+        if text.upper() in cls._RELEASE_NOISE_WORDS:
+            return True
+        return bool(cls._CRC_TOKEN_RE.match(text))
+
+    def _is_decimal_episode(self, whole: str, frac: str) -> bool:
+        """
+        判断相邻的整数段与小数段是否构成原文中的小数集号。
+
+        :param whole: 整数部分
+        :param frac: 小数部分
+        :return: 原文存在 `whole.frac` 时返回 True
+        """
+        pattern = r"(?<![\d])%s[._]%s(?![\d])" % (re.escape(whole), re.escape(frac))
+        return bool(re.search(pattern, self.org_string or "", re.IGNORECASE))
 
     def __init_part(self, token: str, tokens: Tokens):
         """
@@ -627,7 +695,9 @@ class MetaVideo(MetaBase):
             self._stop_name_flag = True
             if not self._source:
                 self._source = source_res.group(1)
-                self._last_token = self._source.upper()
+            # 必须始终记录当前来源片段：`UHD.Blu-ray` 这类写法里，
+            # 后续 `ray` 要靠 `_last_token == "BLU"` 才能合并成 UHD BluRay
+            self._last_token = source_res.group(1).upper()
             return
         effect_res = self._effect_pattern.search(token)
         if effect_res:
@@ -733,9 +803,10 @@ class MetaVideo(MetaBase):
             self.video_encode = "%s%s" % (self._last_token, token)
         elif token.upper() == "10BIT":
             self._last_token_type = "videoencode"
+            # 位深已在 __init_video_bit 阶段合并过，这里避免重复追加
             if not self.video_encode:
                 self.video_encode = "10bit"
-            else:
+            elif "10bit" not in self.video_encode.lower():
                 self.video_encode = f"{self.video_encode} 10bit"
 
     def __init_video_bit(self, token: str):
@@ -751,11 +822,16 @@ class MetaVideo(MetaBase):
         video_bit = self.extract_video_bit(token)
         if not video_bit:
             return
-        self._continue_flag = False
         self._stop_name_flag = True
         self._last_token_type = "videobit"
         if not self.video_bit:
             self.video_bit = video_bit
+        # 位深提前到标题之前处理，此处补上原本由 __init_video_encode 完成的合并，
+        # 让 video_encode 保持 "x265 10bit" 这种既有输出，避免下游依赖断裂
+        if self.video_encode and "10bit" not in self.video_encode.lower():
+            self.video_encode = f"{self.video_encode} 10bit"
+        elif not self.video_encode:
+            self.video_encode = video_bit
 
     def __init_audio_encode(self, token: str):
         """

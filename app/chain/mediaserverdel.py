@@ -146,6 +146,11 @@ class MediaServerDelChain(ChainBase):
         torrent_hash = history.download_hash
         if not (conf.delete_torrent and torrent_hash):
             return "none", torrent_hash
+        # 用户可能已在联动删除之前手动删掉种子任务。
+        # 这种情况下没有种子可处理，整理记录照常删除即可，不应报错。
+        if not self._torrent_exists(torrent_hash, history.downloader):
+            logger.info(f"种子 {torrent_hash} 已不存在于下载器，仅删除整理记录")
+            return "gone", torrent_hash
         self.downloadhis.delete_file_by_fullpath(fullpath=history.src)
         remain = self.downloadhis.get_files_by_hash(download_hash=torrent_hash, state=1)
         if remain:
@@ -167,6 +172,31 @@ class MediaServerDelChain(ChainBase):
             )
             return "deleted", torrent_hash
         return "error", torrent_hash
+
+    def _torrent_exists(self, torrent_hash: str, downloader: Optional[str] = None) -> bool:
+        """
+        检查种子是否仍存在于下载器。
+
+        :param torrent_hash: 种子哈希
+        :param downloader: 下载器名称
+        :return: 存在时返回 True；查询失败按存在处理，避免误跳过
+        """
+        if not torrent_hash:
+            return False
+        try:
+            # 需要包含未打标签的任务，否则用户手动添加的种子会被误判为不存在
+            torrents = self.list_torrents(
+                hashs=torrent_hash,
+                downloader=downloader,
+                include_all_tags=True,
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"查询种子 {torrent_hash} 状态失败，按存在处理：{err}")
+            return True
+        if torrents is None:
+            # 查询不可用时保守处理，交给后续逻辑判断
+            return True
+        return bool(torrents)
 
     def sync_del(
             self,
@@ -225,7 +255,7 @@ class MediaServerDelChain(ChainBase):
         deleted = 0
         failed = 0
         dry_run_items: List[str] = []
-        torrent_stats = {"deleted": 0, "kept": 0, "error": 0}
+        torrent_stats = {"deleted": 0, "paused": 0, "gone": 0, "error": 0}
         for history in histories:
             # 记录由 tmdbid + 季 + 集精确定位，直接遵循媒体服务器的删除意图，
             # 不再用标题做二次校验（译名写法差异会造成误跳过）
@@ -306,8 +336,10 @@ class MediaServerDelChain(ChainBase):
                 lines = [msg, f"删除记录 {deleted} 个"]
                 if stats.get("deleted"):
                     lines.append(f"删除种子 {stats['deleted']} 个")
-                if stats.get("kept"):
-                    lines.append(f"保留种子 {stats['kept']} 个（仍有未删除文件）")
+                if stats.get("paused"):
+                    lines.append(f"暂停种子 {stats['paused']} 个（仍有未删除文件）")
+                if stats.get("gone"):
+                    lines.append(f"种子已手动删除 {stats['gone']} 个")
                 if stats.get("error"):
                     lines.append(f"删种失败 {stats['error']} 个")
                 if failed:

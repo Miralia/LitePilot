@@ -415,6 +415,30 @@ def _meta_from_rust(parsed: dict) -> Optional[MetaBase]:
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(f"按词表重算流媒体平台失败，沿用解析结果：{err}")
 
+    # Rust 对部分写法覆盖不全（例如来源写在方括号内、EAC3 等音频编码），
+    # 这些字段为空时用 Python 解析补齐，只填空缺、不覆盖 Rust 已有结果。
+    _fillable = ("resource_type", "resource_effect", "audio_encode", "resource_pix")
+    if any(not getattr(meta, name, None) for name in _fillable):
+        try:
+            fallback = _build_meta_info(
+                title=parsed.get("org_string") or parsed.get("title") or "",
+            )
+            if fallback:
+                for name in _fillable:
+                    if not getattr(meta, name, None) and getattr(fallback, name, None):
+                        setattr(meta, name, getattr(fallback, name))
+                        logger.debug(
+                            f"Rust 未识别 {name}，按 Python 解析补齐：{getattr(fallback, name)}"
+                        )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"补齐解析字段失败，沿用 Rust 结果：{err}")
+
+    # 与 Python 路径保持一致，统一收敛输出写法
+    try:
+        meta.finalize()
+    except Exception as err:  # pylint: disable=broad-except
+        logger.debug(f"统一输出写法失败，沿用解析结果：{err}")
+
     return meta
 
 
@@ -448,6 +472,27 @@ def _has_trailing_zero_title(title: str) -> bool:
     stem = text.rsplit(".", 1)[0] if "." in text else text
     stem = stem.strip()
     return bool(re.search(r"(?<![\d])0$", stem))
+
+
+# Rust 会把小数集号（18.5）按 `.` 拆成两段数字并拼进标题，
+# 结果形如 "Anime Name 18 5"。命中时回退 Python 解析。
+_RUST_DECIMAL_EPISODE_RE = re.compile(
+    r"(?<!\d)\d{1,4}[._]\d{1,2}(?!\d)",
+)
+
+
+def _has_decimal_episode(title: str) -> bool:
+    """
+    判断标题是否含小数集号（如 18.5、06.5）。
+
+    :param title: 原始标题
+    :return: 命中时返回 True
+    """
+    # 只在最后一段像媒体扩展名时才去掉它，避免把 `18.5` 误当扩展名截断
+    text = title or ""
+    stem = re.sub(r"\.(?:mkv|mp4|avi|ts|m2ts|mov|wmv|flv|webm|iso|rmvb|mpg|mpeg)$",
+                  "", text, flags=re.IGNORECASE)
+    return bool(_RUST_DECIMAL_EPISODE_RE.search(stem))
 
 
 def _has_unsupported_bit_tag(title: str) -> bool:
@@ -491,6 +536,7 @@ def MetaInfo(title: str, subtitle: Optional[str] = None, custom_words: List[str]
             not _requires_python_metainfo(title, custom_words)
             and not _has_unsupported_bit_tag(title)
             and not _has_trailing_zero_title(title)
+            and not _has_decimal_episode(title)
     ):
         rust_meta = _meta_from_rust(
             rust_accel.parse_metainfo(title, subtitle, _rust_parse_options(custom_words))

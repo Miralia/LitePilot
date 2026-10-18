@@ -77,7 +77,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E01",
-        "restype": "",
+        "restype": "WEB-DL",
         "pix": "1080p",
         "video_codec": "",
         "audio_codec": "",
@@ -196,7 +196,7 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "",
+        "restype": "WEBRip",
         "pix": "1080p",
         "video_codec": "",
         "audio_codec": "5.1",
@@ -213,7 +213,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E08",
-        "restype": "",
+        "restype": "WEB-DL",
         "pix": "",
         "video_codec": "",
         "audio_codec": "",
@@ -233,7 +233,7 @@ meta_cases = [{
         "restype": "",
         "pix": "1080p",
         "video_codec": "",
-        "audio_codec": "AC3",
+        "audio_codec": "DD",
         "fps": None
     }
 }, {
@@ -400,7 +400,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E02",
-        "restype": "",
+        "restype": "BDRip",
         "pix": "1080p",
         "video_codec": "H264",
         "audio_codec": "FLAC",
@@ -451,7 +451,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E22",
-        "restype": "",
+        "restype": "WEB-DL",
         "pix": "",
         "video_codec": "",
         "audio_codec": "",
@@ -502,7 +502,7 @@ meta_cases = [{
         "part": "",
         "season": "S04",
         "episode": "E04",
-        "restype": "",
+        "restype": "WEB-DL",
         "pix": "1080p",
         "video_codec": "AVC",
         "audio_codec": "AAC",
@@ -519,7 +519,7 @@ meta_cases = [{
         "part": "",
         "season": "S02",
         "episode": "E03",
-        "restype": "",
+        "restype": "WEBRip",
         "pix": "1080p",
         "video_codec": "",
         "audio_codec": "AAC",
@@ -553,7 +553,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E02",
-        "restype": "BDRIP",
+        "restype": "BDRip",
         "pix": "1080p",
         "video_codec": "x265",
         "audio_codec": "FLAC",
@@ -570,10 +570,10 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E01",
-        "restype": "",
+        "restype": "WEBRip",
         "pix": "1080p",
         "video_codec": "",
-        "audio_codec": "EAC3",
+        "audio_codec": "DD+",
         "fps": None
     }
 }, {
@@ -587,7 +587,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E01",
-        "restype": "",
+        "restype": "WEBRip",
         "pix": "1080p",
         "video_codec": "",
         "audio_codec": "AAC",
@@ -655,7 +655,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E07",
-        "restype": "",
+        "restype": "WEB-DL",
         "pix": "1080p",
         "video_codec": "AVC",
         "audio_codec": "AAC",
@@ -692,7 +692,7 @@ meta_cases = [{
         "restype": "WEBRip",
         "pix": "1080p",
         "video_codec": "H264",
-        "audio_codec": "DDP 5.1",
+        "audio_codec": "DD+ 5.1",
         "fps": None
     }
 }, {
@@ -877,7 +877,7 @@ meta_cases = [{
         "season": "",
         "episode": "",
         "restype": "BluRay",
-        "pix": "4k",
+        "pix": "4K",
         "video_codec": "x264",
         "audio_codec": "DTS",
         "fps": None
@@ -927,10 +927,10 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E01-E26",
-        "restype": "",
+        "restype": "BDRip",
         "pix": "1080p",
         "video_codec": "",
-        "audio_codec": "flac",
+        "audio_codec": "FLAC",
         "fps": None
     }
 }, {
@@ -961,7 +961,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E04",
-        "restype": "",
+        "restype": "WEB-DL",
         "pix": "",
         "video_codec": "",
         "audio_codec": "",
@@ -1032,7 +1032,7 @@ meta_cases = [{
         "restype": "WEB-DL",
         "pix": "2160p",
         "video_codec": "H265",
-        "audio_codec": "DDP 5.1 Atmos",
+        "audio_codec": "DD+ 5.1 Atmos",
         "fps": None
     }
 }, {
@@ -1083,7 +1083,7 @@ meta_cases = [{
         "restype": "WEB-DL",
         "pix": "2160p",
         "video_codec": "H265",
-        "audio_codec": "DDP 2.0",
+        "audio_codec": "DD+ 2.0",
         "fps": None
     }
 }, {

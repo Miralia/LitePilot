@@ -33,6 +33,106 @@ SUBTITLE_EPISODE_RANGE_FIN_RE = re.compile(
 )
 # 位深标记：常规写法是 `10bit`；动漫圈还常用 `Ma10p`、`Hi10P` 表示 10bit 编码规格。
 # 后者的 `p` 必须限定在 MA/Hi 这类前缀之后，否则会与分辨率里的逐行标记 `1080p` 混淆。
+# --- 输出归一化 ---------------------------------------------------------------
+# 以下映射把各种等价写法收敛成唯一标准写法，取代原先依赖「自定义识别词」的改写。
+# 约定来源：用户确认的大小写规范。
+_EFFECT_ALIASES = {
+    "DV": "DoVi",
+    "DOVI": "DoVi",
+    "DOLBY": "DoVi",
+    "HDR10PLUS": "HDR10+",
+    "HDR10P": "HDR10+",
+    "HDR10+": "HDR10+",
+    "HDRVIVID": "HDRVivid",
+    "VIVID": "HDRVivid",
+}
+_AUDIO_ALIASES = {
+    # Dolby Digital Plus 的多种写法统一为 DD+
+    "DDP": "DD+",
+    "EAC3": "DD+",
+    "E-AC-3": "DD+",
+    "DD+": "DD+",
+    # Dolby Digital
+    "AC3": "DD",
+    "AC-3": "DD",
+    "DD": "DD",
+    # 其余按专有名词大小写收敛
+    "OPUS": "Opus",
+    "TRUEHD": "TrueHD",
+    "ATMOS": "Atmos",
+    "VORBIS": "Vorbis",
+    "LPCM": "LPCM",
+    "FLAC": "FLAC",
+    "AAC": "AAC",
+    "DTS": "DTS",
+    "DTSHD": "DTS-HD",
+    "DTSHDMA": "DTS-HD MA",
+    "DTS-HD": "DTS-HD",
+    "DTS-HD MA": "DTS-HD MA",
+}
+_PIX_ALIASES = {"4K": "4K", "8K": "8K", "2K": "2K"}
+
+# 来源写法的统一形态（仅规范大小写，不合并同义概念）
+_SOURCE_ALIASES = {
+    "WEBRIP": "WEBRip",
+    "WEB-DL": "WEB-DL",
+    "BDRIP": "BDRip",
+    "BLURAY": "BluRay",
+    "HDTV": "HDTV",
+    "DVDRIP": "DVDRip",
+    "REMUX": "REMUX",
+    "PRORES": "ProRes",
+    "DCP": "DCP",
+    "MASTER": "Master",
+}
+
+
+def normalize_effect(value: Optional[str]) -> Optional[str]:
+    """把 HDR/特效写法收敛为唯一标准写法。"""
+    if not value:
+        return value
+    return _EFFECT_ALIASES.get(str(value).strip().upper(), value)
+
+
+def normalize_audio(value: Optional[str]) -> Optional[str]:
+    """把音频编码写法收敛为唯一标准写法。"""
+    if not value:
+        return value
+    text = str(value).strip()
+    upper = text.upper()
+    if upper in _AUDIO_ALIASES:
+        return _AUDIO_ALIASES[upper]
+    # 带声道数时保留后缀，例如 DDP5.1 -> DD+5.1
+    for alias, canonical in _AUDIO_ALIASES.items():
+        if upper.startswith(alias) and upper != alias:
+            rest = text[len(alias):]
+            return f"{canonical}{rest}"
+    return text
+
+
+def normalize_pix(value: Optional[str]) -> Optional[str]:
+    """把分辨率写法收敛：4k/8k 统一为大写 K。"""
+    if not value:
+        return value
+    text = str(value).strip()
+    upper = text.upper()
+    return _PIX_ALIASES.get(upper, text)
+
+
+def normalize_source(value: Optional[str]) -> Optional[str]:
+    """把来源写法收敛为唯一大小写形态，保留原文件的形态差异。"""
+    if not value:
+        return value
+    text = str(value).strip()
+    key = text.upper()
+    if key in _SOURCE_ALIASES:
+        return _SOURCE_ALIASES[key]
+    # 组合形态（UHD BluRay / BluRay REMUX 等）逐段归一
+    parts = text.split()
+    normalized = [ _SOURCE_ALIASES.get(part.upper(), part) for part in parts ]
+    return " ".join(normalized)
+
+
 VIDEO_BIT_RE = re.compile(
     r"(?<![A-Za-z0-9])(?P<bit>8|10|12|16)[\s._-]*bits?(?![A-Za-z0-9])"
     r"|(?:MA|HI)(?P<bit_p>8|10|12|16)P(?![A-Za-z0-9])",
@@ -120,6 +220,9 @@ class MetaBase(object):
     _subtitle_episode_all_re = r"([0-9一二三四五六七八九十百零]+)\s*集\s*全|[全共]\s*([0-9一二三四五六七八九十百零]+)\s*[集话話期幕]"
 
     def __init__(self, title: str, subtitle: str = None, isfile: bool = False):
+        # default_factory 字段不会生成类属性默认值，手写 __init__ 必须显式初始化，
+        # 否则实例上不存在该属性（MetaAnime 曾因此缺失 resource_teams）
+        self.resource_teams = []
         if not title:
             return
         self.org_string = title.strip() if title else None
@@ -485,6 +588,18 @@ class MetaBase(object):
             ret_string = f"{ret_string} {self.resource_pix}"
         return ret_string
 
+    def finalize(self) -> None:
+        """
+        解析收尾：把各字段统一收敛成标准写法。
+
+        三条解析路径（MetaVideo / MetaAnime / Rust 加速）都在完成时调用一次，
+        避免各处分别实现导致写法漂移。对应原先依赖「自定义识别词」的改写逻辑。
+        """
+        self.resource_effect = normalize_effect(self.resource_effect)
+        self.audio_encode = normalize_audio(self.audio_encode)
+        self.resource_pix = normalize_pix(self.resource_pix)
+        self.resource_type = normalize_source(self.resource_type)
+
     @property
     def edition(self) -> str:
         """
@@ -537,6 +652,50 @@ class MetaBase(object):
         返回帧率信息
         """
         return self.fps or None
+
+    # 来源类型识别规则：按优先级从高到低匹配，先命中先返回。
+    # 组合形态（UHD BluRay、BluRay REMUX、WEB-DL）必须排在基础形态之前，
+    # 否则会先匹配到基础词而丢失更精确的来源描述。
+    _RESOURCE_TYPE_RULES = [
+        ("UHD BluRay", r"\bU?HD\s*Blu[\s.\-]?ray\b"),
+        ("BluRay REMUX", r"\bBlu[\s.\-]?ray\b[\s.\-_]*(?:REMUX|UHD)"),
+        ("REMUX", r"\bREMUX\b"),
+        ("BluRay", r"\bBlu[\s.\-]?ray\b"),
+        ("BDRip", r"\bBD[\s.\-]?Rip\b"),
+        ("WEB-DL", r"\bWEB[\s.\-]?DL\b"),
+        ("WebRip", r"\bWEB[\s.\-]?Rip\b"),
+        ("WEB", r"\bWEB\b"),
+        ("HDTV", r"\bHDTV\b"),
+        ("HDDVD", r"\bHD[\s.\-]?DVD\b"),
+        ("DVDRip", r"\bDVD[\s.\-]?Rip\b"),
+        ("DVD", r"\bDVD\b"),
+        ("ProRes", r"\bProRes\b"),
+        ("DCP", r"\bDCP\b"),
+        ("Master", r"\bMaster\b"),
+    ]
+    _RESOURCE_TYPE_RES = [
+        (name, re.compile(pattern, re.IGNORECASE))
+        for name, pattern in _RESOURCE_TYPE_RULES
+    ]
+
+    @staticmethod
+    def extract_resource_type(value: Optional[str]) -> Optional[str]:
+        """
+        从标题中提取来源类型。
+
+        供 anitopy 路径（MetaAnime）使用：anitopy 不解析来源信息，
+        导致动画资源拿不到 BluRay / WEB-DL / WebRip 等来源。
+
+        :param value: 原始标题
+        :return: 来源名称，未识别到返回 None
+        """
+        if not value:
+            return None
+        text = str(value)
+        for name, pattern in MetaBase._RESOURCE_TYPE_RES:
+            if pattern.search(text):
+                return name
+        return None
 
     @staticmethod
     def extract_video_bit(value: Optional[str]) -> Optional[str]:
