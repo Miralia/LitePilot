@@ -149,8 +149,16 @@ class MediaServerDelChain(ChainBase):
         self.downloadhis.delete_file_by_fullpath(fullpath=history.src)
         remain = self.downloadhis.get_files_by_hash(download_hash=torrent_hash, state=1)
         if remain:
-            logger.info(f"种子 {torrent_hash} 仍有 {len(remain)} 个文件，保留下载任务")
-            return "kept", torrent_hash
+            # 种子还有内容没被删除：暂停而不是删除，等后续事件把剩余内容删完再移除任务
+            logger.info(
+                f"种子 {torrent_hash} 仍有 {len(remain)} 个文件未删除，暂停下载任务"
+            )
+            try:
+                self.stop_torrents(hashs=torrent_hash)
+            except Exception as err:  # pylint: disable=broad-except
+                logger.error(f"暂停种子 {torrent_hash} 失败：{err}")
+                return "error", torrent_hash
+            return "paused", torrent_hash
         logger.info(f"种子 {torrent_hash} 文件已全部删除，删除下载任务")
         if DownloadChain().remove_downloading(hash_str=torrent_hash):
             self.eventmanager.send_event(
@@ -199,6 +207,20 @@ class MediaServerDelChain(ChainBase):
             return
 
         conf = sync_del_by_media_server_conf()
+        # 媒体服务器上报的删除粒度未必等于实际删除的文件范围：
+        # 批量删除时 Emby 只发一条 Series 级事件，不带具体集数。
+        # 因此以「媒体库文件是否真的不存在」为准，只清理确实已被移除的记录；
+        # 文件仍存在的记录保留，等后续事件再处理，避免把未删内容一并清掉。
+        pending = []
+        for history in histories:
+            if history.dest and Path(history.dest).exists():
+                logger.info(f"整理记录 {history.id} 的目标文件仍存在，保留待后续同步：{history.dest}")
+                continue
+            pending.append(history)
+        histories = pending
+        if not histories:
+            logger.info(f"{msg} 没有已被移除的文件，跳过同步删除")
+            return
         logger.info(f"正在同步删除{msg}，共 {len(histories)} 条整理记录")
         deleted = 0
         failed = 0
