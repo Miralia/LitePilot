@@ -102,10 +102,19 @@ async function loadAll() {
     const servers: any = await api.get('system/setting/MediaServers')
     serverOptions.value = (servers?.data?.value ?? []).map((item: any) => item.name)
 
-    const libraries: any = await api.get('mediaserver/library')
-    if (Array.isArray(libraries)) {
-      libraryOptions.value = libraries.map((item: any) => item.name).filter(Boolean)
+    // 媒体库列表接口需要按服务器查询，逐个取并去重
+    const names = new Set<string>()
+    for (const server of serverOptions.value) {
+      try {
+        const libraries: any = await api.get('mediaserver/library', { params: { server } })
+        if (Array.isArray(libraries)) {
+          libraries.forEach((item: any) => item?.name && names.add(item.name))
+        }
+      } catch (error) {
+        console.log(error)
+      }
     }
+    libraryOptions.value = Array.from(names)
   } catch (error) {
     console.log(error)
   } finally {
