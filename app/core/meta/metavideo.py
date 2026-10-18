@@ -218,7 +218,7 @@ class MetaVideo(MetaBase):
         # MetaVideo 使用自定义 __init__，不走 dataclass 生成器，
         # 因此新增字段需要显式赋值，否则实例上不会存在该属性。
         self.resource_teams = list(_teams)
-        self.resource_team = "@".join(_teams) or None
+        self.resource_team = "&".join(_teams) or None
         # 自定义占位符
         self.customization = CustomizationMatcher().match(title=original_title) or None
         if not self.video_bit:

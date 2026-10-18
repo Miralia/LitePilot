@@ -505,7 +505,7 @@ class MetaBase(object):
         if self.resource_team:
             return self.resource_team
         if self.resource_teams:
-            return "@".join(self.resource_teams)
+            return "&".join(self.resource_teams)
         return ""
 
     @property

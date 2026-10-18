@@ -73,9 +73,14 @@ def test_unknown_group_returns_empty(matcher):
     assert matcher.match_list(title="Show.2024.1080p.WEB-DL.x264") == []
 
 
-def test_match_joins_groups_with_at(matcher):
-    """match 保持以 @ 连接多个组的既有行为。"""
-    assert matcher.match(title="x-SweetSub&VCB-Studio") == "SweetSub@VCB-Studio"
+def test_match_joins_groups_with_ampersand(matcher):
+    """多个制作组用 & 连接：& 表示合作发布，@ 仅用于从属关系。"""
+    assert matcher.match(title="x-SweetSub&VCB-Studio") == "SweetSub&VCB-Studio"
+
+
+def test_match_keeps_at_group_as_whole(matcher):
+    """xxx@yyy 视为一个整体制作组，不再拆分。"""
+    assert matcher.match(title="x-Baha@SweetSub") == "Baha@SweetSub"
 
 
 def test_custom_group_with_special_chars_is_literal():

@@ -268,4 +268,4 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
         :param groups: 制作组/字幕组
         :return: 匹配结果
         """
-        return "@".join(self.match_list(title=title, groups=groups))
+        return "&".join(self.match_list(title=title, groups=groups))

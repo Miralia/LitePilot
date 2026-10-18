@@ -28,4 +28,4 @@ class MetaInfoTest(TestCase):
                 "[DMG&VCB-Studio] Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e"
             )
 
-        self.assertEqual("DMG@VCB-Studio", release_group)
+        self.assertEqual("DMG&VCB-Studio", release_group)

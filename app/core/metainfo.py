@@ -389,7 +389,7 @@ def _meta_from_rust(parsed: dict) -> Optional[MetaBase]:
             title=parsed.get("org_string") or parsed.get("title") or ""
         )
         meta.resource_teams = list(teams)
-        meta.resource_team = "@".join(teams) or None
+        meta.resource_team = "&".join(teams) or None
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(f"按词表重算制作组失败，沿用解析结果：{err}")
 
