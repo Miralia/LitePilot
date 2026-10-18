@@ -762,15 +762,13 @@ class MetaVideo(MetaBase):
 
     def __init_video_encode(self, token: str):
         """
-        识别视频编码
+        识别视频编码。
+
+        编码标记（x265、HEVC 等）本身就是强特征，常出现在分辨率之前，
+        因此不再要求「必须已有年份/分辨率/来源」作为前置条件，
+        否则 `Show [X265 10bit]` 这类写法会漏识别。
         """
         if not self.name:
-            return
-        if not self.year \
-                and not self.resource_pix \
-                and not self.resource_type \
-                and self.begin_season is None \
-                and not self.begin_episode:
             return
         re_res = self._video_encode_pattern.search(token)
         if re_res:

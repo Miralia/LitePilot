@@ -433,7 +433,8 @@ def test_video_bit_extracted_for_anime_title():
         title="[云歌字幕组][7月新番][欢迎来到实力至上主义的教室 第二季][01]"
               "[X264 10bit][1080p][简体中文].mp4"
     )
-    assert meta.video_encode == "X264"
+    # x26x 统一小写，位深并入编码描述
+    assert meta.video_encode == "x264 10bit"
     assert meta.video_bit == "10bit"
 
 

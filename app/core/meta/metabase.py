@@ -599,6 +599,11 @@ class MetaBase(object):
         self.audio_encode = normalize_audio(self.audio_encode)
         self.resource_pix = normalize_pix(self.resource_pix)
         self.resource_type = normalize_source(self.resource_type)
+        # x264/x265 官方写法为小写 x，统一收敛
+        if self.video_encode:
+            self.video_encode = re.sub(
+                r"\bx(26[45])\b", r"x\1", str(self.video_encode), flags=re.IGNORECASE
+            )
         # 位深并入编码描述（如 `HEVC 10bit`），三条路径保持同一形态；
         # 已包含位深时不重复追加
         if self.video_bit and self.video_encode \
