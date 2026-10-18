@@ -1081,8 +1081,14 @@ def scheduler_run(job_id: str) -> None:
               default="/etc/nginx/apps", show_default=True, help="nginx 片段输出目录")
 @click.option("--prefix", default="/", show_default=True, help="nginx 挂载路径前缀")
 @click.option("--user", default="root", show_default=True, help="systemd 运行用户")
+@click.option("--config-dir", "config_dir", type=click.Path(path_type=Path),
+              help="服务运行的 CONFIG_DIR，默认使用当前生效配置目录")
+@click.option("--python", "python_path", type=click.Path(path_type=Path),
+              help="服务使用的 Python 解释器，默认优先使用仓库内 venv")
 @click.option("--print-only", is_flag=True, help="只打印配置内容，不写盘")
-def deploy(service_dir: Path, nginx_dir: Path, prefix: str, user: str, print_only: bool) -> None:
+def deploy(service_dir: Path, nginx_dir: Path, prefix: str, user: str,
+           config_dir: Optional[Path], python_path: Optional[Path],
+           print_only: bool) -> None:
     """生成 systemd unit 与 nginx 站点配置"""
     from app.helper.deploy import (
         nginx_site_path,
@@ -1092,10 +1098,17 @@ def deploy(service_dir: Path, nginx_dir: Path, prefix: str, user: str, print_onl
     )
 
     root = _repo_root()
-    config_dir = settings.CONFIG_PATH.expanduser().resolve()
-    python_bin = Path(sys.executable).resolve()
+    # 优先使用仓库内 venv：直接用当前解释器会在虚拟环境外生成无法导入依赖的 unit
+    venv_python = root / "venv" / "bin" / "python"
+    # 虚拟环境中的 python 常是指向真实解释器的符号链接，按可执行性而非存在性判断
+    if python_path:
+        python_bin = python_path.expanduser().resolve()
+    elif os.access(venv_python, os.X_OK):
+        python_bin = venv_python
+    else:
+        python_bin = Path(sys.executable)
+    config_dir = (config_dir or settings.CONFIG_PATH).expanduser().resolve()
     public_dir = root / "public"
-
     if not public_dir.exists():
         click.echo(f"警告：前端产物目录不存在，请先执行 ./scripts/build-frontend.sh（{public_dir}）")
 
