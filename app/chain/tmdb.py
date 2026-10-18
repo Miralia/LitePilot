@@ -58,6 +58,14 @@ class TmdbChain(ChainBase):
         """
         return self.run_module("tmdb_tv_credits", tmdbid=tmdbid, page=page)
 
+    def tmdb_trending(self, page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
+        """
+        TMDB流行趋势（登录页壁纸来源）
+        :param page: 第几页
+        :return: TMDB信息列表
+        """
+        return self.run_module("tmdb_trending", page=page)
+
     def person_detail(self, person_id: int) -> Optional[schemas.MediaPerson]:
         """
         根据TMDBID查询演职员详情
@@ -158,6 +166,14 @@ class TmdbChain(ChainBase):
         """
         return await self.async_run_module("async_tmdb_person_credits", person_id=person_id, page=page)
 
+
+    async def async_tmdb_trending(self, page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
+        """
+        TMDB流行趋势（异步版本，登录页壁纸来源）
+        :param page: 第几页
+        :return: TMDB信息列表
+        """
+        return await self.async_run_module("async_tmdb_trending", page=page)
 
     async def async_get_trending_wallpapers(self, num: Optional[int] = 10) -> List[str]:
         """
