@@ -885,6 +885,22 @@ export default {
         '被替换词 => 替换词 && 前定位词 <> 后定位词 >> 集偏移量（EP）\n' +
         '其中替换词支持格式：&#123;[tmdbid/doubanid/bangumiid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; 直接指定媒体数据源ID识别，其中g为剧集组编号，s、e为季数和集数（均可选）',
       identifierSaveSuccess: '自定义识别词保存成功',
+      streamingPlatform: '流媒体平台词表',
+      streamingPlatformShort: '流媒体平台',
+      streamingPlatformDesc:
+        '识别发布名中的流媒体平台（如 WEB-DL.NF）。内置约 300 个常见平台，可在此追加或覆盖。',
+      streamingPlatformHint:
+        '每行一条，格式 `简称 = 全称`，例如 `NF = Netflix`；只写一个值时简称与全称相同。以 # 开头为注释。',
+      streamingPlatformPlaceholder: 'NF = Netflix\nAMZN = Amazon\nMYS = 我的平台',
+      streamingPlatformSaveSuccess: '流媒体平台词表保存成功',
+      streamingPlatformSaveFailed: '流媒体平台词表保存失败',
+      streamingPlatformDisplay: '输出形态',
+      streamingPlatformDisplayHint:
+        '并入重命名模板的 webSource 字段时使用全称还是简称。默认全称，保持既有整理结果不变。',
+      streamingDisplayFull: '全称',
+      streamingDisplayShort: '简称',
+      streamingPlatformDisplaySaveSuccess: '输出形态已切换',
+      streamingPlatformDisplaySaveFailed: '输出形态切换失败',
       identifierSaveFailed: '自定义识别词保存失败！',
 
       customReleaseGroups: '自定义制作组/字幕组',

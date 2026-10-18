@@ -180,6 +180,10 @@ class SystemConfigKey(Enum):
     EpisodeFormatRuleTable = "EpisodeFormatRuleTable"
     # 转移屏蔽词
     TransferExcludeWords = "TransferExcludeWords"
+    # 自定义流媒体平台词表
+    CustomStreamingPlatforms = "CustomStreamingPlatforms"
+    # 流媒体平台输出形态（全称/简称）
+    StreamingPlatformDisplay = "StreamingPlatformDisplay"
     # 种子优先级规则
     TorrentsPriority = "TorrentsPriority"
     # 用户自定义规则

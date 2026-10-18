@@ -11,6 +11,7 @@ from app.schemas.types import MediaType
 from app.utils.string import StringUtils
 from app.utils.tokens import Tokens
 from app.core.meta.streamingplatform import StreamingPlatforms
+from app.log import logger
 
 
 SEASON_FULL_RE = re.compile(r"^(?:Season\s+|S)(\d{1,3})$", re.IGNORECASE)
@@ -136,8 +137,9 @@ class MetaVideo(MetaBase):
         media_exts = settings.RMT_MEDIAEXT + settings.RMT_SUBEXT + settings.RMT_AUDIOEXT
         # 拆分tokens
         tokens = Tokens(title)
-        # 实例化StreamingPlatforms对象
+        # 实例化StreamingPlatforms对象，并按需应用用户词表与输出形态
         streaming_platforms = StreamingPlatforms()
+        streaming_platforms.ensure_loaded()
         # 解析名称、年份、季、集、资源类型、分辨率等
         token = tokens.get_next()
         while token:

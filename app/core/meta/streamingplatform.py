@@ -1,11 +1,19 @@
-from typing import Optional, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
+from app.log import logger
 from app.utils.singleton import Singleton
+
+# 输出形态：全称（默认，保持既有整理结果不变）或简称
+DISPLAY_FULL = "full"
+DISPLAY_SHORT = "short"
 
 
 class StreamingPlatforms(metaclass=Singleton):
     """
     流媒体平台简称与全称。
+
+    内置一份常见平台表；用户可在「词表 → 流媒体平台」里追加或覆盖，
+    用户词表优先级高于内置表。输出形态（全称/简称）由系统配置控制。
     """
     STREAMING_PLATFORMS: List[Tuple[str, str]] = [
         ("AMZN", "Amazon"),
@@ -279,23 +287,131 @@ class StreamingPlatforms(metaclass=Singleton):
 
     def __init__(self):
         """初始化流媒体平台匹配器"""
-        self._lookup_cache = {}
+        self._lookup_cache: Dict[str, str] = {}
+        self._short_lookup: Dict[str, str] = {}
+        self._display_mode = DISPLAY_FULL
+        # 已加载的配置快照，用于判断是否需要在配置变更后重建缓存
+        self._loaded_words: Optional[List[str]] = None
+        self._loaded_mode: Optional[str] = None
         self._build_cache()
 
-    def _build_cache(self) -> None:
+    def ensure_loaded(self) -> None:
+        """
+        按需加载用户词表与输出形态。
+
+        识别是高频路径，因此只在配置发生变化（或首次调用）时查库并重建缓存。
+        """
+        try:
+            from app.db.systemconfig_oper import SystemConfigOper  # pylint: disable=import-outside-toplevel
+            from app.schemas.types import SystemConfigKey  # pylint: disable=import-outside-toplevel
+
+            config = SystemConfigOper()
+            words = config.get(SystemConfigKey.CustomStreamingPlatforms) or []
+            mode = config.get(SystemConfigKey.StreamingPlatformDisplay)
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"读取流媒体平台配置失败，使用内置表：{err}")
+            return
+
+        if words == (self._loaded_words or []) and mode == self._loaded_mode:
+            return
+        self._loaded_words = list(words)
+        self._loaded_mode = mode
+        self.apply_custom(words=words, display_mode=mode)
+
+    @staticmethod
+    def parse_custom_words(words: Optional[List[str]]) -> List[Tuple[str, str]]:
+        """
+        解析用户自定义词表。
+
+        每行格式为 `简称 = 全称`；只写一个值时简称与全称相同。
+        以 # 开头的行为注释，空行忽略。
+
+        :param words: 词表行列表
+        :return: (简称, 全称) 列表
+        """
+        result: List[Tuple[str, str]] = []
+        for raw in words or []:
+            line = str(raw or "").strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                short_name, _, full_name = line.partition("=")
+                short_name, full_name = short_name.strip(), full_name.strip()
+            else:
+                short_name = full_name = line
+            if not short_name and not full_name:
+                continue
+            result.append((short_name, full_name or short_name))
+        return result
+
+    def apply_custom(
+        self,
+        words: Optional[List[str]] = None,
+        display_mode: Optional[str] = None,
+    ) -> None:
+        """
+        应用用户词表与输出形态，并重建查询缓存。
+
+        :param words: 用户自定义词表行
+        :param display_mode: full 输出全称、short 输出简称
+        """
+        self._display_mode = (
+            display_mode if display_mode in (DISPLAY_FULL, DISPLAY_SHORT) else DISPLAY_FULL
+        )
+        custom = self.parse_custom_words(words)
+        # 用户词表放后面，同名时覆盖内置表
+        self._build_cache(custom)
+
+    def _resolve_display(self, short_name: str, full_name: str) -> str:
+        """
+        按当前输出形态返回展示值。
+
+        :param short_name: 简称
+        :param full_name: 全称
+        :return: 展示值
+        """
+        canonical_short = short_name or full_name
+        canonical_full = full_name or short_name
+        if self._display_mode == DISPLAY_SHORT:
+            return canonical_short
+        return canonical_full
+
+    def _build_cache(self, custom: Optional[List[Tuple[str, str]]] = None) -> None:
         """
         构建查询缓存。
+
+        :param custom: 用户自定义 (简称, 全称) 列表，优先级高于内置表
         """
         self._lookup_cache.clear()
-        for short_name, full_name in self.STREAMING_PLATFORMS:
-            canonical_name = full_name or short_name
+        self._short_lookup.clear()
+        for short_name, full_name in list(self.STREAMING_PLATFORMS) + list(custom or []):
+            canonical_name = self._resolve_display(short_name, full_name)
             if not canonical_name:
                 continue
+
+            # 记录简称与全称的对应关系，供输出形态切换时反查
+            if short_name and full_name:
+                self._short_lookup[full_name.upper()] = short_name
 
             aliases = {short_name, full_name}
             for alias in aliases:
                 if alias:
                     self._lookup_cache[alias.upper()] = canonical_name
+
+    def get_short_name(self, platform_code: str) -> Optional[str]:
+        """
+        根据简称或全称取回简称，用于输出形态为简称时的反查。
+
+        :param platform_code: 平台简称或全称
+        :return: 简称，未知时返回 None
+        """
+        if platform_code is None:
+            return None
+        key = platform_code.upper()
+        resolved = self._lookup_cache.get(key)
+        if not resolved:
+            return None
+        return self._short_lookup.get(key, resolved)
 
     def get_lookup_cache(self) -> dict:
         """

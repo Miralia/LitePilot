@@ -15,7 +15,7 @@ const { global: globalTheme } = useTheme()
 const WORDS_LINE_NUMBERS_STORAGE_KEY = 'MP_WORDS_SHOW_LINE_NUMBERS'
 const WORDS_SYNTAX_HIGHLIGHTING_STORAGE_KEY = 'MP_WORDS_SYNTAX_HIGHLIGHTING'
 
-type TextSectionKey = 'identifiers' | 'releaseGroups' | 'customization' | 'excludeWords'
+type TextSectionKey = 'identifiers' | 'releaseGroups' | 'customization' | 'excludeWords' | 'streamingPlatforms'
 type WordSectionKey = TextSectionKey | 'episodeRules'
 
 interface EpisodeFormatRule {
@@ -46,6 +46,37 @@ const customIdentifiers = ref('')
 const customReleaseGroups = ref('')
 const customization = ref('')
 const transferExcludeWords = ref('')
+const customStreamingPlatforms = ref('')
+// 流媒体平台输出形态：full 全称、short 简称
+const streamingDisplayMode = ref('full')
+
+/** 查询流媒体平台输出形态。 */
+async function queryStreamingDisplay() {
+  try {
+    const result: { [key: string]: any } = await api.get('system/setting/StreamingPlatformDisplay')
+    const value = result?.data?.value
+    streamingDisplayMode.value = value === 'short' ? 'short' : 'full'
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+/** 切换流媒体平台输出形态并立即保存。 */
+async function changeStreamingDisplay(value: string) {
+  const previous = streamingDisplayMode.value
+  streamingDisplayMode.value = value
+  try {
+    const result: { [key: string]: any } = await api.post('system/setting/StreamingPlatformDisplay', value)
+    if (result.success) {
+      $toast.success(t('setting.words.streamingPlatformDisplaySaveSuccess'))
+      return
+    }
+  } catch (error) {
+    console.log(error)
+  }
+  streamingDisplayMode.value = previous
+  $toast.error(t('setting.words.streamingPlatformDisplaySaveFailed'))
+}
 const episodeFormatRules = ref<EpisodeFormatRule[]>([])
 const activeSection = ref<WordSectionKey>('identifiers')
 const expandedHelp = ref<string | null>(null)
@@ -101,6 +132,7 @@ const savedTextValues = reactive<Record<TextSectionKey, string>>({
   releaseGroups: '',
   customization: '',
   excludeWords: '',
+  streamingPlatforms: '',
 })
 const savedEpisodeRules = ref('[]')
 
@@ -109,6 +141,7 @@ const textSectionModels: Record<TextSectionKey, typeof customIdentifiers> = {
   releaseGroups: customReleaseGroups,
   customization,
   excludeWords: transferExcludeWords,
+  streamingPlatforms: customStreamingPlatforms,
 }
 
 const textSectionSettings = computed<Record<TextSectionKey, TextSectionSetting>>(() => ({
@@ -131,6 +164,11 @@ const textSectionSettings = computed<Record<TextSectionKey, TextSectionSetting>>
     endpoint: 'system/setting/TransferExcludeWords',
     failedMessage: t('setting.words.excludeWordsSaveFailed'),
     successMessage: t('setting.words.excludeWordsSaveSuccess'),
+  },
+  streamingPlatforms: {
+    endpoint: 'system/setting/CustomStreamingPlatforms',
+    failedMessage: t('setting.words.streamingPlatformSaveFailed'),
+    successMessage: t('setting.words.streamingPlatformSaveSuccess'),
   },
 }))
 
@@ -168,6 +206,14 @@ const wordSections = computed<WordSectionDefinition[]>(() => [
     title: t('setting.words.transferExcludeWords'),
   },
   {
+    color: 'info',
+    description: t('setting.words.streamingPlatformDesc'),
+    icon: 'mdi-play-box-multiple-outline',
+    key: 'streamingPlatforms',
+    shortTitle: t('setting.words.streamingPlatformShort'),
+    title: t('setting.words.streamingPlatform'),
+  },
+  {
     color: 'primary',
     description: t('setting.words.episodeFormatRuleDesc'),
     icon: 'mdi-format-list-numbered',
@@ -200,6 +246,8 @@ const activeTextPlaceholder = computed(() => {
       return t('setting.words.customizationPlaceholder')
     case 'excludeWords':
       return t('setting.words.excludeWordsPlaceholder')
+    case 'streamingPlatforms':
+      return t('setting.words.streamingPlatformPlaceholder')
     default:
       return ''
   }
@@ -215,6 +263,8 @@ const activeTextHint = computed(() => {
       return t('setting.words.customizationHint')
     case 'excludeWords':
       return t('setting.words.excludeWordsHint')
+    case 'streamingPlatforms':
+      return t('setting.words.streamingPlatformHint')
     default:
       return ''
   }
@@ -441,6 +491,8 @@ onMounted(() => {
     queryTextSection('releaseGroups'),
     queryTextSection('customization'),
     queryTextSection('excludeWords'),
+    queryTextSection('streamingPlatforms'),
+    queryStreamingDisplay(),
     queryEpisodeFormatRules(),
   ])
 })
@@ -549,7 +601,7 @@ onMounted(() => {
             </div>
 
             <VAceEditor
-              v-if="activeSection === 'identifiers'"
+              v-if="activeSection === 'identifiers' || activeSection === 'streamingPlatforms'"
               v-model:value="activeTextValue"
               lang="word_list"
               :theme="textEditorTheme"
@@ -576,6 +628,31 @@ onMounted(() => {
               <VIcon icon="mdi-information-outline" size="17" />
               <span>{{ activeTextHint }}</span>
             </div>
+
+            <VCard
+              v-if="activeSection === 'streamingPlatforms'"
+              variant="tonal"
+              class="mt-4"
+              density="comfortable"
+            >
+              <VCardText class="d-flex align-center flex-wrap ga-4">
+                <div class="text-subtitle-2">{{ t('setting.words.streamingPlatformDisplay') }}</div>
+                <VBtnToggle
+                  :model-value="streamingDisplayMode"
+                  color="primary"
+                  density="compact"
+                  mandatory
+                  divided
+                  @update:model-value="value => value && changeStreamingDisplay(value as string)"
+                >
+                  <VBtn value="full">{{ t('setting.words.streamingDisplayFull') }}</VBtn>
+                  <VBtn value="short">{{ t('setting.words.streamingDisplayShort') }}</VBtn>
+                </VBtnToggle>
+                <div class="text-body-2 text-medium-emphasis">
+                  {{ t('setting.words.streamingPlatformDisplayHint') }}
+                </div>
+              </VCardText>
+            </VCard>
           </template>
 
           <template v-else>
