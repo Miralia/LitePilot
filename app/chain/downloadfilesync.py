@@ -143,6 +143,34 @@ class DownloadFileSyncChain(ChainBase):
             return None, None
         return matched
 
+    # 需要保留源文件的下载器类型：BT 客户端靠源文件继续做种，
+    # Usenet 客户端下载的是可重新抓取的发布，不涉及做种
+    _SEEDING_DOWNLOADER_TYPES = frozenset({"qbittorrent", "transmission", "rtorrent"})
+
+    def resolve_seeding_torrent_by_path(self, file_path: str):
+        """
+        判断文件是否属于需要保种的 BT 任务。
+
+        与 resolve_torrent_by_path 的区别：只匹配 BT 类下载器，
+        避免把 Usenet 客户端的文件误判为「需要保种」而保留。
+
+        :param file_path: 文件路径
+        :return: (种子Hash, 下载器)，不属于 BT 任务时返回 (None, None)
+        """
+        download_hash, downloader = self.resolve_torrent_by_path(file_path)
+        if not download_hash or not downloader:
+            return None, None
+        try:
+            configs = ServiceConfigHelper.get_downloader_configs()
+        except Exception:  # pylint: disable=broad-except
+            return download_hash, downloader
+        for conf in configs:
+            if conf.name == downloader:
+                if str(conf.type or "").lower() in self._SEEDING_DOWNLOADER_TYPES:
+                    return download_hash, downloader
+                return None, None
+        return download_hash, downloader
+
     def sync_torrent_by_path(self, file_path: str) -> int:
         """
         按文件路径定位所属种子，仅同步该种子的文件记录。

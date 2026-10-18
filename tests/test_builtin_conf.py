@@ -165,3 +165,56 @@ def test_has_pending_jobs_false_for_empty_queue():
     from app.chain.transfer import JobManager
 
     assert JobManager().has_pending_jobs() is False
+
+
+def test_media_source_cleanup_defaults():
+    """整理后源文件清理默认开启，按需删除非下载器来源的源文件。"""
+    from app.helper.builtinconf import media_source_cleanup_conf
+
+    conf = media_source_cleanup_conf()
+    assert conf.enabled is True
+    assert conf.delete_when_not_in_downloader is True
+    assert conf.remove_empty_dirs is True
+
+
+def test_cleanup_skips_non_link_transfer():
+    """move/copy 方式不触发源文件清理：move 已无源文件，copy 需保留来源。"""
+    from unittest.mock import MagicMock, patch
+
+    from app.chain.transfer import TransferChain
+
+    chain = TransferChain()
+    task = MagicMock()
+    task.fileitem.path = "/tmp/whatever.mkv"
+
+    for mode in ("move", "copy", "softlink"):
+        transferinfo = MagicMock(transfer_type=mode, file_list_new=[])
+        with patch("app.chain.transfer.media_source_cleanup_conf") as conf_mock:
+            conf_mock.return_value = MagicMock(
+                enabled=True, delete_when_not_in_downloader=True
+            )
+            chain._TransferChain__cleanup_source_after_link(task, transferinfo)
+            # 非 link 方式不会触碰文件系统
+            assert not conf_mock.return_value.method_calls
+
+
+def test_cleanup_keeps_file_when_target_missing(tmp_path):
+    """目标文件不存在时保留源文件，避免媒体库缺失。"""
+    from unittest.mock import MagicMock, patch
+
+    from app.chain.transfer import TransferChain
+
+    source = tmp_path / "source.mkv"
+    source.write_bytes(b"data")
+    chain = TransferChain()
+    task = MagicMock()
+    task.fileitem.path = str(source)
+    transferinfo = MagicMock(transfer_type="link", file_list_new=[str(tmp_path / "missing.mkv")])
+
+    with patch("app.chain.transfer.media_source_cleanup_conf") as conf_mock:
+        conf_mock.return_value = MagicMock(
+            enabled=True, delete_when_not_in_downloader=True
+        )
+        chain._TransferChain__cleanup_source_after_link(task, transferinfo)
+
+    assert source.exists(), "目标缺失时源文件必须保留"

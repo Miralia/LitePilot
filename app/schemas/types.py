@@ -186,6 +186,8 @@ class SystemConfigKey(Enum):
     StreamingPlatformDisplay = "StreamingPlatformDisplay"
     # 媒体文件技术信息探测
     MediaInfoProbe = "MediaInfoProbe"
+    # 整理后源文件清理
+    MediaSourceCleanup = "MediaSourceCleanup"
     # 种子优先级规则
     TorrentsPriority = "TorrentsPriority"
     # 用户自定义规则

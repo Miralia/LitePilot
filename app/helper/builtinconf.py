@@ -16,6 +16,7 @@ from app.log import logger
 from app.schemas.system import (
     DownloadFileSyncConf,
     LibraryCoverGeneratorConf,
+    MediaSourceCleanupConf,
     SyncDelByMediaServerConf,
 )
 from app.schemas.types import SystemConfigKey
@@ -89,3 +90,10 @@ def library_cover_generator_conf() -> LibraryCoverGeneratorConf:
     读取媒体库封面生成配置。
     """
     return load_conf(SystemConfigKey.LibraryCoverGenerator, LibraryCoverGeneratorConf)
+
+
+def media_source_cleanup_conf() -> MediaSourceCleanupConf:
+    """
+    读取整理后源文件清理配置。
+    """
+    return load_conf(SystemConfigKey.MediaSourceCleanup, MediaSourceCleanupConf)

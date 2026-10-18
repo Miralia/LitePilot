@@ -19,7 +19,11 @@ from app.core.context import MediaInfo
 from app.core.event import eventmanager
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfoPath
-from app.helper.builtinconf import library_cover_generator_conf, load_conf
+from app.helper.builtinconf import (
+    library_cover_generator_conf,
+    load_conf,
+    media_source_cleanup_conf,
+)
 from app.helper.mediainfo import probe_media
 from app.schemas.system import MediaInfoProbeConf
 from app.db.downloadhistory_oper import DownloadHistoryOper
@@ -1153,6 +1157,8 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 mediainfo=task.mediainfo,
                 transferinfo=transferinfo,
             )
+            # usenet 等非下载器来源：硬链接入库后源文件已无保留价值，直接清理
+            self.__cleanup_source_after_link(task, transferinfo)
 
             # task整理完成事件
             if self.__is_media_file(task.fileitem):
@@ -1373,6 +1379,88 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         except Exception as e:
             logger.error(f"检查种子 {download_hash} 下载进度失败：{e}")
             return False
+
+    def __cleanup_source_after_link(self, task: TransferTask, transferinfo) -> None:
+        """
+        入库成功后清理不需要保留的源文件。
+
+        只有硬链接方式才需要：源文件仍在磁盘上，且已通过链接进入媒体库。
+        关键判断是「源文件是否被下载器管理」——下载器任务需要源文件继续做种，
+        而 Usenet 抓取的内容入库后源文件没有保留意义，及时删除可避免重复占用。
+
+        :param task: 整理任务
+        :param transferinfo: 整理结果信息
+        """
+        try:
+            conf = media_source_cleanup_conf()
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"读取源文件清理配置失败，跳过清理：{err}")
+            return
+        if not conf.enabled or not conf.delete_when_not_in_downloader:
+            return
+        # 只处理硬链接：move 的源文件已不存在，copy 的源文件应当保留
+        if not transferinfo or transferinfo.transfer_type != "link":
+            return
+
+        source_path = Path(task.fileitem.path)
+        if not source_path.is_file():
+            return
+        # 目标文件必须已经生成，否则删源会导致媒体库缺失
+        target_files = [
+            Path(item) for item in (transferinfo.file_list_new or []) if item
+        ]
+        if not any(path.is_file() for path in target_files):
+            logger.debug(f"目标文件不存在，保留源文件：{source_path}")
+            return
+
+        # 源文件仍被 BT 下载器任务引用时必须保留，否则会破坏做种
+        try:
+            from app.chain.downloadfilesync import (  # pylint: disable=import-outside-toplevel
+                DownloadFileSyncChain,
+            )
+
+            download_hash, _ = DownloadFileSyncChain().resolve_seeding_torrent_by_path(
+                str(source_path)
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"判断源文件是否属于下载任务失败，保留源文件：{err}")
+            return
+        if download_hash:
+            logger.debug(f"源文件属于下载任务 {download_hash[:12]}，保留以继续做种")
+            return
+
+        try:
+            source_size = source_path.stat().st_size
+            source_path.unlink(missing_ok=True)
+            logger.info(f"已删除入库后的源文件（非下载器来源）：{source_path}，{source_size} 字节")
+        except OSError as err:
+            logger.warning(f"删除源文件失败：{source_path} - {err}")
+            return
+
+        if conf.remove_empty_dirs:
+            self._remove_empty_parents(source_path)
+
+    @staticmethod
+    def _remove_empty_parents(source_path: Path) -> None:
+        """
+        自下而上清理空目录，遇到非空目录即停止。
+
+        :param source_path: 已删除的文件路径
+        """
+        current = source_path.parent
+        # 不要越过下载根目录，避免误删上层结构
+        stop_at = Path(str(current.anchor))
+        while current and current != stop_at and current.parent != current:
+            if "Downloads" not in str(current):
+                return
+            try:
+                if any(current.iterdir()):
+                    return
+                current.rmdir()
+                logger.info(f"已删除空目录：{current}")
+            except OSError:
+                return
+            current = current.parent
 
     def __refresh_library_covers_when_idle(self) -> None:
         """

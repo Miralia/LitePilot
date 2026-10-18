@@ -251,3 +251,20 @@ class MediaInfoProbeConf(BaseModel):
     override_source: bool = True
     # 探测失败时是否记录告警日志
     log_failure: bool = False
+
+
+class MediaSourceCleanupConf(BaseModel):
+    """
+    整理后源文件清理配置。
+
+    硬链接入库后源文件本身已无存在价值，但要区分来源：
+    下载器（如 qBittorrent）管理的文件需要保留以继续做种，
+    Usenet 抓取的文件入库后可以直接删除，避免重复占用空间。
+    """
+
+    # 是否启用
+    enabled: bool = True
+    # 入库成功后删除不在下载器中的源文件
+    delete_when_not_in_downloader: bool = True
+    # 是否同步删除源文件所在空目录
+    remove_empty_dirs: bool = True
