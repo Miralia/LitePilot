@@ -12,6 +12,7 @@ from app.db.transferhistory_oper import TransferHistoryOper
 from app.helper.builtinconf import sync_del_by_media_server_conf
 from app.log import logger
 from app.schemas import FileItem
+from app.schemas.message import Notification
 from app.schemas.types import EventType, MediaType, NotificationType
 
 # 各媒体服务器 / 插件上报的删除事件名
@@ -260,9 +261,11 @@ class MediaServerDelChain(ChainBase):
                     lines.append(f"删除失败 {failed} 个")
             lines.append(f"时间 {time.strftime('%Y-%m-%d %H:%M:%S')}")
             self.post_message(
-                mtype=NotificationType.Manual,
-                title=title,
-                text="\n".join(lines),
+                Notification(
+                    mtype=NotificationType.Manual,
+                    title=title,
+                    text="\n".join(lines),
+                )
             )
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"发送联动删除通知失败：{err}")
