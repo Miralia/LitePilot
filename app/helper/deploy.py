@@ -40,12 +40,9 @@ WantedBy=multi-user.target
 """
 
 NGINX_SITE_TEMPLATE = """\
-# MoviePilot 站点配置：静态产物由 nginx 托管，/api 反代到后端
-location {prefix} {{
-    alias {public_dir}/;
-    try_files $uri $uri/ {prefix}index.html;
-}}
-
+# MoviePilot 站点配置：静态产物由 nginx 托管，接口反代到后端。
+# 注意：前端以 api/v1/ 相对路径发起请求，子路径部署时必须让该前缀同样反代到后端，
+# 否则浏览器会把 {prefix}api/v1/... 解析成 {prefix}login/... 之类并落到静态处理。
 location {prefix}api/ {{
     proxy_pass http://127.0.0.1:{backend_port}/api/;
     proxy_set_header Host $http_host;
@@ -56,6 +53,28 @@ location {prefix}api/ {{
     proxy_send_timeout 300s;
     # 备份包与日志包体积较大
     client_max_body_size 100M;
+}}
+
+# 入口页与 Service Worker 必须每次回源校验，否则旧版本会被浏览器长期缓存
+location = {prefix}index.html {{
+    alias {public_dir}/index.html;
+    add_header Cache-Control "no-cache, must-revalidate";
+}}
+
+location = {prefix}service-worker.js {{
+    alias {public_dir}/service-worker.js;
+    add_header Cache-Control "no-cache, must-revalidate";
+}}
+
+# 带内容哈希的静态资源可长期缓存
+location {prefix}assets/ {{
+    alias {public_dir}/assets/;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}}
+
+location {prefix} {{
+    alias {public_dir}/;
+    try_files $uri $uri/ {prefix}index.html;
 }}
 """
 
