@@ -1,3 +1,4 @@
+import importlib
 import inspect
 from typing import Callable
 
@@ -100,6 +101,19 @@ async def stop_modules():
     await run_step("临时文件", clear_temp)
 
 
+def _load_event_chain_modules():
+    """
+    导入包含事件处理器的链式模块，确保其装饰器完成注册。
+    """
+    for module_name in (
+        "app.chain.mediaserverdel",
+    ):
+        try:
+            importlib.import_module(module_name)
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(f"加载事件模块 {module_name} 失败：{err}")
+
+
 def init_modules():
     """
     启动模块
@@ -108,6 +122,10 @@ def init_modules():
     SwizzinUserSync().sync()
     # 加载模块
     ModuleManager()
+    # 加载带事件处理器的链式模块。
+    # 事件处理器靠模块导入期的装饰器注册，未被其它代码引用的 chain 模块
+    # 需要在这里显式导入，否则其事件永远不触发。
+    _load_event_chain_modules()
     # 启动事件消费
     EventManager().start()
     # 启动前端服务
