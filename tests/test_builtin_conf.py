@@ -3,6 +3,8 @@
 
 重点覆盖历史布尔值到结构化配置的兼容，以及非法值回退默认，避免升级后配置失效。
 """
+import pytest
+
 from app.helper.builtinconf import load_conf
 from app.schemas.system import (
     DownloadFileSyncConf,
@@ -124,3 +126,4 @@ def test_probe_conf_defaults():
     assert conf.enabled is True
     assert conf.override_resolution is True
     assert conf.override_source is True
+

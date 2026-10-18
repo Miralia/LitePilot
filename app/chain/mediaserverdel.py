@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -11,7 +12,7 @@ from app.db.transferhistory_oper import TransferHistoryOper
 from app.helper.builtinconf import sync_del_by_media_server_conf
 from app.log import logger
 from app.schemas import FileItem
-from app.schemas.types import EventType, MediaType
+from app.schemas.types import EventType, MediaType, NotificationType
 
 # 各媒体服务器 / 插件上报的删除事件名
 DELETE_EVENTS = frozenset({"deep.delete", "media_del"})
@@ -195,14 +196,14 @@ class MediaServerDelChain(ChainBase):
 
         conf = sync_del_by_media_server_conf()
         logger.info(f"正在同步删除{msg}，共 {len(histories)} 条整理记录")
+        deleted = 0
+        failed = 0
+        dry_run_items: List[str] = []
         for history in histories:
-            # 标题不符时防误删
-            if history.title and history.title not in media_name:
-                logger.warn(
-                    f"整理记录 {history.id}（{history.title}）与删除媒体 {media_name} 不符，跳过"
-                )
-                continue
+            # 记录由 tmdbid + 季 + 集精确定位，直接遵循媒体服务器的删除意图，
+            # 不再用标题做二次校验（译名写法差异会造成误跳过）
             if conf.dry_run:
+                dry_run_items.append(f"{history.title}（{history.dest}）")
                 logger.info(
                     f"[试运行] 将删除整理记录 {history.id}（{history.title}）、"
                     f"目标 {history.dest}、源 {history.src}"
@@ -211,8 +212,60 @@ class MediaServerDelChain(ChainBase):
             try:
                 self.transferhis.delete(history.id)
                 self._delete_source(history, conf=conf)
+                deleted += 1
             except Exception as err:
+                failed += 1
                 logger.error(f"同步删除整理记录 {history.id} 失败：{err}")
+
+        self._notify_result(
+            msg=msg,
+            conf=conf,
+            deleted=deleted,
+            failed=failed,
+            dry_run_items=dry_run_items,
+        )
+
+    def _notify_result(
+            self,
+            msg: str,
+            conf,
+            deleted: int,
+            failed: int,
+            dry_run_items: List[str],
+    ) -> None:
+        """
+        把本次联动删除的结果发送到通知渠道。
+
+        :param msg: 删除对象的描述
+        :param conf: 联动删除配置
+        :param deleted: 成功删除的记录数
+        :param failed: 删除失败的记录数
+        :param dry_run_items: 试运行模式下待删除项
+        """
+        try:
+            if conf.dry_run:
+                if not dry_run_items:
+                    return
+                title = "媒体库同步删除（试运行）"
+                lines = [f"{msg}", f"待删除记录 {len(dry_run_items)} 个"]
+                lines.extend(f"· {item}" for item in dry_run_items[:10])
+                if len(dry_run_items) > 10:
+                    lines.append(f"… 另有 {len(dry_run_items) - 10} 条")
+            else:
+                if not (deleted or failed):
+                    return
+                title = "媒体库同步删除完成"
+                lines = [f"{msg}", f"删除记录 {deleted} 个"]
+                if failed:
+                    lines.append(f"删除失败 {failed} 个")
+            lines.append(f"时间 {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            self.post_message(
+                mtype=NotificationType.Manual,
+                title=title,
+                text="\n".join(lines),
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(f"发送联动删除通知失败：{err}")
 
     @staticmethod
     def _resolve_tmdb_id(event_data, server_name: Optional[str]) -> Optional[int]:
