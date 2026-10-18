@@ -1,3 +1,4 @@
+import os
 import re
 from pathlib import Path
 from typing import Optional, List, Tuple
@@ -691,6 +692,7 @@ class TransHandler:
             # 创建目录
             if not target_file.parent.exists():
                 target_file.parent.mkdir(parents=True, exist_ok=True)
+                TransHandler._inherit_dir_ownership(target_file.parent, fileitem)
             # 本地到本地
             if transfer_type == "copy":
                 state = source_oper.copy(fileitem, target_file.parent, target_file.name)
@@ -764,6 +766,7 @@ class TransHandler:
                     # 创建目录
                     if not target_file.parent.exists():
                         target_file.parent.mkdir(parents=True, exist_ok=True)
+                        TransHandler._inherit_dir_ownership(target_file.parent, fileitem)
                     # 将tmp_file移动后target_file
                     SystemUtils.move(tmp_file, target_file)
                     if transfer_type == "move":
@@ -828,6 +831,36 @@ class TransHandler:
                 return None, f"不支持的整理方式：{transfer_type}"
 
         return None, "未知错误"
+
+    @staticmethod
+    def _inherit_dir_ownership(target_dir: Path, fileitem: FileItem) -> None:
+        """
+        让新建的媒体库目录继承源文件的属主与组可写权限。
+
+        整理服务以 root 运行时，mkdir 出来的目录是 root:root 755，
+        媒体服务器进程（emby 用户）对目录没有写权限，在 Emby 界面
+        删除或重命名文件会因父目录不可写而失败。把目录属主对齐到
+        源文件属主并补上组写权限，即可让媒体服务器正常管理文件。
+
+        :param target_dir: 新建的目标目录
+        :param fileitem: 源文件，用于确定属主
+        """
+        try:
+            if not target_dir.exists() or target_dir.stat().st_uid != 0:
+                return
+            source_path = getattr(fileitem, "path", None)
+            source_stat = Path(source_path).stat() if source_path else None
+            uid = source_stat.st_uid if source_stat else 0
+            gid = source_stat.st_gid if source_stat else 0
+            for path in [target_dir, *target_dir.parents]:
+                current = path.stat()
+                if current.st_uid != 0:
+                    break
+                path.chmod(0o775)
+                if uid or gid:
+                    os.chown(path, uid, gid)
+        except (OSError, PermissionError) as err:
+            logger.debug(f"目录属主修正失败（不影响整理）: {target_dir} - {err}")
 
     @staticmethod
     def __rename_subtitles(sub_item: FileItem, new_file: Path) -> Path:
