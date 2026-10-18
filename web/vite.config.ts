@@ -22,6 +22,19 @@ import {
 
 // 读取 package.json 获取版本号
 const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'))
+
+// 版本号的唯一来源是仓库根的 version.py（后端 APP_VERSION）：
+// 构建脚本把同一值写入 dist/version.txt，前端内嵌版本必须与之保持一致，
+// 否则登录后会误报「浏览器缓存版本与服务端版本不一致」。
+const appVersion = (() => {
+  try {
+    const raw = readFileSync('../version.py', 'utf-8')
+    const matched = raw.match(/^APP_VERSION\s*=\s*['"]([^'"]+)['"]/m)
+    return matched ? matched[1] : `v${packageJson.version}`
+  } catch {
+    return `v${packageJson.version}`
+  }
+})()
 const buildTime = new Date().getTime().toString()
 const isTestMode = (mode: string) => mode === 'test' || process.env.VITEST === 'true'
 
@@ -229,7 +242,7 @@ export default defineConfig(({ command, mode, isPreview }) => ({
   ],
   define: {
     'process.env': {},
-    '__APP_VERSION__': JSON.stringify(`v${packageJson.version}`),
+    '__APP_VERSION__': JSON.stringify(appVersion),
     '__BUILD_TIME__': JSON.stringify(buildTime),
     '__PWA_DEVELOPMENT__': JSON.stringify(isPwaDevelopmentEnabled(mode, process.env.npm_lifecycle_event)),
   },
