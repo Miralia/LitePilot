@@ -13,6 +13,12 @@ from app.schemas.types import SystemConfigKey, TorrentStatus
 class DownloadFileSyncChain(ChainBase):
     # 上次按需同步时间，用于节流：目录监控可能瞬时触发多次
     _last_trigger_at: float = 0.0
+    # 保存路径 -> (种子Hash, 下载器) 索引，避免每次事件都全量查询下载器
+    _path_index: dict = {}
+    # 索引构建时间戳，用于过期重建
+    _index_built_at: float = 0.0
+    # 索引有效期（秒）：目录监控是高频路径，过期后按需重建而非每次查询
+    _INDEX_TTL: float = 300.0
     """
     下载文件同步链
 
@@ -75,6 +81,101 @@ class DownloadFileSyncChain(ChainBase):
                 f"下载文件同步：种子 {torrent_hash} 新增 {len(file_items)} 条文件记录"
             )
         return len(file_items)
+
+    def _build_path_index(self) -> None:
+        """
+        构建「保存路径 -> 种子」索引。
+
+        一次列出下载器中全部种子的保存路径与内容路径，供事件按路径快速反查。
+        相比每次事件全量同步下载器，这里只在索引缺失或过期时执行一次。
+        """
+        index: dict = {}
+        try:
+            torrents = self.list_torrents() or []
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"构建下载器路径索引失败：{err}")
+            return
+        for torrent in torrents:
+            torrent_hash = getattr(torrent, "hash", None)
+            if not torrent_hash:
+                continue
+            entry = (torrent_hash, getattr(torrent, "downloader", None))
+            for attr in ("path", "save_path", "content_path"):
+                value = getattr(torrent, attr, None)
+                if not value:
+                    continue
+                # 统一成无尾斜杠的字符串，便于前缀匹配
+                key = str(value).replace("\\", "/").rstrip("/")
+                if key:
+                    index[key] = entry
+        type(self)._path_index = index
+        type(self)._index_built_at = time.monotonic()
+        logger.debug(f"下载器路径索引已更新，共 {len(index)} 条")
+
+    def sync_torrent_by_path(self, file_path: str) -> int:
+        """
+        按文件路径定位所属种子，仅同步该种子的文件记录。
+
+        目录监控发现新文件时调用：优先查内存索引（零额外请求），
+        未命中时重建索引再匹配；命中后只拉取单个种子的文件列表，
+        避免全量同步带来的性能压力。
+
+        :param file_path: 发生变化的文件路径
+        :return: 新增的文件记录数，未匹配到种子时返回 0
+        """
+        conf = download_file_sync_conf()
+        if not conf.enabled or not file_path:
+            return 0
+
+        target = str(file_path).replace("\\", "/")
+        # 节流：瞬时大量文件事件只处理第一个，其余由索引复用
+        throttle = max(0, int(conf.trigger_throttle_seconds or 0))
+        now = time.monotonic()
+        if throttle and now - self._last_trigger_at < throttle:
+            logger.debug(f"目录监控触发过于频繁，跳过精准同步：{file_path}")
+            return 0
+
+        stale = (
+                not self._path_index
+                or (now - self._index_built_at) > self._INDEX_TTL
+        )
+        if stale:
+            self._build_path_index()
+
+        matched = self._match_index(target)
+        if not matched and not stale:
+            # 索引可能是事件发生前构建的，重建一次以覆盖新下载的种子
+            self._build_path_index()
+            matched = self._match_index(target)
+        if not matched:
+            logger.debug(f"路径未匹配到下载器种子，跳过精准同步：{file_path}")
+            return 0
+
+        torrent_hash, downloader = matched
+        type(self)._last_trigger_at = now
+        added = self._sync_torrent_files(torrent_hash, downloader)
+        if added:
+            logger.info(
+                f"目录监控精准同步：{Path(file_path).name} -> 种子 {torrent_hash[:12]}，新增 {added} 条"
+            )
+        return added
+
+    def _match_index(self, target: str):
+        """
+        在路径索引中找出文件所属的种子。
+
+        取最长匹配的路径前缀，确保多级目录下命中最近的种子保存目录。
+
+        :param target: 文件全路径
+        :return: (种子Hash, 下载器)，未命中返回 None
+        """
+        best_key = ""
+        best_value = None
+        for key, value in self._path_index.items():
+            if target == key or target.startswith(f"{key}/"):
+                if len(key) > len(best_key):
+                    best_key, best_value = key, value
+        return best_value
 
     def trigger_sync(self, reason: str = "") -> None:
         """

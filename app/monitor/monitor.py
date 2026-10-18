@@ -477,18 +477,22 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
     @staticmethod
     def _trigger_download_sync(event_path: str) -> None:
         """
-        按需触发下载文件同步，失败不影响整理主流程。
+        目录监控发现新媒体文件时，精准同步该文件所属的种子。
 
-        :param event_path: 触发同步的文件路径，仅用于日志
+        只处理命中的那一个种子，避免全量扫描下载器带来的性能压力；
+        未匹配到种子（如手动放入的文件）时直接跳过。
+        失败不影响整理主流程。
+
+        :param event_path: 触发同步的文件路径
         """
         try:
             from app.chain.downloadfilesync import (  # pylint: disable=import-outside-toplevel
                 DownloadFileSyncChain,
             )
 
-            DownloadFileSyncChain().trigger_sync(reason=event_path)
+            DownloadFileSyncChain().sync_torrent_by_path(file_path=event_path)
         except Exception as err:  # pylint: disable=broad-except
-            logger.debug(f"按需同步下载器失败：{err}")
+            logger.debug(f"按路径同步下载器失败：{err}")
 
     def stop(self):
         """
