@@ -13,6 +13,9 @@ from app.log import logger
 from app.schemas import FileItem
 from app.schemas.types import EventType, MediaType
 
+# 各媒体服务器 / 插件上报的删除事件名
+DELETE_EVENTS = frozenset({"deep.delete", "media_del"})
+
 
 class MediaServerDelChain(ChainBase):
     """
@@ -248,8 +251,9 @@ class MediaServerDelChain(ChainBase):
 
         event_data = event.event_data
         event_type = getattr(event_data, "event", None)
-        # 仅处理「深度删除」事件，普通播放/入库事件不触发
-        if not event_type or str(event_type) != "deep.delete":
+        # 只处理删除类事件：Emby 官方 Webhooks 发 deep.delete，
+        # EmbyScripterX 发 media_del，两者语义一致
+        if not event_type or str(event_type) not in DELETE_EVENTS:
             return
 
         # 按配置限定媒体服务器
