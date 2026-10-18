@@ -1075,6 +1075,62 @@ def scheduler_run(job_id: str) -> None:
 
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option("--service-dir", type=click.Path(path_type=Path),
+              default="/etc/systemd/system", show_default=True, help="systemd unit 输出目录")
+@click.option("--nginx-dir", type=click.Path(path_type=Path),
+              default="/etc/nginx/apps", show_default=True, help="nginx 片段输出目录")
+@click.option("--prefix", default="/", show_default=True, help="nginx 挂载路径前缀")
+@click.option("--user", default="root", show_default=True, help="systemd 运行用户")
+@click.option("--print-only", is_flag=True, help="只打印配置内容，不写盘")
+def deploy(service_dir: Path, nginx_dir: Path, prefix: str, user: str, print_only: bool) -> None:
+    """生成 systemd unit 与 nginx 站点配置"""
+    from app.helper.deploy import (
+        nginx_site_path,
+        render_nginx_site,
+        render_systemd_unit,
+        systemd_unit_path,
+    )
+
+    root = _repo_root()
+    config_dir = settings.CONFIG_PATH.expanduser().resolve()
+    python_bin = Path(sys.executable).resolve()
+    public_dir = root / "public"
+
+    if not public_dir.exists():
+        click.echo(f"警告：前端产物目录不存在，请先执行 ./scripts/build-frontend.sh（{public_dir}）")
+
+    unit_text = render_systemd_unit(
+        root=root, config_dir=config_dir, python_bin=python_bin, user=user
+    )
+    nginx_text = render_nginx_site(public_dir=public_dir, prefix=prefix)
+
+    unit_path = systemd_unit_path()
+    site_path = nginx_site_path(apps_dir=nginx_dir)
+    if service_dir != Path("/etc/systemd/system"):
+        unit_path = service_dir / unit_path.name
+
+    if print_only:
+        click.echo(f"# {unit_path}")
+        click.echo(unit_text)
+        click.echo(f"# {site_path}")
+        click.echo(nginx_text)
+        return
+
+    unit_path.parent.mkdir(parents=True, exist_ok=True)
+    unit_path.write_text(unit_text, encoding="utf-8")
+    site_path.parent.mkdir(parents=True, exist_ok=True)
+    site_path.write_text(nginx_text, encoding="utf-8")
+
+    click.echo(f"已写入 systemd unit：{unit_path}")
+    click.echo(f"已写入 nginx 片段：{site_path}")
+    click.echo("")
+    click.echo("启用步骤：")
+    click.echo("  systemctl daemon-reload")
+    click.echo("  systemctl enable --now moviepilot")
+    click.echo("  nginx -t && systemctl reload nginx")
+
+
+@cli.command(context_settings=CONTEXT_SETTINGS)
 @click.option("--output", "output_path", type=click.Path(path_type=Path), help="备份包输出路径")
 def backup(output_path: Optional[Path]) -> None:
     """备份配置目录与数据库"""

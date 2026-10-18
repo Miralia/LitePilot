@@ -119,6 +119,7 @@ moviepilot stop
 moviepilot restart
 moviepilot status
 moviepilot logs
+moviepilot deploy
 moviepilot backup
 moviepilot restore
 moviepilot migrate
@@ -317,6 +318,30 @@ moviepilot update all --skip-resources
 - `update frontend` 会按当前仓库 `version.py` 中的 `FRONTEND_VERSION` 下载并替换前端 release
 - `update all` 会先更新后端，再按更新后代码中的 `FRONTEND_VERSION` 更新前端，默认也会同步资源文件
 - 更新前请先执行 `moviepilot stop`
+
+## 部署配置生成
+
+生成系统级 systemd unit 与 nginx 站点片段（原生部署，不使用容器）：
+
+```shell
+moviepilot deploy --print-only          # 先看内容
+moviepilot deploy --prefix /mp/         # 子路径部署
+moviepilot deploy --user moviepilot     # 指定运行用户
+```
+
+写入后按提示执行：
+
+```shell
+systemctl daemon-reload
+systemctl enable --now moviepilot
+nginx -t && systemctl reload nginx
+```
+
+说明：
+
+- unit 直接守护 `python -m app.main`，`Restart=on-failure` 由 systemd 负责重启
+- nginx 托管仓库内 `public/`，`/api` 反代到后端端口（默认 3001）
+- swizzin 环境下片段写入 `/etc/nginx/apps/` 即被主配置 include
 
 ## 备份与迁移命令
 

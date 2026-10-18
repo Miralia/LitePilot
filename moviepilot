@@ -20,6 +20,7 @@ Bootstrap Commands:
 
 Runtime Commands:
   moviepilot start|stop|restart|status|logs|version
+  moviepilot deploy [--print-only] [--prefix PATH]
   moviepilot backup [--output PATH]
   moviepilot restore ARCHIVE [--config-dir PATH] [--overwrite]
   moviepilot migrate [--config-dir PATH]
@@ -77,6 +78,7 @@ Runtime Commands
   restart
   status
   logs
+  deploy
   backup
   restore
   migrate

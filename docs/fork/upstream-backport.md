@@ -20,7 +20,7 @@
 
 | 上游能力 | v3 位置 | 状态 | 说明 |
 |---|---|---|---|
-| 前端产物 seam `frontend-dist/` | `.gitignore:50-51`、`docker/Dockerfile:214-229` | 待移植（阶段 1） | 目录非空则直接使用仓内构建产物，为空才回退下载 release；配合本仓 `web/` 源码自建前端 |
+| 前端产物 seam `frontend-dist/` | `.gitignore:50-51`、`docker/Dockerfile:214-229`（Docker 已移除，仅作上游参考） | 已由 `scripts/build-frontend.sh` 承接 | 构建产物写入 `public/`，由宿主 nginx 直接托管 |
 | 数据库备份 / 校验 / 恢复 CLI | v3 `docs/cli.md` 数据库章节、`scripts/local_setup.py` | 待移植（阶段 4） | 迁移前自动备份，是本仓"一键迁移重装"的安全前提；v2 完全没有该能力 |
 | 首次安装网页初始化管理员 | `docs/v2-to-v3-overview.md` §3.8 | 待评估 | 可替代 `app.env` 里写初始密码；本仓为单管理员 + swizzin 同步，收益有限 |
 | 统一响应层 `{success,message,data}` | `docs/v2-to-v3-overview.md` §5.5 | 待评估 | 本仓前端同步改造，收益中等、改动面大 |
