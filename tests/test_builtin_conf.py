@@ -245,3 +245,45 @@ def test_unpack_job_paths_are_skipped(path, expected):
         assert (
             dispatcher.is_transfer_candidate_path(Path(path)) is expected
         ), path
+
+
+def test_path_index_drops_ancestor_save_paths():
+    """save_path 宽键若是其它任务键的祖先必须丢弃，否则会吞掉同分类下无关文件。"""
+    from types import SimpleNamespace
+    from unittest.mock import patch
+
+    from app.chain.downloadfilesync import DownloadFileSyncChain
+
+    chain = DownloadFileSyncChain()
+    torrents = [
+        # qB 多文件种子：save_path 是分类根，content_path 是任务目录
+        SimpleNamespace(
+            hash="f12" + "a" * 37,
+            downloader="qBittorrent",
+            path="/dl/Anime/Chainsmoker.Cat.S01",
+            save_path="/dl/Anime",
+            content_path="/dl/Anime/Chainsmoker.Cat.S01",
+        ),
+        # 单文件种子：内容直接落在分类根，save_path 是唯一可用键，必须保留
+        SimpleNamespace(
+            hash="ab" + "b" * 38,
+            downloader="qBittorrent",
+            path="/dl/Anime/single.ep01.mkv",
+            save_path="/dl/Anime",
+            content_path="/dl/Anime/single.ep01.mkv",
+        ),
+    ]
+    with patch.object(chain, "list_torrents", return_value=torrents):
+        chain._build_path_index()
+    # 文件级索引为空，避免干扰断言
+    type(chain)._content_index = {}
+    type(chain)._index_built_at = None
+
+    index = type(chain)._path_index
+    # 宽键已被任务目录覆盖，必须被丢弃
+    assert "/dl/Anime" not in index, "祖先宽键必须丢弃"
+    assert index["/dl/Anime/Chainsmoker.Cat.S01"][0] == "f12" + "a" * 37
+    # 单文件种子的内容键仍在
+    assert index["/dl/Anime/single.ep01.mkv"][0] == "ab" + "b" * 38
+    # 无关文件不再被吞（未命中返回 None）
+    assert chain._match_index("/dl/Anime/[Erai-raws] Ao no Hako/ep03.mkv") is None

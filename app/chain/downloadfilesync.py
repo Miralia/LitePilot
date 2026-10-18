@@ -90,8 +90,14 @@ class DownloadFileSyncChain(ChainBase):
 
         一次列出下载器中全部种子的保存路径与内容路径，供事件按路径快速反查。
         相比每次事件全量同步下载器，这里只在索引缺失或过期时执行一次。
+
+        注意 save_path 的语义是「保存根目录」而非任务内容目录：
+        qBittorrent 对多文件种子返回的分类根目录（如 Downloads/Anime），
+        若直接入索引会把同分类下所有文件都错误归到该种子。
+        因此 save_path 只在「不是其它键的祖先目录」时才保留作兜底。
         """
         index: dict = {}
+        fallbacks: list = []
         try:
             torrents = self.list_torrents() or []
         except Exception as err:  # pylint: disable=broad-except
@@ -102,14 +108,24 @@ class DownloadFileSyncChain(ChainBase):
             if not torrent_hash:
                 continue
             entry = (torrent_hash, getattr(torrent, "downloader", None))
-            for attr in ("path", "save_path", "content_path"):
+            for attr in ("path", "content_path"):
                 value = getattr(torrent, attr, None)
                 if not value:
                     continue
                 # 统一成无尾斜杠的字符串，便于前缀匹配
                 key = str(value).replace("\\", "/").rstrip("/")
                 if key:
-                    index[key] = entry
+                    index.setdefault(key, entry)
+            save_path = getattr(torrent, "save_path", None)
+            if save_path:
+                key = str(save_path).replace("\\", "/").rstrip("/")
+                if key:
+                    fallbacks.append((key, entry))
+        # save_path 兜底键：若它已是其它键的祖先目录（说明精确键已覆盖该任务），
+        # 保留会把同分类下无关文件全部吞掉，必须丢弃
+        for key, entry in fallbacks:
+            if not any(other.startswith(f"{key}/") for other in index if other != key):
+                index.setdefault(key, entry)
         type(self)._path_index = index
         type(self)._index_built_at = time.monotonic()
         logger.debug(f"下载器路径索引已更新，共 {len(index)} 条")
