@@ -84,22 +84,18 @@ class MediaCoverChain(ChainBase):
         :param library: 媒体库信息
         :return: 图片二进制内容，无法获取时返回 None
         """
-        items: List[MediaServerPlayItem] = []
-        for item in MediaServerChain().items(
-            server=server,
-            library_id=library.item_id or library.id,
-            start_index=0,
-            limit=1,
-        ):
-            if item:
-                items.append(item)
-            break
-        if not items:
-            logger.warn(f"媒体库 {library.name} 中没有可用于生成封面的条目")
-            return None
-        image_url = (items[0].image or "").strip()
+        # latest() 返回带海报的播放条目；items() 给的是不含 image 的媒体库条目
+        latest_items: List[MediaServerPlayItem] = MediaServerChain().latest(
+            server=server, count=20
+        ) or []
+        image_url = ""
+        for item in latest_items:
+            candidate = (item.image or "").strip()
+            if candidate:
+                image_url = candidate
+                break
         if not image_url:
-            logger.warn(f"媒体库 {library.name} 的最新条目没有海报")
+            logger.warn(f"媒体库 {library.name} 没有可用于生成封面的海报")
             return None
         try:
             response = RequestUtils(proxies=settings.PROXY, timeout=30).get_res(image_url)
