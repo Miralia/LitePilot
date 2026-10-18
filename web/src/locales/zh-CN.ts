@@ -888,9 +888,9 @@ export default {
       streamingPlatform: '流媒体平台词表',
       streamingPlatformShort: '流媒体平台',
       streamingPlatformDesc:
-        '识别发布名中的流媒体平台（如 WEB-DL.NF）。内置约 300 个常见平台，可在此追加或覆盖。',
+        '维护流媒体平台识别表。首次启用时已内置约 300 个常见平台，可自由增删改，改动即时生效。',
       streamingPlatformHint:
-        '每行一条，格式 `简称 = 全称`，例如 `NF = Netflix`；只写一个值时简称与全称相同。以 # 开头为注释。',
+        '每行一条，格式 `简称 = 全称`，例如 `NF = Netflix`；只写一个值时简称与全称相同。以 # 开头为注释。\n识别时会同时匹配简称与全称，输出值由下方「输出形态」决定。',
       streamingPlatformPlaceholder: 'NF = Netflix\nAMZN = Amazon\nMYS = 我的平台',
       streamingPlatformSaveSuccess: '流媒体平台词表保存成功',
       streamingPlatformSaveFailed: '流媒体平台词表保存失败',
@@ -904,9 +904,11 @@ export default {
       identifierSaveFailed: '自定义识别词保存失败！',
 
       customReleaseGroups: '自定义制作组/字幕组',
-      releaseGroupsDesc: '添加无法识别的制作组/字幕组。',
-      releaseGroupsPlaceholder: '每行输入一个制作组/字幕组',
-      releaseGroupsHint: '支持正则表达式，特殊字符需要\\转义，一行代表一个制作组/字幕组',
+      releaseGroupsDesc:
+        '维护制作组/字幕组识别表。首次启用时已内置常见组，可自由增删改，改动即时生效。',
+      releaseGroupsPlaceholder: 'CtrlHD\nFraMeSToR\nSweetSub\nVCB-Studio',
+      releaseGroupsHint:
+        '每行一个组名，按字面量精确匹配，无需转义特殊字符（VCB-Studio、SubsPlus+ 可直接写）。\n用 & 连接的是合作发布，会拆成多个小组；用 ＠ 连接的是从属关系，整体算一个小组。\n确需正则能力时，在行首加 re 冒号前缀。',
       releaseGroupSaveSuccess: '自定义制作组/字幕组保存成功',
       releaseGroupSaveFailed: '自定义制作组/字幕组保存失败！',
 

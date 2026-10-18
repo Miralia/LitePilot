@@ -376,6 +376,23 @@ def _meta_from_rust(parsed: dict) -> Optional[MetaBase]:
     }
     for key, value in fields.items():
         setattr(meta, key, value)
+
+    # Rust 解析只给出单个 resource_team，且不感知词表配置。
+    # 这里用当前词表重算一次，使合作发布（&）能拆成多个组，
+    # 也让用户在词表页面新增/删除的组立即生效。
+    try:
+        from app.core.meta.releasegroup import (  # pylint: disable=import-outside-toplevel
+            ReleaseGroupsMatcher,
+        )
+
+        teams = ReleaseGroupsMatcher().match_list(
+            title=parsed.get("org_string") or parsed.get("title") or ""
+        )
+        meta.resource_teams = list(teams)
+        meta.resource_team = "@".join(teams) or None
+    except Exception as err:  # pylint: disable=broad-except
+        logger.debug(f"按词表重算制作组失败，沿用解析结果：{err}")
+
     return meta
 
 

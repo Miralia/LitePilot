@@ -1,5 +1,5 @@
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Union, Optional, List, Self
 
 import cn2an
@@ -80,8 +80,10 @@ class MetaBase(object):
     resource_effect: Optional[str] = None
     # 识别的分辨率
     resource_pix: Optional[str] = None
-    # 识别的制作组/字幕组
+    # 识别的制作组/字幕组（多个组以 @ 连接，保持既有语义）
     resource_team: Optional[str] = None
+    # 识别的全部制作组/字幕组（合作发布时含多个）
+    resource_teams: List[str] = field(default_factory=list)
     # 识别的自定义占位符
     customization: Optional[str] = None
     # 识别的流媒体平台
@@ -499,8 +501,18 @@ class MetaBase(object):
         """
         if self.resource_team:
             return self.resource_team
-        else:
-            return ""
+        if self.resource_teams:
+            return "@".join(self.resource_teams)
+        return ""
+
+    @property
+    def release_groups(self) -> List[str]:
+        """
+        返回全部发布组/字幕组，合作发布时包含多个。
+        """
+        if self.resource_teams:
+            return list(self.resource_teams)
+        return [self.resource_team] if self.resource_team else []
 
     @property
     def video_term(self) -> str:
@@ -659,6 +671,10 @@ class MetaBase(object):
         # 制作组/字幕组
         if not self.resource_team:
             self.resource_team = meta.resource_team
+        # meta 也可能是 schemas.MetaInfo（无该字段），这里做兼容读取
+        _incoming_teams = getattr(meta, "resource_teams", None)
+        if not self.resource_teams and _incoming_teams:
+            self.resource_teams = list(_incoming_teams)
         # 自定义占位符
         if not self.customization:
             self.customization = meta.customization

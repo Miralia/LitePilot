@@ -305,7 +305,7 @@ release_group_cases = [
         "domain": "ssd",
         "groups": [
             {"title": "Bluey S03 2021 2160p WEB-DL H.265 AAC 2.0-CMCT", "group": "CMCT"},
-            {"title": "Bluey S03 2021 2160p WEB-DL H.265 AAC 2.0-CMCT@制作者", "group": "CMCT"},
+            {"title": "Bluey S03 2021 2160p WEB-DL H.265 AAC 2.0-CMCT@制作者", "group": "CMCT@制作者"},
             {"title": "Bluey S03 2021 2160p WEB-DL H.265 AAC 2.0-CMCTV", "group": "CMCTV"}
         ]
     },

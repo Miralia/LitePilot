@@ -22,7 +22,7 @@ class MetaInfoTest(TestCase):
         with patch.object(
             matcher.systemconfig,
             "get",
-            return_value=["VCB-Studio|hyakuhuyu|DMG|GM-Team"],
+            return_value=["re:VCB-Studio|hyakuhuyu|DMG|GM-Team"],
         ):
             release_group = matcher.match(
                 "[DMG&VCB-Studio] Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e"

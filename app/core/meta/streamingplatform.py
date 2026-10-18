@@ -12,8 +12,8 @@ class StreamingPlatforms(metaclass=Singleton):
     """
     流媒体平台简称与全称。
 
-    内置一份常见平台表；用户可在「词表 → 流媒体平台」里追加或覆盖，
-    用户词表优先级高于内置表。输出形态（全称/简称）由系统配置控制。
+    内置表只用于首次初始化：首次读取时把内置条目写入「词表 → 流媒体平台」，
+    之后完全以配置为准，可随时增删改。输出形态（全称/简称）由系统配置控制。
     """
     STREAMING_PLATFORMS: List[Tuple[str, str]] = [
         ("AMZN", "Amazon"),
@@ -293,7 +293,26 @@ class StreamingPlatforms(metaclass=Singleton):
         # 已加载的配置快照，用于判断是否需要在配置变更后重建缓存
         self._loaded_words: Optional[List[str]] = None
         self._loaded_mode: Optional[str] = None
+        self._seeded = False
         self._build_cache()
+
+    @classmethod
+    def builtin_word_list(cls) -> List[str]:
+        """
+        返回内置平台表对应的词表行。
+
+        首次初始化时写入配置，让用户能在页面上看到并修改这些条目。
+
+        :return: `简称 = 全称` 形式的行列表
+        """
+        lines: List[str] = []
+        for short_name, full_name in cls.STREAMING_PLATFORMS:
+            if not short_name and not full_name:
+                continue
+            line = f"{short_name} = {full_name}" if short_name and full_name else (short_name or full_name)
+            if line and line not in lines:
+                lines.append(line)
+        return lines
 
     def ensure_loaded(self) -> None:
         """
@@ -311,6 +330,13 @@ class StreamingPlatforms(metaclass=Singleton):
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(f"读取流媒体平台配置失败，使用内置表：{err}")
             return
+
+        if not words and not self._seeded:
+            # 配置为空时用内置表初始化一次，之后完全由配置驱动
+            words = self.builtin_word_list()
+            if words:
+                config.set(SystemConfigKey.CustomStreamingPlatforms, words)
+                self._seeded = True
 
         if words == (self._loaded_words or []) and mode == self._loaded_mode:
             return

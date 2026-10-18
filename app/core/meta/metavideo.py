@@ -211,8 +211,12 @@ class MetaVideo(MetaBase):
                 if cn_name and len(cn_name) == len(self.en_name.split()):
                     # 中文名和拼音单词数相同，认为是中文名
                     self.cn_name = cn_name
-        # 制作组/字幕组
-        self.resource_team = ReleaseGroupsMatcher().match(title=original_title) or None
+        # 制作组/字幕组：合作发布（&）记录多个，从属关系（@）视为一个
+        _teams = ReleaseGroupsMatcher().match_list(title=original_title)
+        # MetaVideo 使用自定义 __init__，不走 dataclass 生成器，
+        # 因此新增字段需要显式赋值，否则实例上不会存在该属性。
+        self.resource_teams = list(_teams)
+        self.resource_team = "@".join(_teams) or None
         # 自定义占位符
         self.customization = CustomizationMatcher().match(title=original_title) or None
         if not self.video_bit:
