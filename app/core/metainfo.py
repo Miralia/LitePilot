@@ -505,6 +505,24 @@ def _has_decimal_episode(title: str) -> bool:
     return bool(_RUST_DECIMAL_EPISODE_RE.search(stem))
 
 
+# Rust 扩展不认识 YUV422P / YUV444P 这类色彩采样标记，会直接丢弃，
+# 导致通知「质量」缺少该信息。命中时回退 Python 解析。
+_RUST_UNSUPPORTED_CHROMA_RE = re.compile(
+    r"(?:^|[^A-Za-z0-9])YUV(?:422|444)P\d*(?![A-Za-z0-9])",
+    re.IGNORECASE,
+)
+
+
+def _has_chroma_tag(title: str) -> bool:
+    """
+    判断标题是否含色彩采样标记（YUV422P / YUV444P）。
+
+    :param title: 原始标题
+    :return: 命中时返回 True
+    """
+    return bool(_RUST_UNSUPPORTED_CHROMA_RE.search(title or ""))
+
+
 def _has_unsupported_bit_tag(title: str) -> bool:
     """
     判断标题是否含有 Rust 扩展不支持的位深标记。
@@ -547,6 +565,7 @@ def MetaInfo(title: str, subtitle: Optional[str] = None, custom_words: List[str]
             and not _has_unsupported_bit_tag(title)
             and not _has_trailing_zero_title(title)
             and not _has_decimal_episode(title)
+            and not _has_chroma_tag(title)
     ):
         rust_meta = _meta_from_rust(
             rust_accel.parse_metainfo(title, subtitle, _rust_parse_options(custom_words))
