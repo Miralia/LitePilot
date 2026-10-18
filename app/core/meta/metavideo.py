@@ -83,6 +83,15 @@ class MetaVideo(MetaBase):
         r"|^LPCM\d?$|^AAC\d?$|^FLAC\d?$|^HD\d?$|^MA\d?$|^HR\d?$"
         r"|^Opus\d?$|^Vorbis\d?$|^AV[3S]A$"
     )
+    # 音频修饰词：与已有编码属于同一条音轨，需要拼接（如 DTS-HD MA）
+    _AUDIO_MODIFIERS = frozenset(
+        {"HD", "MA", "HR", "ATMOS", "TRUEHD", "DTSHD", "DTSHDMA"}
+    )
+    # 独立音频编码：可单独构成音轨，已有独立编码时说明命中第二条音轨
+    _AUDIO_BASE_CODECS = frozenset(
+        {"DTS", "AC3", "EAC3", "DD", "DD+", "DDP", "LPCM",
+         "AAC", "FLAC", "OPUS", "VORBIS", "AV3A"}
+    )
     _fps_re = r"(\d{2,3})(?=FPS)"
     _season_pattern = re.compile(_season_re, re.IGNORECASE)
     _episode_pattern = re.compile(_episode_re, re.IGNORECASE)
@@ -854,13 +863,18 @@ class MetaVideo(MetaBase):
             self._stop_name_flag = True
             self._last_token_type = "audioencode"
             self._last_token = re_res.group(1).upper()
+            codec = re_res.group(1)
+            codec_upper = codec.upper().rstrip("0123456789")
             if not self.audio_encode:
-                self.audio_encode = re_res.group(1)
-            else:
-                if self.audio_encode.upper() == "DTS":
-                    self.audio_encode = "%s-%s" % (self.audio_encode, re_res.group(1))
-                else:
-                    self.audio_encode = "%s %s" % (self.audio_encode, re_res.group(1))
+                self.audio_encode = codec
+            elif self.audio_encode.upper() == "DTS" and codec_upper in self._AUDIO_MODIFIERS:
+                # DTS 需要拼出 DTS-HD / DTS-HD MA 这类组合写法
+                self.audio_encode = "%s-%s" % (self.audio_encode, codec)
+            elif codec_upper in self._AUDIO_MODIFIERS:
+                # 同一音轨的修饰词（Atmos、TrueHD、MA 等）继续拼接
+                self.audio_encode = "%s %s" % (self.audio_encode, codec)
+            # 命中另一条独立音轨（如 `flac_ac3`）时按主音轨保留，
+            # 具体音轨信息以 mediainfo 探测结果为准
         elif token.isdigit() \
                 and self._last_token_type == "audioencode":
             if self.audio_encode:

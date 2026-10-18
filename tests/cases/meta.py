@@ -537,7 +537,7 @@ meta_cases = [{
         "season": "S05",
         "episode": "E05",
         "restype": "",
-        "pix": "2160p",
+        "pix": "4K",
         "video_codec": "HEVC",
         "audio_codec": "",
         "fps": None

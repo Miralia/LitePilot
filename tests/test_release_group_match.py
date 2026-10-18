@@ -340,3 +340,62 @@ def test_anime_codec_fallback(title, field, expected):
     from app.core.meta import MetaAnime
 
     assert getattr(MetaAnime(title), field) == expected
+
+
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        # 独立音轨只保留主音轨，具体以 mediainfo 探测为准
+        ("[x] Show [BDrip][1920x1080][hevc-yuv420p10 flac_ac3]", "FLAC"),
+        # 同一音轨的修饰词需要保留
+        ("Wonder Woman 1984 2020 BluRay 1080p Atmos TrueHD 7.1 x264-GRP", "Atmos TrueHD 7.1"),
+        ("The 355 2022 BluRay 1080p DTS-HD MA5.1 X265.10bit-GRP", "DTS-HD MA 5.1"),
+        ("I Woke Up a Vampire S02 2160p NF WEB-DL DDP5.1 Atmos H.265-GRP", "DD+ 5.1 Atmos"),
+    ],
+)
+def test_audio_codec_track_handling(title, expected):
+    """多音轨取主音轨，同音轨修饰词保留。"""
+    from app.core.meta import MetaVideo
+
+    assert MetaVideo(title).audio_encode == expected
+
+
+@pytest.mark.parametrize(
+    ("title", "season", "episode"),
+    [
+        # anitopy 独有的季集识别能力，重构后必须保持
+        ("[NC-Raws] 王者天下 第四季 - 17 (Baha 1080p)", 4, 17),
+        ("[Erai-raws] Ao no Hako Season 2 - 03 [1080p]", 2, 3),
+        ("[ANi] OVERLORD Season 4 - 04 [1080p]", 4, 4),
+        ("[SubsPlease] Hikari no Ou - 14 (1080p)", None, 14),
+        ("[SweetSub] Made in Abyss S2 - 03v2 [WebRip]", 2, 3),
+    ],
+)
+def test_anime_season_episode_preserved(title, season, episode):
+    """MetaAnime 的季集能力不因字段委托而退化。"""
+    from app.core.meta import MetaAnime
+
+    meta = MetaAnime(title)
+    assert meta.begin_season == season
+    assert meta.begin_episode == episode
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "[Erai-raws] Ao no Hako Season 2 - 03 [1080p NF WEBRip HEVC EAC3]",
+        "[Nekomoe kissaten&VCB-Studio] VIRGIN PUNK Clockwork Girl [Ma10p_1080p][x265_flac]",
+        "[Mira] Princess mononoke 1997 (DCP 2K DD+ YUV444P x265)",
+        "Movie.2024.1080p.DoVi.HDR.YUV444P.x265-GRP",
+    ],
+)
+def test_anime_technical_fields_match_video(title):
+    """动漫路径的技术字段必须与通用路径完全一致。"""
+    from app.core.meta import MetaAnime, MetaVideo
+
+    anime, video = MetaAnime(title), MetaVideo(title)
+    for field in (
+        "resource_pix", "resource_type", "video_encode", "video_bit",
+        "audio_encode", "resource_effect", "web_source", "resource_team",
+    ):
+        assert getattr(anime, field) == getattr(video, field), f"{field} 不一致"
