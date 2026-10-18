@@ -163,10 +163,6 @@ def test_authentication_finish_token_cannot_be_replayed():
         return_value=(True, 0),
     ), patch.object(
         mfa_endpoint,
-        "SitesHelper",
-        return_value=SimpleNamespace(auth_level=1),
-    ), patch.object(
-        mfa_endpoint,
         "SystemConfigOper",
         return_value=SimpleNamespace(get=lambda _: True),
     ), patch.object(

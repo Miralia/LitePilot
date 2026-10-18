@@ -48,7 +48,6 @@ _STUB_MODULES = dict([
     _stub("pillow_avif"),
     _stub("aiofiles"),
     _stub("psutil"),
-    _stub("app.helper.sites", SitesHelper=_Dummy),
     _stub("app.chain.media", MediaChain=_Dummy),
     _stub("app.chain.mediaserver", MediaServerChain=_Dummy),
     _stub("app.chain.system", SystemChain=_Dummy),

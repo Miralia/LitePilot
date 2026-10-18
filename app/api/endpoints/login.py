@@ -10,7 +10,6 @@ from app.chain.user import MfaRequired, UserChain
 from app.core import security
 from app.core.config import settings
 from app.db.systemconfig_oper import SystemConfigOper
-from app.helper.sites import SitesHelper  # noqa
 from app.helper.image import WallpaperHelper
 from app.helper.swizzin import SwizzinUserSync
 from app.schemas.types import SystemConfigKey
@@ -47,8 +46,6 @@ def login_access_token(
             )
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
-    # 用户等级
-    level = SitesHelper().auth_level
     # 是否显示配置向导
     show_wizard = (
         not SystemConfigOper().get(SystemConfigKey.SetupWizardState)
@@ -59,7 +56,6 @@ def login_access_token(
         username=user_or_message.name,
         super_user=user_or_message.is_superuser,
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-        level=level,
     )
     security.set_or_refresh_resource_token_cookie(
         request,
@@ -68,7 +64,6 @@ def login_access_token(
             sub=user_or_message.id,
             username=user_or_message.name,
             super_user=user_or_message.is_superuser,
-            level=level,
             purpose="authentication",
         ),
     )
@@ -80,7 +75,6 @@ def login_access_token(
         user_id=user_or_message.id,
         user_name=user_or_message.name,
         avatar=user_or_message.avatar,
-        level=level,
         permissions=user_or_message.permissions or {},
         wizard=show_wizard,
     )

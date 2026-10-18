@@ -13,7 +13,6 @@ import aiofiles
 import anyio
 import pillow_avif  # noqa 用于自动注册AVIF支持
 from anyio import Path as AsyncPath
-from app.helper.sites import SitesHelper  # noqa  # noqa
 from fastapi import APIRouter, Body, Depends, HTTPException, Header, Request, Response
 from fastapi.responses import StreamingResponse
 
@@ -564,8 +563,6 @@ async def get_env_setting(
     info.update(
         {
             "VERSION": APP_VERSION,
-            "AUTH_VERSION": SitesHelper().auth_version,
-            "INDEXER_VERSION": SitesHelper().indexer_version,
             "FRONTEND_VERSION": SystemChain().get_frontend_version(),
             "RUST_ACCEL_AVAILABLE": rust_accel.is_available(),
             "RUST_ACCEL_ENABLED": rust_accel.is_enabled(),

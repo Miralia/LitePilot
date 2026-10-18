@@ -1877,26 +1877,6 @@ def _apply_local_system_config_inner(config_payload: dict[str, Any]) -> None:
             _merge_notification_switches(current_switches),
         )
 
-    site_auth_item = config_payload.get("site_auth")
-    if (
-        isinstance(site_auth_item, dict)
-        and site_auth_item.get("site")
-        and site_auth_item.get("params")
-    ):
-        system_config.set(SystemConfigKey.UserSiteAuthParams, site_auth_item)
-        try:
-            from app.helper.sites import SitesHelper  # noqa
-
-            status, msg = SitesHelper().check_user(
-                site_auth_item.get("site"), site_auth_item.get("params")
-            )
-            if status:
-                print_step(f"站点认证校验成功：{msg}")
-            else:
-                print_step(f"已保存站点认证配置，当前校验未通过：{msg}")
-        except Exception as exc:
-            print_step(f"已保存站点认证配置，当前未完成校验：{exc}")
-
     system_config.set(SystemConfigKey.SetupWizardState, True)
     print_step("已写入本地系统配置")
 

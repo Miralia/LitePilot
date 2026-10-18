@@ -84,7 +84,6 @@ def __create_superuser_token_payload() -> schemas.TokenPayload:
     # pylint: disable=import-outside-toplevel
     # pylint: disable=no-name-in-module
     from app.db.user_oper import UserOper
-    from app.helper.sites import SitesHelper  # noqa
 
     user = UserOper().get_by_name(settings.SUPERUSER)
     if not user or not user.is_superuser:
@@ -96,7 +95,6 @@ def __create_superuser_token_payload() -> schemas.TokenPayload:
         sub=user.id,
         username=user.name,
         super_user=user.is_superuser,
-        level=SitesHelper().auth_level,
         purpose="authentication",
     )
 

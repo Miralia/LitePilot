@@ -6,7 +6,6 @@ MFA (Multi-Factor Authentication) API 端点
 from datetime import timedelta
 from typing import Any, Annotated, Optional
 
-from app.helper.sites import SitesHelper
 from fastapi import APIRouter, Depends, HTTPException, Body, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -403,7 +402,6 @@ def passkey_authenticate_finish(
         logger.info(f"用户 {user.name} 通过PassKey认证成功")
 
         # 生成token
-        level = SitesHelper().auth_level
         show_wizard = (
             not SystemConfigOper().get(SystemConfigKey.SetupWizardState)
             and not settings.ADVANCED_MODE
@@ -414,7 +412,6 @@ def passkey_authenticate_finish(
             username=user.name,
             super_user=user.is_superuser,
             expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-            level=level,
         )
         security.set_or_refresh_resource_token_cookie(
             request,
@@ -423,7 +420,6 @@ def passkey_authenticate_finish(
                 sub=user.id,
                 username=user.name,
                 super_user=user.is_superuser,
-                level=level,
                 purpose="authentication",
             ),
         )
@@ -435,7 +431,6 @@ def passkey_authenticate_finish(
             user_id=user.id,
             user_name=user.name,
             avatar=user.avatar,
-            level=level,
             permissions=user.permissions or {},
             wizard=show_wizard,
         )

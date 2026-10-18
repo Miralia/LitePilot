@@ -34,7 +34,6 @@ from app.helper.image import WallpaperHelper
 from app.helper.message import MessageHelper
 from app.helper.progress import ProgressHelper
 from app.helper.service import ServiceConfigHelper
-from app.helper.sites import SitesHelper  # noqa
 from app.log import logger
 from app.schemas import Notification, NotificationType
 from app.schemas.types import EventType, SystemConfigKey
