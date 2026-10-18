@@ -6,6 +6,7 @@
 只以媒体服务器最近入库的条目海报作为素材、字体固定为霞鹜真楷，不保存历史也不做缓存。
 """
 
+import base64
 from io import BytesIO
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -216,25 +217,34 @@ class MediaCoverChain(ChainBase):
         """
         将生成的封面上传到媒体服务器。
 
+        Emby 的 Items/{id}/Images/Primary 接受 base64 文本而非二进制流，
+        这里复用模块自带的 post_data（它会补齐 [HOST]/[APIKEY] 占位符），
+        与原插件行为保持一致。
+
         :param instance: 媒体服务器实例
         :param library: 媒体库信息
         :param cover: PNG 图片内容
         :return: 上传是否成功
         """
         item_id = library.item_id or library.id
-        host = getattr(instance, "_host", "")
-        apikey = getattr(instance, "_apikey", "")
-        if not host or not apikey or not item_id:
+        if not item_id:
             return False
-        url = f"{host}Items/{item_id}/Images/Primary"
+
+        encoded = base64.b64encode(cover).decode("utf-8")
+        url = f"[HOST]emby/Items/{item_id}/Images/Primary?api_key=[APIKEY]"
         try:
-            response = RequestUtils(timeout=60).post_res(
+            response = instance.post_data(
                 url=url,
-                params={"api_key": apikey},
-                data=cover,
+                data=encoded,
                 headers={"Content-Type": "image/png"},
             )
         except Exception as err:
             logger.error(f"上传媒体库封面出错：{err}")
             return False
-        return bool(response and response.status_code in (200, 204))
+        if response is not None and response.status_code in (200, 204):
+            return True
+        logger.error(
+            f"媒体库 {library.name} 封面上传返回异常："
+            f"{getattr(response, 'status_code', 'no response')}"
+        )
+        return False
