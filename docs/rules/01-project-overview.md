@@ -2,18 +2,27 @@
 
 ## System Purpose
 
-MoviePilot is a self-hosted media automation platform targeting Chinese-language users. It automates the full lifecycle of media acquisition and organization:
+LitePilot 是自建媒体自动化工具，由上游 MoviePilot 精简而来，只保留影视入库链条中最必要的环节：
 
-1. **Discovery** — monitors RSS feeds, subscription lists, and recommendation sources for new media releases.
-2. **Search** — queries configured torrent indexers to locate suitable torrents for subscribed media.
-3. **Download** — sends torrent tasks to a configured download client (qBittorrent, Transmission, rTorrent).
-4. **Transfer** — moves or hard-links completed downloads into a structured media library.
-5. **Scraping** — fetches metadata (posters, descriptions, episode info) from TMDB, TheTVDB, Douban, and Bangumi.
-6. **Media Server Integration** — notifies and refreshes Emby, Jellyfin, or Plex after files are organized.
-7. **Messaging** — sends status notifications through Telegram, WeChat, Feishu, Slack, Discord, and other channels.
-8. **AI Agent** — provides a conversational agent interface (via MCP and LLM chain) for natural-language management tasks.
+1. **识别** — 解析文件名/种子名得到标题、季度、集数、来源、分辨率、编码等信息。
+2. **刮削** — 通过 TMDB 获取元数据与图片。
+3. **整理** — 重命名并按季集归档到媒体库，支持硬链接/移动。
+4. **媒体服务器** — 入库后刷新 Emby 媒体库；媒体被删除时同步清理本地记录与文件。
+5. **通知** — 通过 Telegram 推送入库、删除等结果。
 
----
+上游的站点管理、订阅、插件市场、工作流、AI Agent 等模块**已整体移除**，不再规划恢复。
+
+## 明确不做的事
+
+| 能力 | 状态 |
+|---|---|
+| 站点（Indexer）管理、搜索、签到 | 已移除 |
+| 订阅、推荐、RSS 自动下载 | 已移除 |
+| 插件市场与第三方插件加载 | 已移除 |
+| 工作流、AI Agent | 已移除 |
+| Docker 部署 | 不支持，使用 systemd + nginx |
+| 多语言 | 仅简体中文 |
+| PassKey 登录 | 已移除 |
 
 ## Repository Boundaries
 
@@ -21,64 +30,31 @@ MoviePilot is a self-hosted media automation platform targeting Chinese-language
 
 | Path | Content |
 |---|---|
-| `app/` | FastAPI backend application |
-| `moviepilot` | Local CLI entrypoint (install, init, start, stop, update, agent) |
-| `app/api/endpoints/` | HTTP endpoint handlers |
-| `app/chain/` | Business orchestration layer |
-| `app/modules/` | Pluggable backend integrations (downloaders, media servers, etc.) |
-| `app/helper/` | Reusable low-level utilities |
-| `app/db/` | SQLAlchemy models and data access wrappers |
-| `app/core/` | Config, event system, module manager, plugin manager, security |
-| `app/schemas/` | Pydantic request/response models and shared enums |
-| `app/agent/` | LLM agent runtime |
-| `app/workflow/` | Workflow engine |
-| `database/versions/` | Alembic migration scripts |
-| `docs/` | CLI, MCP/API, and development workflow documentation |
-| `skills/` | AI agent skills and associated scripts |
-| `tests/` | Pytest test suite |
+| `app/` | FastAPI 后端应用 |
+| `app/api/endpoints/` | HTTP 接口处理 |
+| `app/chain/` | 业务编排层 |
+| `app/modules/` | 下载器与媒体服务器等外部集成 |
+| `app/helper/` | 可复用底层工具 |
+| `app/db/` | SQLAlchemy 模型与数据访问封装 |
+| `app/core/meta/` | 媒体名称识别核心逻辑 |
+| `database/versions/` | Alembic 迁移脚本 |
+| `web/` | Vue 3 + Vuetify 3 前端 |
+| `tests/` | pytest 测试 |
 
-### What Is NOT in This Repository
+### Layer Rules
 
-* **Frontend source code** — lives in the separate `MoviePilot-Frontend` repository (Vue/TypeScript). Only the built `dist/` artifact is consumed here.
-* **Plugin source code** — plugins are installed into `app/plugins/` at runtime from external sources; they are not part of this repository.
-* **User config and runtime data** — `config/`, `.moviepilot.env`, `*.db` files are local runtime state. Do not modify or commit them unless explicitly requested.
+调用方向固定为 `api → chain → modules/helper → db`，不得反向依赖，也不得跨层直连。
 
----
+## Deployment Model
 
-## Deployment Models
+- 后端由 `moviepilot` CLI 管理，systemd 单元 `moviepilot.service` 常驻。
+- 前端构建产物由 nginx 托管，接口经 nginx 反代到后端端口。
+- 配置与数据目录固定在 `/var/lib/moviepilot`，代码目录固定在 `/opt/moviepilot`。
 
-### Docker (Primary)
+## Identity Model
 
-The standard deployment method. A Docker image bundles the backend, frontend static files, and resource data. Users configure via environment variables and mount a config directory.
+账号由 swizzin 用户清单同步，本系统不提供用户管理界面：
 
-### Local CLI
-
-An alternative for users running from source. The `moviepilot` CLI handles installation, initialization, service management, and updates. See `docs/cli.md` for the full command reference.
-
----
-
-## Key External Dependencies (Domain Context)
-
-| Service Type | Supported Backends |
-|---|---|
-| Torrent indexers | Site-specific spiders, Jackett/Prowlarr compatible |
-| Download clients | qBittorrent, Transmission, rTorrent |
-| Media servers | Emby, Jellyfin, Plex, TrimMedia, Zspace, Ugreen |
-| Metadata sources | TMDB, TheTVDB, Douban, Bangumi, Fanart |
-| Message channels | Telegram, WeChat, WeChatClawBot, Feishu, Slack, Discord, VoceChat, Synology Chat, WebPush, QQBot |
-| LLM providers | OpenAI-compatible, Anthropic, and other configurable providers |
-
----
-
-## Business Domain Vocabulary
-
-| Term | Meaning |
-|---|---|
-| Subscribe | A tracked media item (movie or TV series) that MoviePilot will automatically search and download |
-| Transfer | The process of moving or hard-linking downloaded files into the organized media library |
-| Chain | A business orchestration class that coordinates multiple modules for a use case |
-| Module | A pluggable backend integration loaded by the module manager |
-| Skill | A packaged AI agent capability that can be invoked via the MCP interface |
-| SystemConfig | Runtime key-value configuration stored in the database and managed via `SystemConfigKey` |
-
-*Last Updated: 2026-05-25*
+- 启动时按 `/root/.master.info` 与 `/root/*.info` 补齐本地账号。
+- 口令以 swizzin 侧为准，本地不单独维护。
+- 只支持用户名 + 密码登录，没有注册、角色分配、头像等能力。

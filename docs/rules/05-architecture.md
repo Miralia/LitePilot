@@ -7,7 +7,7 @@ The application is structured as four distinct layers. Each layer has a defined 
 ```
 ┌──────────────────────────────────────────────────┐
 │  Entrypoints                                     │
-│  (API Endpoints / CLI / Agent / Scheduler /      │
+│  (API Endpoints / CLI / Scheduler /             │
 │   Webhook / Message Interaction)                 │
 └────────────────────┬─────────────────────────────┘
                      │
@@ -15,7 +15,7 @@ The application is structured as four distinct layers. Each layer has a defined 
 ┌──────────────────────────────────────────────────┐
 │  Chain Layer  (app/chain/)                       │
 │  Business orchestration: search, download,       │
-│  subscribe, transfer, message, recommend, etc.   │
+│  transfer, message, mediaserver, system, etc.   │
 └──────┬──────────────┬───────────────┬────────────┘
        │              │               │
        ▼              ▼               ▼
@@ -37,7 +37,7 @@ Before creating a new file under `app/api/endpoints/`, `app/chain/`, `app/helper
 
 ### Entrypoint Layer
 
-**Directories:** `app/api/endpoints/`, `moviepilot` (CLI), `app/agent/`, scheduler callbacks, webhook handlers, message interactions.
+**Directories:** `app/api/endpoints/`, `moviepilot` (CLI), scheduler callbacks, webhook handlers, message interactions.
 
 **Responsibilities:**
 - HTTP concerns: authentication, parameter parsing, response model serialization, streaming adaptation, simple input validation.
@@ -56,7 +56,7 @@ Before creating a new file under `app/api/endpoints/`, `app/chain/`, `app/helper
 **Directory:** `app/chain/`
 
 **Responsibilities:**
-- Business orchestration shared by API, CLI, agent, scheduler, and other entrypoints.
+- Business orchestration shared by API, CLI, scheduler, and other entrypoints.
 - Composes module capabilities, helpers, database access, events, and caches.
 - Focuses on use cases and workflows.
 
@@ -127,8 +127,8 @@ Before creating a new file under `app/api/endpoints/`, `app/chain/`, `app/helper
 
 | Direction | Status |
 |---|---|
-| `endpoint / CLI / agent / scheduler → chain` | ✅ Preferred |
-| `endpoint / CLI / agent / scheduler → db / helper` | ✅ Allowed for simple CRUD and input normalization only |
+| `endpoint / CLI / scheduler → chain` | ✅ Preferred |
+| `endpoint / CLI / scheduler → db / helper` | ✅ Allowed for simple CRUD and input normalization only |
 | `chain → chain` | ✅ Allowed when reusing stable, non-circular domain logic |
 | `chain → module` | ✅ Via `run_module()` / `async_run_module()` |
 | `chain → helper` | ✅ Allowed |
@@ -148,7 +148,7 @@ Before creating a new file under `app/api/endpoints/`, `app/chain/`, `app/helper
 | `app/core/config.py` | `ConfigModel` and `Settings` — all deployment/env-level config |
 | `app/schemas/types.py` | `SystemConfigKey`, `EventType`, `ModuleType`, and all shared enums |
 | `app/core/module.py` | `ModuleManager` — discovers and manages module instances |
-| `app/core/plugin.py` | `PluginManager` — discovers and manages plugin instances |
+
 | `app/core/event.py` | `EventManager` + `Event` — the application event bus |
 | `app/core/context.py` | `Context`, `MediaInfo`, `TorrentInfo` — shared domain context objects |
 | `app/main.py` | Application startup and FastAPI instance |

@@ -32,11 +32,11 @@ This project uses **Conventional Commits**. The release workflow parses commit m
 ```
 feat: support MiniMax audio provider
 fix: sign media server image proxy URLs
-docs: add MCP client configuration examples
+docs: add REST API client configuration examples
 chore: upgrade pydantic to 2.9.0
 refactor: extract transfer path resolution into helper
 test: add subscribe endpoint validation tests
-ci: improve docker build cache
+ci: cache build dependencies
 ```
 
 ### Rules
@@ -50,10 +50,9 @@ ci: improve docker build cache
 
 ## Branch Policy
 
-- Do not casually create, rename, or delete branches without user instruction.
-- The main development branch is the project default — check `git branch` rather than assuming it is `main` or `master`.
-- Feature work lives on dedicated branches and is merged via pull request.
-- Do not force-push to shared branches.
+- 唯一开发主线是 `main`，已无上游跟踪分支。
+- 未经用户指示，不要随意创建、改名或删除分支。
+- 不要在共享分支上 force-push。
 
 ---
 
@@ -61,26 +60,13 @@ ci: improve docker build cache
 
 - Do not casually change version numbers in `version.py` or related files.
 - Version changes are part of the release workflow and are only made when the task explicitly involves a release.
-- The `FRONTEND_VERSION` field in `version.py` controls which frontend release the CLI and Docker build will download. Only update it as part of a coordinated frontend release.
+- 前端版本号与后端同源于 `version.py`，前端构建时从该文件读取，不单独维护。
 
 ---
 
-## Docker Build and Release
-
-- The primary Docker image bundles the backend (Python app), frontend static files (from `public/`), and resource data.
-- Docker build and release are managed by CI. Do not manually trigger or alter the Docker release flow unless the task explicitly requires it.
-- If a Dockerfile change is needed, update `Dockerfile` and verify the build locally before submitting.
 
 ---
 
-## CI/CD
-
-- CI runs on every push and pull request. The pipeline typically includes:
-  - Dependency installation
-  - pytest test suite
-  - pylint static analysis
-  - Docker image build (on main branch or tags)
-- Do not merge code that fails CI unless there is an explicit, documented reason and user approval.
 
 ---
 

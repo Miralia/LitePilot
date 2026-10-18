@@ -43,18 +43,6 @@
 
 ---
 
-## LLM and AI Agent
-
-| Item | Detail |
-|---|---|
-| Agent runtime | `app/agent/` — custom LLM agent orchestration |
-| LLM abstraction | LangChain-based with multi-provider support |
-| Supported providers | OpenAI-compatible APIs, Anthropic, and other configurable providers |
-| Configuration | `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL` in settings |
-| Enable flag | `AI_AGENT_ENABLE` |
-| MCP protocol | JSON-RPC 2.0 at `/api/v1/mcp`; see `docs/mcp-api.md` |
-
----
 
 ## Module Integrations
 
@@ -137,7 +125,7 @@
 
 | Method | Detail |
 |---|---|
-| Docker | Primary deployment; image bundles backend + frontend static files + resources |
+| systemd + nginx | 唯一部署方式；后端常驻服务，前端静态产物由 nginx 托管 |
 | Local CLI | `moviepilot` CLI for source-based install; see `docs/cli.md` |
 | Frontend | Vue/TypeScript SPA served from `public/`; source in `MoviePilot-Frontend` repo |
 | Frontend proxy | Local Node `service.js` proxies `/api` and `/cookiecloud` to the backend |

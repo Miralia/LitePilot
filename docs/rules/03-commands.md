@@ -56,7 +56,7 @@ pytest tests/test_xxx.py::test_function_name
 
 **Rules:**
 - Run at minimum the tests directly related to the change.
-- If the change affects common modules, startup flow, CLI, or agent runtime behavior, expand the scope to the full test suite.
+- 影响公共模块、启动流程或 CLI 行为时，跑完整测试套件。
 - If the task only changes documentation, state explicitly that tests were not run. Do not claim checks that were not executed.
 
 ---
@@ -210,48 +210,6 @@ moviepilot config describe API_TOKEN --show-secrets
 ## Local CLI — Tools and Scheduler
 
 ```bash
-# List all MCP tools
-moviepilot tool list
-
-# Show tool parameters
-moviepilot tool show query_schedulers
-moviepilot tool show search_torrents
-
-# Run a tool directly
-moviepilot tool run query_schedulers
-moviepilot tool run search_torrents media_type=movie tmdb_id=12345
-
-# List scheduled tasks
-moviepilot scheduler list
-
-# Immediately run a scheduled task
-moviepilot scheduler run subscribe_refresh
-```
-
----
-
-## Local CLI — Agent
-
-```bash
-moviepilot agent "Help me analyze the last search failure"
-moviepilot agent --user-id admin "Check the current downloader configuration"
-moviepilot agent --session cli-debug-1 "Why was the last transfer not triggered?"
-moviepilot agent --new-session "Summarize any obvious problems with the current system config"
-```
-
-**Prerequisites:** `AI_AGENT_ENABLE` must be set to true, and LLM provider settings (`LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`) must be configured.
-
----
-
-## Docker CLI — Doctor
-
-```bash
-docker exec -it <container> moviepilot doctor
-docker exec -it <container> moviepilot doctor --json
-docker run --rm --entrypoint python -v <config-dir>:/config <image> -m app.cli doctor
-```
-
----
 
 ## Local CLI — Help Discovery
 
@@ -263,7 +221,6 @@ moviepilot help install
 moviepilot help init
 moviepilot help setup
 moviepilot help update
-moviepilot help agent
 moviepilot help config
 moviepilot help tool
 moviepilot help scheduler
@@ -271,34 +228,4 @@ moviepilot help scheduler
 
 ---
 
-## Site Adapter Capture — macOS / Linux
 
-```bash
-# Run from a MoviePilot source checkout and reuse its virtual environment
-bash scripts/collect-site-adapter.sh
-```
-
-**Rules:**
-- The default collector asks only for the site HTTPS address, opens an isolated local Chrome/Edge profile, and reads the completed search page after the user confirms.
-- Users must not be asked to inspect HTML or copy Cookie/User-Agent values in the default flow. `--manual-cookie` is an advanced fallback only.
-- Run only the collector shipped with a trusted local MoviePilot source checkout or installation package. Do not pipe a remote branch script into a shell.
-- Never put a Cookie or other credential in command arguments or shell history.
-- Feature Request attachments are public. Review all four files in the generated ZIP before attaching it, and never attach raw HTML, HAR, or browser network archives.
-
----
-
-## Plugin Market Release Default
-
-```bash
-# Run after activating the project virtual environment
-python -m scripts.generate_plugin_market_default \
-  --wiki-file /path/to/MoviePilot-Wiki/plugin.md \
-  --config-file app/core/config.py
-```
-
-**Rules:**
-- The Wiki document must contain exactly one `plugin-market-repos:start/end` marker pair.
-- The marked list must be nonempty and include `jxxghp/MoviePilot-Plugins`.
-- This command rewrites only `ConfigModel.PLUGIN_MARKET`; inspect the resulting diff before committing or packaging.
-
-*Last Updated: 2026-08-06*

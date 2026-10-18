@@ -32,7 +32,7 @@ This repository maintains a structured documentation library covering the full d
 
 * **09 External APIs, Protocols, and Responses**
   * File: `09-external-response.md`
-  * Scope: HTTP client conventions, MCP protocol, standardized response formats, and error handling by layer.
+  * Scope: HTTP 客户端约定、标准响应格式与分层错误处理。
 
 * **10 Data and Persistent Management**
   * File: `10-data-and-persistent.md`
@@ -60,7 +60,7 @@ This repository maintains a structured documentation library covering the full d
 
 * **12 Collaboration, Versioning, Build, and Release**
   * File: `12-collaboration-and-distribution.md`
-  * Scope: Conventional Commits, branch policy, release workflow, Docker build, and version management.
+  * Scope: Conventional Commits, branch policy, release workflow, and version management.
 
 ---
 

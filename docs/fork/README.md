@@ -1,6 +1,6 @@
-# 极简自用版（lite）项目说明
+# LitePilot 项目说明
 
-本仓库是 MoviePilot 的个人自用精简分支（开发分支 `lite`），目标不是通用媒体自动化平台，而是**内容库维护工具**：自己把种子加到下载器或从 Usenet 下载，本程序只负责识别、整理入库、刷新媒体服务器并通知；其余能力一律删除。
+本仓库是 MoviePilot 的个人自用精简分支（开发主线 `main`），目标不是通用媒体自动化平台，而是**内容库维护工具**：自己把种子加到下载器或从 Usenet 下载，本程序只负责识别、整理入库、刷新媒体服务器并通知；其余能力一律删除。
 
 ## 与上游的关系
 
@@ -9,21 +9,21 @@
 | 基线 | `jxxghp/MoviePilot` v2 分支，`APP_VERSION = v2.15.6`，基线提交 `1528176b`（2026-09-26） |
 | 上游 v2 状态 | 已冻结（不再有提交），适合作为自有维护基线 |
 | 上游 v3 状态 | 活跃（`jxxghp/MoviePilot` v3 分支），本仓不跟随，只按需移植个别优化 |
-| 本仓 remote | `origin` = 自有 fork；`upstream` = `jxxghp/MoviePilot`（只读参考） |
-| 分支约定 | `v2` 保留为上游镜像（不改动），`lite` 为开发主线 |
+| 本仓 remote | `origin` = `Miralia/LitePilot`；`upstream` = `jxxghp/MoviePilot`（只读参考） |
+| 分支约定 | 只有 `main` 一条主线，不再保留上游镜像分支 |
 
 上游 v3 的移植策略与候选清单见 [upstream-backport.md](upstream-backport.md)。
 
 ## 保留能力（唯一清单）
 
-- 元数据识别与刮削：TMDB（另保留 Bangumi / AniList 供动漫集数与季度识别）
+- 元数据识别与刮削：TMDB
 - 下载器：qBittorrent（列种子、查状态、取路径、删种）
 - 整理：目录监控（本地）、整理链（重命名 / 硬链接 / 分类）、手动整理、整理历史与下载历史
 - 媒体服务器：Emby（刷新、播放地址）
 - 通知：Telegram
 - 存储：local + 文件管理
 - 诊断：`moviepilot doctor`
-- 用户：单管理员 + swizzin 用户同步
+- 用户：仅用户名密码登录，账号由 swizzin 同步（已移除 PassKey）
 - 内置能力：下载文件同步、媒体同步删除、媒体库封面生成
 - 前端：本仓 `web/` 源码自建，产物由后端直接托管
 
@@ -62,7 +62,7 @@
 
 ## 阶段状态
 
-- [x] 阶段 0：基线与仓库（分支 `lite`、`upstream` remote、fork 文档、基线测试）
+- [x] 阶段 0：基线与仓库（分支 `main`、`upstream` remote、fork 文档、基线测试）
 - [x] 阶段 1：前端源码入库 `web/`、构建脚本、页面裁剪、依赖精简、版本号收敛
 - [x] 阶段 2：后端减法
   - [x] 2.1 站点子系统（索引器、站点字幕、CookieCloud、站点采集器；垫片已在阶段 5 删除）

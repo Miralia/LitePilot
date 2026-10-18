@@ -59,7 +59,7 @@ class ExampleModule(_ModuleBase, _DownloaderBase):
 
 ## 2. Chain Orchestration Pattern
 
-**When to use:** Adding a new business workflow that is shared across multiple entrypoints (API endpoint, CLI, agent, scheduler, webhook). Chains coordinate modules, helpers, databases, events, and caches.
+**When to use:** Adding a new business workflow that is shared across multiple entrypoints (API endpoint, CLI, scheduler, webhook). Chains coordinate modules, helpers, databases, events, and caches.
 
 **Base class:** `ChainBase` in `app/chain/__init__.py`
 
@@ -76,7 +76,7 @@ result = await self.async_run_module("method_name", kwarg1=val1)
 
 **Chain-to-chain calls:** A chain may call another chain to reuse stable domain logic. Avoid introducing new circular dependencies between chains.
 
-**File convention:** `app/chain/<domain>.py`, class name `<Domain>Chain` (e.g., `DownloadChain`, `SearchChain`, `SubscribeChain`).
+**File convention:** `app/chain/<domain>.py`, class name `<Domain>Chain` (e.g., `DownloadChain`, `MediaChain`, `TransferChain`).
 
 ---
 
@@ -115,7 +115,7 @@ eventmanager.send_event(EventType.TransferComplete, data_dict)
 **Convention:** Each SQLAlchemy model in `app/db/models/` has a corresponding `<Model>Oper` class in `app/db/<model>_oper.py`.
 
 ```
-app/db/models/subscribe.py       → app/db/subscribe_oper.py  (SubscribeOper)
+app/db/models/subscribe.py       → app/db/transferhistory_oper.py  (TransferHistoryOper)
 app/db/models/systemconfig.py    → app/db/systemconfig_oper.py (SystemConfigOper)
 app/db/models/transferhistory.py → app/db/transferhistory_oper.py (TransferHistoryOper)
 ```
@@ -123,9 +123,9 @@ app/db/models/transferhistory.py → app/db/transferhistory_oper.py (TransferHis
 **Usage:**
 
 ```python
-from app.db.subscribe_oper import SubscribeOper
+from app.db.subscribe_oper import TransferHistoryOper
 
-oper = SubscribeOper()
+oper = TransferHistoryOper()
 subscribe = oper.get(sid=1)
 oper.add(Subscribe(name="Example", type="电影"))
 ```
@@ -159,7 +159,7 @@ class MyChain(ChainBase, ConfigReloadMixin):
 
 ## 6. Singleton Pattern
 
-**When to use:** Classes that must have exactly one instance shared application-wide (e.g., `EventManager`, `ModuleManager`, `PluginManager`).
+**When to use:** Classes that must have exactly one instance shared application-wide (e.g., `EventManager`, `ModuleManager`).
 
 **Implementation:** Inherit from `Singleton` in `app/utils/singleton.py`.
 

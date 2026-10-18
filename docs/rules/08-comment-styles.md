@@ -97,7 +97,7 @@ if not self._initialized:
 
 ```python
 # 获取订阅列表  ← 这只是在重述代码，不需要
-subscribes = SubscribeOper().list()
+subscribes = TransferHistoryOper().list()
 
 # 如果 result 为 None 则返回  ← 无意义
 if result is None:

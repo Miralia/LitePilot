@@ -12,7 +12,7 @@
 
 1. `git fetch upstream v3` 获取上游参考（只读，不合并）。
 2. 定位目标提交或文件，阅读其设计动机（v3 的 `docs/adr/` 与 `docs/v2-to-v3-overview.md` 通常有说明）。
-3. 在 `lite` 分支按本仓分层**重写**，不做直接 cherry-pick（架构不同，v2 无 `domain/adapters/application/runtime` 分层）。
+3. 在 `main` 分支按本仓分层**重写**，不做直接 cherry-pick（架构不同，v2 无 `domain/adapters/application/runtime` 分层）。
 4. 补充或更新测试，保持 `python tests/run.py` 全绿与 pylint 通过。
 5. 在下表登记状态，并在"移植记录"中写明动机、落地位置与验证方式。
 

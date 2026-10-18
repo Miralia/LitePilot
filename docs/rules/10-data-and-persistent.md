@@ -8,19 +8,16 @@ Models are SQLAlchemy declarative classes. Each model maps to one database table
 
 | Model | Table Domain |
 |---|---|
-| `Subscribe` | Media subscriptions |
-| `SubscribeHistory` | Completed subscription records |
-| `TransferHistory` | File transfer history |
-| `DownloadHistory` / `DownloadFiles` | Download task history and file list |
-| `MediaServerItem` | Media server library item cache |
-| `SystemConfig` | Runtime key-value configuration store |
-| `UserConfig` | Per-user configuration store |
-| `User` | User accounts |
-| `Site` / `SiteIcon` / `SiteStatistic` / `SiteUserData` | Torrent site records and statistics |
-| `Message` | Message log |
-| `PluginData` | Plugin-persisted data |
-| `PassKey` | Passkey authentication records |
-| `Workflow` | Workflow definitions |
+| `TransferHistory` | 整理历史记录 |
+| `DownloadHistory` / `DownloadFiles` | 下载任务历史与种子文件清单 |
+| `DownloadFailure` | 整理失败记录 |
+| `MediaServerItem` | 媒体服务器条目缓存 |
+| `SystemConfig` | 运行时键值配置 |
+| `UserConfig` | 用户级配置 |
+| `User` | 用户账号（由 swizzin 同步） |
+| `Message` | 消息记录 |
+
+站点、订阅、插件、工作流、PassKey 等模型已随功能一并移除，不要重新引入。
 
 ---
 
@@ -52,27 +49,24 @@ Each model has a corresponding `*_oper.py` file containing the data access class
 
 | Oper Class | File |
 |---|---|
-| `SubscribeOper` | `subscribe_oper.py` |
 | `SystemConfigOper` | `systemconfig_oper.py` |
 | `TransferHistoryOper` | `transferhistory_oper.py` |
 | `DownloadHistoryOper` | `downloadhistory_oper.py` |
+| `DownloadFailureOper` | `downloadfailure_oper.py` |
 | `MediaServerOper` | `mediaserver_oper.py` |
 | `UserOper` | `user_oper.py` |
 | `UserConfigOper` | `userconfig_oper.py` |
 | `MessageOper` | `message_oper.py` |
-| `SiteOper` | `site_oper.py` |
-| `PluginDataOper` | `plugindata_oper.py` |
-| `WorkflowOper` | `workflow_oper.py` |
 
 **Standard Oper method conventions:**
 
 ```python
-oper = SubscribeOper()
-subscribe = oper.get(sid=1)           # Get by primary key or filter
-subscribes = oper.list()              # List all
-oper.add(Subscribe(...))              # Insert
-oper.update(sid=1, name="New Name")   # Update by key
-oper.delete(sid=1)                    # Delete by key
+oper = TransferHistoryOper()
+history = oper.get(hid=1)             # 按主键或条件查询
+histories = oper.list()               # 查询全部
+oper.add(TransferHistory(...))        # 新增
+oper.update(hid=1, title="New Title") # 按主键更新
+oper.delete(hid=1)                    # 按主键删除
 ```
 
 ---
