@@ -19,7 +19,7 @@ from app.core.context import MediaInfo
 from app.core.event import eventmanager
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfoPath
-from app.helper.builtinconf import load_conf
+from app.helper.builtinconf import library_cover_generator_conf, load_conf
 from app.helper.mediainfo import probe_media
 from app.schemas.system import MediaInfoProbeConf
 from app.db.downloadhistory_oper import DownloadHistoryOper
@@ -311,6 +311,22 @@ class JobManager:
             if file_key:
                 self._task_state_changed_at.pop(file_key, None)
                 self._active_executions.discard(file_key)
+
+    def has_pending_jobs(self) -> bool:
+        """
+        判断整理队列中是否还有未完成的作业。
+
+        用于「队列全部完成后再做后续动作」（如刷新媒体库封面），
+        避免每入库一部就重复触发，造成无谓的性能开销与阻塞。
+
+        :return: 仍有未完成作业时返回 True
+        """
+        with job_lock:
+            if not self._job_view:
+                return False
+            return any(
+                not self.__is_job_done(job_id) for job_id in list(self._job_view)
+            )
 
     def __remove_done_job_groups(self, job_ids: set[Tuple]):
         """
@@ -1215,6 +1231,12 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 self.__refresh_media_server_library(task, transferinfo)
             except Exception as err:  # pylint: disable=broad-except
                 logger.warning(f"媒体库刷新异常（不影响入库）：{err}")
+            # 队列全部处理完后再更新封面：批量入库时只触发一次，
+            # 避免每部都重新生成造成重复开销与阻塞
+            try:
+                self.__refresh_library_covers_when_idle()
+            except Exception as err:  # pylint: disable=broad-except
+                logger.warning(f"触发封面更新失败（不影响入库）：{err}")
 
         # 只要该种子的所有任务都已整理完成，则设置种子状态为已整理
         self.__mark_torrent_completed_if_done(task.download_hash, task.downloader)
@@ -1351,6 +1373,27 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         except Exception as e:
             logger.error(f"检查种子 {download_hash} 下载进度失败：{e}")
             return False
+
+    def __refresh_library_covers_when_idle(self) -> None:
+        """
+        整理队列全部完成后更新一轮媒体库封面。
+
+        批量入库时逐个触发封面生成会重复渲染同一批库且阻塞整理线程，
+        因此只在队列清空后执行一次；失败只记录日志。
+        """
+        cover_conf = library_cover_generator_conf()
+        if not cover_conf.enabled:
+            return
+        if self.jobview.has_pending_jobs():
+            logger.debug("整理队列仍有未完成任务，延后更新媒体库封面")
+            return
+        logger.info("整理队列已清空，开始更新媒体库封面")
+        from app.chain.mediacover import (  # pylint: disable=import-outside-toplevel
+            MediaCoverChain,
+        )
+
+        MediaCoverChain().process()
+        logger.info("媒体库封面更新完成")
 
     def __refresh_media_server_library(
             self, task: TransferTask, transferinfo: TransferInfo

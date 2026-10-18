@@ -127,3 +127,41 @@ def test_probe_conf_defaults():
     assert conf.override_resolution is True
     assert conf.override_source is True
 
+def test_cover_generator_runs_after_queue_idle():
+    """封面生成应在整理队列清空后才触发，且受开关控制。"""
+    from unittest.mock import MagicMock, patch
+
+    from app.chain.transfer import JobManager, TransferChain
+
+    jobview = JobManager()
+    chain = TransferChain()
+    chain.jobview = jobview
+
+    # 队列为空且开关关闭时不应触发
+    with patch("app.chain.transfer.library_cover_generator_conf") as conf_mock, \
+            patch("app.chain.mediacover.MediaCoverChain") as cover_mock:
+        conf_mock.return_value = MagicMock(enabled=False)
+        chain._TransferChain__refresh_library_covers_when_idle()
+        cover_mock.assert_not_called()
+
+    # 队列为空且开关开启时应触发
+    with patch("app.chain.transfer.library_cover_generator_conf") as conf_mock, \
+            patch("app.chain.mediacover.MediaCoverChain") as cover_mock:
+        conf_mock.return_value = MagicMock(enabled=True)
+        chain._TransferChain__refresh_library_covers_when_idle()
+        cover_mock.return_value.process.assert_called_once()
+
+    # 队列仍有未完成任务时不应触发
+    with patch("app.chain.transfer.library_cover_generator_conf") as conf_mock, \
+            patch.object(JobManager, "has_pending_jobs", return_value=True), \
+            patch("app.chain.mediacover.MediaCoverChain") as cover_mock:
+        conf_mock.return_value = MagicMock(enabled=True)
+        chain._TransferChain__refresh_library_covers_when_idle()
+        cover_mock.return_value.process.assert_not_called()
+
+
+def test_has_pending_jobs_false_for_empty_queue():
+    """空队列应判定为没有待处理作业。"""
+    from app.chain.transfer import JobManager
+
+    assert JobManager().has_pending_jobs() is False
