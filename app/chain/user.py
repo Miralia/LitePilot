@@ -42,7 +42,6 @@ class UserChain(ChainBase):
             username: Optional[str] = None,
             password: Optional[str] = None,
             mfa_code: Optional[str] = None,
-            code: Optional[str] = None,
             grant_type: Optional[str] = "password"
     ) -> Tuple[bool, Union[str, User, MfaRequired, None]]:
         """
@@ -51,8 +50,7 @@ class UserChain(ChainBase):
         :param username: 用户名，适用于 "password" grant_type
         :param password: 用户密码，适用于 "password" grant_type
         :param mfa_code: 一次性密码，适用于 "password" grant_type
-        :param code: 授权码，适用于 "authorization_code" grant_type
-        :param grant_type: 认证类型，如 "password", "authorization_code", "client_credentials"
+        :param grant_type: 认证类型，当前只支持 "password"
         :return:
             - 对于成功的认证，返回 (True, User)
             - 对于失败的认证，返回 (False, "错误信息")
@@ -61,7 +59,6 @@ class UserChain(ChainBase):
             username=username,
             password=password,
             mfa_code=mfa_code,
-            code=code,
             grant_type=grant_type
         )
         logger.debug(f"认证类型：{grant_type}，开始准备对用户 {username} 进行身份校验")
