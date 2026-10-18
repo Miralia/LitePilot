@@ -28,8 +28,7 @@ describe('DialogCloseBtn', () => {
       ),
     )
 
-    i18n.global.locale.value = 'en-US'
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Close' })).toBe(button))
+    await waitFor(() => expect(screen.getByRole('button', { name: '关闭' })).toBe(button))
 
     await user.click(button)
     expect(emitted()['update:modelValue']).toEqual([[false]])

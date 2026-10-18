@@ -33,7 +33,6 @@ from app.db.user_oper import (
     get_current_active_user_async,
 )
 from app.helper.image import ImageHelper
-from app.helper.locale import LocaleHelper
 from app.helper.message import MessageHelper
 from app.helper.progress import ProgressHelper
 from app.helper.system import SystemHelper
@@ -624,14 +623,13 @@ async def get_progress(
     实时获取处理进度，返回格式为SSE
     """
     progress = ProgressHelper(process_type)
-    locale = LocaleHelper.get_current_locale()
 
     async def event_generator():
         try:
             while not global_vars.is_system_stopped:
                 if await request.is_disconnected():
                     break
-                detail = progress.get(locale=locale)
+                detail = progress.get()
                 yield f"data: {json.dumps(detail)}\n\n"
                 await asyncio.sleep(0.5)
         except asyncio.CancelledError:
@@ -997,10 +995,6 @@ def modulelist(_: schemas.TokenPayload = Depends(verify_token)):
             {
                 "id": module_id,
                 "name": name,
-                "name_i18n": LocaleHelper.translate(
-                    f"system.modules.{module_id}.name",
-                    default=name,
-                ),
                 "name_key": f"system.modules.{module_id}.name",
             }
         )

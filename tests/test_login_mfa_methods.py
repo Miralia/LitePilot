@@ -114,4 +114,3 @@ def test_wallpaper_returns_url_in_data(monkeypatch):
     assert response.success is True
     assert response.data == "https://images.example/wallpaper.jpg"
     assert response.message is None
-    assert response.message_i18n is None

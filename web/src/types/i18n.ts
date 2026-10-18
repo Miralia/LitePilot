@@ -1,3 +1,8 @@
+/**
+ * 语言相关信息。
+ *
+ * 本分支只维护简体中文，保留该结构以便既有引用点无需改动。
+ */
 export interface LocaleInfo {
   name: string
   title: string
@@ -9,16 +14,6 @@ export const SUPPORTED_LOCALES: Record<string, LocaleInfo> = {
     name: 'zh-CN',
     title: '简体中文',
     flag: '🇨🇳',
-  },
-  'zh-TW': {
-    name: 'zh-TW',
-    title: '繁體中文',
-    flag: '🇨🇳',
-  },
-  'en-US': {
-    name: 'en-US',
-    title: 'English',
-    flag: '🇺🇸',
   },
 }
 

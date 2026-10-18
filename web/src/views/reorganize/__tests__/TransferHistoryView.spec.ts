@@ -614,11 +614,10 @@ describe('TransferHistoryView', () => {
 
     await renderHistory()
     expect(await screen.findByText('异常删除')).toBeInTheDocument()
-    i18n.global.locale.value = 'en-US'
     await fireEvent.click(screen.getByRole('button', { name: '删除' }))
     await getDialogCall().events.delete(false, false)
 
-    expect(mocks.toastError).toHaveBeenCalledWith('Failed to delete: Request failed')
+    expect(mocks.toastError).toHaveBeenCalledWith('删除失败：请求异常')
   })
 
   it('releases delete-dialog ownership when either close contract fires', async () => {
@@ -682,14 +681,13 @@ describe('TransferHistoryView', () => {
     runDynamicAction('transferHistory.actions.selectAll')
     await nextTick()
     runDynamicAction('transferHistory.actions.batchDelete')
-    i18n.global.locale.value = 'zh-TW'
     await getDialogCall().events.delete(false, false)
 
-    expect(screen.getByRole('button', { name: '退出批量選擇' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '退出批量选择' })).toBeInTheDocument()
     expect(getDynamicMenuItems()?.find(item => item.titleKey === 'transferHistory.selectedCount')?.titleParams).toEqual(
       { count: 0, total: 0 },
     )
-    expect(mocks.toastError).toHaveBeenCalledWith('刪除失敗：2/3')
+    expect(mocks.toastError).toHaveBeenCalledWith('删除失败：2/3')
 
     await fireEvent.click(screen.getByRole('button', { name: '加载下一页' }))
     expect(await screen.findByText('保留甲')).toBeInTheDocument()

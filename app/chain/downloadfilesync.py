@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from app.chain import ChainBase
 from app.db.downloadhistory_oper import DownloadHistoryOper
-from app.db.systemconfig_oper import SystemConfigOper
+from app.helper.builtinconf import download_file_sync_conf
 from app.helper.service import ServiceConfigHelper
 from app.log import logger
 from app.schemas.types import SystemConfigKey, TorrentStatus
@@ -74,8 +74,8 @@ class DownloadFileSyncChain(ChainBase):
         """
         同步所有处于可转移状态的种子的文件列表。
         """
-        # 同步历史记录开关：关闭时不做任何落库
-        if not SystemConfigOper().get(SystemConfigKey.DownloadFileSync):
+        conf = download_file_sync_conf()
+        if not conf.enabled:
             logger.debug("下载文件同步未启用，跳过本次同步")
             return
 
@@ -84,9 +84,17 @@ class DownloadFileSyncChain(ChainBase):
             logger.debug("未配置下载器，跳过下载文件同步")
             return
 
+        # 按配置筛选下载器
+        selected = {name for name in (conf.downloaders or []) if name}
         total = 0
+        synced = 0
+        limit_reached = False
         for downloader_conf in downloaders:
+            if limit_reached:
+                break
             downloader_name = downloader_conf.name
+            if selected and downloader_name not in selected:
+                continue
             torrents = self.list_torrents(
                 status=TorrentStatus.TRANSFER,
                 downloader=downloader_name,
@@ -96,6 +104,14 @@ class DownloadFileSyncChain(ChainBase):
             for torrent in torrents:
                 if not torrent.hash:
                     continue
+                # 限制单次同步数量，避免首次运行长时间占用
+                if conf.max_torrents and synced >= conf.max_torrents:
+                    logger.info(
+                        f"下载文件同步已达到单次上限 {conf.max_torrents} 个种子，本轮结束"
+                    )
+                    limit_reached = True
+                    break
+                synced += 1
                 try:
                     total += self._sync_torrent_files(
                         torrent_hash=torrent.hash,
@@ -105,4 +121,6 @@ class DownloadFileSyncChain(ChainBase):
                     logger.error(
                         f"下载文件同步失败：{downloader_name} - {torrent.hash} - {err}"
                     )
-        logger.info(f"下载文件同步完成，本次新增 {total} 条文件记录")
+        logger.info(
+            f"下载文件同步完成，本次处理 {synced} 个种子、新增 {total} 条文件记录"
+        )

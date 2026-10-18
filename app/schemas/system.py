@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -166,3 +166,68 @@ class TransferDirectoryConf(BaseModel):
     library_type_folder: Optional[bool] = False
     # 媒体库类别子目录
     library_category_folder: Optional[bool] = False
+
+
+class DownloadFileSyncConf(BaseModel):
+    """
+    下载文件同步配置。
+
+    定时把下载器中已完成种子的文件清单落库，供整理链判断种子是否完成、
+    以及联动删除时反查种子来源使用。
+    """
+
+    # 是否启用
+    enabled: bool = False
+    # 同步间隔（分钟）
+    interval_minutes: int = 5
+    # 仅同步这些下载器（留空表示全部）
+    downloaders: List[str] = Field(default_factory=list)
+    # 单次同步的最大种子数，避免首次运行耗时过长
+    max_torrents: int = 200
+    # 同步后是否清理已不存在的种子的文件记录
+    prune_missing: bool = False
+
+
+class SyncDelByMediaServerConf(BaseModel):
+    """
+    媒体服务器删除联动配置。
+
+    监听媒体服务器的深度删除事件，反查整理记录并同步清理本地文件与下载任务。
+    """
+
+    # 是否启用
+    enabled: bool = False
+    # 仅处理这些媒体服务器（留空表示全部）
+    servers: List[str] = Field(default_factory=list)
+    # 是否同时删除下载器任务
+    delete_torrent: bool = True
+    # 是否同时删除下载源文件
+    delete_source_file: bool = False
+    # 是否清理产生的空目录
+    remove_empty_dirs: bool = True
+    # 试运行：只记录将要删除的内容，不实际删除
+    dry_run: bool = False
+
+
+class LibraryCoverGeneratorConf(BaseModel):
+    """
+    媒体库封面生成配置。
+
+    取媒体库最近入库条目的海报，按固定风格渲染封面并回写媒体服务器。
+    """
+
+    # 是否启用
+    enabled: bool = False
+    # 执行时间（小时，0-23）
+    run_hour: int = 4
+    # 仅处理这些媒体库名称（留空表示全部电影/剧集库）
+    libraries: List[str] = Field(default_factory=list)
+    # 输出画布尺寸
+    width: int = 1920
+    height: int = 1080
+    # 中文字号与英文字号
+    zh_font_size: int = 150
+    en_font_size: int = 62
+    # 背景模糊半径与配色占比
+    blur_size: int = 50
+    color_ratio: float = 0.8

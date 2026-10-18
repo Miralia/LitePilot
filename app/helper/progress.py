@@ -2,7 +2,6 @@ from enum import Enum
 from typing import Optional, Union
 
 from app.core.cache import TTLCache
-from app.helper.locale import LocaleHelper
 from app.schemas.types import ProgressKey
 
 
@@ -83,34 +82,10 @@ class ProgressHelper:
             current['data'].update(data)
         self._progress[self._key] = current
 
-    def get(self, locale: Optional[str] = None) -> Optional[dict]:
+    def get(self) -> Optional[dict]:
         """
-        获取当前进度，并按语言补充前端展示字段。
+        获取当前进度。
 
-        :param locale: 目标语言，未传入时使用当前请求上下文语言
         :return: 当前进度字典
         """
-        current = self._progress.get(self._key)
-        if not current:
-            return current
-
-        detail = current.copy()
-        text = detail.get("text")
-        if isinstance(text, str):
-            detail["text_i18n"] = LocaleHelper.translate_text(text, locale=locale)
-
-        data = detail.get("data")
-        if isinstance(data, dict):
-            localized_data = data.copy()
-            error = localized_data.get("error")
-            message = localized_data.get("message")
-            if isinstance(error, str):
-                localized_data["error_i18n"] = LocaleHelper.translate_text(
-                    error, locale=locale
-                )
-            if isinstance(message, str):
-                localized_data["message_i18n"] = LocaleHelper.translate_text(
-                    message, locale=locale
-                )
-            detail["data"] = localized_data
-        return detail
+        return self._progress.get(self._key)

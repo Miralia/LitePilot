@@ -5,12 +5,11 @@ import { useTheme } from 'vuetify'
 import { useAuthStore, useUserStore } from '@/stores'
 import { authState, userState } from '@/stores/types'
 import api from '@/api'
+import { getCurrentLocale } from '@/plugins/i18n'
 import router from '@/router'
 import LoginMfaStep from '@/components/auth/LoginMfaStep.vue'
 import OpticalLogoLab from '@/components/misc/OpticalLogoLab.vue'
 import { bufferToBase64Url, base64UrlToUint8Array, urlBase64ToUint8Array } from '@/@core/utils/navigator'
-import { SUPPORTED_LOCALES, SupportedLocale } from '@/types/i18n'
-import { getCurrentLocale, setI18nLanguage } from '@/plugins/i18n'
 import { getNavMenus } from '@/router/i18n-menu'
 import { buildUserPermissionContext, filterMenusByPermission } from '@/utils/permission'
 import type { ApiResponse } from '@/api/types'
@@ -89,14 +88,8 @@ const mfaOtpLoading = ref(false)
 
 const mfaMethods = ref<MfaMethod[]>([])
 
-// 语言选择菜单
-const langMenu = ref(false)
-
-// 当前语言
+// 当前语言（固定简体中文，供 OpticalLogoLab 作 Intl locale 使用）
 const currentLocale = ref(getCurrentLocale())
-
-// 可用的语言列表
-const locales = Object.values(SUPPORTED_LOCALES)
 
 // 登录按钮 loading
 const loading = ref(false)
@@ -434,13 +427,6 @@ async function loginWithPassKey(isConditional = false) {
   )
 }
 
-// 切换语言
-async function switchLanguage(locale: SupportedLocale) {
-  await setI18nLanguage(locale)
-  currentLocale.value = locale
-  langMenu.value = false
-}
-
 // 订阅推送通知
 async function subscribeForPushNotifications() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
@@ -691,32 +677,6 @@ onUnmounted(() => {
       <span class="login-ambient-light__wash" />
     </div>
 
-    <!-- 顶部漂浮语言切换 -->
-    <VMenu v-model="langMenu" :close-on-content-click="false">
-      <template #activator="{ props }">
-        <VBtn variant="text" size="small" v-bind="props" class="lang-switch-btn">
-          <span v-if="SUPPORTED_LOCALES[currentLocale].flag">{{ SUPPORTED_LOCALES[currentLocale].flag }}</span>
-          <VIcon v-else icon="mdi-translate" />
-          <span class="ms-1">{{ SUPPORTED_LOCALES[currentLocale].title }}</span>
-        </VBtn>
-      </template>
-      <VCard min-width="180" class="lang-menu-card">
-        <VList>
-          <VListItem
-            v-for="locale in locales"
-            :key="locale.name"
-            :value="locale.name"
-            @click="switchLanguage(locale.name as SupportedLocale)"
-          >
-            <template #prepend>
-              <span v-if="locale.flag" class="mr-2">{{ locale.flag }}</span>
-              <VIcon v-else icon="mdi-translate" size="small" />
-            </template>
-            <VListItemTitle>{{ locale.title }}</VListItemTitle>
-          </VListItem>
-        </VList>
-      </VCard>
-    </VMenu>
 
     <!-- 登录表单 -->
     <div class="auth-wrapper d-flex align-center justify-center">

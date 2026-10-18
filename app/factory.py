@@ -7,7 +7,6 @@ from fastapi.responses import JSONResponse
 
 from app.api.apiv2_utils import OPENAPI_V2_PATH, V2ResponseMiddleware
 from app.core.config import settings
-from app.helper.locale import LocaleHelper
 from app.startup.lifecycle import lifespan
 from version import APP_VERSION
 
@@ -74,22 +73,6 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     _app.add_middleware(V2ResponseMiddleware)
-
-    @_app.middleware("http")
-    async def locale_context_middleware(
-            request: Request,
-            call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
-        """
-        为每个请求设置后端多语言上下文。
-        """
-        token = LocaleHelper.set_current_locale(
-            LocaleHelper.get_locale_from_request(request)
-        )
-        try:
-            return await call_next(request)
-        finally:
-            LocaleHelper.reset_current_locale(token)
 
     return _app
 

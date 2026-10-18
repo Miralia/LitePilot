@@ -13,12 +13,12 @@ from typing import List, Optional, Tuple
 from app.chain import ChainBase
 from app.chain.mediaserver import MediaServerChain
 from app.core.config import settings
-from app.db.systemconfig_oper import SystemConfigOper
+from app.helper.builtinconf import library_cover_generator_conf
 from app.helper.mediaserver import MediaServerHelper
 from app.log import logger
 from app.helper.coverstyle import create_style_static_2
 from app.schemas.mediaserver import MediaServerLibrary, MediaServerPlayItem
-from app.schemas.types import MediaType, SystemConfigKey
+from app.schemas.types import MediaType
 from app.utils.http import RequestUtils
 
 # 霞鹜真楷（LXGW ZhenKai）固定字体来源
@@ -27,7 +27,7 @@ ZH_FONT_URL = (
     "LXGWZhenKaiSlabGB-Regular.ttf"
 )
 ZH_FONT_FILENAME = "LXGWZhenKaiSlabGB-Regular.ttf"
-# 输出画布尺寸，与 1080p 媒体库封面比例一致
+# 输出画布尺寸默认值，与 1080p 媒体库封面比例一致，可由配置覆盖
 CANVAS_SIZE = (1920, 1080)
 
 
@@ -125,13 +125,15 @@ class MediaCoverChain(ChainBase):
                 return zh_title.strip(), en_title.strip()
         return name, ""
 
-    def _render_cover(self, library: MediaServerLibrary) -> Optional[bytes]:
+    def _render_cover(self, library: MediaServerLibrary, conf=None) -> Optional[bytes]:
         """
         渲染单个媒体库的封面。
 
         :param library: 媒体库信息
+        :param conf: 封面生成配置，为空时读取当前配置
         :return: PNG 图片内容，失败时返回 None
         """
+        conf = conf or library_cover_generator_conf()
         source = getattr(library, "_source_image", None)
         if not source:
             return None
@@ -149,11 +151,15 @@ class MediaCoverChain(ChainBase):
             temp_file.write(source)
             temp_path = Path(temp_file.name)
         try:
+            canvas_size = (conf.width or CANVAS_SIZE[0], conf.height or CANVAS_SIZE[1])
             image = create_style_static_2(
                 image_path=str(temp_path),
                 title=title,
                 font_path=(str(font_path), str(font_path)),
-                resolution_config=type("Resolution", (), {"size": CANVAS_SIZE})(),
+                font_size=(conf.zh_font_size, conf.en_font_size),
+                blur_size=conf.blur_size,
+                color_ratio=conf.color_ratio,
+                resolution_config=type("Resolution", (), {"size": canvas_size})(),
             )
         finally:
             temp_path.unlink(missing_ok=True)
@@ -167,7 +173,8 @@ class MediaCoverChain(ChainBase):
         """
         为每个媒体库生成封面并回写媒体服务器。
         """
-        if not SystemConfigOper().get(SystemConfigKey.LibraryCoverGenerator):
+        conf = library_cover_generator_conf()
+        if not conf.enabled:
             logger.debug("媒体库封面生成未启用，跳过本次任务")
             return
 
@@ -181,6 +188,7 @@ class MediaCoverChain(ChainBase):
             logger.error("缺少封面字体，跳过封面生成")
             return
 
+        allowed = {str(name) for name in (conf.libraries or []) if name}
         for server_name, service in services.items():
             libraries = MediaServerChain().librarys(server=server_name)
             if not libraries:
@@ -188,11 +196,14 @@ class MediaCoverChain(ChainBase):
             for library in libraries:
                 if library.type not in (MediaType.MOVIE.value, MediaType.TV.value):
                     continue
+                if allowed and str(library.name or "") not in allowed:
+                    logger.debug(f"媒体库 {library.name} 不在封面生成范围内，跳过")
+                    continue
                 source = self._latest_source_image(server_name, library)
                 if not source:
                     continue
                 setattr(library, "_source_image", source)
-                cover = self._render_cover(library)
+                cover = self._render_cover(library, conf=conf)
                 if not cover:
                     continue
                 if self._upload_cover(service.instance, library, cover):

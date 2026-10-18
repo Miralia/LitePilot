@@ -30,6 +30,7 @@ from app.db.models.downloadhistory import DownloadHistory, DownloadFiles
 from app.db.models.message import Message
 from app.db.models.transferhistory import TransferHistory
 from app.db.systemconfig_oper import SystemConfigOper
+from app.helper.builtinconf import download_file_sync_conf, library_cover_generator_conf
 from app.helper.image import WallpaperHelper
 from app.helper.message import MessageHelper
 from app.helper.progress import ProgressHelper
@@ -499,26 +500,30 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
 
 
 
-            # 下载文件同步（插件能力内置化）
-            self._scheduler.add_job(
-                self.start,
-                "interval",
-                id="download_file_sync",
-                name="下载文件同步",
-                minutes=5,
-                kwargs={"job_id": "download_file_sync"},
-            )
+            # 下载文件同步（插件能力内置化，间隔来自配置）
+            sync_conf = download_file_sync_conf()
+            if sync_conf.enabled:
+                self._scheduler.add_job(
+                    self.start,
+                    "interval",
+                    id="download_file_sync",
+                    name="下载文件同步",
+                    minutes=max(1, int(sync_conf.interval_minutes or 5)),
+                    kwargs={"job_id": "download_file_sync"},
+                )
 
-            # 媒体库封面生成（插件能力内置化）
-            self._scheduler.add_job(
-                self.start,
-                "cron",
-                id="library_cover_generator",
-                name="媒体库封面生成",
-                hour=4,
-                minute=0,
-                kwargs={"job_id": "library_cover_generator"},
-            )
+            # 媒体库封面生成（插件能力内置化，执行时刻来自配置）
+            cover_conf = library_cover_generator_conf()
+            if cover_conf.enabled:
+                self._scheduler.add_job(
+                    self.start,
+                    "cron",
+                    id="library_cover_generator",
+                    name="媒体库封面生成",
+                    hour=max(0, min(23, int(cover_conf.run_hour))),
+                    minute=0,
+                    kwargs={"job_id": "library_cover_generator"},
+                )
 
             # 主动内存回收
             if settings.MEMORY_GC_INTERVAL:

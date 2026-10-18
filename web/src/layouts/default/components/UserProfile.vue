@@ -7,9 +7,7 @@ import { openSharedDialog } from '@/composables/useSharedDialog'
 import { useAuthStore, useUserStore, useGlobalSettingsStore } from '@/stores'
 import { useI18n } from 'vue-i18n'
 import { useTheme } from 'vuetify'
-import { SUPPORTED_LOCALES, SupportedLocale } from '@/types/i18n'
 import { checkPrefersColorSchemeIsDark } from '@/@core/utils'
-import { getCurrentLocale, setI18nLanguage } from '@/plugins/i18n'
 import { saveLocalTheme } from '@/@core/utils/theme'
 import type { ThemeSwitcherTheme } from '@layouts/types'
 import { useConfirm } from '@/composables/useConfirm'
@@ -57,7 +55,6 @@ const showUserMenu = ref(false)
 const showThemeMenu = ref(false)
 
 // 语言菜单是否显示
-const showLanguageMenu = ref(false)
 
 // 自定义CSS
 const customCSS = ref('')
@@ -481,38 +478,6 @@ try {
   console.error(t('theme.deviceNotSupport'))
 }
 
-// 语言相关功能
-const currentLocale = ref<SupportedLocale>(getCurrentLocale())
-
-// 支持的语言列表
-const locales = computed(() => {
-  return Object.entries(SUPPORTED_LOCALES).map(([key, locale]) => ({
-    value: key as SupportedLocale,
-    title: locale.title,
-    flag: locale.flag,
-    icon: `flag-${key.split('-')[0]}`,
-  }))
-})
-
-// 切换语言
-async function changeLocale(locale: SupportedLocale) {
-  showLanguageMenu.value = false
-  try {
-    await setI18nLanguage(locale)
-    currentLocale.value = locale
-    // 刷新页面
-    window.location.reload()
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-// 获取当前语言图标
-const getCurrentIcon = computed(() => {
-  const locale = locales.value.find(l => l.value === currentLocale.value)
-  return locale?.flag || '🌐'
-})
-
 // 获取当前主题图标
 const getThemeIcon = computed(() => {
   const theme = themes.find(t => t.name === currentThemeName.value)
@@ -691,40 +656,6 @@ onUnmounted(() => {
                 <VListItemTitle>{{ t('theme.custom') }}</VListItemTitle>
                 <template #append>
                   <VIcon icon="mdi-chevron-right" size="small" />
-                </template>
-              </VListItem>
-            </VList>
-          </VMenu>
-
-          <!-- 👉 语言设置 - 使用嵌套菜单 -->
-          <VMenu location="end" offset-x width="15rem" v-model="showLanguageMenu" :close-on-content-click="true">
-            <template v-slot:activator="{ props: menuProps }">
-              <VListItem v-bind="menuProps" class="mb-1 rounded-lg" hover>
-                <template #prepend>
-                  <span class="me-4">{{ getCurrentIcon }}</span>
-                </template>
-                <VListItemTitle>
-                  {{ locales.find(l => l.value === currentLocale)?.title || t('common.language') }}
-                </VListItemTitle>
-                <template #append>
-                  <VIcon icon="mdi-chevron-right" size="small" />
-                </template>
-              </VListItem>
-            </template>
-            <VList>
-              <VListItem
-                v-for="locale in locales"
-                :key="locale.value"
-                @click="changeLocale(locale.value)"
-                :active="currentLocale === locale.value"
-                class="mb-1"
-              >
-                <template #prepend>
-                  <span class="text-xl me-2">{{ locale.flag }}</span>
-                </template>
-                <VListItemTitle>{{ locale.title }}</VListItemTitle>
-                <template #append v-if="currentLocale === locale.value">
-                  <VIcon icon="mdi-check" color="primary" size="small" />
                 </template>
               </VListItem>
             </VList>

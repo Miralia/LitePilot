@@ -2,6 +2,7 @@
 <script lang="ts" setup>
 import { useToast } from 'vue-toastification'
 import api from '@/api'
+import BuiltinFeatureSettings from '@/components/misc/BuiltinFeatureSettings.vue'
 import { useGlobalSettingsStore } from '@/stores'
 import { DownloaderConf, MediaServerConf } from '@/api/types'
 import DownloaderCard from '@/components/cards/DownloaderCard.vue'
@@ -48,9 +49,6 @@ const SystemSettings = ref<any>({
     DB_WAL_ENABLE: false,
     MOVIEPILOT_AUTO_UPDATE: false,
     DATA_CLEANUP_ENABLE: false,
-    DOWNLOAD_FILE_SYNC: true,
-    SYNC_DEL_BY_MEDIA_SERVER: false,
-    LIBRARY_COVER_GENERATOR: false,
     DATA_CLEANUP_MESSAGE_DAYS: 90,
     DATA_CLEANUP_DOWNLOAD_HISTORY_DAYS: 180,
     DATA_CLEANUP_TRANSFER_HISTORY_DAYS: 365 * 3,
@@ -795,29 +793,8 @@ useSilentSettingRefresh(
           <VWindowItem value="system">
             <div>
               <VRow>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.DOWNLOAD_FILE_SYNC"
-                    :label="t('setting.system.downloadFileSync')"
-                    :hint="t('setting.system.downloadFileSyncHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.SYNC_DEL_BY_MEDIA_SERVER"
-                    :label="t('setting.system.syncDelByMediaServer')"
-                    :hint="t('setting.system.syncDelByMediaServerHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.LIBRARY_COVER_GENERATOR"
-                    :label="t('setting.system.libraryCoverGenerator')"
-                    :hint="t('setting.system.libraryCoverGeneratorHint')"
-                    persistent-hint
-                  />
+                <VCol cols="12">
+                  <BuiltinFeatureSettings />
                 </VCol>
                 <VCol cols="12" md="6">
                   <VSwitch

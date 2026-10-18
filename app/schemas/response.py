@@ -1,8 +1,6 @@
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, model_validator
-
-from app.helper.locale import LocaleHelper
+from pydantic import BaseModel, Field
 
 
 class Response(BaseModel):
@@ -12,18 +10,5 @@ class Response(BaseModel):
     success: bool
     # 消息文本
     message: Optional[str] = None
-    # 多语言消息文本
-    message_i18n: Optional[str] = None
     # 数据
     data: Optional[Any] = Field(default_factory=dict)
-
-    @model_validator(mode="after")
-    def fill_message_i18n(self) -> "Response":
-        """
-        自动补充响应消息的多语言文本。
-        """
-        if self.message and self.message_i18n is None:
-            self.message_i18n = LocaleHelper.translate_text(
-                self.message, locale=LocaleHelper.get_current_locale()
-            )
-        return self

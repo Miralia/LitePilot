@@ -26,10 +26,9 @@ const display = useDisplay()
 // PWA模式检测
 const { appMode } = usePWA()
 const { isLaunchLoading } = useLaunchLoading()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 
 // 判断当前是否为英文环境
-const isEnglish = computed(() => locale.value === 'en-US')
 
 const route = useRoute()
 
@@ -245,7 +244,7 @@ function handleDynamicMenuItemClick(item: DynamicButtonMenuItem) {
               >
                 <div class="btn-content">
                   <VIcon :icon="menu.icon" size="32"></VIcon>
-                  <span v-if="!isEnglish" class="text-xs">{{ menu.title }}</span>
+                  <span class="text-xs">{{ menu.title }}</span>
                 </div>
               </VBtn>
 
@@ -262,7 +261,7 @@ function handleDynamicMenuItemClick(item: DynamicButtonMenuItem) {
               >
                 <div class="btn-content">
                   <VIcon icon="mdi-dots-horizontal" size="32"></VIcon>
-                  <span v-if="!isEnglish" class="text-xs">{{ t('nav.more') }}</span>
+                  <span class="text-xs">{{ t('nav.more') }}</span>
                 </div>
               </VBtn>
             </VBtnToggle>

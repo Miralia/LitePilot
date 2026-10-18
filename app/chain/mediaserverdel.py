@@ -7,11 +7,11 @@ from app.chain.storage import StorageChain
 from app.core.config import settings
 from app.core.event import eventmanager
 from app.db.downloadhistory_oper import DownloadHistoryOper
-from app.db.systemconfig_oper import SystemConfigOper
 from app.db.transferhistory_oper import TransferHistoryOper
+from app.helper.builtinconf import sync_del_by_media_server_conf
 from app.log import logger
 from app.schemas import FileItem
-from app.schemas.types import EventType, MediaType, SystemConfigKey
+from app.schemas.types import EventType, MediaType
 
 
 class MediaServerDelChain(ChainBase):
@@ -104,12 +104,14 @@ class MediaServerDelChain(ChainBase):
             ),
         )
 
-    def _delete_source(self, history) -> None:
+    def _delete_source(self, history, conf=None) -> None:
         """
         删除整理记录的源文件与媒体库文件，并按需删除下载任务。
 
         :param history: 整理历史记录
+        :param conf: 联动删除配置，为空时读取当前配置
         """
+        conf = conf or sync_del_by_media_server_conf()
         storagechain = StorageChain()
 
         # 媒体库文件（硬链接或移动后的目标文件）
@@ -118,10 +120,11 @@ class MediaServerDelChain(ChainBase):
                 FileItem(storage=history.dest_storage or "local", path=history.dest)
             )
 
-        # 下载源文件：仅本地源、且整理方式不是移动时删除
+        # 下载源文件：仅本地源、且整理方式不是移动时删除；可由配置关闭
         src_path = Path(history.src) if history.src else None
         if (
-            src_path
+            conf.delete_source_file
+            and src_path
             and src_path.suffix in settings.RMT_MEDIAEXT
             and (history.src_storage or "local") == "local"
             and history.mode != "move"
@@ -130,11 +133,11 @@ class MediaServerDelChain(ChainBase):
             logger.info(f"正在删除下载源文件：{history.src}")
             if storagechain.delete_file(
                 FileItem(storage=history.src_storage or "local", path=history.src)
-            ):
+            ) and conf.remove_empty_dirs:
                 self._remove_empty_parents(src_path)
 
-        # 源文件已全部删除时，删除下载器任务
-        if history.download_hash:
+        # 源文件已全部删除时，删除下载器任务；可由配置关闭
+        if conf.delete_torrent and history.download_hash:
             self.downloadhis.delete_file_by_fullpath(fullpath=history.src)
             remain = self.downloadhis.get_files_by_hash(download_hash=history.download_hash, state=1)
             if remain:
@@ -187,6 +190,7 @@ class MediaServerDelChain(ChainBase):
             logger.warn(f"{msg} 未查询到可删除的整理记录，跳过同步删除")
             return
 
+        conf = sync_del_by_media_server_conf()
         logger.info(f"正在同步删除{msg}，共 {len(histories)} 条整理记录")
         for history in histories:
             # 标题不符时防误删
@@ -195,10 +199,15 @@ class MediaServerDelChain(ChainBase):
                     f"整理记录 {history.id}（{history.title}）与删除媒体 {media_name} 不符，跳过"
                 )
                 continue
+            if conf.dry_run:
+                logger.info(
+                    f"[试运行] 将删除整理记录 {history.id}（{history.title}）、"
+                    f"目标 {history.dest}、源 {history.src}"
+                )
+                continue
             try:
                 self.transferhis.delete(history.id)
-                if SystemConfigOper().get(SystemConfigKey.DownloadFileSync):
-                    self._delete_source(history)
+                self._delete_source(history, conf=conf)
             except Exception as err:
                 logger.error(f"同步删除整理记录 {history.id} 失败：{err}")
 
@@ -233,13 +242,22 @@ class MediaServerDelChain(ChainBase):
         """
         if not event or not event.event_data:
             return
-        if not SystemConfigOper().get(SystemConfigKey.SyncDelByMediaServer):
+        conf = sync_del_by_media_server_conf()
+        if not conf.enabled:
             return
 
         event_data = event.event_data
         event_type = getattr(event_data, "event", None)
         # 仅处理「深度删除」事件，普通播放/入库事件不触发
         if not event_type or str(event_type) != "deep.delete":
+            return
+
+        # 按配置限定媒体服务器
+        allowed = {str(name) for name in (conf.servers or []) if name}
+        if allowed and str(getattr(event_data, "server_name", "") or "") not in allowed:
+            logger.debug(
+                f"媒体服务器 {getattr(event_data, 'server_name', None)} 不在联动删除范围内，跳过"
+            )
             return
 
         media_name = event_data.item_name
