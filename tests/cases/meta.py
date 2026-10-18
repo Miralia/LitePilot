@@ -521,7 +521,7 @@ meta_cases = [{
         "episode": "E03",
         "restype": "WEBRip",
         "pix": "1080p",
-        "video_codec": "HEVC 10bit",
+        "video_codec": "HEVC",
         "audio_codec": "AAC",
         "fps": None
     }
@@ -572,7 +572,7 @@ meta_cases = [{
         "episode": "E01",
         "restype": "WEBRip",
         "pix": "1080p",
-        "video_codec": "HEVC 10bit",
+        "video_codec": "HEVC",
         "audio_codec": "DD+",
         "fps": None
     }
@@ -589,7 +589,7 @@ meta_cases = [{
         "episode": "E01",
         "restype": "WEBRip",
         "pix": "1080p",
-        "video_codec": "HEVC 10bit",
+        "video_codec": "HEVC",
         "audio_codec": "AAC",
         "fps": None
     }
@@ -810,7 +810,7 @@ meta_cases = [{
         "episode": "",
         "restype": "BluRay",
         "pix": "1080p",
-        "video_codec": "x265 10bit",
+        "video_codec": "x265",
         "audio_codec": "DTS-HD MA 5.1",
         "fps": None
     }
@@ -946,7 +946,7 @@ meta_cases = [{
         "episode": "E01",
         "restype": "",
         "pix": "1080p",
-        "video_codec": "x264 10bit",
+        "video_codec": "x264",
         "audio_codec": "",
         "fps": None
     }
@@ -1231,7 +1231,7 @@ meta_cases = [{
         "episode": "",
         "restype": "BluRay",
         "pix": "1080p",
-        "video_codec": "x265 10bit",
+        "video_codec": "x265",
         "audio_codec": "2Audio"
     }
 }, {

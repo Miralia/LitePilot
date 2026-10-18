@@ -3006,6 +3006,25 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             path_meta = _apply_mediainfo_probe(path_meta, source_path)
             return _apply_meta_overrides(path_meta, source_path)
 
+        def _correct_codec(value: str) -> str:
+            """
+            把 mediainfo 的 Format 名称映射为项目内标准写法。
+
+            :param value: mediainfo 输出的编码名，如 HEVC / AVC / AAC
+            :return: 标准化后的编码名
+            """
+            text = str(value or "").strip()
+            upper = text.upper()
+            mapping = {
+                "AVC": "H264", "H.264": "H264", "H264": "H264",
+                "HEVC": "H265", "H.265": "H265", "H265": "H265",
+                "AV1": "AV1", "VP9": "VP9", "MPEG-4": "MPEG4",
+                "E-AC-3": "DD+", "EAC3": "DD+", "AC-3": "DD", "AC3": "DD",
+                "DTS": "DTS", "TRUEHD": "TrueHD", "FLAC": "FLAC",
+                "AAC": "AAC", "OPUS": "Opus", "VORBIS": "Vorbis",
+            }
+            return mapping.get(upper, text)
+
         def _apply_mediainfo_probe(
                 current_meta: MetaBase, source_path: Path
         ) -> MetaBase:
@@ -3042,6 +3061,12 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             # 来源：标题里没有 ProRes/DCP/Master 这类标记时由文件补齐
             if probe_conf.override_source and info.get("source") and not current_meta.resource_type:
                 current_meta.resource_type = info["source"]
+            # 编码以真实文件为准校正：标题可能写 x265 而实际是 AVC，
+            # mediainfo 读的是文件本身，权威性高于标题文本
+            if probe_conf.enabled and info.get("video_codec"):
+                current_meta.video_encode = _correct_codec(info["video_codec"])
+            if probe_conf.enabled and info.get("audio_codec"):
+                current_meta.audio_encode = _correct_codec(info["audio_codec"])
             return current_meta
 
         def _apply_meta_overrides(

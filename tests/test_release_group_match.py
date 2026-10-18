@@ -242,3 +242,25 @@ def test_video_codec_keeps_original_form(title):
     from app.core.meta import MetaVideo
 
     assert MetaVideo(title).video_encode is not None
+
+
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        # 位深不进编码描述：通知与文件名都不应出现 10bit
+        ("Movie.2024.1080p.x265.10bit-GRP", "x265"),
+        ("[G] Show [X265 10bit]", "x265"),
+        ("[Studio G] Show [WebRip 1080p HEVC-10bit AAC].mkv", "HEVC"),
+        # H.264 / H.265 去掉点号
+        ("Movie.2024.1080p.H.264-GRP", "H264"),
+        ("Movie.2024.1080p.H.265-GRP", "H265"),
+        ("[G] Show [H.264 AAC]", "H264"),
+    ],
+)
+def test_video_encode_excludes_bit_depth(title, expected):
+    """编码字段不含位深，且 H26x 不带点号。"""
+    from app.core.meta import MetaVideo
+    from app.core.metainfo import MetaInfo
+
+    assert MetaVideo(title).video_encode == expected
+    assert MetaInfo(title).video_encode == expected

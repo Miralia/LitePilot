@@ -356,7 +356,7 @@ def test_find_metainfo_does_not_support_episode_group_alias():
 def test_video_bit_extracted_for_video_title():
     """测试普通影视标题中的视频位深可单独识别。"""
     meta = MetaInfo(title="The 355 2022 BluRay 1080p DTS-HD MA5.1 X265.10bit-BeiTai")
-    assert meta.video_encode == "x265 10bit"
+    assert meta.video_encode == "x265"
     assert meta.video_bit == "10bit"
 
 
@@ -434,7 +434,7 @@ def test_video_bit_extracted_for_anime_title():
               "[X264 10bit][1080p][简体中文].mp4"
     )
     # x26x 统一小写，位深并入编码描述
-    assert meta.video_encode == "x264 10bit"
+    assert meta.video_encode == "x264"
     assert meta.video_bit == "10bit"
 
 
