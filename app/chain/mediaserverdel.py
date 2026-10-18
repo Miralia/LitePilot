@@ -196,7 +196,13 @@ class MediaServerDelChain(ChainBase):
         if torrents is None:
             # 查询不可用时保守处理，交给后续逻辑判断
             return True
-        return bool(torrents)
+        # 下载器对无效 hash 会忽略过滤条件返回全部任务，
+        # 因此不能只看结果是否为空，必须按 hash 精确比对
+        target = str(torrent_hash).lower()
+        return any(
+            str(getattr(item, "hash", "") or "").lower() == target
+            for item in torrents
+        )
 
     def sync_del(
             self,
