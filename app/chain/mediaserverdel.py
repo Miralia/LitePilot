@@ -82,9 +82,16 @@ class MediaServerDelChain(ChainBase):
         mtype = MediaType.MOVIE if media_type in ("Movie", "MOV") else MediaType.TV
 
         if mtype == MediaType.MOVIE:
+            histories = self.transferhis.get_by(
+                tmdbid=tmdb_id, mtype=mtype.value, dest=media_path
+            )
+            if histories:
+                return f"电影 {media_name} {tmdb_id}", histories
+            # ScripterX 拼接 URL 时不转义 `+`，含 `DD+` 的路径会被解码改写，
+            # dest 精确匹配可能失败；tmdbid 已足够定位电影，降级查询
             return (
                 f"电影 {media_name} {tmdb_id}",
-                self.transferhis.get_by(tmdbid=tmdb_id, mtype=mtype.value, dest=media_path),
+                self.transferhis.get_by(tmdbid=tmdb_id, mtype=mtype.value),
             )
         if not season:
             return (
@@ -98,6 +105,17 @@ class MediaServerDelChain(ChainBase):
                     tmdbid=tmdb_id, mtype=mtype.value, season=f"S{season}"
                 ),
             )
+        histories = self.transferhis.get_by(
+            tmdbid=tmdb_id,
+            mtype=mtype.value,
+            season=f"S{season}",
+            episode=f"E{episode}",
+            dest=media_path,
+        )
+        if histories:
+            return f"剧集 {media_name} S{season}E{episode} {tmdb_id}", histories
+        # dest 精确匹配失败时按季集降级：tmdbid+季+集已能唯一定位，
+        # 后续以「媒体库文件是否真的不存在」过滤，不会误删仍存在的内容
         return (
             f"剧集 {media_name} S{season}E{episode} {tmdb_id}",
             self.transferhis.get_by(
@@ -105,7 +123,6 @@ class MediaServerDelChain(ChainBase):
                 mtype=mtype.value,
                 season=f"S{season}",
                 episode=f"E{episode}",
-                dest=media_path,
             ),
         )
 

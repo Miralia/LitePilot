@@ -1170,7 +1170,9 @@ class Emby:
             eventItem.client = message.get('Session').get('Client')
         if message.get("User"):
             eventItem.user_name = message.get("User").get('Name')
-        if message.get("item_isvirtual"):
+        # ScripterX 以 query 参数传入，未编码的值可能是字符串 "False"，
+        # 必须按字面判断，否则 "False" 也被视为真值
+        if str(message.get("item_isvirtual", "")).lower() == "true":
             eventItem.item_isvirtual = message.get("item_isvirtual")
             eventItem.item_type = message.get("item_type")
             eventItem.item_name = message.get("item_name")
