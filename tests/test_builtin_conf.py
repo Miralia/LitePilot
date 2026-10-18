@@ -218,3 +218,30 @@ def test_cleanup_keeps_file_when_target_missing(tmp_path):
         chain._TransferChain__cleanup_source_after_link(task, transferinfo)
 
     assert source.exists(), "目标缺失时源文件必须保留"
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        # Sabnzbd 下载中就把解压产物放进 _UNPACK_<job>/，完成才改名；
+        # 监控必须跳过，否则会整理出半成品
+        ("/home/user/Downloads/Movie/_UNPACK_Persona.1966/Persona.mkv", False),
+        ("/home/user/Downloads/Anime/_UNPACK_xxx/subs/ep01.mkv", False),
+        ("/home/user/Downloads/Movie/Persona.1966/Persona.mkv", True),
+        ("/home/user/Downloads/Anime/[Erai-raws] Ao no Hako - 03/ep03.mkv", True),
+        # 普通目录名里含 unpack 不受影响
+        ("/home/unpack_test/my.mkv", True),
+    ],
+)
+def test_unpack_job_paths_are_skipped(path, expected):
+    """_UNPACK_ 中间目录里的文件不进入整理链。"""
+    from pathlib import Path
+    from unittest.mock import patch
+
+    from app.monitor.dispatcher import TransferDispatcher
+
+    with patch.object(TransferDispatcher, "all_exts", [".mkv"], create=True):
+        dispatcher = object.__new__(TransferDispatcher)
+        assert (
+            dispatcher.is_transfer_candidate_path(Path(path)) is expected
+        ), path

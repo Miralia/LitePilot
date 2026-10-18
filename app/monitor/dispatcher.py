@@ -65,9 +65,20 @@ class TransferDispatcher:
         """
         判断监控事件路径是否需要进入整理链。
         """
+        if self._is_unpacked_job_path(file_path):
+            # Sabnzbd 下载中就会把 rar 解压到 _UNPACK_<job>/，完成后才改名；
+            # 此时整理拿到的是半成品，等改名后监控会再次收到事件
+            return False
         if self._has_suffix_in(file_path, settings.DOWNLOAD_TMPEXT):
             return False
         return self._has_suffix_in(file_path, self.all_exts)
+
+    @staticmethod
+    def _is_unpacked_job_path(file_path: Path) -> bool:
+        """
+        判断路径是否位于 Sabnzbd 的解压中间目录（_UNPACK_ 前缀目录名）。
+        """
+        return any(part.startswith("_UNPACK_") for part in Path(file_path).parts)
 
     @staticmethod
     def _build_transfer_src_path(event_path: Path, is_bluray_folder: bool) -> str:
