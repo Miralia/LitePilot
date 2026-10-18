@@ -28,8 +28,8 @@ SOFT_FALLBACK_COLORS = [
 ]
 
 # 固定使用霞鹜真楷作为中文字体，英文标题复用同一字体
-FIXED_ZH_FONT_SIZE = 150
-FIXED_EN_FONT_SIZE = 62
+FIXED_ZH_FONT_SIZE = 230
+FIXED_EN_FONT_SIZE = 95
 FIXED_TITLE_SPACING = 34
 FIXED_EN_LINE_SPACING = 20
 FIXED_FONT_OFFSET = 0
@@ -441,9 +441,9 @@ def create_style_static_2(
             color_ratio = 0.8
 
         if not float(zh_font_size) > 0:
-            zh_font_size = 170
+            zh_font_size = 230
         if not float(en_font_size) > 0:
-            en_font_size = 75
+            en_font_size = 95
         style_font_scale = 1.1
         zh_font_size = float(zh_font_size) * style_font_scale
         en_font_size = float(en_font_size) * style_font_scale

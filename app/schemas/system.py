@@ -228,8 +228,8 @@ class LibraryCoverGeneratorConf(BaseModel):
     width: int = 1920
     height: int = 1080
     # 中文字号与英文字号
-    zh_font_size: int = 150
-    en_font_size: int = 62
+    zh_font_size: int = 230
+    en_font_size: int = 95
     # 背景模糊半径与配色占比
     blur_size: int = 50
     color_ratio: float = 0.8
