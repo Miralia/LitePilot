@@ -426,6 +426,30 @@ _RUST_UNSUPPORTED_BIT_RE = re.compile(
 )
 
 
+# Rust 扩展会把标题结尾单独的 `0` 当成集数丢弃（如 Jujutsu Kaisen 0），
+# 而这类编号是电影标题的一部分。命中时回退 Python 解析。
+_RUST_UNSUPPORTED_TRAILING_ZERO_RE = re.compile(
+    r"(?:^|[\s._\-\[\]()【】])(?:19|20)\d{2}[\s._-]*$"
+    r"|[^\d]0(?:[\s._\-\[\]()【】]|$)",
+)
+
+
+def _has_trailing_zero_title(title: str) -> bool:
+    """
+    判断标题是否以单独的数字 0 结尾（Rust 会误判为集数）。
+
+    :param title: 原始标题
+    :return: 命中时返回 True
+    """
+    text = (title or "").strip()
+    if not text:
+        return False
+    # 去掉扩展名后再判断结尾
+    stem = text.rsplit(".", 1)[0] if "." in text else text
+    stem = stem.strip()
+    return bool(re.search(r"(?<![\d])0$", stem))
+
+
 def _has_unsupported_bit_tag(title: str) -> bool:
     """
     判断标题是否含有 Rust 扩展不支持的位深标记。
@@ -463,7 +487,11 @@ def MetaInfo(title: str, subtitle: Optional[str] = None, custom_words: List[str]
     :return: MetaAnime、MetaVideo
     """
     rust_meta = None
-    if not _requires_python_metainfo(title, custom_words) and not _has_unsupported_bit_tag(title):
+    if (
+            not _requires_python_metainfo(title, custom_words)
+            and not _has_unsupported_bit_tag(title)
+            and not _has_trailing_zero_title(title)
+    ):
         rust_meta = _meta_from_rust(
             rust_accel.parse_metainfo(title, subtitle, _rust_parse_options(custom_words))
         )

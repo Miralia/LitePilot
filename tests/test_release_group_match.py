@@ -125,7 +125,7 @@ def test_regex_prefix_is_honored():
         ("[VCB-Studio] Jujutsu Kaisen [Ma10p_1080p][x265_flac].mkv",
          "Jujutsu Kaisen", "10bit"),
         ("[BeanSub&FZSD&VCB-Studio] Gekijouban Jujutsu Kaisen 0 [Ma10p_1080p][x265_flac].mkv",
-         "Gekijouban Jujutsu Kaisen", "10bit"),
+         "Gekijouban Jujutsu Kaisen 0", "10bit"),
         ("[Nekomoe kissaten&VCB-Studio] Fushigi no Kuni de Alice to [Ma10p_1080p][x265_flac].mkv",
          "Fushigi No Kuni De Alice To", "10bit"),
         # 常规 10bit 写法
@@ -150,3 +150,42 @@ def test_resolution_not_confused_with_bit_depth():
     for title in ("Movie.2024.1080p.BluRay.x264", "Movie.2024.2160p.WEB-DL"):
         meta = MetaVideo(title)
         assert meta.video_bit is None
+
+
+@pytest.mark.parametrize(
+    ("title", "expected_name"),
+    [
+        # 结尾单独的 0 是片名编号，不能当成集数丢弃
+        ("Jujutsu Kaisen 0", "Jujutsu Kaisen 0"),
+        ("Gekijouban Jujutsu Kaisen 0", "Gekijouban Jujutsu Kaisen 0"),
+        (
+            "[BeanSub&FZSD&VCB-Studio] Gekijouban Jujutsu Kaisen 0 [Ma10p_1080p]",
+            "Gekijouban Jujutsu Kaisen 0",
+        ),
+    ],
+)
+def test_trailing_zero_kept_in_title(title, expected_name):
+    """片名结尾的编号 0 应保留在标题里。"""
+    from app.core.meta import MetaVideo
+    from app.core.metainfo import MetaInfo
+
+    assert MetaVideo(title).name == expected_name
+    assert MetaInfo(title).name == expected_name
+
+
+@pytest.mark.parametrize(
+    ("title", "expected_episode"),
+    [
+        # 补零集数仍然要识别为集，不能因为上面的修复而保留进标题
+        ("[Group] Show - 01 [1080p]", 1),
+        ("[Group] Show - 001 [1080p]", 1),
+        ("[Group] Show 02 [1080p]", 2),
+    ],
+)
+def test_zero_padded_episode_still_detected(title, expected_episode):
+    """补零集数不能被误当成片名。"""
+    from app.core.meta import MetaVideo
+
+    meta = MetaVideo(title)
+    assert meta.begin_episode == expected_episode
+    assert meta.name == "Show"

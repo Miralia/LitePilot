@@ -314,8 +314,9 @@ class MetaVideo(MetaBase):
                 if self._last_token_type == 'name_se_words':
                     return
                 if self.name:
-                    # 名字后面以 0 开头的不要，极有可能是集
-                    if token.startswith('0'):
+                    # 名字后面以 0 开头的多位数字（如 01、02）极有可能是补零集数，丢弃；
+                    # 单独的 0 通常是作品标题的一部分（如 Jujutsu Kaisen 0），需要保留
+                    if token.startswith('0') and len(token) > 1:
                         return
                     # 检查是否真正的数字
                     if token.isdigit():
