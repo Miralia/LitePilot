@@ -145,12 +145,21 @@ class TransferDispatcher:
             self.handle_file(storage=item["storage"], event_path=item["event_path"],
                              file_size=item["file_size"])
 
-    def handle_file(self, storage: str, event_path: Path, file_size: float = None) -> bool:
+    def handle_file(
+            self,
+            storage: str,
+            event_path: Path,
+            file_size: float = None,
+            download_hash: Optional[str] = None,
+            downloader: Optional[str] = None,
+    ) -> bool:
         """
         整理一个文件。
         :param storage: 存储
         :param event_path: 事件文件路径
         :param file_size: 文件大小
+        :param download_hash: 文件所属种子 Hash，用于关联下载记录
+        :param downloader: 文件所属下载器
         :return: 是否进入整理链
         """
         with self._lock:
@@ -202,7 +211,9 @@ class TransferDispatcher:
                         basename=event_path.stem,
                         extension=event_path.suffix[1:],
                         size=file_size
-                    )
+                    ),
+                    downloader=downloader,
+                    download_hash=download_hash,
                 )
                 return True
             except Exception as e:

@@ -114,6 +114,35 @@ class DownloadFileSyncChain(ChainBase):
         type(self)._index_built_at = time.monotonic()
         logger.debug(f"下载器路径索引已更新，共 {len(index)} 条")
 
+    def resolve_torrent_by_path(self, file_path: str):
+        """
+        按文件路径解析所属种子，不写库。
+
+        供目录监控在整理时携带种子信息，使整理记录能关联到种子，
+        从而支持后续按种子反查与联动删除。
+
+        :param file_path: 文件路径
+        :return: (种子Hash, 下载器)，未匹配返回 (None, None)
+        """
+        if not file_path:
+            return None, None
+        target = str(file_path).replace("\\", "/")
+        now = time.monotonic()
+        stale = (
+                not self._content_index
+                or (now - self._index_built_at) > self._INDEX_TTL
+        )
+        if stale:
+            self._build_path_index()
+        matched = self._match_index(target)
+        if not matched and not stale:
+            # 索引可能早于本种子建立，重建一次以覆盖新下载内容
+            self._build_path_index()
+            matched = self._match_index(target)
+        if not matched:
+            return None, None
+        return matched
+
     def sync_torrent_by_path(self, file_path: str) -> int:
         """
         按文件路径定位所属种子，仅同步该种子的文件记录。
@@ -137,23 +166,10 @@ class DownloadFileSyncChain(ChainBase):
             logger.debug(f"目录监控触发过于频繁，跳过精准同步：{file_path}")
             return 0
 
-        stale = (
-                not self._content_index
-                or (now - self._index_built_at) > self._INDEX_TTL
-        )
-        if stale:
-            self._build_path_index()
-
-        matched = self._match_index(target)
-        if not matched and not stale:
-            # 索引可能是事件发生前构建的，重建一次以覆盖新下载的种子
-            self._build_path_index()
-            matched = self._match_index(target)
-        if not matched:
+        torrent_hash, downloader = self.resolve_torrent_by_path(file_path)
+        if not torrent_hash:
             logger.debug(f"路径未匹配到下载器种子，跳过精准同步：{file_path}")
             return 0
-
-        torrent_hash, downloader = matched
         type(self)._last_trigger_at = now
         added = self._sync_torrent_files(torrent_hash, downloader)
         if added:

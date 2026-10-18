@@ -468,31 +468,43 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
             return
         if not self._dispatcher.is_transfer_candidate_path(Path(event_path)):
             return
-        # 监听到新的媒体文件时，先同步一次下载器，保证刚入库的记录不会因
-        # 等待下一个同步周期而缺失（例如入库后立刻删除）
-        self._trigger_download_sync(event_path)
+        # 监听到新的媒体文件时，先定位并同步其所属种子，
+        # 再把种子信息传给整理链，使整理记录能关联到种子
+        download_hash, downloader = self._trigger_download_sync(event_path)
         # 整理文件
-        self._dispatcher.handle_file(storage="local", event_path=Path(event_path), file_size=file_size)
+        self._dispatcher.handle_file(
+            storage="local",
+            event_path=Path(event_path),
+            file_size=file_size,
+            download_hash=download_hash,
+            downloader=downloader,
+        )
 
     @staticmethod
-    def _trigger_download_sync(event_path: str) -> None:
+    def _trigger_download_sync(event_path: str):
         """
-        目录监控发现新媒体文件时，精准同步该文件所属的种子。
+        目录监控发现新媒体文件时，定位并同步该文件所属的种子。
 
         只处理命中的那一个种子，避免全量扫描下载器带来的性能压力；
-        未匹配到种子（如手动放入的文件）时直接跳过。
+        未匹配到种子（如手动放入的文件）时返回 (None, None)。
         失败不影响整理主流程。
 
         :param event_path: 触发同步的文件路径
+        :return: (种子Hash, 下载器)
         """
         try:
             from app.chain.downloadfilesync import (  # pylint: disable=import-outside-toplevel
                 DownloadFileSyncChain,
             )
 
-            DownloadFileSyncChain().sync_torrent_by_path(file_path=event_path)
+            chain = DownloadFileSyncChain()
+            download_hash, downloader = chain.resolve_torrent_by_path(event_path)
+            if download_hash:
+                chain.sync_torrent_by_path(file_path=event_path)
+            return download_hash, downloader
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(f"按路径同步下载器失败：{err}")
+            return None, None
 
     def stop(self):
         """

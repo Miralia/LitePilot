@@ -151,10 +151,13 @@ def test_event_handler_routes_file_events_to_transfer_handler():
         file_size=1024
     )
 
+    # 目录监控会把定位到的种子信息一并传入，便于整理记录关联种子
     handle_file.assert_called_once_with(
         storage="local",
         event_path=event_path,
-        file_size=1024
+        file_size=1024,
+        download_hash=None,
+        downloader=None,
     )
 
 
