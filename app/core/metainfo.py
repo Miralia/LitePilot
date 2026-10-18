@@ -417,7 +417,17 @@ def _meta_from_rust(parsed: dict) -> Optional[MetaBase]:
 
     # Rust 对部分写法覆盖不全（例如来源写在方括号内、EAC3 等音频编码），
     # 这些字段为空时用 Python 解析补齐，只填空缺、不覆盖 Rust 已有结果。
-    _fillable = ("resource_type", "resource_effect", "audio_encode", "resource_pix")
+    # Rust 未覆盖的字段统一由 Python 补齐，保证两条路径输出一致：
+    # 编码、位深、帧率等也是通知与重命名依赖的信息，缺一项就会显示不全
+    _fillable = (
+        "resource_type",
+        "resource_effect",
+        "audio_encode",
+        "resource_pix",
+        "video_encode",
+        "video_bit",
+        "fps",
+    )
     if any(not getattr(meta, name, None) for name in _fillable):
         try:
             fallback = _build_meta_info(

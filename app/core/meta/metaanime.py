@@ -198,10 +198,12 @@ class MetaAnime(MetaBase):
                 self.resource_type = self.extract_resource_type(original_title) or None
                 # 自定义占位符
                 self.customization = CustomizationMatcher().match(title=original_title) or None
-                # 视频编码
+                # 视频编码：anitopy 覆盖有限，缺失时从原始标题兜底提取
                 self.video_encode = anitopy_info.get("video_term")
                 if isinstance(self.video_encode, list):
                     self.video_encode = self.video_encode[0]
+                if not self.video_encode:
+                    self.video_encode = self.extract_video_encode(original_title)
                 # 视频位深
                 self.video_bit = self.extract_video_bit(original_title) or self.extract_video_bit(self.video_encode)
                 # 音频编码

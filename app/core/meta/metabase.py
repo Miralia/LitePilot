@@ -599,6 +599,11 @@ class MetaBase(object):
         self.audio_encode = normalize_audio(self.audio_encode)
         self.resource_pix = normalize_pix(self.resource_pix)
         self.resource_type = normalize_source(self.resource_type)
+        # 位深并入编码描述（如 `HEVC 10bit`），三条路径保持同一形态；
+        # 已包含位深时不重复追加
+        if self.video_bit and self.video_encode \
+                and self.video_bit.lower() not in str(self.video_encode).lower():
+            self.video_encode = f"{self.video_encode} {self.video_bit}"
 
     @property
     def edition(self) -> str:
@@ -677,6 +682,46 @@ class MetaBase(object):
         (name, re.compile(pattern, re.IGNORECASE))
         for name, pattern in _RESOURCE_TYPE_RULES
     ]
+
+    # 视频编码识别：按优先级匹配，x264/x265 与 H264/H265 保留原文写法
+    _VIDEO_ENCODE_RES = [
+        (re.compile(r"(?<![A-Za-z0-9])(x26[45])(?![A-Za-z0-9])", re.IGNORECASE), None),
+        (re.compile(r"(?<![A-Za-z0-9])(H\.?26[45])(?![A-Za-z0-9])", re.IGNORECASE), None),
+        (re.compile(r"(?<![A-Za-z0-9])(HEVC|AVC|AV1|VC-?1|MPEG-?2|Xvid|DivX)(?![A-Za-z0-9])",
+                    re.IGNORECASE), None),
+    ]
+
+    @staticmethod
+    def extract_video_encode(value: Optional[str]) -> Optional[str]:
+        """
+        从标题中提取视频编码。
+
+        供 anitopy 路径（MetaAnime）兜底：anitopy 的 video_term 覆盖有限，
+        像 HEVC 这类常见写法会漏识别，导致通知与重命名缺少编码信息。
+
+        :param value: 原始标题
+        :return: 编码名称，未识别到返回 None
+        """
+        if not value:
+            return None
+        text = str(value)
+        for pattern, _ in MetaBase._VIDEO_ENCODE_RES:
+            match = pattern.search(text)
+            if not match:
+                continue
+            token = match.group(1)
+            upper = token.upper()
+            if upper.startswith("X26"):
+                # x264/x265 官方写法为小写 x
+                return f"x{upper[1:]}"
+            if upper.startswith("H"):
+                return upper.replace(".", "")
+            return {
+                "VC1": "VC1", "VC-1": "VC1",
+                "MPEG2": "MPEG2", "MPEG-2": "MPEG2",
+                "XVID": "Xvid", "DIVX": "DivX",
+            }.get(upper, upper)
+        return None
 
     @staticmethod
     def extract_resource_type(value: Optional[str]) -> Optional[str]:
