@@ -636,31 +636,40 @@ class Emby:
             library_id = self.__get_emby_library_id_by_item(item)
             if library_id and library_id not in library_ids:
                 library_ids.append(library_id)
-        # 开始刷新媒体库
+        # 需要全库刷新时直接刷新根，覆盖所有媒体库
         if "/" in library_ids:
             return self.refresh_root_library()
+        if not library_ids:
+            logger.info("未匹配到需要刷新的媒体库")
+            return False
+        # 逐个刷新每个命中的媒体库：原先在循环里直接 return，
+        # 只能刷到第一个库，其余库永远不会收到刷新通知
+        success = False
         for library_id in library_ids:
-            if library_id != "/":
-                return self.__refresh_emby_library_by_id(library_id)
-        logger.info(f"Emby媒体库刷新完成")
-        return True
+            if self.__refresh_emby_library_by_id(library_id):
+                success = True
+        logger.info(f"Emby媒体库刷新完成，共 {len(library_ids)} 个库")
+        return success
 
     def __get_emby_library_id_by_item(self, item: schemas.RefreshMediaItem) -> Optional[str]:
         """
         根据媒体信息查询在哪个媒体库，返回要刷新的位置的ID
         :param item: {title, year, type, category, target_path}
         """
-        if not item.title or not item.year or not item.type:
+        # 只要有目标路径就能定位媒体库；年份缺失时跳过「已存在」判断即可，
+        # 否则没有年份的媒体永远不会触发刷新
+        if not item.type or not item.target_path:
             return None
-        if item.type != MediaType.MOVIE.value:
-            item_id = self.__get_emby_series_id_by_name(item.title, item.year)
-            if item_id:
-                # 存在电视剧，则直接刷新这个电视剧就行
-                return item_id
-        else:
-            if self.get_movies(item.title, item.year):
-                # 已存在，不用刷新
-                return None
+        if item.title and item.year:
+            if item.type != MediaType.MOVIE.value:
+                item_id = self.__get_emby_series_id_by_name(item.title, item.year)
+                if item_id:
+                    # 剧集已存在时刷新该剧自身即可，扫描范围更小、更快
+                    return item_id
+            else:
+                if self.get_movies(item.title, item.year):
+                    # 已存在，不用刷新
+                    return None
         # 查找需要刷新的媒体库ID
         item_path = Path(item.target_path)
         # 匹配子目录
