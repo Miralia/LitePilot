@@ -131,6 +131,9 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
         self.systemconfig = SystemConfigOper()
         self.__groups_re_cache = {}
         self.__seed_applied = False
+        # 词表快照与规则串缓存：识别是高频路径，只有词表变化时才重建
+        self.__loaded_words: Optional[List[str]] = None
+        self.__cached_rule: Optional[str] = None
 
     def _load_group_words(self) -> List[str]:
         """
@@ -159,8 +162,13 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
         避免 `VCB-Studio`、`SubsPlus+` 这类名称被当成正则而失效或误匹配。
         以 `re:` 开头或明显含正则结构的条目按正则处理，便于高级用法。
         """
+        words = self._load_group_words()
+        if words == self.__loaded_words and self.__cached_rule is not None:
+            return self.__cached_rule
+        self.__loaded_words = list(words)
+
         escaped = []
-        for name in self._load_group_words():
+        for name in words:
             cleaned = name.strip()
             if not cleaned:
                 continue
@@ -173,7 +181,8 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
             else:
                 # 用户手写的纯组名按字面量转义，保证 `VCB-Studio`、`SubsPlus+` 精确匹配
                 escaped.append(_std_re.escape(cleaned))
-        return "|".join(escaped)
+        self.__cached_rule = "|".join(escaped)
+        return self.__cached_rule
 
     def __get_groups_re(self, groups: str):
         """
