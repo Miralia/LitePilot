@@ -529,3 +529,82 @@ def test_atomic_fields_from_title(title, expect):
     meta = MetaVideo(title)
     for field_name, expected in expect.items():
         assert getattr(meta, field_name) == expected, f"{field_name} 不符"
+
+
+# ---------------------------------------------------------------------------
+# 发布信息通配：REPACK* 与 v*
+#
+# REPACK / PROPER / RERIP 是发布修正，可带任意序号（REPACK2、REPACK10）；
+# v1 / v2 / v10 是修订版本号，序号同样无上限。两者都只记录不进文件名。
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "raw,expect",
+    [
+        ("REPACK", "REPACK"),
+        ("REPACK2", "REPACK2"),
+        ("REPACK10", "REPACK10"),
+        ("REPACK99", "REPACK99"),
+        ("repack12", "REPACK12"),
+        ("PROPER", "PROPER"),
+        ("PROPER2", "PROPER2"),
+        ("RERIP3", "RERIP3"),
+        ("Hybrid", "Hybrid"),
+        ("hybrid", "Hybrid"),
+        # 修订版本号：序号无上限
+        ("v1", "v1"),
+        ("v2", "v2"),
+        ("v10", "v10"),
+        ("v99", "v99"),
+        ("V2", "v2"),
+        ("V10", "v10"),
+        # 已移除的标记与无关写法
+        ("REAL", None),
+        ("NUKED", None),
+        ("va", None),
+        ("v", None),
+    ],
+)
+def test_match_release_info_patterns(raw, expect):
+    """发布修正与修订版本号支持任意序号。"""
+    from app.core.meta.wordlist import MetaWordList
+
+    assert MetaWordList().match_release_info(raw) == expect
+
+
+@pytest.mark.parametrize(
+    "title,expect",
+    [
+        ("M.2024.1080p.BluRay.REPACK2.x264.AAC-GRP", ["REPACK2"]),
+        ("M.2024.1080p.BluRay.PROPER10.x264.AAC-GRP", ["PROPER10"]),
+        ("M.2024.1080p.BluRay.RERIP3.x264.AAC-GRP", ["RERIP3"]),
+        ("M.2024.1080p.BluRay.v2.x264.AAC-GRP", ["v2"]),
+        ("M.2024.1080p.BluRay.v10.x264.AAC-GRP", ["v10"]),
+    ],
+)
+def test_release_info_from_title(title, expect):
+    """标题中的发布修正与版本号落到 release_info。"""
+    from app.core.meta.metavideo import MetaVideo
+
+    meta = MetaVideo(title)
+    meta.finalize()
+    assert meta.release_info == expect
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "M.2024.1080p.BluRay.REPACK2.x264.AAC-GRP",
+        "M.2024.1080p.BluRay.v10.x264.AAC-GRP",
+        "M.2024.1080p.Hybrid.BluRay.x264.AAC-GRP",
+    ],
+)
+def test_release_info_excluded_from_filename_spec(title):
+    """发布信息不进入文件名规格串。"""
+    from app.core.meta.metavideo import MetaVideo
+    from app.helper.message import TemplateContextBuilder
+
+    meta = MetaVideo(title)
+    meta.finalize()
+    plain = TemplateContextBuilder._build_spec_plain(meta)
+    for token in ("REPACK", "PROPER", "RERIP", "Hybrid", "v2", "v10"):
+        assert token not in plain

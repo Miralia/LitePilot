@@ -93,14 +93,19 @@ class MetaWordList:
         ("Original Cut", "Original Cut"),
     ]
 
-    # 发布信息：发布或制作方式，不影响内容
+    # 发布信息：发布或制作方式，不影响内容。
+    # 支持「基名 + 序号」变体（REPACK2 / PROPER2 等），由 match_release_info 处理；
+    # v2 / v3 这类修订版本号同样归入本维度。
     RELEASE_INFO: List[Tuple[str, str]] = [
         ("REPACK", "REPACK"),
         ("PROPER", "PROPER"),
         ("RERIP", "RERIP"),
-        ("REAL", "REAL"),
         ("Hybrid", "Hybrid"),
     ]
+
+    # 修订版本号的通用前缀：v1 / v2 / v10 都是「第 N 版」，
+    # 数量无上限，不适合在词表里逐个枚举
+    VERSION_PREFIX = "v"
 
     def __init__(self) -> None:
         self._special_cache: Dict[str, str] = {}
@@ -264,11 +269,31 @@ class MetaWordList:
         """
         匹配发布信息标记。
 
+        除词表精确匹配外，还支持「基名 + 序号」形式：``REPACK2``、
+        ``PROPER3`` 这类同一发布方式的第 N 次修正，按基名判定后保留
+        序号，因为它们指向不同的发布批次，合并会丢掉版本信息。
+
         :param text: 待判定文本
         :return: 标准名，未命中返回 None
         """
         self.ensure_loaded()
-        return self._release_cache.get(_normalize(text))
+        normalized = _normalize(text)
+        hit = self._release_cache.get(normalized)
+        if hit:
+            return hit
+        # 修订版本号：v1 / v2 / v10 —— 序号无上限，按通用前缀识别
+        version = re.fullmatch(rf"{self.VERSION_PREFIX}(\d+)", normalized)
+        if version:
+            return f"{self.VERSION_PREFIX}{int(version.group(1))}"
+
+        # 基名 + 纯数字：REPACK2 / RERIP3 / PROPER12
+        matched = re.fullmatch(r"([a-z]+)(\d+)", normalized)
+        if not matched:
+            return None
+        base = self._release_cache.get(matched.group(1))
+        if not base:
+            return None
+        return f"{base}{int(matched.group(2))}"
 
 
 # 全局单例：识别路径共享同一份缓存

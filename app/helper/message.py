@@ -322,8 +322,10 @@ class TemplateContextBuilder:
         :param meta: 媒体元数据
         :return: 空格分隔的规格串，无内容时返回空串
         """
-        # 顺序与 _build_spec_lines 保持一致：
-        # 来源块（平台 来源 分辨率 特殊版本）→ 剪辑版本 → 音频 → HDR → 采样 → 视频 → 发布信息
+        # 顺序与 _build_spec_lines 保持一致。
+        # 刻意不含 release_info：REPACK / PROPER / v2 这类发布修正只影响
+        # 「这是第几次发布」，不改变文件本身的技术规格，媒体服务器也不识别，
+        # 写进文件名只会让同一部片子的不同批次落到不同文件名上。
         parts = (
             meta.web_source,
             meta.resource_type,
@@ -335,7 +337,6 @@ class TemplateContextBuilder:
             *(meta.video_hdr or []),
             meta.video_chroma,
             meta.video_encode,
-            *(meta.release_info or []),
         )
         return " ".join(part for part in parts if part)
 
