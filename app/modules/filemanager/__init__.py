@@ -416,7 +416,7 @@ class FileManagerModule(_ModuleBase):
                  target_directory: TransferDirectoryConf = None,
                  target_storage: Optional[str] = None, target_path: Path = None,
                  transfer_type: Optional[str] = None, scrape: Optional[bool] = None,
-                 library_type_folder: Optional[bool] = None, library_category_folder: Optional[bool] = None,
+                 library_type_folder: Optional[bool] = None,
                  episodes_info: List[TmdbEpisode] = None,
                  source_oper: Callable = None, target_oper: Callable = None,
                  preview: Optional[bool] = False) -> TransferInfo:
@@ -431,7 +431,6 @@ class FileManagerModule(_ModuleBase):
         :param transfer_type:  转移模式
         :param scrape: 是否刮削元数据
         :param library_type_folder: 是否按媒体类型创建目录
-        :param library_category_folder: 是否按媒体类别创建目录
         :param episodes_info: 当前季的全部集信息
         :param source_oper: 源存储操作对象
         :param target_oper: 目标存储操作对象
@@ -474,7 +473,7 @@ class FileManagerModule(_ModuleBase):
             # 拼装媒体库一、二级子目录
             target_path = handler.get_dest_dir(mediainfo=mediainfo, target_dir=target_directory,
                                                need_type_folder=library_type_folder,
-                                               need_category_folder=library_category_folder)
+                                               need_category_folder=None)
         elif target_path:
             need_scrape = scrape or False
             need_rename = True
@@ -483,7 +482,7 @@ class FileManagerModule(_ModuleBase):
             # 手动整理的场景，有自定义目标路径
             target_path = handler.get_dest_path(mediainfo=mediainfo, target_path=target_path,
                                                 need_type_folder=library_type_folder,
-                                                need_category_folder=library_category_folder)
+                                                need_category_folder=None)
         else:
             # 未找到有效的媒体库目录
             logger.error(

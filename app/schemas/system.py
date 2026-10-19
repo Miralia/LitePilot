@@ -138,12 +138,8 @@ class TransferDirectoryConf(BaseModel):
     download_path: Optional[str] = None
     # 适用媒体类型
     media_type: Optional[str] = None
-    # 适用媒体类别
-    media_category: Optional[str] = None
     # 下载类型子目录
     download_type_folder: Optional[bool] = False
-    # 下载类别子目录
-    download_category_folder: Optional[bool] = False
     # 监控方式 downloader/monitor，None为不监控
     monitor_type: Optional[str] = None
     # 监控模式 fast / compatibility
@@ -164,8 +160,6 @@ class TransferDirectoryConf(BaseModel):
     notify: Optional[bool] = True
     # 媒体库类型子目录
     library_type_folder: Optional[bool] = False
-    # 媒体库类别子目录
-    library_category_folder: Optional[bool] = False
 
 
 class DownloadFileSyncConf(BaseModel):

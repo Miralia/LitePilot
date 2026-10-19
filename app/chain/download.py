@@ -226,8 +226,6 @@ class DownloadChain(ChainBase):
         download_dir = root_path
         if not dir_info.media_type and dir_info.download_type_folder:
             download_dir = download_dir / media_info.type.value
-        if not dir_info.media_category and dir_info.download_category_folder and media_info.category:
-            download_dir = download_dir / media_info.category
         return download_dir
 
     @staticmethod

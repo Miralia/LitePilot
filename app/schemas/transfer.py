@@ -68,7 +68,6 @@ class TransferTask(BaseModel):
     transfer_type: Optional[str] = None
     scrape: Optional[bool] = False
     library_type_folder: Optional[bool] = False
-    library_category_folder: Optional[bool] = False
     episodes_info: Optional[List[TmdbEpisode]] = None
     username: Optional[str] = None
     downloader: Optional[str] = None
@@ -241,7 +240,6 @@ class ManualTransferItem(BaseModel):
     # 媒体库类型子目录
     library_type_folder: Optional[bool] = None
     # 媒体库类别子目录
-    library_category_folder: Optional[bool] = None
     # 复用历史识别信息
     from_history: Optional[bool] = False
     # 剧集组
@@ -278,5 +276,3 @@ class ManualTransferTargetPath(BaseModel):
     scrape: Optional[bool] = False
     # 媒体库类型子目录
     library_type_folder: Optional[bool] = False
-    # 媒体库类别子目录
-    library_category_folder: Optional[bool] = False

@@ -355,7 +355,6 @@ def test_match_manual_transfer_target_path_returns_directory_match(monkeypatch):
                 transfer_type="copy",
                 scraping=True,
                 library_type_folder=True,
-                library_category_folder=False,
             )
 
     monkeypatch.setattr("app.api.endpoints.transfer.DirectoryHelper", FakeDirectoryHelper)
@@ -383,7 +382,6 @@ def test_match_manual_transfer_target_path_returns_directory_match(monkeypatch):
         "transfer_type": "copy",
         "scrape": True,
         "library_type_folder": True,
-        "library_category_folder": False,
     }
 
 

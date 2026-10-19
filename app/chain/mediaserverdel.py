@@ -79,6 +79,11 @@ class MediaServerDelChain(ChainBase):
         """
         season = str(season_num).rjust(2, "0") if season_num and str(season_num).isdigit() else None
         episode = str(episode_num).rjust(2, "0") if episode_num and str(episode_num).isdigit() else None
+        # Emby 的 ScripterX 拼接 webhook URL 时不对 `+` 转义，`DD+` 这类
+        # 路径到达时已变成 `DD `（加号被当作空格的转义）。查询前先还原，
+        # 否则含 + 的路径永远匹配不到整理记录
+        if media_path:
+            media_path = self._restore_plus_signs(media_path)
         mtype = MediaType.MOVIE if media_type in ("Movie", "MOV") else MediaType.TV
 
         if mtype == MediaType.MOVIE:
@@ -125,6 +130,28 @@ class MediaServerDelChain(ChainBase):
                 episode=f"E{episode}",
             ),
         )
+
+    @staticmethod
+    def _restore_plus_signs(media_path: str) -> str:
+        """
+        还原 webhook 路径中被解码成空格的加号。
+
+        Emby 的 ScripterX 在拼接 webhook URL 时不转义 ``+``，服务端按
+        query string 解析时会把 ``+`` 解码成空格，含 ``DD+``、``AC3+``
+        这类音频标记的路径因此无法匹配整理记录。
+
+        做法：先用原名查询，命中即用；未命中时把空格还原成加号再查一次。
+        只替换「字母/数字 + 空格 + 字母/数字」之间的空格，避免破坏真实
+        空格分隔的路径片段。
+
+        :param media_path: webhook 提供的媒体路径
+        :return: 还原后的路径
+        """
+        if not media_path or "+" in media_path:
+            return media_path
+        import re as _re  # pylint: disable=import-outside-toplevel
+
+        return _re.sub(r"(?<=[A-Za-z0-9]) (?=[A-Za-z0-9])(?=\S*[A-Z])", "+", media_path)
 
     def _delete_source(self, history, conf=None) -> Tuple[str, Optional[str]]:
         """

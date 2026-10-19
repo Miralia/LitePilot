@@ -895,21 +895,17 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
     }
 
     @staticmethod
-    def _requires_automatic_category(task: TransferTask) -> bool:
+    def _requires_automatic_category(task: TransferTask) -> bool:  # noqa: ARG004
         """
-        判断当前整理任务是否需要根据媒体识别结果自动创建类别目录。
+        是否需要自动分类结果。
+
+        二级分类已取消，媒体只按电影 / 剧集 / 动漫一级归档，
+        因此任何整理任务都不再依赖自动分类。
 
         :param task: 整理任务
-        :return: 是否必须具备自动分类结果
+        :return: 恒为 False
         """
-        target_directory = task.target_directory
-        if target_directory and target_directory.media_category:
-            return False
-        if task.library_category_folder is not None:
-            return bool(task.library_category_folder)
-        return bool(
-            target_directory and target_directory.library_category_folder
-        )
+        return False
 
     def __init__(self):
         """初始化文件整理处理链。"""
@@ -1601,9 +1597,8 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         if not title:
             return
 
-        # category 属于目录配置（如「日番」），MetaVideo 上并没有这个字段，
-        # 取不到就留空，库定位会自动退回按路径匹配
-        category = getattr(getattr(task, "directory", None), "media_category", None)
+        # 二级分类已取消，目录配置不再带类别；刷新媒体库时留空，
+        # 库定位会自动退回按路径匹配
         item = schemas.RefreshMediaItem(
             title=title,
             year=year,
@@ -2168,7 +2163,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 episodes_info=task.episodes_info,
                 scrape=task.scrape,
                 library_type_folder=task.library_type_folder,
-                library_category_folder=task.library_category_folder,
                 source_oper=source_oper,
                 target_oper=target_oper,
                 preview=task.preview,
@@ -2635,38 +2629,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 media_type = relative_parts[part_index]
                 part_index += 1
 
-            if (
-                    not dir_info.media_category
-                    and dir_info.download_category_folder
-                    and len(relative_parts) > part_index
-            ):
-                category_root = current_root / relative_parts[part_index]
-                shared_roots.add(category_root.as_posix())
-                if media_categories is None:
-                    media_categories = MediaChain().media_category() or {}
-                if media_type:
-                    category_names = media_categories.get(media_type, [])
-                else:
-                    category_names = {
-                        category
-                        for categories in media_categories.values()
-                        for category in categories
-                    }
-                category_paths = sorted(
-                    (Path(category).parts for category in category_names if category),
-                    key=len,
-                )
-                for category_parts in category_paths:
-                    relative_category_parts = tuple(
-                        relative_parts[part_index:part_index + len(category_parts)]
-                    )
-                    if relative_category_parts != category_parts:
-                        continue
-                    category_root = current_root
-                    for category_part in category_parts:
-                        category_root = category_root / category_part
-                        shared_roots.add(category_root.as_posix())
-
+            # 二级分类已取消，不再按类别进入子目录
         return shared_roots
 
     @staticmethod
@@ -3054,7 +3017,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             transfer_type: Optional[str] = None,
             scrape: Optional[bool] = None,
             library_type_folder: Optional[bool] = None,
-            library_category_folder: Optional[bool] = None,
             season: Optional[int] = None,
             epformat: EpisodeFormat = None,
             min_filesize: Optional[int] = 0,
@@ -3081,7 +3043,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         :param transfer_type: 整理类型
         :param scrape: 是否刮削元数据
         :param library_type_folder: 媒体库类型子目录
-        :param library_category_folder: 媒体库类别子目录
         :param season: 季
         :param epformat: 剧集格式
         :param min_filesize: 最小文件大小(MB)
@@ -3692,7 +3653,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                     transfer_type=transfer_type,
                     scrape=scrape,
                     library_type_folder=library_type_folder,
-                    library_category_folder=library_category_folder,
                     downloader=_downloader,
                     download_hash=_download_hash,
                     download_history=download_history,
@@ -4063,7 +4023,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             min_filesize: Optional[int] = 0,
             scrape: Optional[bool] = None,
             library_type_folder: Optional[bool] = None,
-            library_category_folder: Optional[bool] = None,
             force: Optional[bool] = False,
             background: Optional[bool] = False,
             downloader: Optional[str] = None,
@@ -4092,7 +4051,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         :param min_filesize: 最小文件大小(MB)
         :param scrape: 是否刮削元数据
         :param library_type_folder: 是否按类型建立目录
-        :param library_category_folder: 是否按类别建立目录
         :param force: 是否强制整理
         :param background: 是否后台运行
         :param downloader: 下载器名称
@@ -4141,7 +4099,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 min_filesize=min_filesize,
                 scrape=scrape,
                 library_type_folder=library_type_folder,
-                library_category_folder=library_category_folder,
                 force=force,
                 background=background,
                 manual=True,
@@ -4170,7 +4127,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 min_filesize=min_filesize,
                 scrape=scrape,
                 library_type_folder=library_type_folder,
-                library_category_folder=library_category_folder,
                 force=force,
                 background=background,
                 manual=True,

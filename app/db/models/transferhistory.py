@@ -450,13 +450,16 @@ class TransferHistory(Base):
         """
         # TMDBID + 类型
         if tmdbid and mtype:
-            # 电视剧某季某集
+            # 电视剧某季某集。dest 为可选条件：调用方不传时不应参与过滤，
+            # 否则 SQL 变成 dest == None，永远匹配不到已有记录
             if season is not None and episode:
-                return db.query(cls).filter(cls.tmdbid == tmdbid,
-                                            cls.type == mtype,
-                                            cls.seasons == season,
-                                            cls.episodes == episode,
-                                            cls.dest == dest).all()
+                query = db.query(cls).filter(cls.tmdbid == tmdbid,
+                                             cls.type == mtype,
+                                             cls.seasons == season,
+                                             cls.episodes == episode)
+                if dest:
+                    query = query.filter(cls.dest == dest)
+                return query.all()
             # 电视剧某季
             elif season is not None:
                 return db.query(cls).filter(cls.tmdbid == tmdbid,
@@ -474,13 +477,15 @@ class TransferHistory(Base):
                                                 cls.type == mtype).all()
         # 标题 + 年份
         elif title and year:
-            # 电视剧某季某集
+            # 电视剧某季某集，dest 为可选条件（同上）
             if season is not None and episode:
-                return db.query(cls).filter(cls.title == title,
-                                            cls.year == year,
-                                            cls.seasons == season,
-                                            cls.episodes == episode,
-                                            cls.dest == dest).all()
+                query = db.query(cls).filter(cls.title == title,
+                                             cls.year == year,
+                                             cls.seasons == season,
+                                             cls.episodes == episode)
+                if dest:
+                    query = query.filter(cls.dest == dest)
+                return query.all()
             # 电视剧某季
             elif season is not None:
                 return db.query(cls).filter(cls.title == title,

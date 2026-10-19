@@ -1158,8 +1158,6 @@ class TransHandler:
         """
         if need_type_folder is None:
             need_type_folder = target_dir.library_type_folder
-        if need_category_folder is None:
-            need_category_folder = target_dir.library_category_folder
         if not target_dir.media_type and need_type_folder and mediainfo.type:
             # 一级自动分类
             library_dir = Path(target_dir.library_path) / mediainfo.type.value
@@ -1168,17 +1166,7 @@ class TransHandler:
             library_dir = Path(target_dir.library_path) / target_dir.media_type
         else:
             library_dir = Path(target_dir.library_path)
-        if (
-            not target_dir.media_category
-            and need_category_folder
-            and mediainfo.category
-        ):
-            # 二级自动分类
-            library_dir = library_dir / mediainfo.category
-        elif target_dir.media_category and need_category_folder:
-            # 二级手动分类
-            library_dir = library_dir / target_dir.media_category
-
+        # 二级分类已取消：媒体只按一级分类归档，不再创建类别子目录
         return library_dir
 
     @staticmethod

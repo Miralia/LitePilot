@@ -161,7 +161,6 @@ def _build_manual_transfer_target_path(
         transfer_type=directory.transfer_type,
         scrape=directory.scraping or False,
         library_type_folder=directory.library_type_folder or False,
-        library_category_folder=directory.library_category_folder or False,
     )
 
 
@@ -465,7 +464,6 @@ def manual_transfer(
                 min_filesize=transer_item.min_filesize,
                 scrape=transer_item.scrape,
                 library_type_folder=transer_item.library_type_folder,
-                library_category_folder=transer_item.library_category_folder,
                 force=force,
                 background=background,
                 downloader=downloader,
@@ -551,7 +549,6 @@ def manual_transfer(
         min_filesize=transer_item.min_filesize,
         scrape=transer_item.scrape,
         library_type_folder=transer_item.library_type_folder,
-        library_category_folder=transer_item.library_category_folder,
         force=force,
         background=background,
         downloader=downloader,

@@ -1143,7 +1143,6 @@ class ChainBase(metaclass=ABCMeta):
             transfer_type: Optional[str] = None,
             scrape: bool = None,
             library_type_folder: bool = None,
-            library_category_folder: bool = None,
             episodes_info: List[TmdbEpisode] = None,
             source_oper: Callable = None,
             target_oper: Callable = None,
@@ -1160,7 +1159,6 @@ class ChainBase(metaclass=ABCMeta):
         :param transfer_type:  转移模式
         :param scrape: 是否刮削元数据
         :param library_type_folder: 是否按类型创建目录
-        :param library_category_folder: 是否按类别创建目录
         :param episodes_info: 当前季的全部集信息
         :param source_oper:  源存储操作类
         :param target_oper:  目标存储操作类
@@ -1178,7 +1176,6 @@ class ChainBase(metaclass=ABCMeta):
             transfer_type=transfer_type,
             scrape=scrape,
             library_type_folder=library_type_folder,
-            library_category_folder=library_category_folder,
             episodes_info=episodes_info,
             source_oper=source_oper,
             target_oper=target_oper,
