@@ -46,8 +46,13 @@ class MetaVideo(MetaBase):
     _source = ""
     _effect = []
     # 正则式区
-    _season_re = r"S(\d{3})|^S(\d{1,3})$|S(\d{1,3})E"
-    _episode_re = r"EP?(\d{2,4})$|^EP?(\d{1,4})$|^S\d{1,2}EP?(\d{1,4})$|S\d{2}EP?(\d{2,4})"
+    # 季号允许紧跟版本号（S01v2），发布名里修订版常直接附在季集后
+    _season_re = r"S(\d{3})|^S(\d{1,3})(?:[vV]\d+)?$|S(\d{1,3})E"
+    # 集号同样允许版本号后缀（S01E01v2 / E01v2）
+    _episode_re = (
+        r"EP?(\d{2,4})(?:[vV]\d+)?$|^EP?(\d{1,4})(?:[vV]\d+)?$"
+        r"|^S\d{1,2}EP?(\d{1,4})(?:[vV]\d+)?$|S\d{2}EP?(\d{2,4})(?:[vV]\d+)?"
+    )
     _part_re = r"(^PART[0-9ABI]{0,2}$|^CD[0-9]{0,2}$|^DVD[0-9]{0,2}$|^DISK[0-9]{0,2}$|^DISC[0-9]{0,2}$)"
     _roman_numerals = r"^(?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$"
     _source_re = (r"^BLURAY$|^HDTV$|^UHDTV$|^HDDVD$|^WEBRIP$|^DVDRIP$|^BDRIP$|^BLU$|^WEB$|^BD$"
@@ -223,6 +228,8 @@ class MetaVideo(MetaBase):
             # 集
             if self._continue_flag:
                 self.__init_episode(token)
+                # 季集识别后提取紧贴的版本号：S01E01v2 / S01v2 里的 v2
+                self.__extract_attached_version(token)
             # 剪辑版本与发布信息要先于资源类型判断：
             # Director's Cut / Hybrid / Open Matte 这类多词标记若先进入
             # 效果或标题处理，就再也拼不回完整形态
@@ -566,6 +573,23 @@ class MetaVideo(MetaBase):
                 self._stop_name_flag = True
                 if not self.resource_pix:
                     self.resource_pix = re_res.group(1).lower()
+
+    def __extract_attached_version(self, token: str) -> None:
+        """
+        提取紧贴在季集编号后的版本号。
+
+        发布名里修订版常直接附在季集后（``S01E01v2`` / ``S01v2``），
+        这类写法不能靠独立的 token 识别，需要在季集解析后从原 token
+        里取出 ``v<N>`` 记入发布信息，否则版本号会静默丢失。
+
+        :param token: 当前 token
+        """
+        matched = re.search(r"[vV](\d+)$", str(token or ""))
+        if not matched:
+            return
+        version = f"v{int(matched.group(1))}"
+        if version not in self._release_info:
+            self._release_info.append(version)
 
     def __init_season(self, token: str):
         """

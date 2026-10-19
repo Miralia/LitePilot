@@ -678,3 +678,34 @@ def test_no_version_line_without_cut_or_release(title):
     lines = TemplateContextBuilder._build_spec_lines(meta)
     assert all(not line.startswith("🎬") for line in lines)
     assert lines and lines[0].startswith("🎥")
+
+
+# ---------------------------------------------------------------------------
+# 紧贴季集的版本号
+#
+# 发布名里修订版常直接附在季集编号后（S01E01v2 / S01v2），这类写法不能
+# 靠独立 token 识别，需要在季集解析后从原 token 提取，否则版本号丢失，
+# 甚至连带季号都识别不出。
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "title,expect_season,expect_episode,expect_release",
+    [
+        ("Show.S01E01v2.1080p.WEB-DL.AAC.x264-GRP", "S01", "E01", ["v2"]),
+        ("Show.S01E01v3.1080p.WEB-DL.AAC.x264-GRP", "S01", "E01", ["v3"]),
+        ("Show.S01v2.1080p.WEB-DL.AAC.x264-GRP", "S01", "", ["v2"]),
+        ("Show.S01v10.1080p.WEB-DL.AAC.x264-GRP", "S01", "", ["v10"]),
+        # 独立 token 的写法保持原有行为
+        ("Show.S01E01.1080p.WEB-DL.AAC.x264.v2-GRP", "S01", "E01", ["v2"]),
+        # 无版本号时不应误判
+        ("Show.S01E01.1080p.WEB-DL.AAC.x264-GRP", "S01", "E01", []),
+    ],
+)
+def test_version_attached_to_episode(title, expect_season, expect_episode, expect_release):
+    """紧贴季集编号的 v<N> 归入发布信息，季集仍正确解析。"""
+    from app.core.meta.metavideo import MetaVideo
+
+    meta = MetaVideo(title)
+    meta.finalize()
+    assert meta.season == expect_season
+    assert meta.episode == expect_episode
+    assert meta.release_info == expect_release
