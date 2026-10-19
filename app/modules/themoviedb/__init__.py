@@ -9,11 +9,9 @@ from app.core.context import MediaInfo
 from app.core.meta import MetaBase
 from app.log import logger
 from app.modules import _ModuleBase
-from app.modules.themoviedb.category import CategoryHelper
 from app.modules.themoviedb.scraper import TmdbScraper
 from app.modules.themoviedb.tmdb_cache import TmdbCache
 from app.modules.themoviedb.tmdbapi import TmdbApi
-from app.schemas.category import CategoryConfig
 from app.schemas.types import MediaType, MediaImageType, ModuleType, MediaRecognizeType
 from app.utils.http import RequestUtils
 from app.utils.zhconv import convert as zhconv_convert
@@ -33,14 +31,12 @@ class TheMovieDbModule(_ModuleBase):
     # TMDB
     tmdb: TmdbApi = None
     # 二级分类
-    category: CategoryHelper = None
     # 刮削器
     scraper: TmdbScraper = None
 
     def init_module(self) -> None:
         self.cache = TmdbCache()
         self.tmdb = TmdbApi()
-        self.category = CategoryHelper()
         self.scraper = TmdbScraper()
 
     @staticmethod
@@ -413,15 +409,8 @@ class TheMovieDbModule(_ModuleBase):
         """
         构建MediaInfo结果
         """
-        # 确定二级分类
-        if info.get('media_type') == MediaType.TV:
-            cat = self.category.get_tv_category(info)
-        else:
-            cat = self.category.get_movie_category(info)
-
-        # 赋值TMDB信息并返回
+        # 二级分类已取消，识别结果不再携带分类
         mediainfo = MediaInfo(tmdb_info=info)
-        mediainfo.set_category(cat)
 
         if meta:
             logger.info(f"{meta.name} TMDB识别结果：{mediainfo.type.value} "
@@ -439,15 +428,8 @@ class TheMovieDbModule(_ModuleBase):
         """
         构建MediaInfo结果（异步版本）
         """
-        # 确定二级分类
-        if info.get('media_type') == MediaType.TV:
-            cat = self.category.get_tv_category(info)
-        else:
-            cat = self.category.get_movie_category(info)
-
-        # 赋值TMDB信息并返回
+        # 二级分类已取消，识别结果不再携带分类
         mediainfo = MediaInfo(tmdb_info=info)
-        mediainfo.set_category(cat)
 
         if meta:
             logger.info(f"{meta.name} TMDB识别结果：{mediainfo.type.value} "
@@ -727,12 +709,16 @@ class TheMovieDbModule(_ModuleBase):
 
     def media_category(self) -> Optional[Dict[str, list]]:
         """
-        获取媒体分类
-        :return: 获取二级分类配置字典项，需包括电影、电视剧
+        获取媒体分类。
+
+        二级分类已取消，媒体只按电影 / 剧集 / 动漫一级归档，
+        因此恒返回空分类，供调用方统一处理。
+
+        :return: 空的分类字典
         """
         return {
-            MediaType.MOVIE.value: list(self.category.movie_categorys),
-            MediaType.TV.value: list(self.category.tv_categorys)
+            MediaType.MOVIE.value: [],
+            MediaType.TV.value: [],
         }
 
     def search_medias(
@@ -1470,15 +1456,3 @@ class TheMovieDbModule(_ModuleBase):
         self.tmdb.clear_cache()
         self.cache.clear()
         logger.info("TMDB缓存清除完成")
-
-    def load_category_config(self) -> CategoryConfig:
-        """
-        加载分类配置
-        """
-        return self.category.load()
-
-    def save_category_config(self, config: CategoryConfig) -> bool:
-        """
-        保存分类配置
-        """
-        return self.category.save(config)

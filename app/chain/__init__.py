@@ -40,7 +40,6 @@ from app.schemas import (
 from app.utils.identity import normalize_internal_user_id
 from app.utils.media import normalize_media_source
 from app.schemas.message import ChannelCapability, ChannelCapabilityManager
-from app.schemas.category import CategoryConfig
 from app.schemas.types import (
     TorrentStatus,
     MediaType,
@@ -1709,18 +1708,6 @@ class ChainBase(metaclass=ABCMeta):
         :return: 获取二级分类配置字典项，需包括电影、电视剧
         """
         return self.run_module("media_category")
-
-    def category_config(self) -> CategoryConfig:
-        """
-        获取分类策略配置
-        """
-        return self.run_module("load_category_config")
-
-    def save_category_config(self, config: CategoryConfig) -> bool:
-        """
-        保存分类策略配置
-        """
-        return self.run_module("save_category_config", config=config)
 
     def register_commands(self, commands: Dict[str, dict]) -> None:
         """

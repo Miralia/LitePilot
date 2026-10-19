@@ -74,10 +74,6 @@ function openTmdbPage(type: string, tmdbId: number) {
             >
               {{ context?.media_info?.type || context?.meta_info?.type }}
             </VChip>
-            <!-- 二级分类 -->
-            <VChip v-if="context?.media_info?.category" variant="elevated" class="me-1 mb-1 text-white bg-blue-500">
-              {{ context?.media_info?.category }}
-            </VChip>
             <!-- TMDBID -->
             <VChip
               v-if="context?.media_info?.tmdb_id"

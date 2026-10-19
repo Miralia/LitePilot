@@ -2098,23 +2098,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             if not task.target_storage and task.target_directory:
                 task.target_storage = task.target_directory.library_storage
 
-            if self._requires_automatic_category(task) and not task.mediainfo.category:
-                if task.mediainfo.tmdb_id:
-                    error_message = "TMDB 信息未匹配到媒体分类，无法按媒体类别整理"
-                else:
-                    error_message = "未识别到 TMDB 辅助信息，无法按媒体类别整理"
-                logger.error(f"{task.fileitem.name} {error_message}")
-                if callback:
-                    return callback(
-                        task,
-                        TransferInfo(
-                            success=False,
-                            fileitem=task.fileitem,
-                            transfer_type=task.transfer_type,
-                            message=error_message,
-                        ),
-                    )
-                return False, error_message
 
             # 正在处理
             self.jobview.running_task(task)

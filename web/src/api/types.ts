@@ -117,7 +117,6 @@ export interface DownloadHistory {
   // 附加信息
   note?: unknown
   // 自定义媒体类别
-  media_category?: string
   // 自定义剧集组
   episode_group?: string
 }
@@ -890,11 +889,9 @@ export interface TransferDirectoryConf {
   // 适用媒体类型
   media_type?: string
   // 适用媒体类别
-  media_category?: string
   // 下载类型子目录
   download_type_folder?: boolean
   // 下载类别子目录
-  download_category_folder?: boolean
   // 监控方式 downloader/monitor，None为不监控
   monitor_type?: string
   // 监控模式 fast/compatibility
@@ -914,7 +911,6 @@ export interface TransferDirectoryConf {
   // 媒体库类型子目录
   library_type_folder?: boolean
   // 媒体库类别子目录
-  library_category_folder?: boolean
   // 是否发送通知
   notify?: boolean
 }

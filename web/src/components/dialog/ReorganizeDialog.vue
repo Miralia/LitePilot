@@ -328,7 +328,6 @@ const transferForm = reactive<TransferForm>({
   scrape: initialTargetPath ? false : null,
   from_history: false,
   library_type_folder: null,
-  library_category_folder: null,
   episode_group: null,
   reorganize: Boolean(props.logids?.length),
 })
@@ -408,7 +407,6 @@ function resetAutomaticTargetConfig() {
   transferForm.transfer_type = null
   transferForm.scrape = null
   transferForm.library_type_folder = null
-  transferForm.library_category_folder = null
 }
 
 // 监听目的路径变化，配置默认值
@@ -421,20 +419,17 @@ watch(
         transferForm.target_storage = directory.library_storage ?? 'local'
         transferForm.transfer_type = transferForm.transfer_type || directory.transfer_type
         transferForm.scrape = directory.scraping ?? false
-        transferForm.library_category_folder = directory.library_category_folder ?? false
         transferForm.library_type_folder = directory.library_type_folder ?? false
       } else {
         transferForm.target_storage = transferForm.target_storage || 'local'
         transferForm.transfer_type = transferForm.transfer_type || 'copy'
         transferForm.scrape = false
-        transferForm.library_category_folder = false
         transferForm.library_type_folder = false
       }
     } else {
       // 路径为空时, 恢复到`自动`条件
       transferForm.transfer_type = null
       transferForm.library_type_folder = null
-      transferForm.library_category_folder = null
     }
   },
 )
@@ -1635,14 +1630,6 @@ onUnmounted(() => {
                       v-model="transferForm.library_type_folder"
                       :label="t('dialog.reorganize.typeFolderOption')"
                       :hint="t('dialog.reorganize.typeFolderHint')"
-                      persistent-hint
-                    />
-                  </VCol>
-                  <VCol cols="12" md="6">
-                    <VSwitch
-                      v-model="transferForm.library_category_folder"
-                      :label="t('dialog.reorganize.categoryFolderOption')"
-                      :hint="t('dialog.reorganize.categoryFolderHint')"
                       persistent-hint
                     />
                   </VCol>

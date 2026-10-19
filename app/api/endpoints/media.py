@@ -15,7 +15,6 @@ from app.core.security import verify_token, verify_apitoken
 from app.db.models import User
 from app.db.user_oper import get_current_active_user, get_current_active_superuser
 from app.schemas import MediaType, MediaRecognizeConvertEventData
-from app.schemas.category import CategoryConfig
 from app.schemas.types import ChainEventType
 from app.utils.media import MEDIA_SOURCE_ID_FIELDS, parse_media_key
 
@@ -305,21 +304,6 @@ def get_category_config(_: User = Depends(get_current_active_user)):
     """
     config = MediaChain().category_config()
     return schemas.Response(success=True, data=config.model_dump())
-
-
-@router.post(
-    "/category/config", summary="保存分类策略配置", response_model=schemas.Response
-)
-def save_category_config(
-    config: CategoryConfig, _: User = Depends(get_current_active_superuser)
-):
-    """
-    保存分类策略配置
-    """
-    if MediaChain().save_category_config(config):
-        return schemas.Response(success=True, message="保存成功")
-    else:
-        return schemas.Response(success=False, message="保存失败")
 
 
 @router.get("/category", summary="查询自动分类配置", response_model=dict)

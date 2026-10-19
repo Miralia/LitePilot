@@ -24,16 +24,12 @@ const props = defineProps({
 
 // 拖拽排序和分类编辑弹窗按需加载，避免设置框架预加载目录页时带上这些交互依赖。
 const Draggable = defineAsyncComponent(() => import('vuedraggable').then(module => module.default))
-const CategoryEditDialog = defineAsyncComponent(() => import('@/components/dialog/CategoryEditDialog.vue'))
 
 // 所有下载目录
 const directories = ref<TransferDirectoryConf[]>([])
 
 // 所有存储
 const storages = ref<StorageConf[]>([])
-
-// 二级分类策略
-const mediaCategories = ref<{ [key: string]: any }>({})
 
 // 提示框
 const $toast = useToast()
@@ -78,18 +74,6 @@ const renameEditorOptions = {
   tabSize: 2,
   showLineNumbers: true,
   showGutter: true,
-}
-
-// 打开共享分类编辑弹窗，保存后刷新本页分类配置。
-function openCategoryDialog() {
-  openSharedDialog(
-    CategoryEditDialog,
-    {},
-    {
-      save: loadMediaCategories,
-    },
-    { closeOn: ['close', 'save', 'update:modelValue'] },
-  )
 }
 
 const movieRenameFormat = computed({
@@ -208,7 +192,6 @@ function addDirectory() {
     priority: -1,
     monitor_type: '',
     media_type: '',
-    media_category: '',
     transfer_type: '',
   })
   orderDirectoryCards()
@@ -219,15 +202,6 @@ function removeDirectory(directory: TransferDirectoryConf) {
   const index = directories.value.indexOf(directory)
   if (index > -1) {
     directories.value.splice(index, 1)
-  }
-}
-
-// 调用API查询自动分类配置
-async function loadMediaCategories() {
-  try {
-    mediaCategories.value = await api.get('media/category')
-  } catch (error) {
-    console.log(error)
   }
 }
 
@@ -290,8 +264,7 @@ async function saveSystemSettings(value: any) {
 async function loadPageData() {
   await Promise.all([
     loadDirectories(),
-    loadStorages(),
-    loadMediaCategories(),
+    loadStorages(),,
     loadSystemSettings(),
     loadMountedLocalDiskDeleteEmptyDirs(),
   ])
@@ -372,7 +345,6 @@ useSilentSettingRefresh(loadPageData, {
             <template #item="{ element }">
               <DirectoryCard
                 :directory="element"
-                :categories="mediaCategories"
                 :storages="storages"
                 @update:modelValue="
                   (value: any) => {
@@ -395,9 +367,6 @@ useSilentSettingRefresh(loadPageData, {
                 <VIcon icon="mdi-plus" />
               </VBtn>
               <VSpacer />
-              <VBtn color="info" variant="tonal" prepend-icon="mdi-shape-plus" @click="openCategoryDialog">
-                {{ t('setting.category.title') }}
-              </VBtn>
             </div>
           </VForm>
         </VCardText>

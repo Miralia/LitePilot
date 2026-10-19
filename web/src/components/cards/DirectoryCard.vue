@@ -28,10 +28,6 @@ const props = defineProps({
     type: Object as PropType<TransferDirectoryConf>,
     required: true, // 必填参数
   },
-  categories: {
-    type: Object as PropType<{ [key: string]: any }>,
-    required: true,
-  },
   storages: {
     type: Array as PropType<StorageConf[]>,
     required: true,
@@ -209,13 +205,6 @@ function onClose() {
   emit('close')
 }
 
-// 根据选中的媒体类型，获取对应的媒体类别
-const getCategories = computed(() => {
-  const default_value = [{ title: t('common.all'), value: '' }]
-  if (!props.categories || !props.categories[props.directory?.media_type ?? '']) return default_value
-  return default_value.concat(props.categories[props.directory.media_type ?? ''])
-})
-
 // 监听 资源存储与媒体库储存 变化，重新加载整理方式下拉字典
 watch(
   [() => props.directory.library_storage, () => props.directory.storage],
@@ -236,17 +225,13 @@ watch(
   { immediate: true },
 )
 
-// 媒体类别和类型变更非空时，将按类型分类和按类别分类置为false
+// 媒体类型变更非空时，将按类型建子目录的开关置为 false
 watch(
-  [() => props.directory.media_type, () => props.directory.media_category],
-  ([newMediaType, newMediaCategory], [oldMediaType, oldMediaCategory]) => {
+  [() => props.directory.media_type],
+  ([newMediaType], [oldMediaType]) => {
     if (newMediaType && newMediaType !== oldMediaType) {
       props.directory.download_type_folder = false
       props.directory.library_type_folder = false
-    }
-    if (newMediaCategory && newMediaCategory !== oldMediaCategory) {
-      props.directory.download_category_folder = false
-      props.directory.library_category_folder = false
     }
   },
 )
@@ -295,16 +280,6 @@ watch(
               :items="typeItems"
               :label="t('directory.mediaType')"
               mobile-control-width="65%"
-              @update:modelValue="props.directory.media_category = ''"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VAutocomplete
-              v-model="props.directory.media_category"
-              variant="underlined"
-              :items="getCategories"
-              :label="t('directory.mediaCategory')"
-              mobile-control-width="65%"
             />
           </VCol>
           <VCol cols="4">
@@ -327,12 +302,6 @@ watch(
           </VCol>
           <VCol cols="6" v-if="!props.directory.media_type || props.directory.media_type === ''">
             <VSwitch v-model="props.directory.download_type_folder" :label="t('directory.sortByType')"></VSwitch>
-          </VCol>
-          <VCol cols="6" v-if="!props.directory.media_category || props.directory.media_category === ''">
-            <VSwitch
-              v-model="props.directory.download_category_folder"
-              :label="t('directory.sortByCategory')"
-            ></VSwitch>
           </VCol>
         </VRow>
         <VDivider v-if="$props.directory.monitor_type" class="my-3 bg-primary" />
@@ -396,9 +365,6 @@ watch(
           </VCol>
           <VCol cols="6" v-if="!props.directory.media_type || props.directory.media_type === ''">
             <VSwitch v-model="props.directory.library_type_folder" :label="t('directory.sortByType')"></VSwitch>
-          </VCol>
-          <VCol cols="6" v-if="!props.directory.media_category || props.directory.media_category === ''">
-            <VSwitch v-model="props.directory.library_category_folder" :label="t('directory.sortByCategory')"></VSwitch>
           </VCol>
           <VCol cols="6">
             <VSwitch v-model="props.directory.renaming" :label="t('directory.smartRename')"></VSwitch>

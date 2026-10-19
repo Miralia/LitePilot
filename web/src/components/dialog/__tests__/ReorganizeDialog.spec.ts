@@ -620,7 +620,6 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
   it('applies a configured library target and can reset every derived field back to automatic', async () => {
     const bodies: unknown[] = []
     const directory: TransferDirectoryConf = {
-      library_category_folder: true,
       library_path: '/library/tv',
       library_storage: 'rclone',
       library_type_folder: true,
@@ -649,7 +648,6 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
 
     expect(bodies[0]).toEqual(
       expect.objectContaining({
-        library_category_folder: true,
         library_type_folder: true,
         scrape: true,
         target_path: '/library/tv',
@@ -711,7 +709,6 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
         episode_group: 'group-1',
         episode_offset: 'EP+1',
         episode_part: 'part2',
-        library_category_folder: true,
         library_type_folder: true,
         media_id: '600',
         media_source: 'themoviedb',

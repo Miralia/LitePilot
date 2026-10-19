@@ -1138,8 +1138,7 @@ class TransHandler:
         """
         if need_type_folder and mediainfo.type:
             target_path = target_path / mediainfo.type.value
-        if need_category_folder and mediainfo.category:
-            target_path = target_path / mediainfo.category
+        # 二级分类已取消，不再按类别建子目录
         return target_path
 
     @staticmethod
