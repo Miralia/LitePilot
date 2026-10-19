@@ -376,3 +376,32 @@ def test_emby_webhook_parses_query_params_regardless_of_isvirtual(
     assert info.episode_id == "3"
     assert info.item_type == "Episode"
     assert info.item_isvirtual is expected
+
+
+def test_missing_file_list_pauses_instead_of_deleting():
+    """文件清单缺失时必须暂停而非删除种子，否则会整季误删源文件。"""
+    from unittest.mock import MagicMock, patch
+
+    from app.chain.mediaserverdel import MediaServerDelChain
+
+    chain = MediaServerDelChain()
+    chain.downloadhis = MagicMock()
+    chain.downloadhis.get_files_by_hash.return_value = []   # 清单为空
+    chain._torrent_exists = MagicMock(return_value=True)
+    chain._pause_torrent = MagicMock(return_value="paused")
+    chain._cleanup_residual_source = MagicMock()
+
+    history = MagicMock(
+        dest=None, src="/tmp/x.mkv", src_storage="local", mode="link",
+        download_hash="a" * 40, downloader="qBittorrent",
+    )
+    conf = MagicMock(
+        delete_source_file=True, delete_torrent=True,
+        remove_empty_dirs=False, dry_run=False,
+    )
+    with patch("app.chain.mediaserverdel.DownloadChain") as dl:
+        state, _ = chain._delete_source(history, conf=conf)
+
+    assert state == "paused"
+    chain._pause_torrent.assert_called_once()
+    dl.return_value.remove_downloading.assert_not_called()

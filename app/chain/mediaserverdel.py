@@ -169,21 +169,27 @@ class MediaServerDelChain(ChainBase):
                 state = "gone"
             else:
                 self.downloadhis.delete_file_by_fullpath(fullpath=history.src)
+                all_files = self.downloadhis.get_files_by_hash(
+                    download_hash=torrent_hash
+                )
                 remain = self.downloadhis.get_files_by_hash(
                     download_hash=torrent_hash, state=1
                 )
-                if remain:
+                if not all_files:
+                    # 从未同步过该种子的文件清单：无法判断还剩多少内容，
+                    # 把「查不到」当成「删完了」会整季误删源文件，
+                    # 因此保守暂停任务，等清单可用或用户手动确认
+                    logger.info(
+                        f"种子 {torrent_hash} 缺少文件清单记录，暂停任务而非删除"
+                    )
+                    state = self._pause_torrent(torrent_hash)
+                elif remain:
                     # 种子只是部分内容被删：暂停而非删除，
                     # 等后续事件把剩余内容也删完再移除任务
                     logger.info(
                         f"种子 {torrent_hash} 仍有 {len(remain)} 个文件未删除，暂停下载任务"
                     )
-                    try:
-                        self.stop_torrents(hashs=torrent_hash)
-                        state = "paused"
-                    except Exception as err:  # pylint: disable=broad-except
-                        logger.error(f"暂停种子 {torrent_hash} 失败：{err}")
-                        state = "error"
+                    state = self._pause_torrent(torrent_hash)
                 else:
                     logger.info(f"种子 {torrent_hash} 文件已全部删除，删除下载任务")
                     if DownloadChain().remove_downloading(hash_str=torrent_hash):
@@ -199,6 +205,20 @@ class MediaServerDelChain(ChainBase):
         self._cleanup_residual_source(src_path, src_exists, src_deletable, conf)
 
         return state, torrent_hash
+
+    def _pause_torrent(self, torrent_hash: str) -> str:
+        """
+        暂停下载任务。
+
+        :param torrent_hash: 种子哈希
+        :return: 成功返回 paused，失败返回 error
+        """
+        try:
+            self.stop_torrents(hashs=torrent_hash)
+            return "paused"
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(f"暂停种子 {torrent_hash} 失败：{err}")
+            return "error"
 
     def _cleanup_residual_source(
             self,
