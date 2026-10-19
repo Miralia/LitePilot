@@ -515,6 +515,12 @@ export default {
       overrideSource: '用探测结果补全来源',
       overrideSourceHint: '标题没有 ProRes / DCP / Master 标记时，按文件格式补齐',
       logFailure: '探测失败时记录告警日志',
+      cleanupTitle: '整理后源文件清理',
+      cleanupGuide:
+        '硬链接入库后源文件本身已无保留价值，但要区分来源：下载器（qBittorrent 等）管理的文件需要保留以继续做种，Usenet 抓取的文件入库后可以直接删除，避免重复占用空间。',
+      deleteNonDownloaderSource: '删除非下载器来源的源文件',
+      deleteNonDownloaderSourceHint:
+        '仅在硬链接方式下生效；属于 BT 下载任务的文件始终保留。删除前会校验媒体库文件已生成。',
       coverTitle: '媒体库封面生成',
       coverGuide:
         '取媒体库最近入库条目的海报，按固定风格渲染封面并回写媒体服务器。字体固定为霞鹜真楷，首次运行会自动下载。尺寸与字号可按需微调。',

@@ -55,3 +55,6 @@ docs/superpowers/
 web/node_modules/
 web/dist/
 web/dev-dist/
+
+# 系统升级前的本地备份（体积大，不入库）
+_upgrade_backups/

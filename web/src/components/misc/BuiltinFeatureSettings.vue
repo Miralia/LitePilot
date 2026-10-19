@@ -71,6 +71,18 @@ const delConf = ref<SyncDelConf>({
   remove_empty_dirs: true,
   dry_run: false,
 })
+interface SourceCleanupConf {
+  enabled: boolean
+  delete_when_not_in_downloader: boolean
+  remove_empty_dirs: boolean
+}
+
+const cleanupConf = ref<SourceCleanupConf>({
+  enabled: true,
+  delete_when_not_in_downloader: true,
+  remove_empty_dirs: true,
+})
+
 const probeConf = ref<ProbeConf>({
   enabled: true,
   override_resolution: true,
@@ -84,8 +96,8 @@ const coverConf = ref<CoverConf>({
   libraries: [],
   width: 1920,
   height: 1080,
-  zh_font_size: 150,
-  en_font_size: 62,
+  zh_font_size: 230,
+  en_font_size: 95,
   blur_size: 50,
   color_ratio: 0.8,
 })
@@ -113,6 +125,7 @@ async function loadAll() {
     delConf.value = await loadConf('SyncDelByMediaServer', delConf.value)
     coverConf.value = await loadConf('LibraryCoverGenerator', coverConf.value)
     probeConf.value = await loadConf('MediaInfoProbe', probeConf.value)
+    cleanupConf.value = await loadConf('MediaSourceCleanup', cleanupConf.value)
 
     const downloaders: any = await api.get('system/setting/Downloaders')
     downloaderOptions.value = (downloaders?.data?.value ?? []).map((item: any) => item.name)
@@ -155,6 +168,7 @@ async function save() {
       saveConf('SyncDelByMediaServer', delConf.value),
       saveConf('LibraryCoverGenerator', coverConf.value),
       saveConf('MediaInfoProbe', probeConf.value),
+      saveConf('MediaSourceCleanup', cleanupConf.value),
     ])
     if (results.every(Boolean)) {
       $toast.success(t('setting.builtin.saveSuccess'))
@@ -336,6 +350,37 @@ onMounted(loadAll)
             v-model="probeConf.log_failure"
             :label="t('setting.builtin.logFailure')"
             :disabled="!probeConf.enabled"
+            hide-details
+          />
+        </VCol>
+      </VRow>
+    </VCardText>
+  </VCard>
+
+  <VCard variant="tonal" class="mb-4">
+    <VCardItem>
+      <VCardTitle>{{ t('setting.builtin.cleanupTitle') }}</VCardTitle>
+      <VCardSubtitle>{{ t('setting.builtin.cleanupGuide') }}</VCardSubtitle>
+    </VCardItem>
+    <VCardText>
+      <VRow>
+        <VCol cols="12" md="3">
+          <VSwitch v-model="cleanupConf.enabled" :label="t('setting.builtin.enabled')" hide-details />
+        </VCol>
+        <VCol cols="12" md="5">
+          <VCheckbox
+            v-model="cleanupConf.delete_when_not_in_downloader"
+            :label="t('setting.builtin.deleteNonDownloaderSource')"
+            :hint="t('setting.builtin.deleteNonDownloaderSourceHint')"
+            persistent-hint
+            :disabled="!cleanupConf.enabled"
+          />
+        </VCol>
+        <VCol cols="12" md="4">
+          <VCheckbox
+            v-model="cleanupConf.remove_empty_dirs"
+            :label="t('setting.builtin.removeEmptyDirs')"
+            :disabled="!cleanupConf.enabled"
             hide-details
           />
         </VCol>
