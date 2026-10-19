@@ -82,14 +82,19 @@ class MediaServerDelChain(ChainBase):
         # Emby 的 ScripterX 拼接 webhook URL 时不对 `+` 转义，`DD+` 这类
         # 路径到达时已变成 `DD `（加号被当作空格的转义）。查询前先还原，
         # 否则含 + 的路径永远匹配不到整理记录
-        if media_path:
-            media_path = self._restore_plus_signs(media_path)
+        # ScripterX 不转义 +，DD+ 到达时已变成 DD 空格。
+        # 候选路径 = 原样 + 所有词间空格替换为加号，两种都试。
+        plus_candidate = self._restore_plus_signs(media_path) if media_path else None
         mtype = MediaType.MOVIE if media_type in ("Movie", "MOV") else MediaType.TV
 
         if mtype == MediaType.MOVIE:
             histories = self.transferhis.get_by(
                 tmdbid=tmdb_id, mtype=mtype.value, dest=media_path
             )
+            if not histories and plus_candidate:
+                histories = self.transferhis.get_by(
+                    tmdbid=tmdb_id, mtype=mtype.value, dest=plus_candidate
+                )
             if histories:
                 return f"电影 {media_name} {tmdb_id}", histories
             # ScripterX 拼接 URL 时不转义 `+`，含 `DD+` 的路径会被解码改写，
@@ -117,6 +122,15 @@ class MediaServerDelChain(ChainBase):
             episode=f"E{episode}",
             dest=media_path,
         )
+        if not histories and plus_candidate:
+            # 加号被解码成空格的场景：用还原后的候选路径再查一次
+            histories = self.transferhis.get_by(
+                tmdbid=tmdb_id,
+                mtype=mtype.value,
+                season=f"S{season}",
+                episode=f"E{episode}",
+                dest=plus_candidate,
+            )
         if histories:
             return f"剧集 {media_name} S{season}E{episode} {tmdb_id}", histories
         # dest 精确匹配失败时按季集降级：tmdbid+季+集已能唯一定位，
