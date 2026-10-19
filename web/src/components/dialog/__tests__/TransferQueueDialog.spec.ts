@@ -39,7 +39,6 @@ function createMetaInfo(): MetaInfo {
   return {
     apply_words: [],
     audio_term: '',
-    edition: '',
     episode: '',
     episode_list: [],
     episode_seq: '',
@@ -48,7 +47,6 @@ function createMetaInfo(): MetaInfo {
     isfile: true,
     name: '',
     release_group: '',
-    resource_term: '',
     sea: '',
     season: '',
     season_episode: '',

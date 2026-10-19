@@ -32,11 +32,6 @@ const templateTypeDefaults = [
     icon: 'mdi-folder-check',
     accentRgb: 'var(--v-theme-primary)',
   },
-  {
-    type: 'downloadAdded',
-    icon: 'mdi-download-box',
-    accentRgb: 'var(--v-theme-info)',
-  },
 ] as const
 
 type NotificationTemplateType = (typeof templateTypeDefaults)[number]['type']

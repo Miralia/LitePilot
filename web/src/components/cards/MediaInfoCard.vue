@@ -91,12 +91,48 @@ function openTmdbPage(type: string, tmdbId: number) {
             <VChip v-if="context?.meta_info?.web_source" variant="elevated" class="me-1 mb-1 text-white bg-purple-500">
               {{ context?.meta_info?.web_source }}
             </VChip>
-            <VChip v-if="context?.meta_info?.edition" variant="elevated" class="me-1 mb-1 text-white bg-red-500">
-              {{ context?.meta_info?.edition }}
+            <!-- 来源 -->
+            <VChip v-if="context?.meta_info?.resource_type" variant="elevated" class="me-1 mb-1 text-white bg-red-500">
+              {{ context?.meta_info?.resource_type }}
             </VChip>
+            <!-- 分辨率 -->
             <VChip v-if="context?.meta_info?.resource_pix" variant="elevated" class="me-1 mb-1 text-white bg-red-500">
               {{ context?.meta_info?.resource_pix }}
             </VChip>
+            <!-- 音频编码 -->
+            <VChip
+              v-if="context?.meta_info?.audio_encode"
+              variant="elevated"
+              class="me-1 mb-1 text-white bg-orange-500"
+            >
+              {{ context?.meta_info?.audio_encode }}
+            </VChip>
+            <!-- Atmos：音频的附属属性 -->
+            <VChip
+              v-if="context?.meta_info?.audio_atmos"
+              variant="elevated"
+              class="me-1 mb-1 text-white bg-deep-orange-500"
+            >
+              Atmos
+            </VChip>
+            <!-- HDR 规格：视频的附属属性 -->
+            <VChip
+              v-for="flag in context?.meta_info?.video_hdr || []"
+              :key="flag"
+              variant="elevated"
+              class="me-1 mb-1 text-white bg-teal-500"
+            >
+              {{ flag }}
+            </VChip>
+            <!-- 色彩采样：视频的附属属性 -->
+            <VChip
+              v-if="context?.meta_info?.video_chroma"
+              variant="elevated"
+              class="me-1 mb-1 text-white bg-teal-500"
+            >
+              {{ context?.meta_info?.video_chroma }}
+            </VChip>
+            <!-- 视频编码 -->
             <VChip
               v-if="context?.meta_info?.video_encode"
               variant="elevated"
@@ -104,12 +140,31 @@ function openTmdbPage(type: string, tmdbId: number) {
             >
               {{ context?.meta_info?.video_encode }}
             </VChip>
+            <!-- 特殊版本 -->
             <VChip
-              v-if="context?.meta_info?.audio_encode"
+              v-for="item in context?.meta_info?.special_edition || []"
+              :key="item"
               variant="elevated"
-              class="me-1 mb-1 text-white bg-orange-500"
+              class="me-1 mb-1 text-white bg-purple-500"
             >
-              {{ context?.meta_info?.audio_encode }}
+              {{ item }}
+            </VChip>
+            <!-- 剪辑版本 -->
+            <VChip
+              v-if="context?.meta_info?.cut_version"
+              variant="elevated"
+              class="me-1 mb-1 text-white bg-indigo-500"
+            >
+              {{ context?.meta_info?.cut_version }}
+            </VChip>
+            <!-- 发布信息 -->
+            <VChip
+              v-for="item in context?.meta_info?.release_info || []"
+              :key="item"
+              variant="elevated"
+              class="me-1 mb-1 text-white bg-cyan-500"
+            >
+              {{ item }}
             </VChip>
             <VChip v-if="context?.meta_info?.resource_team" variant="elevated" class="me-1 mb-1 text-white bg-cyan-500">
               {{ context?.meta_info?.resource_team }}

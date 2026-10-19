@@ -39,10 +39,13 @@ def _build_fake_meta():
     meta.customization = None
     meta.fps = None
     meta.resource_type = None
-    meta.resource_effect = None
-    meta.edition = ""
+    meta.video_hdr = []
+    meta.video_chroma = None
+    meta.audio_atmos = False
+    meta.special_edition = []
+    meta.cut_version = None
+    meta.release_info = []
     meta.resource_pix = "1080p"
-    meta.resource_term = "1080p"
     meta.resource_team = None
     meta.video_encode = "x265 10bit"
     meta.video_bit = "10bit"
@@ -104,7 +107,8 @@ def test_build_exposes_video_bit_from_meta() -> None:
     context = TemplateContextBuilder().build(meta=_build_fake_meta())
 
     assert context.get("videoCodec") == "x265 10bit"
-    assert context.get("videoBit") == "10bit"
+    # videoBit 已不再进入模板上下文：位深不参与命名与通知展示
+    assert context.get("videoBit") is None
 
 
 def test_build_exposes_total_episodes_from_current_season() -> None:

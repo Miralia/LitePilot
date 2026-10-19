@@ -208,27 +208,49 @@ class TemplateContextBuilder:
             "fps": meta.fps,
         }
 
+        spec_lines = cls._build_spec_lines(meta)
+
+        # 技术规格全部以原子字段提供，模板按需自由组合。
+        # 不提供 edition / resource_term / effect 这类混合聚合值：
+        # 它们把来源、分辨率、HDR、特殊版本混在一串里，语义边界模糊，
+        # 模板无法只取其中一部分。
         tech_metadata = {
-            # 资源类型
+            # 来源：UHD BD Remux / BD / WEB-DL
             "resourceType": meta.resource_type,
-            # 特效
-            "effect": meta.resource_effect,
-            # 版本
-            "edition": meta.edition,
-            # 分辨率
+            # 分辨率：2160p / 1080p
             "videoFormat": meta.resource_pix,
-            # 质量
-            "resource_term": meta.resource_term,
+            # 流媒体平台（仅 WEB 类来源有意义）
+            "webSource": meta.web_source,
+            # 视频编码：HEVC / x264
+            "videoCodec": meta.video_encode,
+            # 音频编码：TrueHD / DD+
+            "audioCodec": meta.audio_encode,
+            # 是否为 Dolby Atmos（仅 DD+ / TrueHD 有效）
+            "audioAtmos": meta.audio_atmos,
+            # HDR 规格列表
+            "hdrFlags": list(meta.video_hdr or []),
+            # HDR 规格拼串
+            "hdr": " ".join(meta.video_hdr or []),
+            # 色彩采样
+            "videoChroma": meta.video_chroma,
+            # 特殊版本列表
+            "specialEdition": list(meta.special_edition or []),
+            # 特殊版本拼串
+            "special": " ".join(meta.special_edition or []),
+            # 剪辑版本
+            "cutVersion": meta.cut_version,
+            # 发布信息列表
+            "releaseInfo": list(meta.release_info or []),
+            # 发布信息拼串
+            "release": " ".join(meta.release_info or []),
             # 制作组/字幕组
             "releaseGroup": meta.resource_team,
-            # 视频编码
-            "videoCodec": meta.video_encode,
-            # 视频位深
-            "videoBit": meta.video_bit,
-            # 音频编码
-            "audioCodec": meta.audio_encode,
-            # 流媒体平台
-            "webSource": meta.web_source,
+            # 技术规格分行结果（已带图标），供模板逐行渲染
+            "specLines": spec_lines,
+            # 同上，拼成可直接输出的多行文本
+            "specBlock": "\n".join(spec_lines),
+            # 不带图标的单行规格，供文件名模板使用
+            "specPlain": cls._build_spec_plain(meta),
         }
         context.update({**meta_info, **tech_metadata, **episode_data})
 
@@ -279,6 +301,111 @@ class TemplateContextBuilder:
             "size": size,
         }
         context.update(torrent_info)
+
+    # 规格行基准长度：以 "AMZN WEB-DL 1080p DD+ H264"（26 字符）为参考，
+    # 留出余量取 36，使多数片源能单行容纳
+    SPEC_LINE_WIDTH = 36
+    # 三档图标固定含义：版本特例 → 主规格 → 续行
+    SPEC_ICON_HEAD = "🎬"
+    SPEC_ICON_MAIN = "🎥"
+    SPEC_ICON_TAIL = "📽"
+
+    @classmethod
+    def _build_spec_plain(cls, meta: MetaBase) -> str:
+        """
+        把技术规格拼成不带图标的单行文本，供文件名使用。
+
+        文件名不承载图标与换行，只需要一份完整、紧凑的技术描述。
+        与 :meth:`_build_spec_lines` 共用同一套字段与顺序，避免两处
+        拼接逻辑漂移。
+
+        :param meta: 媒体元数据
+        :return: 空格分隔的规格串，无内容时返回空串
+        """
+        # 顺序与 _build_spec_lines 保持一致：
+        # 来源块（平台 来源 分辨率 特殊版本）→ 剪辑版本 → 音频 → HDR → 采样 → 视频 → 发布信息
+        parts = (
+            meta.web_source,
+            meta.resource_type,
+            meta.resource_pix,
+            *(meta.special_edition or []),
+            meta.cut_version,
+            meta.audio_encode,
+            "Atmos" if meta.audio_atmos else None,
+            *(meta.video_hdr or []),
+            meta.video_chroma,
+            meta.video_encode,
+            *(meta.release_info or []),
+        )
+        return " ".join(part for part in parts if part)
+
+    @classmethod
+    def _build_spec_lines(cls, meta: MetaBase) -> List[str]:
+        """
+        把技术规格装成若干行，每行自带图标。
+
+        装行规则：
+
+        - 剪辑版本（Director's Cut 等）是特例，单独占首行，固定用 🎬
+        - 来源块（平台 + 来源 + 分辨率 + 特殊版本）与音视频块优先合并，
+          合并后不超过 :attr:`SPEC_LINE_WIDTH` 就单行输出
+        - 超长时来源与音视频分行，保证音视频信息完整落在同一行
+        - 音视频本身仍超长时，尾部落到第三行，避免产生极短的行
+
+        空值全部跳过；无任何规格时返回空列表。
+
+        :param meta: 媒体元数据
+        :return: 已带图标的行列表
+        """
+        source_block = " ".join(
+            part for part in (
+                meta.web_source,
+                meta.resource_type,
+                meta.resource_pix,
+                *(meta.special_edition or []),
+            ) if part
+        )
+        audio_video_block = " ".join(
+            part for part in (
+                meta.audio_encode,
+                "Atmos" if meta.audio_atmos else None,
+                *(meta.video_hdr or []),
+                meta.video_chroma,
+                meta.video_encode,
+                *(meta.release_info or []),
+            ) if part
+        )
+        combined = " ".join(p for p in (source_block, audio_video_block) if p)
+
+        result: List[str] = []
+        if meta.cut_version:
+            result.append(f"{cls.SPEC_ICON_HEAD} {meta.cut_version}")
+        if not combined:
+            return result
+
+        if len(combined) <= cls.SPEC_LINE_WIDTH:
+            result.append(f"{cls.SPEC_ICON_MAIN} {combined}")
+            return result
+
+        if source_block:
+            result.append(f"{cls.SPEC_ICON_MAIN} {source_block}")
+        if len(audio_video_block) <= cls.SPEC_LINE_WIDTH:
+            result.append(f"{cls.SPEC_ICON_MAIN} {audio_video_block}")
+        else:
+            # 音视频仍超长：从尾部切出能装下的部分，避免出现极短的行
+            tokens = audio_video_block.split()
+            split_at = len(tokens)
+            while split_at > 0:
+                if len(" ".join(tokens[:split_at])) <= cls.SPEC_LINE_WIDTH:
+                    break
+                split_at -= 1
+            head_part = " ".join(tokens[:split_at])
+            tail_part = " ".join(tokens[split_at:])
+            if head_part:
+                result.append(f"{cls.SPEC_ICON_MAIN} {head_part}")
+            if tail_part:
+                result.append(f"{cls.SPEC_ICON_TAIL} {tail_part}")
+        return result
 
     @staticmethod
     def _add_transfer_info(context: Dict[str, Any], transferinfo: Optional[TransferInfo]) -> None:

@@ -986,10 +986,21 @@ class Telegram:
                 site_name = torrent.site_name
                 meta = MetaInfo(torrent.title, torrent.description)
                 link = torrent.page_url
+                # 技术规格由原子字段组合：来源 分辨率 音频[Atmos] HDR 视频
+                spec_parts = [
+                    meta.resource_type,
+                    meta.resource_pix,
+                    meta.audio_encode,
+                    "Atmos" if meta.audio_atmos else None,
+                    " ".join(meta.video_hdr or []),
+                    meta.video_chroma,
+                    meta.video_encode,
+                    " ".join(meta.special_edition or []),
+                ]
+                spec = " ".join(part for part in spec_parts if part)
                 title = (
                     f"{meta.season_episode} "
-                    f"{meta.resource_term} "
-                    f"{meta.video_term} "
+                    f"{spec} "
                     f"{meta.release_group}"
                 )
                 title = re.sub(r"\s+", " ", title).strip()

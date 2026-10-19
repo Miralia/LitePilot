@@ -987,24 +987,7 @@ class DownloadChain(ChainBase):
             if files_to_add:
                 downloadhis.add_files(files_to_add)
 
-            # 下载成功发送消息
-            self.post_message(
-                Notification(
-                    channel=channel,
-                    source=source if channel else None,
-                    mtype=NotificationType.Download,
-                    ctype=ContentType.DownloadAdded,
-                    image=_media.get_message_image(),
-                    link=settings.MP_DOMAIN('/#/downloading'),
-                    userid=userid,
-                    username=username
-                ),
-                meta=_meta,
-                mediainfo=_media,
-                torrentinfo=_torrent,
-                download_episodes=download_episodes,
-                username=username,
-            )
+            # 下载开始不再单独通知：入库完成时统一告知，避免重复消息
             # 下载成功后处理
             self._submit_download_added_task(
                 context=context,

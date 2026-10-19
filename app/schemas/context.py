@@ -45,8 +45,6 @@ class MetaInfo(BaseModel):
     part: Optional[str] = None
     # 识别的资源类型
     resource_type: Optional[str] = None
-    # 识别的效果
-    resource_effect: Optional[str] = None
     # 识别的分辨率
     resource_pix: Optional[str] = None
     # 识别的制作组/字幕组
@@ -55,8 +53,18 @@ class MetaInfo(BaseModel):
     video_encode: Optional[str] = None
     # 音频编码
     audio_encode: Optional[str] = None
-    # 资源类型
-    edition: Optional[str] = None
+    # 是否为 Dolby Atmos（仅 DD+ / TrueHD 有效）
+    audio_atmos: bool = False
+    # HDR 规格（HDR10 / HDR10+ / DoVi / HLG / HDRVivid）
+    video_hdr: Optional[List[str]] = None
+    # 色彩采样（YUV422P / YUV444P）
+    video_chroma: Optional[str] = None
+    # 特殊版本（3D / IMAX / Open Matte）
+    special_edition: Optional[List[str]] = None
+    # 剪辑版本（Director's Cut 等）
+    cut_version: Optional[str] = None
+    # 发布信息（REPACK / PROPER / Hybrid 等）
+    release_info: Optional[List[str]] = None
     # 流媒体平台
     web_source: Optional[str] = None
     # 应用的识别词信息

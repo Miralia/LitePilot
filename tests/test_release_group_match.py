@@ -200,9 +200,9 @@ def test_zero_padded_episode_still_detected(title, expected_episode):
     ("title", "field", "expected"),
     [
         # 以下归一化原先依赖「自定义识别词」，现已内建到代码
-        ("S.2024.1080p.DV-GRP", "resource_effect", "DoVi"),
-        ("S.2024.1080p.DoVi-GRP", "resource_effect", "DoVi"),
-        ("S.2024.1080p.HDR10Plus-GRP", "resource_effect", "HDR10+"),
+        ("S.2024.1080p.DV-GRP", "video_hdr", ["DoVi"]),
+        ("S.2024.1080p.DoVi-GRP", "video_hdr", ["DoVi"]),
+        ("S.2024.1080p.HDR10Plus-GRP", "video_hdr", ["HDR10+"]),
         ("S.2024.x264.DDP-GRP", "audio_encode", "DD+"),
         ("S.2024.x264.EAC3-GRP", "audio_encode", "DD+"),
         ("S.2024.x264.DD+-GRP", "audio_encode", "DD+"),
@@ -284,22 +284,21 @@ def test_video_encode_excludes_bit_depth(title, expected):
     ],
 )
 def test_chroma_subsampling_recognized(title, expected_effect):
-    """YUV422P / YUV444P 应作为效果字段被识别。"""
+    """YUV422P / YUV444P 落到 video_chroma（视频附属属性）。"""
     from app.core.meta import MetaVideo
     from app.core.metainfo import MetaInfo
 
     for parser in (MetaVideo, MetaInfo):
-        effect = parser(title).resource_effect or ""
-        assert expected_effect in effect.split(), f"{parser.__name__}: {effect!r}"
+        assert parser(title).video_chroma == expected_effect, f"{parser.__name__} 不符"
 
 
 def test_chroma_appears_with_hdr_same_level():
     """色彩采样与 DoVi/HDR 同时出现时互不覆盖。"""
     from app.core.meta import MetaVideo
 
-    effect = MetaVideo("Movie.2024.1080p.DoVi.HDR.YUV444P-GRP").resource_effect or ""
-    parts = effect.split()
-    assert "DoVi" in parts and "YUV444P" in parts
+    meta_probe = MetaVideo("Movie.2024.1080p.DoVi.HDR.YUV444P-GRP")
+    assert "DoVi" in list(meta_probe.video_hdr or [])
+    assert meta_probe.video_chroma == "YUV444P"
 
 
 @pytest.mark.parametrize(
@@ -403,6 +402,6 @@ def test_anime_technical_fields_match_video(title):
     anime, video = MetaAnime(title), MetaVideo(title)
     for field in (
         "resource_pix", "resource_type", "video_encode", "video_bit",
-        "audio_encode", "resource_effect", "web_source", "resource_team",
+        "audio_encode", "video_hdr", "video_chroma", "web_source", "resource_team",
     ):
         assert getattr(anime, field) == getattr(video, field), f"{field} 不一致"

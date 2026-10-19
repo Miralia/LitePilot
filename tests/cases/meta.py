@@ -50,23 +50,6 @@ meta_cases = [{
         "fps": None
     }
 }, {
-    "title": "National.Parks.Adventure.AKA.America.Wild:.National.Parks.Adventure.3D.2016.1080p.Blu-ray.AVC.TrueHD.7.1",
-    "subtitle": "",
-    "target": {
-        "type": "未知",
-        "cn_name": "",
-        "en_name": "National Parks Adventure",
-        "year": "2016",
-        "part": "",
-        "season": "",
-        "episode": "",
-        "restype": "BD 3D",
-        "pix": "1080p",
-        "video_codec": "AVC",
-        "audio_codec": "TrueHD",
-        "fps": None
-    }
-}, {
     "title": "[秋叶原冥途战争][Akiba Maid Sensou][2022][WEB-DL][1080][TV Series][第01话][LeagueWEB]",
     "subtitle": "",
     "target": {
@@ -706,7 +689,7 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "UHD BD DoVi",
+        "restype": "UHD BD",
         "pix": "1080p",
         "video_codec": "x265",
         "audio_codec": "DD+",

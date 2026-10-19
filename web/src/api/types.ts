@@ -406,8 +406,6 @@ export interface MetaInfo {
   part?: string
   // 识别的资源类型
   resource_type?: string
-  // 识别的效果
-  resource_effect?: string
   // 识别的分辨率
   resource_pix?: string
   // 识别的制作组/字幕组
@@ -416,6 +414,18 @@ export interface MetaInfo {
   video_encode?: string
   // 音频编码
   audio_encode?: string
+  // 是否为 Dolby Atmos（仅 DD+ / TrueHD 有效）
+  audio_atmos?: boolean
+  // HDR 规格
+  video_hdr?: string[]
+  // 色彩采样
+  video_chroma?: string
+  // 特殊版本
+  special_edition?: string[]
+  // 剪辑版本
+  cut_version?: string
+  // 发布信息
+  release_info?: string[]
   // 名称（自动中英文）
   name: string
   // SXX-SXX
@@ -438,16 +448,12 @@ export interface MetaInfo {
   episode_seq: string
   // SxxExx
   season_episode: string
-  // 资源类型字符串，含分辨率
-  resource_term: string
   // 发布组/字幕组字符串
   release_group: string
   // 视频编码
   video_term: string
   // 音频编码
   audio_term: string
-  // 资源类型+特效
-  edition: string
   // 流媒体平台
   web_source: string
   // 应用的自定义识别词

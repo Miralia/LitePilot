@@ -709,37 +709,6 @@ class MetaBase(object):
             return ""
         return ""
 
-    @property
-    def resource_effect(self) -> Optional[str]:
-        """
-        返回效果标记的聚合串，保留给既有调用方。
-
-        效果本身已按归属拆到独立字段：``video_hdr`` 承载 HDR 规格、
-        ``video_chroma`` 承载色彩采样、``special_edition`` 承载特殊版本。
-        本属性只做向下兼容，新代码应直接读取对应字段。
-
-        :return: 空格分隔的聚合串，无内容时返回 None
-        """
-        parts: List[str] = list(self.video_hdr)
-        if self.video_chroma:
-            parts.append(self.video_chroma)
-        parts.extend(self.special_edition)
-        return " ".join(part for part in parts if part) or None
-
-    @property
-    def resource_term(self) -> str:
-        """
-        返回资源类型字符串，含分辨率
-        """
-        ret_string = ""
-        if self.resource_type:
-            ret_string = f"{ret_string} {self.resource_type}"
-        if self.resource_effect:
-            ret_string = f"{ret_string} {self.resource_effect}"
-        if self.resource_pix:
-            ret_string = f"{ret_string} {self.resource_pix}"
-        return ret_string
-
     def finalize(self) -> None:
         """
         解析收尾：把各字段统一收敛成标准写法。
@@ -781,18 +750,6 @@ class MetaBase(object):
                 r"\s*\b(?:8|10|12|16)\s*bits?\b", "", text, flags=re.IGNORECASE
             )
             self.video_encode = text.strip()
-
-    @property
-    def edition(self) -> str:
-        """
-        返回资源类型字符串，不含分辨率
-        """
-        ret_string = ""
-        if self.resource_type:
-            ret_string = f"{ret_string} {self.resource_type}"
-        if self.resource_effect:
-            ret_string = f"{ret_string} {self.resource_effect}"
-        return ret_string.strip()
 
     @property
     def release_group(self) -> str:
@@ -1149,7 +1106,6 @@ class MetaBase(object):
         dicts = vars(self).copy()
         dicts["type"] = self.type.value if self.type else None
         dicts["season_episode"] = self.season_episode
-        dicts["edition"] = self.edition
         dicts["name"] = self.name
         dicts["episode_list"] = self.episode_list
         return dicts

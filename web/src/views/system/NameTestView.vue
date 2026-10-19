@@ -149,12 +149,20 @@ const mediaClassification = computed(() => {
   return [mediaInfo.value?.type || metaInfo.value?.type, mediaInfo.value?.category].filter(Boolean).join(' · ') || '-'
 })
 const resourceChips = computed(() => {
+  // 按语义顺序展开原子字段：平台 → 来源 → 分辨率 → 音频(+Atmos)
+  // → HDR → 色彩采样 → 视频 → 特殊版本 → 剪辑版本 → 发布信息 → 制作组
   return [
     metaInfo.value?.web_source,
-    metaInfo.value?.edition,
+    metaInfo.value?.resource_type,
     metaInfo.value?.resource_pix,
-    metaInfo.value?.video_encode,
     metaInfo.value?.audio_encode,
+    metaInfo.value?.audio_atmos ? 'Atmos' : null,
+    ...(metaInfo.value?.video_hdr || []),
+    metaInfo.value?.video_chroma,
+    metaInfo.value?.video_encode,
+    ...(metaInfo.value?.special_edition || []),
+    metaInfo.value?.cut_version,
+    ...(metaInfo.value?.release_info || []),
     metaInfo.value?.resource_team,
   ].filter(Boolean) as string[]
 })
@@ -222,7 +230,7 @@ const pipelineSteps = computed<PipelineStep[]>(() => [
     icon: 'mdi-puzzle-check-outline',
     title: t('nameTest.steps.meta.title'),
     value:
-      [metaInfo.value?.name, metaInfo.value?.resource_term, metaInfo.value?.release_group]
+      [metaInfo.value?.name, metaInfo.value?.resource_type, metaInfo.value?.release_group]
         .filter(Boolean)
         .join(' · ') || '-',
   },

@@ -29,7 +29,7 @@ def test_metainfo():
             "part": meta_info.part or "",
             "season": meta_info.season,
             "episode": meta_info.episode,
-            "restype": meta_info.edition,
+            "restype": meta_info.resource_type or "",
             "pix": meta_info.resource_pix or "",
             "video_codec": meta_info.video_encode or "",
             "audio_codec": meta_info.audio_encode or "",
@@ -167,7 +167,7 @@ def test_python_metainfo_fallback_preserves_xxx_movie_title():
     assert meta.en_name == "Xxx"
     assert meta.year == "2002"
     assert meta.resource_pix == "1080p"
-    assert meta.edition == "WEB-DL"
+    assert meta.resource_type == "WEB-DL"
     # 声道数与 Atmos 属于附加信息，不再进入 audio_encode
     assert meta.audio_encode == "DD+"
 
@@ -411,7 +411,7 @@ def test_hdr_vivid_effect_extracted_for_video_title():
     )
 
     assert meta.resource_type == "WEB-DL"
-    assert meta.resource_effect == "HDRVivid"
+    assert meta.video_hdr == ["HDRVivid"]
     assert meta.fps == 50
 
 
