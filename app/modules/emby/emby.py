@@ -1170,10 +1170,15 @@ class Emby:
             eventItem.client = message.get('Session').get('Client')
         if message.get("User"):
             eventItem.user_name = message.get("User").get('Name')
-        # ScripterX 以 query 参数传入，未编码的值可能是字符串 "False"，
-        # 必须按字面判断，否则 "False" 也被视为真值
-        if str(message.get("item_isvirtual", "")).lower() == "true":
-            eventItem.item_isvirtual = message.get("item_isvirtual")
+        # ScripterX 通过 query 参数补充条目信息。这些参数与是否为虚拟条目无关，
+        # 只要携带就应解析：删除事件正依赖 item_path/tmdb_id/季集定位整理记录。
+        # item_isvirtual 单独按字面取值，避免字符串 "False" 被当成真值。
+        if message.get("item_type") or message.get("item_path"):
+            is_virtual = message.get("item_isvirtual")
+            if is_virtual is not None:
+                eventItem.item_isvirtual = (
+                    str(is_virtual).strip().lower() in ("true", "1", "yes")
+                )
             eventItem.item_type = message.get("item_type")
             eventItem.item_name = message.get("item_name")
             eventItem.item_path = message.get("item_path")

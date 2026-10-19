@@ -337,3 +337,42 @@ def test_residual_source_skipped_when_not_deletable(tmp_path):
     chain._cleanup_residual_source(src, True, False, conf)
 
     assert src.exists()
+
+
+@pytest.mark.parametrize(
+    ("isvirtual", "expected"),
+    [
+        # ScripterX 传的是字符串，参数解析不能依赖真值判断
+        ("False", False),
+        ("false", False),
+        ("True", True),
+        (None, None),
+    ],
+)
+def test_emby_webhook_parses_query_params_regardless_of_isvirtual(
+    isvirtual, expected
+):
+    """item_* 参数与是否为虚拟条目无关，携带即应解析。"""
+    from app.modules.emby.emby import Emby
+
+    server = object.__new__(Emby)
+    args = {
+        "Event": "media_del",
+        "item_type": "Episode",
+        "item_name": "测试",
+        "item_path": "/media/a.mkv",
+        "tmdb_id": "123",
+        "season_id": "2",
+        "episode_id": "3",
+    }
+    if isvirtual is not None:
+        args["item_isvirtual"] = isvirtual
+    server.get_remote_image_by_id = lambda **_: None
+    info = Emby.get_webhook_message(server, form={}, args=args)
+
+    assert info.item_path == "/media/a.mkv"
+    assert info.tmdb_id == "123"
+    assert info.season_id == "2"
+    assert info.episode_id == "3"
+    assert info.item_type == "Episode"
+    assert info.item_isvirtual is expected
