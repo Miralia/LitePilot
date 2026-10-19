@@ -878,8 +878,10 @@ onMounted(() => {
 .words-workspace {
   display: grid;
   overflow: hidden;
+  /* 高度跟随视口而不是固定上限：区段数量会随功能增长，
+     固定高度会让侧边栏溢出被裁掉 */
   min-block-size: 32rem;
-  block-size: min(40rem, calc(100dvh - 10rem));
+  block-size: max(32rem, calc(100dvh - 9rem));
   border: var(--words-surface-border);
   border-radius: var(--words-surface-radius);
   backdrop-filter: var(--words-surface-filter);
@@ -889,14 +891,20 @@ onMounted(() => {
 
 .words-sidebar {
   min-block-size: 0;
+  overflow-y: auto;
   border-inline-end: 1px solid var(--words-separator-color);
   flex-direction: column;
+  scrollbar-width: thin;
 }
 
 .words-sidebar-item {
   display: grid;
-  min-block-size: 6.25rem;
+  /* 条目高度随内容自适应：新增区段后不必逐项调高度，
+     超出容器时由侧边栏滚动承载 */
+  min-block-size: 4.5rem;
+  block-size: auto;
   align-items: center;
+  flex: 0 0 auto;
   border: 0;
   border-block-end: 1px solid var(--words-separator-color);
   background: transparent;
