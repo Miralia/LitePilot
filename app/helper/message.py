@@ -7,6 +7,7 @@ import queue
 import re
 import threading
 import time
+import unicodedata
 from datetime import datetime
 from typing import Any, Literal, Optional, List, Dict, Union
 from typing import Callable
@@ -25,6 +26,16 @@ from app.schemas.transfer import TransferInfo
 from app.schemas.types import SystemConfigKey
 from app.utils.singleton import Singleton, SingletonClass
 from app.utils.string import StringUtils
+
+
+# 文件名中不可用的控制字符与 Windows 禁止字符
+_FILENAME_CONTROL_RE = re.compile(r'[\x00-\x1f<>:"/\\|?*]')
+# Windows 保留设备名，作为文件名会被系统拒绝
+_RESERVED_FILENAMES = {
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
 
 
 class TemplateContextBuilder:
@@ -493,21 +504,40 @@ class TemplateContextBuilder:
         return str(getattr(meta, "org_string", None) or meta.title or "").strip()
 
     @staticmethod
+    @staticmethod
     def __convert_invalid_characters(filename: str):
         """
-        将不支持的字符转换为全角字符
+        把单个名称组件处理成跨平台安全的文件名片段。
+
+        原实现把非法字符替换成全角（``:`` -> ``：``），文件名虽然合法但
+        肉眼难以分辨，会带来三个实际问题：搜索时全角与半角不等价、
+        跨平台同步工具可能把全角转回半角导致路径不一致、命令行输入困难。
+
+        因此改为直接移除：控制字符与 Windows 禁止字符全部删除，其余标点
+        与符号一并去掉（``A.I.`` 变 ``AI``、``What If...?`` 变 ``What If``），
+        只保留连字符——它在所有平台都安全，且是番号类名称（``SHT-001``）
+        的必要组成部分。末尾的点与空格在 Windows 上会被静默截断，一并去掉。
+
+        该函数只用于纯名称字段（片名、剧集标题、制作组），模板里的字面量
+        括号与方括号不经过这里，因此不会破坏目录结构。
+
+        :param filename: 原始名称
+        :return: 安全的文件名片段
         """
         if not filename:
             return filename
-        invalid_characters = r'\/:*?"<>|'
-        # 创建半角到全角字符的转换表
-        halfwidth_chars = "".join([chr(i) for i in range(33, 127)])
-        fullwidth_chars = "".join([chr(i + 0xFEE0) for i in range(33, 127)])
-        translation_table = str.maketrans(halfwidth_chars, fullwidth_chars)
-        # 将不支持的字符替换为对应的全角字符
-        for char in invalid_characters:
-            filename = filename.replace(char, char.translate(translation_table))
-        return filename
+        text = _FILENAME_CONTROL_RE.sub("", str(filename))
+        text = "".join(
+            char for char in text
+            # 连字符属于 Pd（Dash punctuation），必须保留：
+            # 它是 SHT-001 这类番号的组成部分，且各平台都安全
+            if unicodedata.category(char) == "Pd"
+            or not unicodedata.category(char).startswith(("P", "S"))
+        )
+        text = re.sub(r"\s+", " ", text).strip().rstrip(". ")
+        if text.upper() in _RESERVED_FILENAMES:
+            text = f"_{text}"
+        return text or filename
 
 
 class TemplateHelper(metaclass=SingletonClass):

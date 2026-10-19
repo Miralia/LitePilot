@@ -709,3 +709,64 @@ def test_version_attached_to_episode(title, expect_season, expect_episode, expec
     assert meta.season == expect_season
     assert meta.episode == expect_episode
     assert meta.release_info == expect_release
+
+
+# ---------------------------------------------------------------------------
+# 文件名符号处理
+#
+# 原实现把非法字符替换成全角（`:` -> `：`），文件名合法但肉眼难辨，
+# 会带来搜索不等价、跨平台同步被转回半角、命令行输入困难等问题。
+# 改为直接移除：控制字符与 Windows 禁止字符删除，其余标点与符号去掉，
+# 只保留连字符（番号如 SHT-001 必需，且各平台安全）。
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "raw,expect",
+    [
+        # 冒号、问号、感叹号、句点等一律移除
+        ("Project Hail Mary: Part One", "Project Hail Mary Part One"),
+        ("Spider-Man: No Way Home", "Spider-Man No Way Home"),
+        ("What If...? Season 2", "What If Season 2"),
+        ("Re:Zero kara Hajimeru", "ReZero kara Hajimeru"),
+        ("A.I. Artificial Intelligence", "AI Artificial Intelligence"),
+        # 斜杠、方括号（路径分隔与结构符号）
+        ("Fate/stay night [Heaven's Feel]", "Fatestay night Heavens Feel"),
+        # 中文全角标点同样是标点，一并移除
+        ("你想活出怎样的人生？", "你想活出怎样的人生"),
+        ("哪吒之魔童闹海！", "哪吒之魔童闹海"),
+        # 连字符属于 Pd，必须保留：番号类名称依赖它
+        ("SHT-001", "SHT-001"),
+        ("ABP-123", "ABP-123"),
+        # 常规名称不受影响
+        ("BanG Dream! YUME∞MITA", "BanG Dream YUMEMITA"),
+        ("浮云 (1955)", "浮云 1955"),
+    ],
+)
+def test_sanitize_filename_component(raw, expect):
+    """名称组件按跨平台安全规则清理。"""
+    from app.helper.message import TemplateContextBuilder
+
+    impl = TemplateContextBuilder._TemplateContextBuilder__convert_invalid_characters
+    assert impl(raw) == expect
+
+
+@pytest.mark.parametrize(
+    "raw,expect",
+    [
+        # Windows 保留设备名加下划线前缀，避免被系统拒绝
+        ("CON", "_CON"),
+        ("prn", "_prn"),
+        ("COM1", "_COM1"),
+        ("LPT9", "_LPT9"),
+        # 末尾的点与空格在 Windows 上会被静默截断，需去掉
+        ("Trailing Dot.", "Trailing Dot"),
+        ("Trailing Space   ", "Trailing Space"),
+        # 连续空白压成单个空格
+        ("Multiple   Spaces", "Multiple Spaces"),
+    ],
+)
+def test_sanitize_filename_edge_cases(raw, expect):
+    """Windows 保留名、末尾点空格、连续空白均被规范化。"""
+    from app.helper.message import TemplateContextBuilder
+
+    impl = TemplateContextBuilder._TemplateContextBuilder__convert_invalid_characters
+    assert impl(raw) == expect
