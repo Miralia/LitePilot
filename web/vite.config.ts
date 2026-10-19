@@ -268,7 +268,19 @@ export default defineConfig(({ command, mode, isPreview }) => ({
       },
     },
     chunkSizeWarningLimit: 5000,
-    cssCodeSplit: false,
+    // CSS 按异步 chunk 拆分：首屏只需加载入口样式，
+    // 页面级样式随路由懒加载，避免单文件累积到近 1MB
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        // 把稳定不变的三方依赖拆成独立 chunk：
+        // 升级业务代码时这部分文件名不变，浏览器缓存可继续命中
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-vuetify': ['vuetify'],
+        },
+      },
+    },
   },
   optimizeDeps: {
     exclude: ['vuetify'],
