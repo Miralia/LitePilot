@@ -316,6 +316,53 @@ class Telegram:
         return f"**{standardize(title).removesuffix(chr(10))}**"
 
     @staticmethod
+    def _format_text(text: Optional[str], parse_mode: Optional[str] = None) -> Optional[str]:
+        """
+        按 parse_mode 转义正文。
+
+        MarkdownV2 把 ``. - ( ) ! # + = | { }`` 等视为保留字符，正文里
+        未经转义的文本会破坏格式甚至导致消息被拒。三反引号代码块是例外：
+        其内容按原样展示，只需保证围栏本身合法，因此先切出代码块再分别
+        处理其余片段。
+
+        :param text: 原始正文
+        :param parse_mode: 目标格式
+        :return: 可直接发送的正文
+        """
+        if not text:
+            return text
+        if Telegram._is_html_parse_mode(parse_mode):
+            # HTML 模式下正文已是调用方给出的 HTML（含 <b> 等标签），
+            # 再次转义会让标签变成字面量，因此原样返回
+            return text
+
+        # MarkdownV2：拆出代码块，逐段转义。代码块用反引号围栏，
+        # 其内容按原样展示不转义；其余文本必须转义保留字符。
+        parts: List[str] = []
+        buffer: List[str] = []
+        in_code = False
+        for line in str(text).split("\n"):
+            if line.strip() == "```":
+                if in_code:
+                    buffer.append(line)
+                    parts.append("\n".join(buffer))
+                    buffer = []
+                    in_code = False
+                else:
+                    # 代码块前保留换行，避免与前一段文字粘连
+                    if buffer:
+                        parts.append(standardize("\n".join(buffer)) + "\n")
+                        buffer = []
+                    buffer.append(line)
+                    in_code = True
+                continue
+            buffer.append(line)
+        if buffer:
+            tail = "\n".join(buffer)
+            parts.append(tail if in_code else standardize(tail))
+        return "".join(parts)
+
+    @staticmethod
     def _format_link(label: str, link: str, parse_mode: Optional[str] = None) -> str:
         """按 parse_mode 生成 Telegram 链接文本。"""
         if Telegram._is_html_parse_mode(parse_mode):
@@ -625,12 +672,16 @@ class Telegram:
 
         try:
             bold_title = self._format_title(title, parse_mode)
-            if bold_title and text:
-                caption = f"{bold_title}\n{text}"
+            # 正文同样需要转义：MarkdownV2 把 . - ( ) 等视为保留字符，
+            # 未转义会导致整条消息被 Telegram 拒收或格式错乱；
+            # text 里预设的 ``` 代码块需要保留，由 _format_text 处理
+            formatted_text = self._format_text(text, parse_mode)
+            if bold_title and formatted_text:
+                caption = f"{bold_title}\n{formatted_text}"
             elif bold_title:
                 caption = bold_title
-            elif text:
-                caption = text
+            elif formatted_text:
+                caption = formatted_text
             else:
                 caption = ""
 

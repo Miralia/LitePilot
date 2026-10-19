@@ -378,22 +378,38 @@ class TemplateContextBuilder:
                 meta.video_encode,
             ) if part
         )
-        combined = " ".join(p for p in (source_block, audio_video_block) if p)
-
-        # 版本行：剪辑版本与发布修正同属「这是哪个版本」，
-        # 合并到首行，固定用 🎬 标识
         version_line = " ".join(
             part for part in (
                 meta.cut_version,
                 *(meta.release_info or []),
             ) if part
         )
+        combined = " ".join(p for p in (source_block, audio_video_block) if p)
+
         result: List[str] = []
-        if version_line:
-            result.append(f"{cls.SPEC_ICON_HEAD} {version_line}")
         if not combined:
+            if version_line:
+                result.append(f"{cls.SPEC_ICON_HEAD} {version_line}")
             return result
 
+        # 版本信息优先并入，避免出现只有几个字符的极短行。
+        # 先看「版本 + 全部规格」能否一行；能则单行输出。
+        merged_all = " ".join(p for p in (version_line, combined) if p)
+        if len(merged_all) <= cls.SPEC_LINE_WIDTH:
+            result.append(f"{cls.SPEC_ICON_MAIN} {merged_all}")
+            return result
+
+        # 整体超宽：把版本并入首行（来源块），音视频落到 📽 行
+        first_line = " ".join(p for p in (version_line, source_block) if p)
+        if first_line and len(first_line) <= cls.SPEC_LINE_WIDTH:
+            result.append(f"{cls.SPEC_ICON_MAIN} {first_line}")
+            if audio_video_block:
+                result.append(f"{cls.SPEC_ICON_TAIL} {audio_video_block}")
+            return result
+
+        # 首行放不下版本信息：版本独占 🎬 行，规格按原规则占行
+        if version_line:
+            result.append(f"{cls.SPEC_ICON_HEAD} {version_line}")
         if len(combined) <= cls.SPEC_LINE_WIDTH:
             result.append(f"{cls.SPEC_ICON_MAIN} {combined}")
             return result

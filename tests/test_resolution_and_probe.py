@@ -619,22 +619,24 @@ def test_release_info_excluded_from_filename_spec(title):
 @pytest.mark.parametrize(
     "title,expect",
     [
-        # 剪辑版本单独
-        ("M.2020.1080p.BluRay.Directors.Cut.x264.AAC-GRP", "🎬 Director's Cut"),
-        # 发布修正单独
-        ("M.2024.1080p.BluRay.REPACK.x264.AAC-GRP", "🎬 REPACK"),
-        ("M.2024.1080p.BluRay.REPACK10.x264.AAC-GRP", "🎬 REPACK10"),
-        ("M.2024.1080p.BluRay.v10.x264.AAC-GRP", "🎬 v10"),
-        ("M.2024.1080p.Hybrid.BluRay.x264.AAC-GRP", "🎬 Hybrid"),
-        # 两者同时出现时合并在同一行
-        (
-            "M.2020.1080p.BluRay.Directors.Cut.REPACK2.x264.AAC-GRP",
-            "🎬 Director's Cut REPACK2",
-        ),
+        # 版本信息与规格能装进一行时并入首行，用 🎥
+        ("M.2020.1080p.BluRay.Directors.Cut.x264.AAC-GRP",
+         "🎥 Director's Cut BD 1080p AAC x264"),
+        ("M.2024.1080p.BluRay.REPACK.x264.AAC-GRP",
+         "🎥 REPACK BD 1080p AAC x264"),
+        ("M.2024.1080p.BluRay.REPACK10.x264.AAC-GRP",
+         "🎥 REPACK10 BD 1080p AAC x264"),
+        ("M.2024.1080p.BluRay.v10.x264.AAC-GRP",
+         "🎥 v10 BD 1080p AAC x264"),
+        ("M.2024.1080p.Hybrid.BluRay.x264.AAC-GRP",
+         "🎥 Hybrid BD 1080p AAC x264"),
+        # 两者同时出现但整体超宽：版本并入首行，音视频落到 📽 行
+        ("M.2020.1080p.BluRay.Directors.Cut.REPACK2.x264.AAC-GRP",
+         "🎥 Director's Cut REPACK2 BD 1080p"),
     ],
 )
-def test_version_line_merges_cut_and_release(title, expect):
-    """剪辑版本与发布修正合并到带 🎬 的首行。"""
+def test_version_line_merges_into_first_line(title, expect):
+    """版本信息按长度并入首行，避免出现极短行。"""
     from app.core.meta.metavideo import MetaVideo
     from app.helper.message import TemplateContextBuilder
 
@@ -642,6 +644,21 @@ def test_version_line_merges_cut_and_release(title, expect):
     meta.finalize()
     lines = TemplateContextBuilder._build_spec_lines(meta)
     assert lines[0] == expect
+
+
+def test_version_line_standalone_when_too_long():
+    """版本信息与规格装不进一行时，独占带 🎬 的首行。"""
+    from app.core.meta.metavideo import MetaVideo
+    from app.helper.message import TemplateContextBuilder
+
+    meta = MetaVideo(
+        "M.2020.2160p.UHD.BluRay.REMUX.Directors.Cut.REPACK2"
+        ".HDR10+.DoVi.TrueHD.Atmos.HEVC-GRP"
+    )
+    meta.finalize()
+    lines = TemplateContextBuilder._build_spec_lines(meta)
+    assert lines[0] == "🎬 Director's Cut REPACK2"
+    assert all(line.startswith(("🎥", "📽")) for line in lines[1:])
 
 
 @pytest.mark.parametrize(

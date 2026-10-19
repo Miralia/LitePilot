@@ -36,23 +36,35 @@ class IpUtils:
     @staticmethod
     def is_internal(hostname):
         """
-        判断一个host是内网还是外网
+        判断一个host是内网还是外网。
+
+        传入相对路径（如 ``/poster.jpg``）时 urlparse 取不到 hostname，
+        这类地址不属于内网，直接返回 False。
+
+        :param hostname: 待判定的主机名或 URL
+        :return: 内网地址返回 True
         """
-        hostname = urlparse(hostname).hostname
-        if IpUtils.is_ip(hostname):
-            return IpUtils.is_private_ip(hostname)
-        else:
-            return IpUtils.is_internal_domain(hostname)
+        host = urlparse(str(hostname or "")).hostname
+        if not host:
+            return False
+        if IpUtils.is_ip(host):
+            return IpUtils.is_private_ip(host)
+        return IpUtils.is_internal_domain(host)
 
     @staticmethod
     def is_ip(addr):
         """
-        判断是不是ip
+        判断是不是ip。
+
+        :param addr: 待判定的字符串，为空或非字符串时返回 False
+        :return: 是合法 IPv4 地址返回 True
         """
+        if not isinstance(addr, str) or not addr:
+            return False
         try:
             socket.inet_aton(addr)
             return True
-        except socket.error:
+        except (socket.error, TypeError):
             return False
 
     @staticmethod
