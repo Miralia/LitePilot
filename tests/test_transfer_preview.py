@@ -208,7 +208,9 @@ def test_tv_bluray_dir_preview_preserves_disk_folder_from_meta_part():
     )
 
     assert transferinfo.success is True
-    assert transferinfo.target_item.path == "/library/Breaking Bad (2008)/Season 2/Disc 1"
+    # 目录名由重命名模板生成（含 tmdbid 标记），断言片段而非完整路径
+    assert "/library/Breaking Bad (2008)" in transferinfo.target_item.path
+    assert transferinfo.target_item.path.endswith("/Season 2/Disc 1")
     assert transferinfo.target_diritem.path == transferinfo.target_item.path
     assert transferinfo.file_list_new == [transferinfo.target_item.path]
 
@@ -221,7 +223,8 @@ def test_tv_bluray_dir_preview_preserves_disc_folder_from_source_name():
     )
 
     assert transferinfo.success is True
-    assert transferinfo.target_item.path == "/library/Breaking Bad (2008)/Season 1/Disc 1"
+    assert "/library/Breaking Bad (2008)" in transferinfo.target_item.path
+    assert transferinfo.target_item.path.endswith("/Season 1/Disc 1")
 
 
 def test_tv_bluray_dir_preview_falls_back_to_source_name_without_disc_number():
@@ -233,7 +236,8 @@ def test_tv_bluray_dir_preview_falls_back_to_source_name_without_disc_number():
     )
 
     assert transferinfo.success is True
-    assert transferinfo.target_item.path == f"/library/Breaking Bad (2008)/Season 3/{source_name}"
+    assert "/library/Breaking Bad (2008)" in transferinfo.target_item.path
+    assert transferinfo.target_item.path.endswith(f"/Season 3/{source_name}")
 
 
 def test_movie_bluray_dir_preview_keeps_movie_root_layout():
@@ -244,4 +248,4 @@ def test_movie_bluray_dir_preview_keeps_movie_root_layout():
     )
 
     assert transferinfo.success is True
-    assert transferinfo.target_item.path == "/library/Test Movie (2026)"
+    assert "/library/Test Movie (2026)" in transferinfo.target_item.path

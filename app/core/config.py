@@ -289,18 +289,27 @@ class ConfigModel(BaseModel):
     TRANSFER_THREADS: int = 1
     # 外部接管的运行中整理任务无状态心跳超时（分钟），0 表示禁用
     TRANSFER_TASK_TIMEOUT: int = 120
-    # 电影重命名格式
+    # 电影重命名格式。
+    # 规格部分用 specPlain：它拼的是来源 / 分辨率 / 音视频等原子字段，
+    # 不含图标也不含发布信息（REPACK、v2 只影响版本，不改变技术规格）。
+    # 标题用 trim 去掉末尾空格，否则年份后会多出一个空格形成 "() - ("。
     MOVIE_RENAME_FORMAT: str = (
-        "{{title}}{% if year %} ({{year}}){% endif %}"
-        "/{{title}}{% if year %} ({{year}}){% endif %}{% if part %}-{{part}}{% endif %}{% if videoFormat %} - {{videoFormat}}{% endif %}"
-        "{{fileExt}}"
+        "{%- set specs = specPlain -%}"
+        "{{ (en_title or title) | trim }}{% if year %} ({{year}}){% endif %}"
+        "{% if tmdbid %} [tmdbid={{ tmdbid }}]{% endif %}/"
+        "{{ (en_title or title) | trim }}{% if year %} ({{year}}){% endif %}"
+        "{% if part %} - {{part}}{% endif %}"
+        "{% if specs %} - ({{ specs }}){% endif %}{{ fileExt }}"
     )
     # 电视剧重命名格式
     TV_RENAME_FORMAT: str = (
-        "{{title}}{% if year %} ({{year}}){% endif %}"
-        "/Season {{season}}"
-        "/{{title}} - {{season_episode}}{% if part %}-{{part}}{% endif %}{% if episode %} - 第 {{episode}} 集{% endif %}"
-        "{{fileExt}}"
+        "{%- set specs = specPlain -%}"
+        "{{ (en_title or title) | trim }}{% if year %} ({{year}}){% endif %}"
+        "{% if tmdbid %} [tmdbid={{ tmdbid }}]{% endif %}/"
+        "Season {{ season }}/"
+        "{{ (en_title or title) | trim }} - {{ season_episode }}"
+        "{% if part %} - {{part}}{% endif %}"
+        "{% if specs %} - ({{ specs }}){% endif %}{{ fileExt }}"
     )
     # 重命名时支持的S0别名
     RENAME_FORMAT_S0_NAMES: list = Field(default=["Specials", "SPs"])
