@@ -128,67 +128,119 @@ class MediaServerDelChain(ChainBase):
 
     def _delete_source(self, history, conf=None) -> Tuple[str, Optional[str]]:
         """
-        删除整理记录的源文件与媒体库文件，并按需处理下载任务。
+        清理媒体库文件、下载源文件与下载任务。
+
+        顺序按「先由下载器处理、再本地兜底」设计：
+        删除种子本身通常会连带删掉源文件，比逐个 unlink 更完整；
+        种子的部分内容被删时暂停任务，等剩余内容也被删除再移除；
+        最后兜底检查源文件是否仍被其它硬链接引用，避免留下孤儿。
 
         :param history: 整理历史记录
         :param conf: 联动删除配置，为空时读取当前配置
-        :return: (种子处理结果, 种子hash)。结果为 deleted/paused/kept/none/error
+        :return: (种子处理结果, 种子hash)。结果为 deleted/paused/gone/none/error
         """
         conf = conf or sync_del_by_media_server_conf()
         storagechain = StorageChain()
 
-        # 媒体库文件（硬链接或移动后的目标文件）
+        # 1. 媒体库文件（硬链接或移动后的目标文件）
         if history.dest and Path(history.dest).exists():
             storagechain.delete_media_file(
                 FileItem(storage=history.dest_storage or "local", path=history.dest)
             )
 
-        # 下载源文件：仅本地源、且整理方式不是移动时删除；可由配置关闭
         src_path = Path(history.src) if history.src else None
-        if (
+        # 2. 源文件：先判断它是否还存在，作为后续清理的依据
+        src_exists = bool(src_path and src_path.exists())
+        src_deletable = bool(
             conf.delete_source_file
             and src_path
             and src_path.suffix in settings.RMT_MEDIAEXT
             and (history.src_storage or "local") == "local"
             and history.mode != "move"
-            and src_path.exists()
-        ):
-            logger.info(f"正在删除下载源文件：{history.src}")
-            if storagechain.delete_file(
-                FileItem(storage=history.src_storage or "local", path=history.src)
-            ) and conf.remove_empty_dirs:
-                self._remove_empty_parents(src_path)
+        )
 
-        # 源文件已全部删除时，删除下载器任务；可由配置关闭
+        # 3. 下载任务：先由下载器处理，删除任务会连带清理其文件
         torrent_hash = history.download_hash
-        if not (conf.delete_torrent and torrent_hash):
-            return "none", torrent_hash
-        # 用户可能已在联动删除之前手动删掉种子任务。
-        # 这种情况下没有种子可处理，整理记录照常删除即可，不应报错。
-        if not self._torrent_exists(torrent_hash, history.downloader):
-            logger.info(f"种子 {torrent_hash} 已不存在于下载器，仅删除整理记录")
-            return "gone", torrent_hash
-        self.downloadhis.delete_file_by_fullpath(fullpath=history.src)
-        remain = self.downloadhis.get_files_by_hash(download_hash=torrent_hash, state=1)
-        if remain:
-            # 种子还有内容没被删除：暂停而不是删除，等后续事件把剩余内容删完再移除任务
+        state = "none"
+        if conf.delete_torrent and torrent_hash:
+            if not self._torrent_exists(torrent_hash, history.downloader):
+                # 用户可能已提前删种：按预期情况处理，仅清理整理记录
+                logger.info(f"种子 {torrent_hash} 已不存在于下载器，仅删除整理记录")
+                state = "gone"
+            else:
+                self.downloadhis.delete_file_by_fullpath(fullpath=history.src)
+                remain = self.downloadhis.get_files_by_hash(
+                    download_hash=torrent_hash, state=1
+                )
+                if remain:
+                    # 种子只是部分内容被删：暂停而非删除，
+                    # 等后续事件把剩余内容也删完再移除任务
+                    logger.info(
+                        f"种子 {torrent_hash} 仍有 {len(remain)} 个文件未删除，暂停下载任务"
+                    )
+                    try:
+                        self.stop_torrents(hashs=torrent_hash)
+                        state = "paused"
+                    except Exception as err:  # pylint: disable=broad-except
+                        logger.error(f"暂停种子 {torrent_hash} 失败：{err}")
+                        state = "error"
+                else:
+                    logger.info(f"种子 {torrent_hash} 文件已全部删除，删除下载任务")
+                    if DownloadChain().remove_downloading(hash_str=torrent_hash):
+                        self.eventmanager.send_event(
+                            EventType.DownloadDeleted,
+                            {"hash": torrent_hash},
+                        )
+                        state = "deleted"
+                    else:
+                        state = "error"
+
+        # 4. 兜底：源文件仍有残留时按配置删除，并清理空目录
+        self._cleanup_residual_source(src_path, src_exists, src_deletable, conf)
+
+        return state, torrent_hash
+
+    def _cleanup_residual_source(
+            self,
+            src_path: Optional[Path],
+            src_exists: bool,
+            src_deletable: bool,
+            conf,
+    ) -> None:
+        """
+        兜底清理源文件残留。
+
+        删除种子一般会连带删掉文件，但下载器可能只删了部分、
+        或种子里同时含多集而本集未被删，因此这里单独确认一次。
+        源文件若仍被其它硬链接引用（st_nlink > 1），保留不动，
+        由引用它的那条记录负责删除，避免误删仍在使用的数据。
+
+        :param src_path: 源文件路径
+        :param src_exists: 处理前源文件是否存在
+        :param src_deletable: 当前配置是否允许删除该源
+        :param conf: 联动删除配置
+        """
+        if not src_path or not src_deletable or not src_path.exists():
+            return
+        try:
+            links = src_path.stat().st_nlink
+        except OSError:
+            links = 1
+        if links > 1:
             logger.info(
-                f"种子 {torrent_hash} 仍有 {len(remain)} 个文件未删除，暂停下载任务"
+                f"源文件仍被其它链接引用（{links} 个），保留：{src_path}"
             )
-            try:
-                self.stop_torrents(hashs=torrent_hash)
-            except Exception as err:  # pylint: disable=broad-except
-                logger.error(f"暂停种子 {torrent_hash} 失败：{err}")
-                return "error", torrent_hash
-            return "paused", torrent_hash
-        logger.info(f"种子 {torrent_hash} 文件已全部删除，删除下载任务")
-        if DownloadChain().remove_downloading(hash_str=torrent_hash):
-            self.eventmanager.send_event(
-                EventType.DownloadDeleted,
-                {"hash": torrent_hash},
-            )
-            return "deleted", torrent_hash
-        return "error", torrent_hash
+            return
+        logger.info(
+            f"{'正在删除' if src_exists else '清理残留'}源文件：{src_path}"
+        )
+        try:
+            src_path.unlink(missing_ok=True)
+        except OSError as err:
+            logger.error(f"删除源文件失败：{src_path} - {err}")
+            return
+        if conf.remove_empty_dirs:
+            self._remove_empty_parents(src_path)
 
     def _torrent_exists(self, torrent_hash: str, downloader: Optional[str] = None) -> bool:
         """

@@ -287,3 +287,53 @@ def test_path_index_drops_ancestor_save_paths():
     assert index["/dl/Anime/single.ep01.mkv"][0] == "ab" + "b" * 38
     # 无关文件不再被吞（未命中返回 None）
     assert chain._match_index("/dl/Anime/[Erai-raws] Ao no Hako/ep03.mkv") is None
+
+
+def test_residual_source_kept_when_hardlinked(tmp_path):
+    """源文件仍被其它硬链接引用时不得删除。"""
+    from unittest.mock import MagicMock
+
+    from app.chain.mediaserverdel import MediaServerDelChain
+
+    src = tmp_path / "a.mkv"
+    src.write_bytes(b"data")
+    other = tmp_path / "b.mkv"
+    other.hardlink_to(src)   # 链接数变 2
+
+    chain = MediaServerDelChain()
+    conf = MagicMock(remove_empty_dirs=False)
+    chain._cleanup_residual_source(src, True, True, conf)
+
+    assert src.exists(), "仍被引用的源文件必须保留"
+
+
+def test_residual_source_deleted_when_last_link(tmp_path):
+    """最后一处链接时删除源文件。"""
+    from unittest.mock import MagicMock
+
+    from app.chain.mediaserverdel import MediaServerDelChain
+
+    src = tmp_path / "a.mkv"
+    src.write_bytes(b"data")
+
+    chain = MediaServerDelChain()
+    conf = MagicMock(remove_empty_dirs=False)
+    chain._cleanup_residual_source(src, True, True, conf)
+
+    assert not src.exists()
+
+
+def test_residual_source_skipped_when_not_deletable(tmp_path):
+    """配置不允许删源时保留文件。"""
+    from unittest.mock import MagicMock
+
+    from app.chain.mediaserverdel import MediaServerDelChain
+
+    src = tmp_path / "a.mkv"
+    src.write_bytes(b"data")
+
+    chain = MediaServerDelChain()
+    conf = MagicMock(remove_empty_dirs=False)
+    chain._cleanup_residual_source(src, True, False, conf)
+
+    assert src.exists()
