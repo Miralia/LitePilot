@@ -181,6 +181,9 @@ class TemplateContextBuilder:
         meta_info = {
             # 原文件名
             "original_name": meta.title,
+            # 入库前的原始文件名（未识别、未重命名），供通知末尾展示，
+            # 便于核对这份文件对应的实际来源
+            "sourceFileName": cls.__source_file_name(meta),
             # 识别名称（优先使用中文）
             "name": meta.name,
             # 识别的英文名称（可能为空）
@@ -395,24 +398,12 @@ class TemplateContextBuilder:
             result.append(f"{cls.SPEC_ICON_MAIN} {combined}")
             return result
 
+        # 规格最多两行：首行 🎥 承载来源，次行 📽 承载音视频。
+        # 第三行会让消息显得零碎，且末行往往只有零星几个词。
         if source_block:
             result.append(f"{cls.SPEC_ICON_MAIN} {source_block}")
-        if len(audio_video_block) <= cls.SPEC_LINE_WIDTH:
-            result.append(f"{cls.SPEC_ICON_MAIN} {audio_video_block}")
-        else:
-            # 音视频仍超长：从尾部切出能装下的部分，避免出现极短的行
-            tokens = audio_video_block.split()
-            split_at = len(tokens)
-            while split_at > 0:
-                if len(" ".join(tokens[:split_at])) <= cls.SPEC_LINE_WIDTH:
-                    break
-                split_at -= 1
-            head_part = " ".join(tokens[:split_at])
-            tail_part = " ".join(tokens[split_at:])
-            if head_part:
-                result.append(f"{cls.SPEC_ICON_MAIN} {head_part}")
-            if tail_part:
-                result.append(f"{cls.SPEC_ICON_TAIL} {tail_part}")
+        if audio_video_block:
+            result.append(f"{cls.SPEC_ICON_TAIL} {audio_video_block}")
         return result
 
     @staticmethod
@@ -470,6 +461,20 @@ class TemplateContextBuilder:
             "__episodes_info__": episodes_info,
         }
         context.update(raw_objects)
+
+    @staticmethod
+    def __source_file_name(meta: MetaBase) -> str:
+        """
+        返回入库前的原始文件名。
+
+        优先用 ``org_string``（未经识别的完整原始串），它保留了发布名里的
+        全部信息（分辨率、编码、发布组等），能直接对应到下载来的文件；
+        缺失时退回 ``title``。
+
+        :param meta: 媒体元数据
+        :return: 原始文件名或空串
+        """
+        return str(getattr(meta, "org_string", None) or meta.title or "").strip()
 
     @staticmethod
     def __convert_invalid_characters(filename: str):

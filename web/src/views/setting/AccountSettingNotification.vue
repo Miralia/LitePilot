@@ -179,11 +179,30 @@ async function loadNotificationSetting() {
   }
 }
 
+/**
+ * 把接口返回的模板配置归一为「场景 -> JSON 字符串」。
+ *
+ * 后端存储的场景值本身是 JSON 字符串，但经接口序列化后可能变成对象，
+ * 编辑器只接受字符串，因此这里统一转换，两种形态都能正确显示。
+ */
+function normalizeTemplateConfigs(value: unknown): Record<string, string> {
+  const result: Record<string, string> = {}
+  if (!value || typeof value !== 'object') return result
+  for (const [scene, template] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof template === 'string') {
+      result[scene] = template
+    } else if (template && typeof template === 'object') {
+      result[scene] = JSON.stringify(template, null, 2)
+    }
+  }
+  return result
+}
+
 async function openEditor(type: NotificationTemplateType) {
   try {
     currentTemplate.value = type
     const result: { [key: string]: any } = await api.get('system/setting/NotificationTemplates')
-    templateConfigs.value = result.data?.value || {}
+    templateConfigs.value = normalizeTemplateConfigs(result.data?.value)
     editorContent.value = templateConfigs.value[type] || '{}'
     openTemplateEditorDialog(type)
   } catch (error) {
@@ -209,7 +228,7 @@ async function saveTemplate(value = editorContent.value) {
 async function loadTemplateConfigs() {
   try {
     const result: { [key: string]: any } = await api.get('system/setting/NotificationTemplates')
-    templateConfigs.value = result.data?.value || {}
+    templateConfigs.value = normalizeTemplateConfigs(result.data?.value)
   } catch (error) {
     console.error(error)
     $toast.error(t('setting.notification.templateLoadFailed'))
