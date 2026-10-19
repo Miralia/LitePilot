@@ -66,8 +66,17 @@ const UNREAD_COUNT_KEY = 'mp_unread_count'
 // --- 缓存策略配置 ---
 
 // 导航请求与 App Shell - 优先网络
+// 子路径部署时（如 /litepilot/）不能只匹配根路径，否则导航会落到
+// 静态资源的 StaleWhileRevalidate 分支，先返回旧页面再后台更新
+const isNavigationRequest = ({ request, url }: { request: Request, url: URL }) =>
+  request.mode === 'navigate' ||
+  url.pathname === '/' ||
+  url.pathname === '/index.html' ||
+  url.pathname.endsWith('/') ||
+  url.pathname.endsWith('/index.html')
+
 registerRoute(
-  ({ request, url }) => request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html',
+  isNavigationRequest,
   new NetworkFirst({
     cacheName: `app-shell-${CACHE_VERSION}`,
     plugins: [
@@ -156,6 +165,7 @@ registerRoute(
     !url.pathname.includes('/api/v1/message/') && // 用户消息接口
     !url.pathname.includes('/api/v1/system/global') && // 系统配置接口
     !url.pathname.includes('/api/v1/auth/') && // 登录认证入口与票据交换
+    !url.pathname.includes('/api/v1/login/') && // 登录与登出接口，命中缓存会返回过期 token
     !url.pathname.includes('/api/v1/dashboard/') && // Dashboard实时监控数据
     !url.pathname.includes('/api/v1/tmdb/'), // 识别缓存接口
   new NetworkFirst({

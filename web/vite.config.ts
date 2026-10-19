@@ -164,7 +164,7 @@ export default defineConfig(({ command, mode, isPreview }) => ({
             'client_mode': 'navigate-existing',
           },
           'handle_links': 'preferred',
-          'id': 'moviepilot-app',
+          'id': 'litepilot-app',
           'shortcuts': [
             {
               'name': '推荐',
