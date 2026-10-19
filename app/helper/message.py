@@ -373,14 +373,21 @@ class TemplateContextBuilder:
                 *(meta.video_hdr or []),
                 meta.video_chroma,
                 meta.video_encode,
-                *(meta.release_info or []),
             ) if part
         )
         combined = " ".join(p for p in (source_block, audio_video_block) if p)
 
+        # 版本行：剪辑版本与发布修正同属「这是哪个版本」，
+        # 合并到首行，固定用 🎬 标识
+        version_line = " ".join(
+            part for part in (
+                meta.cut_version,
+                *(meta.release_info or []),
+            ) if part
+        )
         result: List[str] = []
-        if meta.cut_version:
-            result.append(f"{cls.SPEC_ICON_HEAD} {meta.cut_version}")
+        if version_line:
+            result.append(f"{cls.SPEC_ICON_HEAD} {version_line}")
         if not combined:
             return result
 

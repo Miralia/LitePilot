@@ -608,3 +608,56 @@ def test_release_info_excluded_from_filename_spec(title):
     plain = TemplateContextBuilder._build_spec_plain(meta)
     for token in ("REPACK", "PROPER", "RERIP", "Hybrid", "v2", "v10"):
         assert token not in plain
+
+
+# ---------------------------------------------------------------------------
+# 版本行：剪辑版本与发布修正合并到首行
+#
+# 两者都回答「这是哪个版本」，合并到一行更符合阅读习惯，也避免出现
+# 只有几个字符的极短行。
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "title,expect",
+    [
+        # 剪辑版本单独
+        ("M.2020.1080p.BluRay.Directors.Cut.x264.AAC-GRP", "🎬 Director's Cut"),
+        # 发布修正单独
+        ("M.2024.1080p.BluRay.REPACK.x264.AAC-GRP", "🎬 REPACK"),
+        ("M.2024.1080p.BluRay.REPACK10.x264.AAC-GRP", "🎬 REPACK10"),
+        ("M.2024.1080p.BluRay.v10.x264.AAC-GRP", "🎬 v10"),
+        ("M.2024.1080p.Hybrid.BluRay.x264.AAC-GRP", "🎬 Hybrid"),
+        # 两者同时出现时合并在同一行
+        (
+            "M.2020.1080p.BluRay.Directors.Cut.REPACK2.x264.AAC-GRP",
+            "🎬 Director's Cut REPACK2",
+        ),
+    ],
+)
+def test_version_line_merges_cut_and_release(title, expect):
+    """剪辑版本与发布修正合并到带 🎬 的首行。"""
+    from app.core.meta.metavideo import MetaVideo
+    from app.helper.message import TemplateContextBuilder
+
+    meta = MetaVideo(title)
+    meta.finalize()
+    lines = TemplateContextBuilder._build_spec_lines(meta)
+    assert lines[0] == expect
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "M.2024.1080p.BluRay.x264.AAC-GRP",
+        "M.2024.1080p.AMZN.WEB-DL.DDP.H264-GRP",
+    ],
+)
+def test_no_version_line_without_cut_or_release(title):
+    """无剪辑版本与发布信息时不产生版本行。"""
+    from app.core.meta.metavideo import MetaVideo
+    from app.helper.message import TemplateContextBuilder
+
+    meta = MetaVideo(title)
+    meta.finalize()
+    lines = TemplateContextBuilder._build_spec_lines(meta)
+    assert all(not line.startswith("🎬") for line in lines)
+    assert lines and lines[0].startswith("🎥")
