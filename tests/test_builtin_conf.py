@@ -225,9 +225,9 @@ def test_cleanup_keeps_file_when_target_missing(tmp_path):
     [
         # Sabnzbd 下载中就把解压产物放进 _UNPACK_<job>/，完成才改名；
         # 监控必须跳过，否则会整理出半成品
-        ("/home/user/Downloads/Movie/_UNPACK_Persona.1966/Persona.mkv", False),
+        (" /home/user/Downloads/Movie/_UNPACK_Persona.1966/Persona.mkv", False),
         ("/home/user/Downloads/Anime/_UNPACK_xxx/subs/ep01.mkv", False),
-        ("/home/user/Downloads/Movie/Persona.1966/Persona.mkv", True),
+        (" /home/user/Downloads/Movie/Persona.1966/Persona.mkv", True),
         ("/home/user/Downloads/Anime/[Erai-raws] Ao no Hako - 03/ep03.mkv", True),
         # 普通目录名里含 unpack 不受影响
         ("/home/unpack_test/my.mkv", True),

@@ -70,11 +70,11 @@ class DirectoryHelper:
             root_storage, root_style, root_path = root
             if storage != root_storage or target_style != root_style or target_path != root_path:
                 continue
+            # media_type 为空的目录匹配所有类型；
+            # 二级分类已取消，不再按 media_category 细分
             if not media_type or not dir_info.media_type:
                 return dir_info
-            if dir_info.media_type == media_type and not dir_info.media_category:
-                return dir_info
-            if dir_info.media_type == media_type and dir_info.media_category == media.category:
+            if dir_info.media_type == media_type:
                 return dir_info
         return None
 
@@ -132,12 +132,8 @@ class DirectoryHelper:
             if not media_type or not d.media_type:
                 matched_dirs.append(d)
                 continue
-            # 目录类型相等，目录类别为全部，符合条件
-            if d.media_type == media_type and not d.media_category:
-                matched_dirs.append(d)
-                continue
-            # 目录类型相等，目录类别相等，符合条件
-            if d.media_type == media_type and d.media_category == media.category:
+            # 目录类型相等即符合条件（二级分类已取消）
+            if d.media_type == media_type:
                 matched_dirs.append(d)
                 continue
         if matched_dirs:
