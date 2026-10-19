@@ -40,9 +40,16 @@ _EFFECT_ALIASES = {
     "DV": "DoVi",
     "DOVI": "DoVi",
     "DOLBY": "DoVi",
+    # mediainfo 的 HDR_Format 原文是 "Dolby Vision"，需收敛到 DoVi
+    "DOLBY VISION": "DoVi",
+    "DOLBYVISION": "DoVi",
     "HDR10PLUS": "HDR10+",
     "HDR10P": "HDR10+",
     "HDR10+": "HDR10+",
+    # 基础 HDR10 与 HLG 在 mediainfo 里同样是独立规格
+    "HDR10": "HDR10",
+    "HDR": "HDR10",
+    "HLG": "HLG",
     "HDRVIVID": "HDRVivid",
     "VIVID": "HDRVivid",
 }
@@ -79,17 +86,44 @@ _AUDIO_ALIASES = {
 _PIX_ALIASES = {"4K": "4K", "8K": "8K", "2K": "2K"}
 
 # 来源写法的统一形态（仅规范大小写，不合并同义概念）
+# 来源写法的唯一标准形态。
+# BD 类来源（BDRip / BluRay / Blu-ray）统一写作 BD：它们指向同一份母版，
+# 区分对入库没有意义，反而让同一部片子的不同版本落到不同目录。
+# UHD 是分辨率维度但压制组习惯写进来源，保留为 UHD BD 以便区分 4K 母版。
+# Remux 是独立的制作方式，必须保留在来源标记里。
 _SOURCE_ALIASES = {
-    "WEBRIP": "WEBRip",
+    "WEBRIP": "WebRip",
     "WEB-DL": "WEB-DL",
-    "BDRIP": "BDRip",
-    "BLURAY": "BluRay",
+    "WEB": "WEB",
+    # BD 类母版合并为 BD
+    "BLURAY": "BD",
+    "BLU-RAY": "BD",
+    "BDRIP": "BD",
+    "BD-RIP": "BD",
+    "BD": "BD",
+    # UHD 母版单独成形态
+    "UHD": "UHD",
+    "UHD BLURAY": "UHD BD",
+    "UHD BLU-RAY": "UHD BD",
+    "UHD BDRIP": "UHD BD",
+    "UHD BD": "UHD BD",
+    # Remux 保留独立形态，统一首字母大写
+    "REMUX": "Remux",
     "HDTV": "HDTV",
     "DVDRIP": "DVDRip",
-    "REMUX": "REMUX",
     "PRORES": "ProRes",
     "DCP": "DCP",
     "MASTER": "Master",
+}
+
+# 逐段归一化后的复合形态收敛表
+_SOURCE_COMPOUND_ALIASES = {
+    "BD REMUX": "BD Remux",
+    "BD DIY": "BD DIY",
+    "BD REMUX DIY": "BD Remux DIY",
+    "UHD BD REMUX": "UHD BD Remux",
+    "UHD BD DIY": "UHD BD DIY",
+    "UHD BD REMUX DIY": "UHD BD Remux DIY",
 }
 
 
@@ -108,20 +142,55 @@ def normalize_effect(value: Optional[str]) -> Optional[str]:
     return text
 
 
+# 声道数与 Atmos 属于音轨的附加信息，单独记录，不写进编码名
+_AUDIO_CHANNEL_RE = re.compile(
+    r"\s*\b[1-9]\.[0-9]\b|\s*\b[1-9]\s*channels?\b", re.IGNORECASE
+)
+_ATMOS_RE = re.compile(r"\s*\batmos\b", re.IGNORECASE)
+# 只有这两个编码承载 Atmos，其它编码带 Atmos 标记属于误识别
+_ATMOS_CAPABLE = frozenset({"DD+", "TRUEHD"})
+
+
 def normalize_audio(value: Optional[str]) -> Optional[str]:
-    """把音频编码写法收敛为唯一标准写法。"""
+    """
+    把音频编码写法收敛为唯一标准写法。
+
+    声道数（``5.1`` / ``1.0``）与 Atmos 属于附加信息，由探测层单独
+    记录，编码名只保留编码本身，例如 ``DDP 5.1 Atmos`` -> ``DD+``。
+
+    :param value: 原始音频编码描述
+    :return: 归一化后的编码名
+    """
     if not value:
         return value
-    text = str(value).strip()
+    text = _ATMOS_RE.sub("", str(value))
+    text = _AUDIO_CHANNEL_RE.sub("", text).strip()
+    if not text:
+        return ""
     upper = text.upper()
     if upper in _AUDIO_ALIASES:
         return _AUDIO_ALIASES[upper]
-    # 带声道数时保留后缀，例如 DDP5.1 -> DD+5.1
+    # 带其它后缀时保留后缀，例如 DTS-HD -> DTS-HD
     for alias, canonical in _AUDIO_ALIASES.items():
         if upper.startswith(alias) and upper != alias:
             rest = text[len(alias):]
             return f"{canonical}{rest}"
     return text
+
+
+def audio_supports_atmos(value: Optional[str]) -> bool:
+    """
+    判断该音频编码是否可能承载 Dolby Atmos。
+
+    Atmos 是叠加在 DD+ 或 TrueHD 上的对象音频层，其它编码出现 Atmos
+    标记属于误识别，应当丢弃。
+
+    :param value: 音频编码名
+    :return: 可能承载 Atmos 时返回 True
+    """
+    if not value:
+        return False
+    return str(value).strip().upper().replace(" ", "") in _ATMOS_CAPABLE
 
 
 def normalize_pix(value: Optional[str]) -> Optional[str]:
@@ -134,17 +203,56 @@ def normalize_pix(value: Optional[str]) -> Optional[str]:
 
 
 def normalize_source(value: Optional[str]) -> Optional[str]:
-    """把来源写法收敛为唯一大小写形态，保留原文件的形态差异。"""
+    """
+    把来源写法收敛为唯一标准形态。
+
+    规则：
+
+    - BD 类来源（BluRay / Blu-ray / BDRip）一律写作 BD
+    - UHD 母版写作 ``UHD BD``，保留 4K 母版与普通 BD 的区别
+    - BD 的 Remux 写作 ``BD Remux`` / ``UHD BD Remux``，Remux 保留独立语义
+    - 非 BD 的 Remux（如 ``WEB Remux``）视作 WEB：Remux 只对 BD 母版有意义，
+      WEB 源的 Remux 与普通 WEB 没有入库区别
+
+    :param value: 原始来源标记
+    :return: 归一化后的来源标记
+    """
     if not value:
         return value
     text = str(value).strip()
     key = text.upper()
     if key in _SOURCE_ALIASES:
         return _SOURCE_ALIASES[key]
+
     # 组合形态（UHD BluRay / BluRay REMUX 等）逐段归一
-    parts = text.split()
-    normalized = [ _SOURCE_ALIASES.get(part.upper(), part) for part in parts ]
-    return " ".join(normalized)
+    parts = [part for part in text.split() if part]
+    normalized = [_SOURCE_ALIASES.get(part.upper(), part) for part in parts]
+
+    deduped: List[str] = []
+    for part in normalized:
+        # HD 是冗余前缀，直接丢弃；UHD 单独成形态
+        if part == "HD":
+            continue
+        if part == "BD" and "BD" in deduped:
+            continue
+        deduped.append(part)
+
+    # UHD 与 BD 同时出现时合并为 UHD BD，避免 "UHD BD" 被拆成两段
+    if "UHD" in deduped and "BD" in deduped:
+        deduped = [part for part in deduped if part not in ("UHD", "BD")]
+        insert_at = 0
+        deduped.insert(insert_at, "UHD BD")
+
+    result = " ".join(deduped)
+
+    compound = _SOURCE_COMPOUND_ALIASES.get(result.upper())
+    if compound:
+        return compound
+
+    # 非 BD 来源的 Remux 降级为该来源本身：WEB Remux -> WEB
+    if "Remux" in deduped and "BD" not in deduped:
+        return next((part for part in deduped if part != "Remux"), result)
+    return result
 
 
 VIDEO_BIT_RE = re.compile(
@@ -193,8 +301,16 @@ class MetaBase(object):
     part: Optional[str] = None
     # 识别的资源类型
     resource_type: Optional[str] = None
-    # 识别的效果
-    resource_effect: Optional[str] = None
+    # 视频 HDR 规格（HDR10 / HDR10+ / DoVi / HLG / HDRVivid）
+    video_hdr: List[str] = field(default_factory=list)
+    # 视频色彩采样（仅 4:2:2 / 4:4:4 这类高位深色度）
+    video_chroma: Optional[str] = None
+    # 特殊版本（3D / IMAX / Open Matte），影响播放方式或画幅
+    special_edition: List[str] = field(default_factory=list)
+    # 剪辑版本（Director's Cut / Extended Cut 等），影响片长与内容
+    cut_version: Optional[str] = None
+    # 发布信息（REPACK / PROPER / Hybrid 等），描述发布或制作方式
+    release_info: List[str] = field(default_factory=list)
     # 识别的分辨率
     resource_pix: Optional[str] = None
     # 识别的制作组/字幕组（多个组以 @ 连接，保持既有语义）
@@ -211,6 +327,8 @@ class MetaBase(object):
     video_bit: Optional[str] = None
     # 音频编码
     audio_encode: Optional[str] = None
+    # 是否为 Dolby Atmos 音轨（仅 DD+ / TrueHD 有效）
+    audio_atmos: bool = False
     # 应用的识别词信息
     apply_words: Optional[List[str]] = None
     # 附加信息
@@ -237,6 +355,9 @@ class MetaBase(object):
         # default_factory 字段不会生成类属性默认值，手写 __init__ 必须显式初始化，
         # 否则实例上不存在该属性（MetaAnime 曾因此缺失 resource_teams）
         self.resource_teams = []
+        self.video_hdr = []
+        self.special_edition = []
+        self.release_info = []
         if not title:
             return
         self.org_string = title.strip() if title else None
@@ -589,6 +710,23 @@ class MetaBase(object):
         return ""
 
     @property
+    def resource_effect(self) -> Optional[str]:
+        """
+        返回效果标记的聚合串，保留给既有调用方。
+
+        效果本身已按归属拆到独立字段：``video_hdr`` 承载 HDR 规格、
+        ``video_chroma`` 承载色彩采样、``special_edition`` 承载特殊版本。
+        本属性只做向下兼容，新代码应直接读取对应字段。
+
+        :return: 空格分隔的聚合串，无内容时返回 None
+        """
+        parts: List[str] = list(self.video_hdr)
+        if self.video_chroma:
+            parts.append(self.video_chroma)
+        parts.extend(self.special_edition)
+        return " ".join(part for part in parts if part) or None
+
+    @property
     def resource_term(self) -> str:
         """
         返回资源类型字符串，含分辨率
@@ -609,14 +747,27 @@ class MetaBase(object):
         三条解析路径（MetaVideo / MetaAnime / Rust 加速）都在完成时调用一次，
         避免各处分别实现导致写法漂移。对应原先依赖「自定义识别词」的改写逻辑。
         """
-        if self.resource_effect:
-            parts = [
-                normalize_effect(part)
-                for part in str(self.resource_effect).split()
-                if part
-            ]
-            self.resource_effect = " ".join(p for p in parts if p) or None
+        # HDR 规格与特殊版本按唯一标准写法收敛
+        if self.video_hdr:
+            normalized_hdr: List[str] = []
+            for part in self.video_hdr:
+                canonical = normalize_effect(part)
+                if canonical and canonical not in normalized_hdr:
+                    normalized_hdr.append(canonical)
+            self.video_hdr = normalized_hdr
+        if self.special_edition:
+            normalized_special: List[str] = []
+            for part in self.special_edition:
+                canonical = normalize_effect(part)
+                if canonical and canonical not in normalized_special:
+                    normalized_special.append(canonical)
+            self.special_edition = normalized_special
+        if self.video_chroma:
+            self.video_chroma = normalize_effect(self.video_chroma)
         self.audio_encode = normalize_audio(self.audio_encode)
+        # Atmos 只叠加在 DD+ / TrueHD 上，其它编码出现该标记属于误识别
+        if self.audio_atmos and not audio_supports_atmos(self.audio_encode):
+            self.audio_atmos = False
         self.resource_pix = normalize_pix(self.resource_pix)
         self.resource_type = normalize_source(self.resource_type)
         if self.video_encode:
@@ -688,14 +839,20 @@ class MetaBase(object):
     # 组合形态（UHD BluRay、BluRay REMUX、WEB-DL）必须排在基础形态之前，
     # 否则会先匹配到基础词而丢失更精确的来源描述。
     _RESOURCE_TYPE_RULES = [
-        ("UHD BluRay", r"\bU?HD\s*Blu[\s.\-]?ray\b"),
-        ("BluRay REMUX", r"\bBlu[\s.\-]?ray\b[\s.\-_]*(?:REMUX|UHD)"),
-        ("REMUX", r"\bREMUX\b"),
-        ("BluRay", r"\bBlu[\s.\-]?ray\b"),
+        # BD 类母版的 Remux 组合形态，必须最先匹配
+        ("BluRay REMUX", r"\b(?:UHD\s*)?Blu[\s.\-]?ray\b[\s.\-_]*(?:REMUX|UHD)"),
+        # WEB 类的 Remux 组合同样要先于裸 REMUX，否则会丢掉 WEB 前缀，
+        # 归一化后无法降级为 WEB
+        ("WEB-DL Remux", r"\bWEB[\s.\-]?DL\b[\s.\-_]*REMUX\b"),
+        ("WebRip Remux", r"\bWEB[\s.\-]?Rip\b[\s.\-_]*REMUX\b"),
+        ("WEB Remux", r"\bWEB\b[\s.\-_]*REMUX\b"),
+        ("BluRay", r"\b(?:UHD\s*)?Blu[\s.\-]?ray\b"),
         ("BDRip", r"\bBD[\s.\-]?Rip\b"),
         ("WEB-DL", r"\bWEB[\s.\-]?DL\b"),
         ("WebRip", r"\bWEB[\s.\-]?Rip\b"),
         ("WEB", r"\bWEB\b"),
+        # 前面没匹配到的裸 REMUX：缺少来源信息，按 Remux 记录
+        ("REMUX", r"\bREMUX\b"),
         ("HDTV", r"\bHDTV\b"),
         ("HDDVD", r"\bHD[\s.\-]?DVD\b"),
         ("DVDRip", r"\bDVD[\s.\-]?Rip\b"),
@@ -941,9 +1098,20 @@ class MetaBase(object):
         # 自定义占位符
         if not self.customization:
             self.customization = meta.customization
-        # 特效
-        if not self.resource_effect:
-            self.resource_effect = meta.resource_effect
+        # 特效：按归属分别合并，任一侧为空时取另一侧
+        _incoming_hdr = getattr(meta, "video_hdr", None)
+        if not self.video_hdr and _incoming_hdr:
+            self.video_hdr = list(_incoming_hdr)
+        if not self.video_chroma:
+            self.video_chroma = getattr(meta, "video_chroma", None)
+        _incoming_special = getattr(meta, "special_edition", None)
+        if not self.special_edition and _incoming_special:
+            self.special_edition = list(_incoming_special)
+        if not self.cut_version:
+            self.cut_version = getattr(meta, "cut_version", None)
+        _incoming_release = getattr(meta, "release_info", None)
+        if not self.release_info and _incoming_release:
+            self.release_info = list(_incoming_release)
         # 视频编码
         if not self.video_encode:
             self.video_encode = meta.video_encode

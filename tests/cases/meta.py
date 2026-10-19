@@ -60,10 +60,10 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "BluRay 3D",
+        "restype": "BD 3D",
         "pix": "1080p",
         "video_codec": "AVC",
-        "audio_codec": "TrueHD 7.1",
+        "audio_codec": "TrueHD",
         "fps": None
     }
 }, {
@@ -131,7 +131,7 @@ meta_cases = [{
         "restype": "WEB-DL",
         "pix": "1080p",
         "video_codec": "H264",
-        "audio_codec": "AAC 2.0",
+        "audio_codec": "AAC",
         "fps": None
     }
 }, {
@@ -196,10 +196,10 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "WEBRip",
+        "restype": "WebRip",
         "pix": "1080p",
         "video_codec": "",
-        "audio_codec": "5.1",
+        "audio_codec": "",
         "fps": None
     }
 }, {
@@ -247,10 +247,10 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "BluRay",
+        "restype": "BD",
         "pix": "1080p",
         "video_codec": "x264",
-        "audio_codec": "Atmos TrueHD 7.1",
+        "audio_codec": "TrueHD",
         "fps": None
     }
 }, {
@@ -366,7 +366,7 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "BluRay REMUX",
+        "restype": "BD Remux",
         "pix": "1080p",
         "video_codec": "AVC",
         "audio_codec": "LPCM 7³",
@@ -383,7 +383,7 @@ meta_cases = [{
         "part": "",
         "season": "S02",
         "episode": "E01",
-        "restype": "UHD BluRay",
+        "restype": "UHD BD",
         "pix": "1080p",
         "video_codec": "x264",
         "audio_codec": "",
@@ -400,7 +400,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E02",
-        "restype": "BDRip",
+        "restype": "BD",
         "pix": "1080p",
         "video_codec": "H264",
         "audio_codec": "FLAC",
@@ -519,7 +519,7 @@ meta_cases = [{
         "part": "",
         "season": "S02",
         "episode": "E03",
-        "restype": "WEBRip",
+        "restype": "WebRip",
         "pix": "1080p",
         "video_codec": "HEVC",
         "audio_codec": "AAC",
@@ -553,7 +553,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E02",
-        "restype": "BDRip",
+        "restype": "BD",
         "pix": "1080p",
         "video_codec": "x265",
         "audio_codec": "FLAC",
@@ -570,7 +570,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E01",
-        "restype": "WEBRip",
+        "restype": "WebRip",
         "pix": "1080p",
         "video_codec": "HEVC",
         "audio_codec": "DD+",
@@ -587,7 +587,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E01",
-        "restype": "WEBRip",
+        "restype": "WebRip",
         "pix": "1080p",
         "video_codec": "HEVC",
         "audio_codec": "AAC",
@@ -624,7 +624,7 @@ meta_cases = [{
         "restype": "WEB-DL",
         "pix": "1080p",
         "video_codec": "H264",
-        "audio_codec": "AAC 5.1",
+        "audio_codec": "AAC",
         "fps": None
     }
 }, {
@@ -689,10 +689,10 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "WEBRip",
+        "restype": "WebRip",
         "pix": "1080p",
         "video_codec": "H264",
-        "audio_codec": "DD+ 5.1",
+        "audio_codec": "DD+",
         "fps": None
     }
 }, {
@@ -706,10 +706,10 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "UHD BluRay DoVi",
+        "restype": "UHD BD DoVi",
         "pix": "1080p",
         "video_codec": "x265",
-        "audio_codec": "DD+ 7.1",
+        "audio_codec": "DD+",
         "fps": None
     }
 }, {
@@ -794,7 +794,7 @@ meta_cases = [{
         "restype": "WEB-DL",
         "pix": "1080p",
         "video_codec": "H264",
-        "audio_codec": "AAC 5.1",
+        "audio_codec": "AAC",
         "fps": None
     }
 }, {
@@ -808,10 +808,10 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "BluRay",
+        "restype": "BD",
         "pix": "1080p",
         "video_codec": "x265",
-        "audio_codec": "DTS-HD MA 5.1",
+        "audio_codec": "DTS-HD MA",
         "fps": None
     }
 }, {
@@ -876,7 +876,7 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "BluRay",
+        "restype": "BD",
         "pix": "4K",
         "video_codec": "x264",
         "audio_codec": "DTS",
@@ -927,7 +927,7 @@ meta_cases = [{
         "part": "",
         "season": "S01",
         "episode": "E01-E26",
-        "restype": "BDRip",
+        "restype": "BD",
         "pix": "1080p",
         "video_codec": "HEVC",
         "audio_codec": "FLAC",
@@ -978,10 +978,10 @@ meta_cases = [{
         "part": "",
         "season": "S06",
         "episode": "E06",
-        "restype": "WEBRip",
+        "restype": "WebRip",
         "pix": "1080p",
         "video_codec": "x264",
-        "audio_codec": "DD 5.1",
+        "audio_codec": "DD",
         "fps": None
     }
 }, {
@@ -995,10 +995,10 @@ meta_cases = [{
         "part": "",
         "season": "S06",
         "episode": "E05",
-        "restype": "WEBRip",
+        "restype": "WebRip",
         "pix": "1080p",
         "video_codec": "x264",
-        "audio_codec": "DD 5.1",
+        "audio_codec": "DD",
         "fps": None
     }
 }, {
@@ -1032,7 +1032,7 @@ meta_cases = [{
         "restype": "WEB-DL",
         "pix": "2160p",
         "video_codec": "H265",
-        "audio_codec": "DD+ 5.1 Atmos",
+        "audio_codec": "DD+",
         "fps": None
     }
 }, {
@@ -1083,7 +1083,7 @@ meta_cases = [{
         "restype": "WEB-DL",
         "pix": "2160p",
         "video_codec": "H265",
-        "audio_codec": "DD+ 2.0",
+        "audio_codec": "DD+",
         "fps": None
     }
 }, {
@@ -1229,10 +1229,10 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "BluRay",
+        "restype": "BD",
         "pix": "1080p",
         "video_codec": "x265",
-        "audio_codec": "2Audio"
+        "audio_codec": ""
     }
 }, {
     # 第一个括号包含完整发布名称（含年份+分辨率），应提取标题而非丢弃
@@ -1246,10 +1246,10 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "UHD BluRay",
+        "restype": "UHD BD",
         "pix": "2160p",
         "video_codec": "HEVC",
-        "audio_codec": "DTS-HD MA 5.1"
+        "audio_codec": "DTS-HD MA"
     }
 }, {
     # 第一个括号包含完整发布名称（含年份+BluRay），应提取标题
@@ -1263,7 +1263,7 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "BluRay",
+        "restype": "BD",
         "pix": "1080p",
         "video_codec": "x264",
         "audio_codec": ""
@@ -1280,7 +1280,7 @@ meta_cases = [{
         "part": "",
         "season": "",
         "episode": "",
-        "restype": "BluRay",
+        "restype": "BD",
         "pix": "1080p",
         "video_codec": "x264",
         "audio_codec": ""

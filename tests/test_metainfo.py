@@ -168,7 +168,8 @@ def test_python_metainfo_fallback_preserves_xxx_movie_title():
     assert meta.year == "2002"
     assert meta.resource_pix == "1080p"
     assert meta.edition == "WEB-DL"
-    assert meta.audio_encode == "DD+ 5.1"
+    # 声道数与 Atmos 属于附加信息，不再进入 audio_encode
+    assert meta.audio_encode == "DD+"
 
 
 def test_python_subtitle_episode_range_fin_with_chinese_season():

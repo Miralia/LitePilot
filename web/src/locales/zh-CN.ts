@@ -872,6 +872,37 @@ export default {
       streamingPlatformPlaceholder: 'NF = Netflix\nAMZN = Amazon\nMYS = 我的平台',
       streamingPlatformSaveSuccess: '流媒体平台词表保存成功',
       streamingPlatformSaveFailed: '流媒体平台词表保存失败',
+      specialEdition: '特殊版本词表',
+      specialEditionShort: '特殊版本',
+      specialEditionDesc:
+        '维护特殊版本识别表，用于识别 3D、IMAX、Open Matte 等影响播放方式或画幅的作品形态。',
+      specialEditionHint:
+        '每行一条，格式 `写法 = 标准名`，例如 `Open Matte = Open Matte`；只写一个值时写法与标准名相同。以 # 开头为注释。\n'
+        + '必须完整匹配整段文本才会识别，不做部分匹配，避免误判。大小写、点号、连字符与空格差异不影响匹配。',
+      specialEditionPlaceholder: "3D = 3D\nIMAX = IMAX\nOpen Matte = Open Matte",
+      specialEditionSaveSuccess: '特殊版本词表保存成功',
+      specialEditionSaveFailed: '特殊版本词表保存失败',
+      cutVersion: '剪辑版本词表',
+      cutVersionShort: '剪辑版本',
+      cutVersionDesc:
+        '维护剪辑版本识别表，用于识别 Director\'s Cut、Extended Cut、UnCut 等影响片长与内容的版本。',
+      cutVersionHint:
+        '每行一条，格式 `写法 = 标准名`，例如 `Directors Cut = Director\'s Cut`；只写一个值时写法与标准名相同。以 # 开头为注释。\n'
+        + '必须完整匹配整段文本才会识别，不做部分匹配。剪辑版本只记录，不进入技术描述。',
+      cutVersionPlaceholder:
+        "International Cut = International Cut\nTheatrical Cut = Theatrical Cut\nDirector's Cut = Director's Cut\nUnCut = uncut\nExtended Cut = Extended Cut\nOriginal Cut = Original Cut",
+      cutVersionSaveSuccess: '剪辑版本词表保存成功',
+      cutVersionSaveFailed: '剪辑版本词表保存失败',
+      releaseInfo: '发布信息词表',
+      releaseInfoShort: '发布信息',
+      releaseInfoDesc:
+        '维护发布信息识别表，用于识别 REPACK、PROPER、RERIP、Hybrid 等描述发布或制作方式的标记。',
+      releaseInfoHint:
+        '每行一条，格式 `写法 = 标准名`，例如 `REPACK = REPACK`；只写一个值时写法与标准名相同。以 # 开头为注释。\n'
+        + '发布信息描述的是发布状态或制作方式，不影响内容，只记录不进入技术描述。',
+      releaseInfoPlaceholder: 'REPACK = REPACK\nPROPER = PROPER\nRERIP = RERIP\nREAL = REAL\nHybrid = Hybrid',
+      releaseInfoSaveSuccess: '发布信息词表保存成功',
+      releaseInfoSaveFailed: '发布信息词表保存失败',
       streamingPlatformDisplay: '输出形态',
       streamingPlatformDisplayHint:
         '并入重命名模板的 webSource 字段时使用全称还是简称。默认全称，保持既有整理结果不变。',

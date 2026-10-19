@@ -34,6 +34,23 @@ SOURCE_RULES = [
     ("Master", ("master",)),
 ]
 
+# 编码器库名 -> 发布用编码标记。
+# x264/x265 是压制组约定写法，与 H264/H265 同属一族但语义不同：前者说明
+# 具体编码器实现，标题与重命名应保留。mediainfo 的 Encoded_Library_Name
+# 字段直接给出该信息，缺失时才回退到 Format（AVC/HEVC）。
+ENCODER_FLAVORS = {
+    "x264": "x264",
+    "libx264": "x264",
+    "x265": "x265",
+    "libx265": "x265",
+    "libaom": "AV1",
+    "libsvtav1": "AV1",
+    "librav1e": "AV1",
+    "libvpx-vp9": "VP9",
+    "libvpx": "VP8",
+    "openh264": "H264",
+}
+
 
 def is_available() -> bool:
     """
@@ -127,6 +144,98 @@ def _detect_chroma(video: Optional[dict]) -> str:
     return ""
 
 
+def detect_hdr_flags(video: Optional[dict]) -> List[str]:
+    """
+    识别视频轨道的 HDR 规格标记。
+
+    依据 mediainfo 的 HDR_Format* 系列字段，逐项判定 Dolby Vision、
+    HDR10+、HDR10、HLG。HDR_Format 缺失时回退到 transfer_characteristics
+    推断，避免个别封装没写 HDR_Format 就漏判。
+
+    :param video: mediainfo 的视频轨道字典
+    :return: 命中的 HDR 标记列表，SDR 返回空列表
+    """
+    if not video:
+        return []
+    # HDR_Format 可能分成 HDR_Format、HDR_Format_Compatibility 等多列
+    blob = " ".join(
+        str(value or "") for key, value in video.items()
+        if key.lower().startswith("hdr_format") and value
+    ).lower()
+
+    flags: List[str] = []
+    if "dolby vision" in blob or "dovi" in blob:
+        flags.append("DoVi")
+    # HDR10+ 是 HDR10 的超集，命中时不再重复标注 HDR10
+    if "hdr10+" in blob or "hdr10 plus" in blob:
+        flags.append("HDR10+")
+    elif "hdr10" in blob:
+        flags.append("HDR10")
+    if "hlg" in blob or "arib std-b67" in blob:
+        flags.append("HLG")
+
+    # HDR_Format 缺失时按传输特性推断
+    if not flags:
+        transfer = _first(video, "transfer_characteristics", "TransferCharacteristics").lower()
+        if "bt.2020" in transfer or "2084" in transfer or "pq" in transfer:
+            flags.append("HDR10")
+        elif "hlg" in transfer or "arib" in transfer:
+            flags.append("HLG")
+    return flags
+
+
+def detect_atmos(audio: Optional[dict]) -> bool:
+    """
+    判断音频轨道是否为 Dolby Atmos。
+
+    mediainfo 不会在 Format 里直接写 Atmos，而是体现在 Commercial name
+    （如 "Dolby Digital Plus with Dolby Atmos"）或 Title 中；JOC
+    (Joint Object Coding) 是 Atmos 在 E-AC-3 上的承载方式，同样视为命中。
+
+    :param audio: mediainfo 的音频轨道字典
+    :return: 命中 Atmos 时返回 True
+    """
+    if not audio:
+        return False
+    # mediainfo 的 JSON 键可能是下划线式（commercial_name）也可能是
+    # 空格式（Commercial name），两种都要覆盖，统一去空格与下划线后比对。
+    # Atmos 的实际载体是 Format_Commercial_IfAny（如 "Dolby Digital Plus
+    # with Dolby Atmos"）与 Format_AdditionalFeatures（JOC），两者都要查。
+    wanted = {"commercialname", "formatprofile", "format", "title",
+              "servicekind", "codecid", "formatcommercialifany",
+              "formatadditionalfeatures"}
+    blob = " ".join(
+        str(value or "") for key, value in audio.items()
+        if str(key).lower().replace("_", "").replace(" ", "") in wanted
+    ).lower()
+    return "atmos" in blob or "joc" in blob
+
+
+def detect_encoder_flavor(video: Optional[dict]) -> str:
+    """
+    从视频轨道识别编码器实现对应的发布标记。
+
+    mediainfo 的 Format 字段只给出编码族（AVC / HEVC），无法区分是否由
+    x264 / x265 编码；Encoded_Library_Name 与 Encoded_Library 才是权威
+    依据。缺失时返回空串，由调用方回退到编码族标记。
+
+    :param video: mediainfo 的视频轨道字典
+    :return: x264 / x265 / AV1 等标记，无法判定时返回空串
+    """
+    if not video:
+        return ""
+    # Encoded_Library_Name 是纯净库名；Encoded_Library 带版本号，
+    # 形如 "x264 - core 164 r3191+1 e3de8e8 [Mod by Patman]"
+    for key in ("Encoded_Library_Name", "Encoded_Library", "Writing library"):
+        raw = _first(video, key).lower()
+        if not raw:
+            continue
+        for lib_name, flavor in ENCODER_FLAVORS.items():
+            if lib_name in raw:
+                return flavor
+    return ""
+
+
 def _detect_source(file_name: str, video: Optional[dict]) -> str:
     """
     判定发布来源（ProRes / DCP / Master 等特殊类型）。
@@ -210,15 +319,24 @@ def probe_media(path: Path) -> Optional[dict]:
         "width": width,
         "height": height,
         "resolution": classify_resolution(width, height) if width and height else "",
-        "video_codec": _first(video, "Format", "CodecID") if video else "",
+        # 优先取编码器实现（x264 / x265 / AV1），缺失才回退到编码族。
+        # 只取 Format 会把 x264 压制的片子统一写成 H264，丢掉发布标记。
+        "video_codec": (
+            detect_encoder_flavor(video)
+            or _first(video, "Format", "CodecID")
+        ) if video else "",
+        "video_encoder": detect_encoder_flavor(video) if video else "",
         "video_profile": _first(video, "Format_Profile", "Format profile") if video else "",
         "bit_depth": _first(video, "BitDepth") if video else "",
         # 色彩采样：仅 4:2:2 / 4:4:4 有意义，4:2:0 为常态不标注
         "chroma": _detect_chroma(video) if video else "",
+        # HDR 规格：返回命中标记列表，便于上层按需组合成效果字段
         "hdr": _first(video, "HDR_Format", "HDR format") if video else "",
+        "hdr_flags": detect_hdr_flags(video) if video else [],
         "frame_rate": _first(video, "FrameRate", "Frame rate") if video else "",
         "bit_rate": _first(video, "BitRate", "Bit rate") if video else "",
         "audio_codec": _first(audio, "Format", "Commercial name") if audio else "",
+        "atmos": detect_atmos(audio) if audio else False,
         "audio_channels": _normalize_channels(_first(audio, "Channels", "Channel(s)")) if audio else "",
         "duration": _first(_pick_track(tracks, "General") or {}, "Duration") or "",
         "file_size": _first(_pick_track(tracks, "General") or {}, "FileSize") or "",

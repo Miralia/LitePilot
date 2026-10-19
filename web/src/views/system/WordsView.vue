@@ -16,6 +16,7 @@ const WORDS_LINE_NUMBERS_STORAGE_KEY = 'MP_WORDS_SHOW_LINE_NUMBERS'
 const WORDS_SYNTAX_HIGHLIGHTING_STORAGE_KEY = 'MP_WORDS_SYNTAX_HIGHLIGHTING'
 
 type TextSectionKey = 'identifiers' | 'releaseGroups' | 'customization' | 'excludeWords' | 'streamingPlatforms'
+  | 'specialEdition' | 'cutVersion' | 'releaseInfo'
 type WordSectionKey = TextSectionKey | 'episodeRules'
 
 interface EpisodeFormatRule {
@@ -47,6 +48,10 @@ const customReleaseGroups = ref('')
 const customization = ref('')
 const transferExcludeWords = ref('')
 const customStreamingPlatforms = ref('')
+// 特殊版本 / 剪辑版本 / 发布信息三类标记词表
+const customSpecialEdition = ref('')
+const customCutVersion = ref('')
+const customReleaseInfo = ref('')
 // 流媒体平台输出形态：full 全称、short 简称
 const streamingDisplayMode = ref('full')
 
@@ -133,6 +138,9 @@ const savedTextValues = reactive<Record<TextSectionKey, string>>({
   customization: '',
   excludeWords: '',
   streamingPlatforms: '',
+  specialEdition: '',
+  cutVersion: '',
+  releaseInfo: '',
 })
 const savedEpisodeRules = ref('[]')
 
@@ -142,6 +150,9 @@ const textSectionModels: Record<TextSectionKey, typeof customIdentifiers> = {
   customization,
   excludeWords: transferExcludeWords,
   streamingPlatforms: customStreamingPlatforms,
+  specialEdition: customSpecialEdition,
+  cutVersion: customCutVersion,
+  releaseInfo: customReleaseInfo,
 }
 
 const textSectionSettings = computed<Record<TextSectionKey, TextSectionSetting>>(() => ({
@@ -169,6 +180,21 @@ const textSectionSettings = computed<Record<TextSectionKey, TextSectionSetting>>
     endpoint: 'system/setting/CustomStreamingPlatforms',
     failedMessage: t('setting.words.streamingPlatformSaveFailed'),
     successMessage: t('setting.words.streamingPlatformSaveSuccess'),
+  },
+  specialEdition: {
+    endpoint: 'system/setting/SpecialEditionWords',
+    failedMessage: t('setting.words.specialEditionSaveFailed'),
+    successMessage: t('setting.words.specialEditionSaveSuccess'),
+  },
+  cutVersion: {
+    endpoint: 'system/setting/CutVersionWords',
+    failedMessage: t('setting.words.cutVersionSaveFailed'),
+    successMessage: t('setting.words.cutVersionSaveSuccess'),
+  },
+  releaseInfo: {
+    endpoint: 'system/setting/ReleaseInfoWords',
+    failedMessage: t('setting.words.releaseInfoSaveFailed'),
+    successMessage: t('setting.words.releaseInfoSaveSuccess'),
   },
 }))
 
@@ -214,6 +240,30 @@ const wordSections = computed<WordSectionDefinition[]>(() => [
     title: t('setting.words.streamingPlatform'),
   },
   {
+    color: 'purple',
+    description: t('setting.words.specialEditionDesc'),
+    icon: 'mdi-movie-open-star-outline',
+    key: 'specialEdition',
+    shortTitle: t('setting.words.specialEditionShort'),
+    title: t('setting.words.specialEdition'),
+  },
+  {
+    color: 'orange',
+    description: t('setting.words.cutVersionDesc'),
+    icon: 'mdi-content-cut',
+    key: 'cutVersion',
+    shortTitle: t('setting.words.cutVersionShort'),
+    title: t('setting.words.cutVersion'),
+  },
+  {
+    color: 'teal',
+    description: t('setting.words.releaseInfoDesc'),
+    icon: 'mdi-package-variant-closed',
+    key: 'releaseInfo',
+    shortTitle: t('setting.words.releaseInfoShort'),
+    title: t('setting.words.releaseInfo'),
+  },
+  {
     color: 'primary',
     description: t('setting.words.episodeFormatRuleDesc'),
     icon: 'mdi-format-list-numbered',
@@ -248,6 +298,12 @@ const activeTextPlaceholder = computed(() => {
       return t('setting.words.excludeWordsPlaceholder')
     case 'streamingPlatforms':
       return t('setting.words.streamingPlatformPlaceholder')
+    case 'specialEdition':
+      return t('setting.words.specialEditionPlaceholder')
+    case 'cutVersion':
+      return t('setting.words.cutVersionPlaceholder')
+    case 'releaseInfo':
+      return t('setting.words.releaseInfoPlaceholder')
     default:
       return ''
   }
@@ -265,6 +321,12 @@ const activeTextHint = computed(() => {
       return t('setting.words.excludeWordsHint')
     case 'streamingPlatforms':
       return t('setting.words.streamingPlatformHint')
+    case 'specialEdition':
+      return t('setting.words.specialEditionHint')
+    case 'cutVersion':
+      return t('setting.words.cutVersionHint')
+    case 'releaseInfo':
+      return t('setting.words.releaseInfoHint')
     default:
       return ''
   }
@@ -492,6 +554,9 @@ onMounted(() => {
     queryTextSection('customization'),
     queryTextSection('excludeWords'),
     queryTextSection('streamingPlatforms'),
+    queryTextSection('specialEdition'),
+    queryTextSection('cutVersion'),
+    queryTextSection('releaseInfo'),
     queryStreamingDisplay(),
     queryEpisodeFormatRules(),
   ])

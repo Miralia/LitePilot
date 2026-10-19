@@ -182,6 +182,12 @@ class SystemConfigKey(Enum):
     TransferExcludeWords = "TransferExcludeWords"
     # 自定义流媒体平台词表
     CustomStreamingPlatforms = "CustomStreamingPlatforms"
+    # 特殊版本词表（3D / IMAX / Open Matte）
+    SpecialEditionWords = "SpecialEditionWords"
+    # 剪辑版本词表（Director's Cut / Extended Cut 等）
+    CutVersionWords = "CutVersionWords"
+    # 发布信息词表（REPACK / PROPER / Hybrid 等）
+    ReleaseInfoWords = "ReleaseInfoWords"
     # 流媒体平台输出形态（全称/简称）
     StreamingPlatformDisplay = "StreamingPlatformDisplay"
     # 媒体文件技术信息探测

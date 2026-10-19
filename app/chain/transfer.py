@@ -18,12 +18,14 @@ from app.core.config import settings, global_vars
 from app.core.context import MediaInfo
 from app.core.event import eventmanager
 from app.core.meta import MetaBase
+from app.core.meta.metabase import normalize_effect
 from app.core.metainfo import MetaInfoPath
 from app.helper.builtinconf import (
     library_cover_generator_conf,
     load_conf,
     media_source_cleanup_conf,
 )
+from app.core.meta.metabase import audio_supports_atmos
 from app.helper.mediainfo import probe_media
 from app.schemas.system import MediaInfoProbeConf
 from app.db.downloadhistory_oper import DownloadHistoryOper
@@ -820,6 +822,67 @@ class JobManager:
             return self._season_episodes.get(__mediaid__) or []
 
 
+
+
+# 视频编码族：x264/x265 是编码器实现标记，H264/H265 是编码族标记。
+# 二者不是同义转换关系，探测结果与标题写法需要共同决定最终输出。
+_VIDEO_CODEC_FAMILIES = {
+    "H264": ("X264", "H264", "H.264", "AVC"),
+    "H265": ("X265", "H265", "H.265", "HEVC"),
+}
+
+# 音频与其它编码的等价写法归一化
+_CODEC_ALIASES = {
+    "AVC": "H264", "H.264": "H264", "H264": "H264",
+    "HEVC": "H265", "H.265": "H265", "H265": "H265",
+    "AV1": "AV1", "VP9": "VP9", "MPEG-4": "MPEG4",
+    "E-AC-3": "DD+", "EAC3": "DD+", "AC-3": "DD", "AC3": "DD",
+    "DTS": "DTS", "TRUEHD": "TrueHD", "FLAC": "FLAC",
+    "AAC": "AAC", "OPUS": "Opus", "VORBIS": "Vorbis",
+}
+
+
+def correct_codec(value: str, title_value: str = "") -> str:
+    """
+    把 mediainfo 的编码名映射为项目内标准写法。
+
+    音频编码直接归一化；视频编码按「标题写法 + 探测结果」共同决定，
+    因为 x264/x265 是编码器实现标记，与 H264/H265 编码族不是同一概念，
+    不能一律互相转换。规则（H265 族与 H264 族对称）：
+
+    - 探测到 x264：一律输出 x264，无论标题写 H.264 / H264 / AVC
+    - 探测无 x264，标题写 H.264：用 H264（去掉点号）
+    - 探测无 x264，标题写 H264：保留 H264
+    - 探测无 x264，标题写 AVC：用 AVC（保留原写法）
+    - 探测无 x264，标题写 x264：用 H264（标题不可信，降为编码族）
+
+    :param value: mediainfo 探测到的编码名，如 x264 / HEVC / AVC / AAC
+    :param title_value: 标题解析出的原始编码写法
+    :return: 标准化后的编码名
+    """
+    text = str(value or "").strip()
+    upper = text.upper()
+    title_upper = str(title_value or "").strip().upper()
+
+    for family, tokens in _VIDEO_CODEC_FAMILIES.items():
+        if upper not in tokens:
+            continue
+        flavor = f"x{family[1:]}"
+        # 探测确认由 x264/x265 编码：一律标注编码器实现
+        if upper == flavor.upper():
+            return flavor
+        # 探测无编码器信息，按标题写法决定
+        if title_upper == flavor.upper():
+            # 标题声称 x264 但探测否定，退回编码族
+            return family
+        if family == "H264" and title_upper == "AVC":
+            return "AVC"
+        if family == "H265" and title_upper == "HEVC":
+            return "HEVC"
+        # H.264 / H264 / 空标题 都归一到编码族写法
+        return family
+
+    return _CODEC_ALIASES.get(upper, text)
 
 
 class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
@@ -3094,25 +3157,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             path_meta = _apply_mediainfo_probe(path_meta, source_path)
             return _apply_meta_overrides(path_meta, source_path)
 
-        def _correct_codec(value: str) -> str:
-            """
-            把 mediainfo 的 Format 名称映射为项目内标准写法。
-
-            :param value: mediainfo 输出的编码名，如 HEVC / AVC / AAC
-            :return: 标准化后的编码名
-            """
-            text = str(value or "").strip()
-            upper = text.upper()
-            mapping = {
-                "AVC": "H264", "H.264": "H264", "H264": "H264",
-                "HEVC": "H265", "H.265": "H265", "H265": "H265",
-                "AV1": "AV1", "VP9": "VP9", "MPEG-4": "MPEG4",
-                "E-AC-3": "DD+", "EAC3": "DD+", "AC-3": "DD", "AC3": "DD",
-                "DTS": "DTS", "TRUEHD": "TrueHD", "FLAC": "FLAC",
-                "AAC": "AAC", "OPUS": "Opus", "VORBIS": "Vorbis",
-            }
-            return mapping.get(upper, text)
-
         def _apply_mediainfo_probe(
                 current_meta: MetaBase, source_path: Path
         ) -> MetaBase:
@@ -3152,17 +3196,33 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             # 编码以真实文件为准校正：标题可能写 x265 而实际是 AVC，
             # mediainfo 读的是文件本身，权威性高于标题文本
             if probe_conf.enabled and info.get("video_codec"):
-                current_meta.video_encode = _correct_codec(info["video_codec"])
+                current_meta.video_encode = correct_codec(
+                    info["video_codec"], current_meta.video_encode or ""
+                )
             if probe_conf.enabled and info.get("audio_codec"):
-                current_meta.audio_encode = _correct_codec(info["audio_codec"])
-            # 色彩采样与 DoVi/HDR 同级，追加到效果字段；
-            # 标题未标注而文件确实是 4:2:2 / 4:4:4 时补齐
-            chroma = str(info.get("chroma") or "").strip()
-            if probe_conf.enabled and chroma:
-                effects = str(current_meta.resource_effect or "").split()
-                if chroma not in effects:
-                    effects.append(chroma)
-                    current_meta.resource_effect = " ".join(effects)
+                current_meta.audio_encode = correct_codec(info["audio_codec"])
+            if probe_conf.enabled:
+                # HDR 规格以文件为准：标题写 HDR 但实际 SDR，或标题漏标
+                # DoVi / HDR10+ 时，都以 mediainfo 的判定结果为准。
+                # 写法由 normalize_effect 收敛，避免 "Dolby Vision" 与
+                # "DoVi" 并存。
+                hdr_flags: List[str] = []
+                for flag in info.get("hdr_flags") or []:
+                    canonical = normalize_effect(flag)
+                    if canonical and canonical not in hdr_flags:
+                        hdr_flags.append(canonical)
+                if hdr_flags:
+                    current_meta.video_hdr = hdr_flags
+                # 色彩采样：文件实测为 4:2:2 / 4:4:4 才补
+                chroma = str(info.get("chroma") or "").strip()
+                if chroma:
+                    current_meta.video_chroma = normalize_effect(chroma)
+                # Atmos 是叠加在 DD+ / TrueHD 上的对象音频层，
+                # 其它编码出现该标记属于误识别，直接丢弃
+                if info.get("atmos"):
+                    current_meta.audio_atmos = audio_supports_atmos(
+                        current_meta.audio_encode
+                    )
             return current_meta
 
         def _apply_meta_overrides(

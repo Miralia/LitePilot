@@ -237,10 +237,16 @@ class MetaAnime(MetaBase):
         video = MetaVideo(original_title)
         self.resource_pix = video.resource_pix
         self.resource_type = video.resource_type
-        self.resource_effect = video.resource_effect
+        # 效果按归属分别继承：HDR 与色彩采样属于视频，特殊版本独立
+        self.video_hdr = list(video.video_hdr or [])
+        self.video_chroma = video.video_chroma
+        self.special_edition = list(video.special_edition or [])
+        self.cut_version = video.cut_version
+        self.release_info = list(video.release_info or [])
         self.video_encode = video.video_encode
         self.video_bit = video.video_bit
         self.audio_encode = video.audio_encode
+        self.audio_atmos = video.audio_atmos
         self.fps = video.fps
         self.web_source = video.web_source
         self.customization = video.customization

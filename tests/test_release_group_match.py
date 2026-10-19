@@ -211,8 +211,14 @@ def test_zero_padded_episode_still_detected(title, expected_episode):
         ("S.2024.x264.FLAC-GRP", "audio_encode", "FLAC"),
         ("S.2024.4K-GRP", "resource_pix", "4K"),
         ("S.2024.8K-GRP", "resource_pix", "8K"),
-        ("S.2024.1080p.WEBRip-GRP", "resource_type", "WEBRip"),
-        ("S.2024.1080p.BDRip-GRP", "resource_type", "BDRip"),
+        ("S.2024.1080p.WEBRip-GRP", "resource_type", "WebRip"),
+        # BD 类母版统一写作 BD（BluRay / Blu-ray / BDRip 同源）
+        ("S.2024.1080p.BDRip-GRP", "resource_type", "BD"),
+        ("S.2024.1080p.BluRay-GRP", "resource_type", "BD"),
+        # BD 的 Remux 保留 Remux 语义
+        ("S.2024.1080p.BluRay.REMUX-GRP", "resource_type", "BD Remux"),
+        # 非 BD 的 Remux 视作对应 WEB 来源
+        ("S.2024.1080p.WEB-DL.Remux-GRP", "resource_type", "WEB-DL"),
     ],
 )
 def test_output_normalization(title, field, expected):
@@ -347,10 +353,11 @@ def test_anime_codec_fallback(title, field, expected):
     [
         # 独立音轨只保留主音轨，具体以 mediainfo 探测为准
         ("[x] Show [BDrip][1920x1080][hevc-yuv420p10 flac_ac3]", "FLAC"),
-        # 同一音轨的修饰词需要保留
-        ("Wonder Woman 1984 2020 BluRay 1080p Atmos TrueHD 7.1 x264-GRP", "Atmos TrueHD 7.1"),
-        ("The 355 2022 BluRay 1080p DTS-HD MA5.1 X265.10bit-GRP", "DTS-HD MA 5.1"),
-        ("I Woke Up a Vampire S02 2160p NF WEB-DL DDP5.1 Atmos H.265-GRP", "DD+ 5.1 Atmos"),
+        # 声道数与 Atmos 属于附加信息，audio_encode 只保留编码本身；
+        # Atmos 由 audio_atmos 独立记录（仅 DD+ / TrueHD 有效）
+        ("Wonder Woman 1984 2020 BluRay 1080p Atmos TrueHD 7.1 x264-GRP", "TrueHD"),
+        ("The 355 2022 BluRay 1080p DTS-HD MA5.1 X265.10bit-GRP", "DTS-HD MA"),
+        ("I Woke Up a Vampire S02 2160p NF WEB-DL DDP5.1 Atmos H.265-GRP", "DD+"),
     ],
 )
 def test_audio_codec_track_handling(title, expected):

@@ -6,6 +6,7 @@ from Pinyin2Hanzi import is_pinyin
 from app.core.config import settings
 from app.core.meta.customization import CustomizationMatcher
 from app.core.meta.metabase import MetaBase
+from app.core.meta.wordlist import meta_word_list
 from app.core.meta.releasegroup import ReleaseGroupsMatcher
 from app.schemas.types import MediaType
 from app.utils.string import StringUtils
@@ -78,7 +79,7 @@ class MetaVideo(MetaBase):
     _video_encode_re = r"^(H26[45])$|^(x26[45])$|^AVC$|^HEVC$|^VC\d?$|^MPEG\d?$|^Xvid$|^DivX$|^AV1$|^HDR\d*$|^AVS(\+|[23])$"
     _audio_encode_re = (
         r"^DTS\d?$|^DTSHD$|^DTSHDMA$|^Atmos$|^TrueHD\d?$"
-        r"|^AC3$|^EAC3$|^EAC-?3$|^\dAudios?$"
+        r"|^AC3$|^EAC3$|^EAC-?3$"
         r"|^DDP\d?$|^DD\+\d?$|^DD\d?$|^EAC3$"
         r"|^LPCM\d?$|^AAC\d?$|^FLAC\d?$|^HD\d?$|^MA\d?$|^HR\d?$"
         r"|^Opus\d?$|^Vorbis\d?$|^AV[3S]A$"
@@ -122,6 +123,14 @@ class MetaVideo(MetaBase):
         original_title = title
         self._source = ""
         self._effect = []
+        # 效果按归属拆分：HDR 规格与色彩采样属于视频，特殊版本独立
+        self._video_hdr: List[str] = []
+        self._video_chroma: Optional[str] = None
+        self._special_edition: List[str] = []
+        self._cut_version: Optional[str] = None
+        self._release_info: List[str] = []
+        # Atmos 是叠加在音轨上的对象音频层，单独标记
+        self._audio_atmos: bool = False
         self._index = 0
         # 判断是否纯数字命名
         if isfile \
@@ -214,9 +223,16 @@ class MetaVideo(MetaBase):
             # 集
             if self._continue_flag:
                 self.__init_episode(token)
+            # 剪辑版本与发布信息要先于资源类型判断：
+            # Director's Cut / Hybrid / Open Matte 这类多词标记若先进入
+            # 效果或标题处理，就再也拼不回完整形态
+            if self._continue_flag:
+                self.__init_cut_version(token, tokens)
+            if self._continue_flag:
+                self.__init_release_info(token, tokens)
             # 资源类型
             if self._continue_flag:
-                self.__init_resource_type(token)
+                self.__init_resource_type(token, tokens)
             # 流媒体平台
             if self._continue_flag:
                 self.__init_web_source(token, tokens, streaming_platforms)
@@ -232,10 +248,21 @@ class MetaVideo(MetaBase):
             # 取下一个，直到没有为卡
             token = tokens.get_next()
             self._continue_flag = True
-        # 合成质量
+        # 合成质量：按归属写入独立字段，不再堆进单一字符串
         if self._effect:
             self._effect.reverse()
-            self.resource_effect = " ".join(self._effect)
+        if self._video_hdr:
+            self.video_hdr = list(self._video_hdr)
+        if self._video_chroma:
+            self.video_chroma = self._video_chroma
+        if self._special_edition:
+            self.special_edition = list(self._special_edition)
+        if self._cut_version:
+            self.cut_version = self._cut_version
+        if self._release_info:
+            self.release_info = list(self._release_info)
+        if self._audio_atmos:
+            self.audio_atmos = True
         if self._source:
             self.resource_type = self._source.strip()
         # 提取原盘DIY
@@ -665,11 +692,41 @@ class MetaVideo(MetaBase):
         elif token.upper() == "EPISODE":
             self._last_token_type = "EPISODE"
 
-    def __init_resource_type(self, token):
+    def __init_resource_type(self, token, tokens=None):
         """
-        识别资源类型
+        识别资源类型。
+
+        :param token: 当前 token
+        :param tokens: token 流，用于识别 ``Open Matte`` 这类多词标记
         """
         if not self.name:
+            return
+        # 特殊版本（IMAX / Open Matte / 3D）与发布信息（Hybrid 等）
+        # 不在来源/效果正则里，先按词表严格匹配拦截一次，
+        # 避免它们掉进标题或名称清理环节被静默丢弃
+        # 先尝试双词组合，再退回单词：`IMAX Enhanced` 必须整体命中，
+        # 否则会被单词 `IMAX` 抢先匹配，把 Enhanced 丢进标题
+        special = None
+        consumed = 1
+        if tokens is not None:
+            all_tokens = tokens.tokens
+            pos = self._index
+            nxt = all_tokens[pos] if 0 <= pos < len(all_tokens) else None
+            if nxt:
+                special = meta_word_list.match_special_edition(f"{token} {nxt}")
+                if special:
+                    consumed = 2
+        if not special:
+            special = meta_word_list.match_special_edition(token)
+        if special:
+            if special not in self._special_edition:
+                self._special_edition.append(special)
+            self._continue_flag = False
+            self._stop_name_flag = True
+            self._last_token_type = "specialedition"
+            self._last_token = special.upper()
+            for _ in range(consumed - 1):
+                tokens.get_next()
             return
         if token.upper() == "DL" \
                 and self._last_token_type == "source" \
@@ -691,10 +748,14 @@ class MetaVideo(MetaBase):
             self._source = "WEB-DL"
             self._continue_flag = False
             return
-            # UHD REMUX组合
+            # BD 类 Remux 组合。UHD BluRay 同样是 BD 母版，但需保留 UHD
+        # 前缀，否则 4K 母版的 Remux 会与普通 BD Remux 混为一谈
         if token.upper() == "REMUX" \
-                and self._source == "BluRay":
-            self._source = "BluRay REMUX"
+                and self._source in ("BluRay", "UHD BluRay"):
+            self._source = (
+                "UHD BluRay REMUX" if self._source == "UHD BluRay"
+                else "BluRay REMUX"
+            )
             self._continue_flag = False
             return
         elif token.upper() == "BLURAY" \
@@ -719,9 +780,125 @@ class MetaVideo(MetaBase):
             self._continue_flag = False
             self._stop_name_flag = True
             effect = effect_res.group(1)
-            if effect not in self._effect:
-                self._effect.append(effect)
+            self._classify_effect(effect)
             self._last_token = effect.upper()
+
+    def _classify_effect(self, effect: str) -> None:
+        """
+        把效果标记按归属分发到对应字段。
+
+        HDR 规格（HDR10 / HDR10+ / DoVi / HLG / HDRVivid）与色彩采样
+        属于视频属性；3D / IMAX / Open Matte 属于作品形态，单独记录，
+        不混入技术描述。
+
+        :param effect: 识别到的效果标记
+        """
+        upper = str(effect or "").upper()
+        # 色彩采样：只有 4:2:2 / 4:4:4 这类高位深色度值得标注
+        if upper.startswith("YUV"):
+            if not self._video_chroma:
+                self._video_chroma = effect
+            return
+        # 发布信息（REPACK / PROPER / RERIP 等）：描述发布方式，不影响内容
+        release = meta_word_list.match_release_info(effect)
+        if release:
+            if release not in self._release_info:
+                self._release_info.append(release)
+            return
+        # 剪辑版本（Director's Cut 等）：影响片长与内容
+        cut = meta_word_list.match_cut_version(effect)
+        if cut:
+            if not self._cut_version:
+                self._cut_version = cut
+            return
+        # 特殊版本（3D / IMAX / Open Matte）：影响播放方式或画幅
+        special = meta_word_list.match_special_edition(effect)
+        if special:
+            if special not in self._special_edition:
+                self._special_edition.append(special)
+            return
+        # 其余为 HDR 规格
+        if effect not in self._video_hdr:
+            self._video_hdr.append(effect)
+
+    def __init_cut_version(self, token: str, tokens: "Tokens") -> None:
+        """
+        识别剪辑版本（Director's Cut / Extended Cut / Uncut 等）。
+
+        ``Director's Cut``、``Extended Edition`` 这类由多个 token 组成的
+        标记，需要向后多看一个 token 才能完整匹配；词表严格相等匹配，
+        未命中时不消费 token，交由后续识别器处理。
+
+        :param token: 当前 token
+        :param tokens: token 流，用于向前窥探多词标记
+        """
+        if not self.name or self._cut_version:
+            return
+        # 词表是严格相等匹配，标记本身足够特异，不需要年份/分辨率做前置条件：
+        # `IMAX` / `Director's Cut` 常出现在分辨率之前或标题之前
+        candidate = str(token or "").strip()
+        if not candidate:
+            return
+        matched = meta_word_list.match_cut_version(candidate)
+        consumed = 1
+        if not matched:
+            # 多词标记：按 self._index 取相邻 token 合并判定。
+            # 不能用 tokens.peek()——当前 token 已被 get_next 前移，
+            # peek 返回的是再下一个，会跳过需要合并的片段。
+            all_tokens = tokens.tokens
+            pos = self._index
+            nxt = all_tokens[pos] if 0 <= pos < len(all_tokens) else None
+            if nxt:
+                merged = f"{candidate} {nxt}"
+                matched = meta_word_list.match_cut_version(merged)
+                if matched:
+                    consumed = 2
+        if not matched:
+            return
+        self._cut_version = matched
+        self._continue_flag = False
+        self._stop_name_flag = True
+        self._last_token_type = "cutversion"
+        for _ in range(consumed - 1):
+            tokens.get_next()
+
+    def __init_release_info(self, token: str, tokens: "Tokens") -> None:
+        """
+        识别发布信息（REPACK / PROPER / Hybrid 等）。
+
+        发布信息描述发布或制作方式，不影响内容，单独记录且不进入技术
+        描述；同样支持 ``IMAX Enhanced`` 这类多词标记的严格匹配。
+
+        :param token: 当前 token
+        :param tokens: token 流，用于向前窥探多词标记
+        """
+        if not self.name:
+            return
+        # 同 cut_version：严格词表匹配，无需前置条件
+        candidate = str(token or "").strip()
+        if not candidate:
+            return
+        matched = meta_word_list.match_release_info(candidate)
+        consumed = 1
+        if not matched:
+            all_tokens = tokens.tokens
+            pos = self._index
+            nxt = all_tokens[pos] if 0 <= pos < len(all_tokens) else None
+            if nxt:
+                merged = f"{candidate} {nxt}"
+                matched = meta_word_list.match_release_info(merged)
+                if matched:
+                    consumed = 2
+        if not matched:
+            return
+        if matched not in self._release_info:
+            self._release_info.append(matched)
+        self._continue_flag = False
+        self._stop_name_flag = True
+        self._last_token_type = "releaseinfo"
+        for _ in range(consumed - 1):
+            tokens.get_next()
+
 
     def __init_web_source(self, token: str, tokens: Tokens, streaming_platforms: StreamingPlatforms):
         """
@@ -798,7 +975,8 @@ class MetaVideo(MetaBase):
                     self.video_encode = re_res.group(1).upper()
                 self._last_token = self.video_encode
             elif self.video_encode == "10bit":
-                self.video_encode = f"{re_res.group(1).upper()} 10bit"
+                # 位深不进入编码描述，此处只记录真实编码
+                self.video_encode = re_res.group(1).upper()
                 self._last_token = re_res.group(1).upper()
         elif token.upper() in ['H', 'X']:
             self._continue_flag = False
@@ -814,12 +992,10 @@ class MetaVideo(MetaBase):
                 and self._last_token in ['VC', 'MPEG']:
             self.video_encode = "%s%s" % (self._last_token, token)
         elif token.upper() == "10BIT":
+            # 位深单独由 video_bit 记录，不写入 video_encode
             self._last_token_type = "videoencode"
-            # 位深已在 __init_video_bit 阶段合并过，这里避免重复追加
-            if not self.video_encode:
-                self.video_encode = "10bit"
-            elif "10bit" not in self.video_encode.lower():
-                self.video_encode = f"{self.video_encode} 10bit"
+            self._stop_name_flag = True
+            self._continue_flag = False
 
     def __init_video_bit(self, token: str):
         """
@@ -838,12 +1014,8 @@ class MetaVideo(MetaBase):
         self._last_token_type = "videobit"
         if not self.video_bit:
             self.video_bit = video_bit
-        # 位深提前到标题之前处理，此处补上原本由 __init_video_encode 完成的合并，
-        # 让 video_encode 保持 "x265 10bit" 这种既有输出，避免下游依赖断裂
-        if self.video_encode and "10bit" not in self.video_encode.lower():
-            self.video_encode = f"{self.video_encode} 10bit"
-        elif not self.video_encode:
-            self.video_encode = video_bit
+        # 位深不作为编码描述的一部分：video_bit 单独记录，
+        # 不拼进 video_encode（库内实测从不出现 `10bit`，拼接会被收尾剥离）
 
     def __init_audio_encode(self, token: str):
         """
@@ -865,6 +1037,10 @@ class MetaVideo(MetaBase):
             self._last_token = re_res.group(1).upper()
             codec = re_res.group(1)
             codec_upper = codec.upper().rstrip("0123456789")
+            if codec_upper == "ATMOS":
+                # Atmos 不再拼进编码名，独立标记；有效性由编码决定
+                self._audio_atmos = True
+                return
             if not self.audio_encode:
                 self.audio_encode = codec
             elif self.audio_encode.upper() == "DTS" and codec_upper in self._AUDIO_MODIFIERS:
