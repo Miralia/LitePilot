@@ -203,9 +203,13 @@ def set_or_refresh_resource_token_cookie(
     )
 
     # 设置会话级别的 HttpOnly Cookie
+    # path 必须显式设为根路径：不指定时默认落在当前请求路径的目录下
+    # （如 /litepilot/api/v1/login），浏览器只会在该前缀下回传，
+    # 导致子路径部署时其它接口收不到 cookie 而返回 401。
     response.set_cookie(
         key=settings.PROJECT_NAME,
         value=resource_token,
+        path="/",
         httponly=True,
         secure=is_https,  # 根据当前请求协议（含反向代理转发标识）设置 secure 属性
         samesite="lax"  # 不同浏览器对 "Strict" 的处理可能不同，设置 SameSite 为 "Lax"，以平衡安全性和兼容性

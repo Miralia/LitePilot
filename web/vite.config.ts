@@ -112,7 +112,27 @@ export default defineConfig(({ command, mode, isPreview }) => ({
         injectManifest: {
           rollupFormat: 'iife',
           maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2,ttf,otf,eot}'],
+          // 预缓存只放首屏必需的少量文件。
+          // 若把全部 js 纳入预缓存，SW 首次安装会在后台下载 9MB
+          // （three.js 720KB、ace 446KB、各语言 worker 1.4MB 等），
+          // 与首屏资源抢带宽，反而让页面加载变得极慢。
+          // 其余资源由运行时缓存策略按需处理（script/style 走
+          // StaleWhileRevalidate，图片走 CacheFirst）。
+          globPatterns: [
+            'index.html',
+            'offline.html',
+            'manifest.webmanifest',
+            'favicon.ico',
+            'logo.svg',
+            'logo.png',
+            'icon*.png',
+            'apple-touch-icon*.png',
+            'assets/index-*.js',
+            'assets/index-*.css',
+            'assets/vendor-*.js',
+            'assets/date-*.js',
+            'assets/style-*.css',
+          ],
         },
         devOptions: {
           enabled: isPwaDevelopmentEnabled(mode, process.env.npm_lifecycle_event),
