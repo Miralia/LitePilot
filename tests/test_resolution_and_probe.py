@@ -9,7 +9,7 @@ import pytest
 
 from app.helper.mediainfo import (
     _detect_source,
-    _normalize_channels,
+    detect_channels,
     clear_cache,
     is_available,
     probe_media,
@@ -93,12 +93,18 @@ def test_resolution_from_height(height, expected):
     assert resolution_from_height(height) == expected
 
 
-def test_channels_normalized():
-    """声道数应归一化为 5.1 这类写法。"""
-    assert _normalize_channels("6 channels") == "5.1"
-    assert _normalize_channels("2 channels") == "2.0"
-    assert _normalize_channels("8 channels") == "7.1"
-    assert _normalize_channels("") == ""
+def test_channels_from_layout():
+    """
+    声道描述按布局推断，不能只数声道总数。
+
+    声道总数无法区分 5.0 与 5.1：同样是 6 个声道，
+    ``L R C LFE Ls Rs`` 是 5.1，``L R C Ls Rs Cs`` 则是 6.0。
+    详细用例见 tests/test_audio_probe.py。
+    """
+    assert detect_channels({"ChannelLayout": "L R C LFE Ls Rs"}) == "5.1"
+    assert detect_channels({"ChannelLayout": "L R"}) == "2.0"
+    assert detect_channels({"ChannelLayout": "L R C LFE Ls Rs Lb Rb"}) == "7.1"
+    assert detect_channels(None) == ""
 
 
 @pytest.mark.parametrize(

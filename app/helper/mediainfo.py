@@ -12,6 +12,7 @@
 - 结果按文件大小与修改时间做进程内缓存，避免同一文件被反复探测。
 """
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -61,18 +62,82 @@ def is_available() -> bool:
     return shutil.which(MEDIAINFO_BIN) is not None
 
 
-def _normalize_channels(value: str) -> str:
-    """
-    把声道数归一化为 5.1 这类常见写法。
+# LFE 声道标记：`.1` 专指它，不是「多一个声道」
+_LFE_TOKEN = "LFE"
+# 3D 音频（Dolby Atmos / DTS:X）的高度层声道标记
+_HEIGHT_TOKENS = frozenset(
+    {"TFL", "TFR", "TFC", "TBL", "TBR", "TBC", "TSL", "TSR", "TOP"}
+)
+# 布局完全缺失时的保守映射：假设存在 LFE（业界常态）
+_CHANNEL_FALLBACK = {1: "1.0", 2: "2.0", 4: "4.0", 6: "5.1", 8: "7.1"}
 
-    :param value: mediainfo 的 Channel(s) 原始值，如 "6 channels"
-    :return: 归一化后的声道描述
+
+def _split_layout_tokens(text: str) -> List[str]:
     """
-    digits = "".join(ch for ch in str(value or "") if ch.isdigit())
-    if not digits:
-        return str(value or "")
-    count = int(digits)
-    return {1: "1.0", 2: "2.0", 6: "5.1", 7: "6.1", 8: "7.1"}.get(count, f"{count}ch")
+    把声道布局字符串切成声道标记列表。
+
+    ``ChannelLayout`` 形如 ``L R C LFE Ls Rs``，声道顺序不固定；
+    ``ChannelPositions`` 形如 ``Front: L C R, Side: L R, LFE``，多了
+    分组前辍。两类字符串里的 ``LFE`` 都是真实声道，必须保留——只有
+    带冒号的分组标签（``Front:`` / ``Side:``）才需要剥离。
+
+    因此不能按固定词表过滤：``LFE`` 既可能是分组标签也可能正是要
+    统计的声道，只有冒号能可靠区分。
+
+    :param text: 布局或位置字符串
+    :return: 纯声道标记列表，已转为大写
+    """
+    tokens: List[str] = []
+    for segment in str(text or "").split(","):
+        # 丢弃分组标签，冒号之后的才是声道
+        channels = segment.split(":")[-1]
+        for token in re.split(r"[\s\-/]+", channels.upper()):
+            if token:
+                tokens.append(token)
+    return tokens
+
+
+def detect_channels(audio: Optional[dict]) -> str:
+    """
+    按声道布局与声道数共同推断 ``主声道.低音.高度`` 描述。
+
+    声道总数不足以判断低音声道：6 个声道既可能是
+    ``L R C LFE Ls Rs``（5.1），也可能是 ``L R C Ls Rs Cs``
+    （5.0 加后中置）。因此必须解析布局内容，``.1`` 只在出现 LFE
+    标记时才计入。
+
+    高度层（``.2``）仅在检测到顶部声道标记时追加，否则省略，
+    保持 ``5.1`` 这类两段式写法。
+
+    布局缺失时退回声道总数的保守映射，避免给出错误的三段式结果。
+
+    :param audio: mediainfo 的 Audio 轨道
+    :return: 如 ``7.1.4`` / ``5.1`` / ``1.0`` 的描述；无法判定时返回空串
+    """
+    if not audio:
+        return ""
+    declared = _to_int(_first(audio, "Channels", "Channel(s)"))
+    tokens = _split_layout_tokens(_first(audio, "ChannelLayout"))
+    if not tokens:
+        tokens = _split_layout_tokens(_first(audio, "ChannelPositions"))
+
+    if tokens:
+        lfe = sum(1 for token in tokens if token == _LFE_TOKEN)
+        height = sum(1 for token in tokens if token in _HEIGHT_TOKENS)
+        base = len(tokens) - lfe - height
+        # 单声道写法不统一：M（mono）与 L（仅左声道）都归为 1.0
+        if base == 1 and not lfe and not height:
+            return "1.0"
+        if base > 0:
+            if declared and declared != len(tokens):
+                logger.debug(
+                    f"声道数 {declared} 与布局 {len(tokens)} 项不符，按布局计算"
+                )
+            return f"{base}.{lfe}.{height}" if height else f"{base}.{lfe}"
+
+    if declared:
+        return _CHANNEL_FALLBACK.get(declared, f"{declared}ch")
+    return ""
 
 
 def _first(track: Dict[str, Any], *keys: str) -> str:
@@ -182,6 +247,77 @@ def detect_hdr_flags(video: Optional[dict]) -> List[str]:
         elif "hlg" in transfer or "arib" in transfer:
             flags.append("HLG")
     return flags
+
+
+# mediainfo 的 Format 与商业名对同一编码写法不一，需按商业名纠正。
+# 例如 TrueHD 的 Format 是 "MLP FBA"，直接展示会得到无意义的字符串。
+_AUDIO_COMMERCIAL_MAP = {
+    "DOLBY TRUEHD WITH DOLBY ATMOS": "TrueHD",
+    "DOLBY TRUEHD": "TrueHD",
+    "DOLBY DIGITAL PLUS": "DD+",
+    "DOLBY DIGITAL": "DD",
+    "DTS-HD MASTER AUDIO": "DTS-HD MA",
+    "DTS-HD HIGH RESOLUTION AUDIO": "DTS-HD HR",
+    "DTS EXPRESS": "DTS Express",
+}
+
+
+def detect_audio_format(audio: Optional[dict]) -> str:
+    """
+    判定音频编码格式，保留区分有损与无损所需的规格后缀。
+
+    mediainfo 的 ``Format`` 对同一族编码只给出基础名，具体形态落在
+    ``Format_AdditionalFeatures`` 与 ``Format_Commercial_IfAny``：
+
+    - ``Format=DTS`` + ``AdditionalFeatures=XLL`` 是 DTS-HD MA（无损），
+      只取 ``Format`` 会降级成 ``DTS``（有损），两者不可混为一谈
+    - TrueHD 的 ``Format`` 返回 ``MLP FBA``，需按商业名纠正
+
+    因此先按 AdditionalFeatures 判定 DTS 族的具体形态，再对
+    ``MLP`` 开头的结果统一纠正为 TrueHD，其余退回商业名或 Format。
+
+    :param audio: mediainfo 的 Audio 轨道
+    :return: 标准写法；无法判定时返回空串
+    """
+    if not audio:
+        return ""
+    fmt = _first(audio, "Format").upper()
+    features = _first(audio, "Format_AdditionalFeatures").upper()
+
+    if fmt == "DTS":
+        if "XLL" in features:
+            return "DTS-HD MA"
+        if "LBR" in features:
+            return "DTS Express"
+        return "DTS"
+
+    # TrueHD 统一以 MLP 开头（MLP FBA / MLP FBB）
+    if fmt.startswith("MLP"):
+        return "TrueHD"
+
+    commercial = _first(audio, "Format_Commercial_IfAny").upper()
+    if commercial in _AUDIO_COMMERCIAL_MAP:
+        return _AUDIO_COMMERCIAL_MAP[commercial]
+    return _first(audio, "Format")
+
+
+def pick_audio_track(tracks: List[dict]) -> Optional[dict]:
+    """
+    从全部轨道中选出主音轨。
+
+    多音轨文件里首条未必是主音轨（制作者常把配音放在前面），
+    以 ``Default=Yes`` 为优先标记；没有标记时按轨道顺序取第一条。
+
+    :param tracks: mediainfo 的全部 track
+    :return: 主音轨字典；无音轨时返回 None
+    """
+    audios = [track for track in tracks if track.get("@type") == "Audio"]
+    if not audios:
+        return None
+    for track in audios:
+        if str(track.get("Default", "")).strip().lower() == "yes":
+            return track
+    return audios[0]
 
 
 def detect_atmos(audio: Optional[dict]) -> bool:
@@ -306,7 +442,7 @@ def probe_media(path: Path) -> Optional[dict]:
 
     tracks = payload.get("media", {}).get("track") or []
     video = _pick_track(tracks, "Video")
-    audio = _pick_track(tracks, "Audio")
+    audio = pick_audio_track(tracks)
 
     width = _to_int(_first(video, "Width")) if video else None
     height = _to_int(_first(video, "Height")) if video else None
@@ -335,9 +471,9 @@ def probe_media(path: Path) -> Optional[dict]:
         "hdr_flags": detect_hdr_flags(video) if video else [],
         "frame_rate": _first(video, "FrameRate", "Frame rate") if video else "",
         "bit_rate": _first(video, "BitRate", "Bit rate") if video else "",
-        "audio_codec": _first(audio, "Format", "Commercial name") if audio else "",
+        "audio_codec": detect_audio_format(audio),
         "atmos": detect_atmos(audio) if audio else False,
-        "audio_channels": _normalize_channels(_first(audio, "Channels", "Channel(s)")) if audio else "",
+        "audio_channels": detect_channels(audio),
         "duration": _first(_pick_track(tracks, "General") or {}, "Duration") or "",
         "file_size": _first(_pick_track(tracks, "General") or {}, "FileSize") or "",
         "track_count": len(tracks),
