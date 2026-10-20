@@ -1103,22 +1103,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                         se_str = f"{task.meta.season} {StringUtils.format_ep(season_episodes)}"
                     else:
                         se_str = f"{task.meta.season}"
-                # 收集本批次全部原始文件名：批量入库时通知只发一条，
-                # 只展示单个文件名会让人误以为只入库一个文件
-                # 用 fileitem.name 而不是 meta.org_string：后者在识别阶段
-                # 已被去掉了扩展名（_build_meta_info 会切成 stem），
-                # 通知里要展示的是下载下来的完整文件名
-                batch_source_names = [
-                    str(
-                        (item.fileitem.name if item.fileitem else None)
-                        or getattr(item.meta, "org_string", None)
-                        or ""
-                    ).strip()
-                    for item in self.jobview.success_tasks(
-                        task.mediainfo, task.meta.begin_season
-                    )
-                ]
-                batch_source_names = [name for name in batch_source_names if name]
                 # 发送入库成功消息
                 self.send_transfer_message(
                     meta=task.meta,
@@ -1127,7 +1111,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                     season_episode=se_str,
                     episodes_info=task.episodes_info,
                     username=task.username,
-                    source_file_names=batch_source_names,
                 )
 
         transferhis = TransferHistoryOper()
@@ -4165,7 +4148,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             season_episode: Optional[str] = None,
             episodes_info: Optional[List[TmdbEpisode]] = None,
             username: Optional[str] = None,
-            source_file_names: Optional[List[str]] = None,
     ):
         """
         发送入库成功的消息
@@ -4175,7 +4157,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         :param season_episode: 已入库季集文本
         :param episodes_info: 当前季的全部集信息
         :param username: 用户名
-        :param source_file_names: 本批次全部原始文件名，批量入库时供模板展示首尾
         """
         self.post_message(
             Notification(
@@ -4191,7 +4172,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             season_episode=season_episode,
             episodes_info=episodes_info,
             username=username,
-            sourceFileNames=source_file_names,
         )
 
     @staticmethod
