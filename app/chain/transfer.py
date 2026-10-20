@@ -7,7 +7,7 @@ import uuid
 from copy import deepcopy
 from pathlib import Path
 from time import monotonic
-from typing import List, Optional, Tuple, Union, Dict, Callable, Any
+from typing import List, Optional, Tuple, Union, Dict, Callable, Any, Set
 
 from app import schemas
 from app.chain import ChainBase
@@ -929,6 +929,10 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         # Agent重试管理器
         # 转移成功的文件清单
         self._success_target_files: Dict[str, List[str]] = {}
+        # 已发送过入库通知的批次。同一批文件是逐个进队列的，队列消费并发，
+        # 某些任务完成时同批其它文件还没进队列，此时 is_finished 会误判为
+        # 「全部完成」而重复发通知，故以批次为粒度去重
+        self._notified_batches: Set[str] = set()
         # 批次级刮削缓冲，避免同一批多文件入库重复触发目录刮削
         self._scrape_batches: Dict[str, Dict[str, Any]] = {}
         # 整理进度进度
@@ -1099,6 +1103,22 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                         se_str = f"{task.meta.season} {StringUtils.format_ep(season_episodes)}"
                     else:
                         se_str = f"{task.meta.season}"
+                # 收集本批次全部原始文件名：批量入库时通知只发一条，
+                # 只展示单个文件名会让人误以为只入库一个文件
+                # 用 fileitem.name 而不是 meta.org_string：后者在识别阶段
+                # 已被去掉了扩展名（_build_meta_info 会切成 stem），
+                # 通知里要展示的是下载下来的完整文件名
+                batch_source_names = [
+                    str(
+                        (item.fileitem.name if item.fileitem else None)
+                        or getattr(item.meta, "org_string", None)
+                        or ""
+                    ).strip()
+                    for item in self.jobview.success_tasks(
+                        task.mediainfo, task.meta.begin_season
+                    )
+                ]
+                batch_source_names = [name for name in batch_source_names if name]
                 # 发送入库成功消息
                 self.send_transfer_message(
                     meta=task.meta,
@@ -1107,6 +1127,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                     season_episode=se_str,
                     episodes_info=task.episodes_info,
                     username=task.username,
+                    source_file_names=batch_source_names,
                 )
 
         transferhis = TransferHistoryOper()
@@ -1278,17 +1299,31 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             # 登记批次级刮削目标
             self.__record_scrape_target(task, transferinfo)
 
-        # 全部整理完成且有成功的任务时，发送消息和事件
-        if self.jobview.is_finished(task):
-            # 更新文件清单
-            with job_lock:
-                if target_dir_path:
-                    transferinfo.file_list_new = self._success_target_files.pop(
-                        target_dir_path, []
-                    )
-                else:
-                    transferinfo.file_list_new = transferinfo.file_list_new or []
-            __notify()
+        # 全部整理完成且有成功的任务时，发送消息和事件。
+        # 同批文件逐个进队列、队列并发消费，某些任务完成时同批其它文件尚未
+        # 入队，is_finished 会误判为整批结束并重复通知；因此要求队列也排空，
+        # 并以批次 ID 去重，保证一批文件只发一条通知
+        if self.jobview.is_finished(task) and self._queue.empty():
+            # 本批次是否已发过通知：已发过则跳过通知与刷新，
+            # 但仍要走下方的种子状态回写与空目录清理
+            batch_already_notified = False
+            batch_id = task.transfer_batch_id
+            if batch_id:
+                with job_lock:
+                    batch_already_notified = batch_id in self._notified_batches
+                    self._notified_batches.add(batch_id)
+            if batch_already_notified:
+                logger.debug(f"批次 {batch_id} 已通知过，跳过重复通知")
+            else:
+                # 更新文件清单
+                with job_lock:
+                    if target_dir_path:
+                        transferinfo.file_list_new = self._success_target_files.pop(
+                            target_dir_path, []
+                        )
+                    else:
+                        transferinfo.file_list_new = transferinfo.file_list_new or []
+                __notify()
             if not task.transfer_batch_id:
                 self.__send_metadata_scrape_event(task, transferinfo)
             # 入库后刷新媒体服务器媒体库，否则媒体服务器不知道有新文件
@@ -4130,6 +4165,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             season_episode: Optional[str] = None,
             episodes_info: Optional[List[TmdbEpisode]] = None,
             username: Optional[str] = None,
+            source_file_names: Optional[List[str]] = None,
     ):
         """
         发送入库成功的消息
@@ -4139,6 +4175,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         :param season_episode: 已入库季集文本
         :param episodes_info: 当前季的全部集信息
         :param username: 用户名
+        :param source_file_names: 本批次全部原始文件名，批量入库时供模板展示首尾
         """
         self.post_message(
             Notification(
@@ -4154,6 +4191,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             season_episode=season_episode,
             episodes_info=episodes_info,
             username=username,
+            sourceFileNames=source_file_names,
         )
 
     @staticmethod

@@ -195,6 +195,8 @@ class TemplateContextBuilder:
             # 入库前的原始文件名（未识别、未重命名），供通知末尾展示，
             # 便于核对这份文件对应的实际来源
             "sourceFileName": cls.__source_file_name(meta),
+            # 本批次全部原始文件名（批量入库时展示首尾，避免刷屏）
+            "sourceFileNames": cls.__source_file_names(meta, context),
             # 识别名称（优先使用中文）
             "name": meta.name,
             # 识别的英文名称（可能为空）
@@ -501,9 +503,43 @@ class TemplateContextBuilder:
         :param meta: 媒体元数据
         :return: 原始文件名或空串
         """
-        return str(getattr(meta, "org_string", None) or meta.title or "").strip()
+        # meta.title 保留调用方传入的完整名称（含扩展名），
+        # org_string 在识别阶段已被切成 stem，优先用前者
+        return str(
+            getattr(meta, "title", None)
+            or getattr(meta, "org_string", None)
+            or ""
+        ).strip()
 
     @staticmethod
+    @staticmethod
+    def __source_file_names(meta: MetaBase, context: Dict[str, Any]) -> List[str]:
+        """
+        收集本批次全部原始文件名。
+
+        批量入库时一批文件只发一条通知，只展示单个文件名会让人误以为
+        只入库了一个文件，因此按批次收集全部名称，供模板按数量决定展示
+        策略。单文件入库时返回只含一个元素的列表。
+
+        优先使用调用方通过 ``sourceFileNames`` 显式传入的清单；
+        缺失时退回当前文件的名字，保证模板始终有值可用。
+
+        :param meta: 媒体元数据
+        :param context: 模板上下文
+        :return: 原始文件名列表
+        """
+        provided = context.get("sourceFileNames")
+        if provided:
+            names = [
+                str(item).strip()
+                for item in provided
+                if item and str(item).strip()
+            ]
+            if names:
+                return names
+        name = TemplateContextBuilder.__source_file_name(meta)
+        return [name] if name else []
+
     @staticmethod
     def __convert_invalid_characters(filename: str):
         """

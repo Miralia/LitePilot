@@ -1,3 +1,4 @@
+import queue
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -124,6 +125,9 @@ def make_transfer_chain() -> TransferChain:
     )
     chain._success_target_files = {}
     chain._scrape_batches = {}
+    # 通知触发还依赖整理队列状态与批次去重集合，测试里用空队列模拟已排空
+    chain._queue = queue.Queue()
+    chain._notified_batches = set()
     return chain
 
 
@@ -1216,3 +1220,36 @@ class TransferJobManagerTest(unittest.TestCase):
             ["/library/Test Show (2026)/Season 1/Test.Show.S01E01.mkv"],
             event_data["file_list"],
         )
+
+
+def test_batch_notify_dedup_marks_batch_once():
+    """
+    批次去重集合只记录一次：同一批次第二次进入判断时应识别为已通知。
+
+    批量入库时同批文件逐个进队列、队列并发消费，早期完成的任务会让
+    is_finished 误判整批结束；去重集合是阻止重复通知的最后一道闸门。
+    """
+    chain = make_transfer_chain()
+    batch_id = "batch-dedup"
+
+    with chain._TransferChain__default_callback.__globals__["job_lock"]:
+        already = batch_id in chain._notified_batches
+        chain._notified_batches.add(batch_id)
+
+    assert already is False
+    assert batch_id in chain._notified_batches
+
+    with chain._TransferChain__default_callback.__globals__["job_lock"]:
+        already_again = batch_id in chain._notified_batches
+        chain._notified_batches.add(batch_id)
+
+    assert already_again is True
+
+
+def test_queue_not_empty_blocks_notify():
+    """队列未排空时不应认为整批结束，避免提前通知。"""
+    chain = make_transfer_chain()
+    assert chain._queue.empty() is True
+
+    chain._queue.put(SimpleNamespace())
+    assert chain._queue.empty() is False
