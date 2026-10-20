@@ -316,13 +316,18 @@ class TemplateContextBuilder:
         }
         context.update(torrent_info)
 
-    # 规格行基准长度：以 "AMZN WEB-DL 1080p DD+ H264"（26 字符）为参考，
-    # 留出余量取 36，使多数片源能单行容纳
-    SPEC_LINE_WIDTH = 36
-    # 三档图标固定含义：版本特例 → 主规格 → 续行
+    # 规格行宽度上限。内容基准仍是 36，加上统一的三字符中文标签
+    # （"版本：" "片源：" "规格：" 均为 3 字符，含全角冒号），故为 39。
+    # 标签等长使 "标签+内容 <= 39" 与 "内容 <= 36" 完全等价。
+    SPEC_LINE_WIDTH = 39
+    # 三档图标固定含义：版本行 → 片源行 → 规格行
     SPEC_ICON_HEAD = "🎬"
     SPEC_ICON_MAIN = "🎥"
     SPEC_ICON_TAIL = "📽"
+    # 中文标签，宽度必须保持一致（各 3 字符），宽度预算依赖此前提
+    SPEC_LABEL_VERSION = "版本："
+    SPEC_LABEL_SOURCE = "片源："
+    SPEC_LABEL_SPEC = "规格："
 
     @classmethod
     def _build_spec_plain(cls, meta: MetaBase) -> str:
@@ -357,20 +362,21 @@ class TemplateContextBuilder:
     @classmethod
     def _build_spec_lines(cls, meta: MetaBase) -> List[str]:
         """
-        把技术规格装成若干行，每行自带图标。
+        把技术规格装成最多三行，每行带图标与中文标签。
 
-        装行规则：
+        规约有两条硬约束：
 
-        - 剪辑版本（Director's Cut 等）是特例，单独占首行，固定用 🎬
-        - 来源块（平台 + 来源 + 分辨率 + 特殊版本）与音视频块优先合并，
-          合并后不超过 :attr:`SPEC_LINE_WIDTH` 就单行输出
-        - 超长时来源与音视频分行，保证音视频信息完整落在同一行
-        - 音视频本身仍超长时，尾部落到第三行，避免产生极短的行
+        - 剪辑版本（Director's Cut 等）一旦存在必然独占一行，发布修正
+          （REPACK / Hybrid / v2）并入该行；没有剪辑版本时发布修正随
+          规格块一起参与装行
+        - 总行数不超过三行：版本行、片源行、规格行
 
-        空值全部跳过；无任何规格时返回空列表。
+        规格块（发布修正 + 片源 + 音视频）装得进一行时统一称「规格」，
+        装不进才拆成「片源」与「规格」两行。分辨率与视频编码由 mediainfo
+        探测保证，两个子块实际不会同时为空。
 
         :param meta: 媒体元数据
-        :return: 已带图标的行列表
+        :return: 已带图标与标签的行列表
         """
         source_block = " ".join(
             part for part in (
@@ -389,48 +395,37 @@ class TemplateContextBuilder:
                 meta.video_encode,
             ) if part
         )
-        version_line = " ".join(
-            part for part in (
-                meta.cut_version,
-                *(meta.release_info or []),
-            ) if part
-        )
-        combined = " ".join(p for p in (source_block, audio_video_block) if p)
 
         result: List[str] = []
-        if not combined:
-            if version_line:
-                result.append(f"{cls.SPEC_ICON_HEAD} {version_line}")
+        # 有剪辑版本：发布修正并入版本行，版本行独占
+        if meta.cut_version:
+            version_text = " ".join(
+                part for part in (meta.cut_version, *(meta.release_info or [])) if part
+            )
+            result.append(f"{cls.SPEC_ICON_HEAD} {cls.SPEC_LABEL_VERSION}{version_text}")
+            release_text = ""
+        else:
+            # 无剪辑版本：发布修正并入规格块
+            release_text = " ".join(meta.release_info or [])
+
+        spec_text = " ".join(
+            part for part in (release_text, source_block, audio_video_block) if part
+        )
+        if not spec_text:
             return result
 
-        # 版本信息优先并入，避免出现只有几个字符的极短行。
-        # 先看「版本 + 全部规格」能否一行；能则单行输出。
-        merged_all = " ".join(p for p in (version_line, combined) if p)
-        if len(merged_all) <= cls.SPEC_LINE_WIDTH:
-            result.append(f"{cls.SPEC_ICON_MAIN} {merged_all}")
+        # 规格块一行装得下
+        if len(spec_text) + len(cls.SPEC_LABEL_SPEC) <= cls.SPEC_LINE_WIDTH:
+            result.append(f"{cls.SPEC_ICON_MAIN} {cls.SPEC_LABEL_SPEC}{spec_text}")
             return result
 
-        # 整体超宽：把版本并入首行（来源块），音视频落到 📽 行
-        first_line = " ".join(p for p in (version_line, source_block) if p)
-        if first_line and len(first_line) <= cls.SPEC_LINE_WIDTH:
-            result.append(f"{cls.SPEC_ICON_MAIN} {first_line}")
-            if audio_video_block:
-                result.append(f"{cls.SPEC_ICON_TAIL} {audio_video_block}")
-            return result
-
-        # 首行放不下版本信息：版本独占 🎬 行，规格按原规则占行
-        if version_line:
-            result.append(f"{cls.SPEC_ICON_HEAD} {version_line}")
-        if len(combined) <= cls.SPEC_LINE_WIDTH:
-            result.append(f"{cls.SPEC_ICON_MAIN} {combined}")
-            return result
-
-        # 规格最多两行：首行 🎥 承载来源，次行 📽 承载音视频。
-        # 第三行会让消息显得零碎，且末行往往只有零星几个词。
-        if source_block:
-            result.append(f"{cls.SPEC_ICON_MAIN} {source_block}")
+        # 拆两行：片源行承担发布修正与来源，音视频独占规格行。
+        # 音视频本身超宽时不再拆第四行，交由客户端换行，避免破坏行数上限
+        first_line = " ".join(part for part in (release_text, source_block) if part)
+        if first_line:
+            result.append(f"{cls.SPEC_ICON_MAIN} {cls.SPEC_LABEL_SOURCE}{first_line}")
         if audio_video_block:
-            result.append(f"{cls.SPEC_ICON_TAIL} {audio_video_block}")
+            result.append(f"{cls.SPEC_ICON_TAIL} {cls.SPEC_LABEL_SPEC}{audio_video_block}")
         return result
 
     @staticmethod

@@ -619,24 +619,27 @@ def test_release_info_excluded_from_filename_spec(title):
 @pytest.mark.parametrize(
     "title,expect",
     [
-        # 版本信息与规格能装进一行时并入首行，用 🎥
+        # 剪辑版本存在时必然独占版本行，发布修正并入该行
         ("M.2020.1080p.BluRay.Directors.Cut.x264.AAC-GRP",
-         "🎥 Director's Cut BD 1080p AAC x264"),
-        ("M.2024.1080p.BluRay.REPACK.x264.AAC-GRP",
-         "🎥 REPACK BD 1080p AAC x264"),
-        ("M.2024.1080p.BluRay.REPACK10.x264.AAC-GRP",
-         "🎥 REPACK10 BD 1080p AAC x264"),
-        ("M.2024.1080p.BluRay.v10.x264.AAC-GRP",
-         "🎥 v10 BD 1080p AAC x264"),
-        ("M.2024.1080p.Hybrid.BluRay.x264.AAC-GRP",
-         "🎥 Hybrid BD 1080p AAC x264"),
-        # 两者同时出现但整体超宽：版本并入首行，音视频落到 📽 行
+         "🎬 版本：Director's Cut"),
         ("M.2020.1080p.BluRay.Directors.Cut.REPACK2.x264.AAC-GRP",
-         "🎥 Director's Cut REPACK2 BD 1080p"),
+         "🎬 版本：Director's Cut REPACK2"),
+        # 无剪辑版本时，发布修正并入规格块
+        ("M.2024.1080p.BluRay.REPACK.x264.AAC-GRP",
+         "🎥 规格：REPACK BD 1080p AAC x264"),
+        ("M.2024.1080p.BluRay.REPACK10.x264.AAC-GRP",
+         "🎥 规格：REPACK10 BD 1080p AAC x264"),
+        ("M.2024.1080p.BluRay.v10.x264.AAC-GRP",
+         "🎥 规格：v10 BD 1080p AAC x264"),
+        ("M.2024.1080p.Hybrid.BluRay.x264.AAC-GRP",
+         "🎥 规格：Hybrid BD 1080p AAC x264"),
+        # 规格块装得进一行时统一称「规格」
+        ("M.2024.1080p.WEB-DL.AAC.x264-GRP",
+         "🎥 规格：WEB-DL 1080p AAC x264"),
     ],
 )
-def test_version_line_merges_into_first_line(title, expect):
-    """版本信息按长度并入首行，避免出现极短行。"""
+def test_version_line_rules(title, expect):
+    """剪辑版本独占版本行；无版本时发布修正并入规格块。"""
     from app.core.meta.metavideo import MetaVideo
     from app.helper.message import TemplateContextBuilder
 
@@ -646,8 +649,8 @@ def test_version_line_merges_into_first_line(title, expect):
     assert lines[0] == expect
 
 
-def test_version_line_standalone_when_too_long():
-    """版本信息与规格装不进一行时，独占带 🎬 的首行。"""
+def test_spec_lines_max_three_with_labels():
+    """规格最多三行：版本行 + 片源行 + 规格行，且各带对应标签。"""
     from app.core.meta.metavideo import MetaVideo
     from app.helper.message import TemplateContextBuilder
 
@@ -657,8 +660,45 @@ def test_version_line_standalone_when_too_long():
     )
     meta.finalize()
     lines = TemplateContextBuilder._build_spec_lines(meta)
-    assert lines[0] == "🎬 Director's Cut REPACK2"
-    assert all(line.startswith(("🎥", "📽")) for line in lines[1:])
+    assert len(lines) == 3
+    assert lines[0] == "🎬 版本：Director's Cut REPACK2"
+    assert lines[1].startswith("🎥 片源：")
+    assert lines[2].startswith("📽 规格：")
+
+
+def test_spec_lines_split_into_source_and_spec():
+    """规格块超宽时拆成片源行与规格行。"""
+    from app.core.meta.metavideo import MetaVideo
+    from app.helper.message import TemplateContextBuilder
+
+    meta = MetaVideo(
+        "M.2024.2160p.UHD.BluRay.REMUX.TrueHD.Atmos.DV.HDR10P.HEVC-GRP"
+    )
+    meta.finalize()
+    lines = TemplateContextBuilder._build_spec_lines(meta)
+    assert len(lines) == 2
+    assert lines[0].startswith("🎥 片源：")
+    assert lines[1].startswith("📽 规格：")
+
+
+def test_spec_labels_same_width():
+    """三个规格标签必须等长，宽度预算依赖此前提。"""
+    from app.helper.message import TemplateContextBuilder
+
+    widths = {
+        len(TemplateContextBuilder.SPEC_LABEL_VERSION),
+        len(TemplateContextBuilder.SPEC_LABEL_SOURCE),
+        len(TemplateContextBuilder.SPEC_LABEL_SPEC),
+    }
+    assert len(widths) == 1, f"标签长度不一致：{widths}"
+
+
+def test_spec_line_width_budget_includes_label():
+    """单行上限含标签，内容基准 36 加标签 3。"""
+    from app.helper.message import TemplateContextBuilder
+
+    label_len = len(TemplateContextBuilder.SPEC_LABEL_SPEC)
+    assert TemplateContextBuilder.SPEC_LINE_WIDTH == 36 + label_len
 
 
 @pytest.mark.parametrize(
