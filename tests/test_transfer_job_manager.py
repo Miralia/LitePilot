@@ -125,9 +125,10 @@ def make_transfer_chain() -> TransferChain:
     )
     chain._success_target_files = {}
     chain._scrape_batches = {}
-    # 通知触发还依赖整理队列状态与批次去重集合，测试里用空队列模拟已排空
+    # 通知发送走延迟聚合，需要这两个状态容器
     chain._queue = queue.Queue()
-    chain._notified_batches = set()
+    chain._notify_generation = {}
+    chain._notify_pending = {}
     return chain
 
 
@@ -1222,34 +1223,39 @@ class TransferJobManagerTest(unittest.TestCase):
         )
 
 
-def test_batch_notify_dedup_marks_batch_once():
+def test_notify_generation_invalidates_stale_timer():
     """
-    批次去重集合只记录一次：同一批次第二次进入判断时应识别为已通知。
+    窗口期内又有文件完成时，旧定时器的代号失配，不应发送通知。
 
-    批量入库时同批文件逐个进队列、队列并发消费，早期完成的任务会让
-    is_finished 误判整批结束；去重集合是阻止重复通知的最后一道闸门。
+    下载器逐文件移动到最终目录，目录监控逐文件触发整理。每个文件完成
+    都会递增代号，只有最后一次的定时器能通过校验，从而一批文件只发出
+    一条通知。
     """
     chain = make_transfer_chain()
-    batch_id = "batch-dedup"
+    key = ("source", 1, 1)
 
-    with chain._TransferChain__default_callback.__globals__["job_lock"]:
-        already = batch_id in chain._notified_batches
-        chain._notified_batches.add(batch_id)
+    # 第一个文件完成
+    chain._notify_generation[key] = 1
+    first_generation = chain._notify_generation[key]
 
-    assert already is False
-    assert batch_id in chain._notified_batches
+    # 窗口期内第二个文件完成，代号递增
+    chain._notify_generation[key] += 1
 
-    with chain._TransferChain__default_callback.__globals__["job_lock"]:
-        already_again = batch_id in chain._notified_batches
-        chain._notified_batches.add(batch_id)
+    # 第一个定时器到期时代号已变，应当放弃
+    assert chain._notify_generation[key] != first_generation
+    # 第二个定时器到期时代号一致，应当发送
+    assert chain._notify_generation[key] == 2
 
-    assert already_again is True
 
-
-def test_queue_not_empty_blocks_notify():
-    """队列未排空时不应认为整批结束，避免提前通知。"""
+def test_notify_key_separates_seasons():
+    """不同季的批次必须分开聚合，不能合并成一条通知。"""
     chain = make_transfer_chain()
-    assert chain._queue.empty() is True
+    key_s1 = ("source", 1, 1)
+    key_s2 = ("source", 1, 2)
 
-    chain._queue.put(SimpleNamespace())
-    assert chain._queue.empty() is False
+    chain._notify_generation[key_s1] = 1
+    chain._notify_generation[key_s2] = 1
+    chain._notify_generation[key_s1] += 1
+
+    assert chain._notify_generation[key_s1] == 2
+    assert chain._notify_generation[key_s2] == 1

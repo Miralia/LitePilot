@@ -7,7 +7,7 @@ import uuid
 from copy import deepcopy
 from pathlib import Path
 from time import monotonic
-from typing import List, Optional, Tuple, Union, Dict, Callable, Any, Set
+from typing import List, Optional, Tuple, Union, Dict, Callable, Any
 
 from app import schemas
 from app.chain import ChainBase
@@ -832,6 +832,14 @@ _VIDEO_CODEC_FAMILIES = {
 }
 
 # 音频与其它编码的等价写法归一化
+# 入库通知聚合窗口（秒）。
+#
+# 下载器通常先写临时目录、完成后逐个移动到最终目录，目录监控因此逐文件
+# 触发整理。整理队列是单线程串行消费的，每个文件完成时都满足「当前已知
+# 任务全部完成」，若立即通知就会让一批文件发出多条消息（数量还会逐个
+# 递增）。改为窗口内无新文件完成才通知一次，到期时重新统计整批数据。
+NOTIFY_DEBOUNCE_SECONDS = 10
+
 _CODEC_ALIASES = {
     "AVC": "H264", "H.264": "H264", "H264": "H264",
     "HEVC": "H265", "H.265": "H265", "H265": "H265",
@@ -929,10 +937,10 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         # Agent重试管理器
         # 转移成功的文件清单
         self._success_target_files: Dict[str, List[str]] = {}
-        # 已发送过入库通知的批次。同一批文件是逐个进队列的，队列消费并发，
-        # 某些任务完成时同批其它文件还没进队列，此时 is_finished 会误判为
-        # 「全部完成」而重复发通知，故以批次为粒度去重
-        self._notified_batches: Set[str] = set()
+        # 入库通知的延迟聚合状态：按 (媒体标识, 季) 记录代号，
+        # 代号变化意味着窗口期内又有文件完成，上一轮定时器自行放弃
+        self._notify_generation: Dict[Tuple, int] = {}
+        self._notify_pending: Dict[Tuple, Tuple[Any, Any]] = {}
         # 批次级刮削缓冲，避免同一批多文件入库重复触发目录刮削
         self._scrape_batches: Dict[str, Dict[str, Any]] = {}
         # 整理进度进度
@@ -1094,24 +1102,9 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             )
             # 发送通知，实时手动整理时不发
             if transferinfo.need_notify and (task.background or not task.manual):
-                se_str = None
-                if task.mediainfo.type == MediaType.TV:
-                    season_episodes = self.jobview.season_episodes(
-                        task.mediainfo, task.meta.begin_season
-                    )
-                    if season_episodes:
-                        se_str = f"{task.meta.season} {StringUtils.format_ep(season_episodes)}"
-                    else:
-                        se_str = f"{task.meta.season}"
-                # 发送入库成功消息
-                self.send_transfer_message(
-                    meta=task.meta,
-                    mediainfo=task.mediainfo,
-                    transferinfo=transferinfo,
-                    season_episode=se_str,
-                    episodes_info=task.episodes_info,
-                    username=task.username,
-                )
+                # 不在此刻直接发送：同批文件是逐个到达的，立即发送会让
+                # 一批文件产生多条通知，改为窗口内无新完成才聚合发送
+                self._schedule_notify(task, transferinfo)
 
         transferhis = TransferHistoryOper()
         target_dir_path = self.__get_transfer_target_dir_path(transferinfo)
@@ -1283,30 +1276,18 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             self.__record_scrape_target(task, transferinfo)
 
         # 全部整理完成且有成功的任务时，发送消息和事件。
-        # 同批文件逐个进队列、队列并发消费，某些任务完成时同批其它文件尚未
-        # 入队，is_finished 会误判为整批结束并重复通知；因此要求队列也排空，
-        # 并以批次 ID 去重，保证一批文件只发一条通知
-        if self.jobview.is_finished(task) and self._queue.empty():
-            # 本批次是否已发过通知：已发过则跳过通知与刷新，
-            # 但仍要走下方的种子状态回写与空目录清理
-            batch_already_notified = False
-            batch_id = task.transfer_batch_id
-            if batch_id:
-                with job_lock:
-                    batch_already_notified = batch_id in self._notified_batches
-                    self._notified_batches.add(batch_id)
-            if batch_already_notified:
-                logger.debug(f"批次 {batch_id} 已通知过，跳过重复通知")
-            else:
-                # 更新文件清单
-                with job_lock:
-                    if target_dir_path:
-                        transferinfo.file_list_new = self._success_target_files.pop(
-                            target_dir_path, []
-                        )
-                    else:
-                        transferinfo.file_list_new = transferinfo.file_list_new or []
-                __notify()
+        # 通知本身由 _schedule_notify 做延迟聚合，这里只负责在作业收尾时
+        # 触发一次调度（重复触发是安全的，代号机制会丢弃过期定时器）
+        if self.jobview.is_finished(task):
+            # 更新文件清单
+            with job_lock:
+                if target_dir_path:
+                    transferinfo.file_list_new = self._success_target_files.pop(
+                        target_dir_path, []
+                    )
+                else:
+                    transferinfo.file_list_new = transferinfo.file_list_new or []
+            __notify()
             if not task.transfer_batch_id:
                 self.__send_metadata_scrape_event(task, transferinfo)
             # 入库后刷新媒体服务器媒体库，否则媒体服务器不知道有新文件
@@ -4139,6 +4120,85 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 cleanup_dest_fileitem=cleanup_dest_fileitem,
             )
             return state, errmsg
+
+    def _schedule_notify(self, task: TransferTask, transferinfo: TransferInfo) -> None:
+        """
+        延迟聚合入库通知。
+
+        下载器先写临时目录、完成后逐个移动到最终目录，目录监控因此逐文件
+        触发整理。整理队列单线程串行消费，每个文件完成时都满足「当前已知
+        任务全部完成」，立即发送会让一批文件产生多条通知且数量逐个递增。
+
+        做法是窗口内无新文件完成才发送：每次有文件完成就递增该批次的代号
+        并重置定时器，到期时代号未变才真正发送。到期时重新统计整批数据，
+        而不是沿用触发那一刻的快照。
+
+        :param task: 刚完成的任务
+        :param transferinfo: 该文件的整理结果
+        """
+        try:
+            key = (
+                task.mediainfo.media_id if task.mediainfo else None,
+                task.mediainfo.source if task.mediainfo else None,
+                task.meta.begin_season if task.meta else None,
+            )
+        except AttributeError:
+            key = (None, None, None)
+
+        with job_lock:
+            self._notify_generation[key] = self._notify_generation.get(key, 0) + 1
+            generation = self._notify_generation[key]
+            self._notify_pending[key] = (task, transferinfo)
+
+        def fire():
+            threading.Event().wait(NOTIFY_DEBOUNCE_SECONDS)
+            with job_lock:
+                # 窗口期内又有文件完成，本次定时器作废，由最新的定时器发送
+                if self._notify_generation.get(key) != generation:
+                    return
+                pending = self._notify_pending.pop(key, None)
+                if not pending:
+                    return
+                self._notify_generation.pop(key, None)
+            try:
+                self._send_aggregated_notify(*pending)
+            except Exception as err:  # pylint: disable=broad-except
+                logger.error(f"发送入库通知失败：{err}")
+
+        threading.Thread(target=fire, daemon=True).start()
+
+    def _send_aggregated_notify(
+            self, task: TransferTask, transferinfo: TransferInfo
+    ) -> None:
+        """
+        用整批已完成任务的数据发送入库通知。
+
+        触发任务只用于定位媒体与季集，文件数与总体积必须重新从作业视图
+        统计，否则通知内容会停留在触发那一刻、漏掉窗口期内完成的文件。
+
+        :param task: 批次内最后一个完成的任务
+        :param transferinfo: 该任务的整理结果
+        """
+        season = task.meta.begin_season if task.meta else None
+        transferinfo.file_count = self.jobview.count(task.mediainfo, season) or 1
+        transferinfo.total_size = (
+                self.jobview.size(task.mediainfo, season) or task.fileitem.size
+        )
+        se_str = None
+        if task.mediainfo and task.mediainfo.type == MediaType.TV:
+            season_episodes = self.jobview.season_episodes(task.mediainfo, season)
+            if season_episodes:
+                se_str = f"{task.meta.season} {StringUtils.format_ep(season_episodes)}"
+            else:
+                se_str = task.meta.season
+        self.send_transfer_message(
+            meta=task.meta,
+            mediainfo=task.mediainfo,
+            transferinfo=transferinfo,
+            season_episode=se_str,
+            episodes_info=task.episodes_info,
+            username=task.username,
+        )
 
     def send_transfer_message(
             self,
