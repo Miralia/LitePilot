@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import random
 import re
+import unicodedata
 from typing import Union, Tuple, Optional, Any, List, Generator
 from urllib import parse
 
@@ -207,6 +208,14 @@ class StringUtils:
         if not text:
             return text
         if not isinstance(text, list):
+            # 先做 Unicode 兼容分解并剥离组合记号，让 É / ñ / ü 这类带变音
+            # 符号的字母退回基本字母。片名的罗马字写法与 TMDB 别名常常只差
+            # 一个重音符号（如 Paris ni Saku Étoile），不做归一化会导致
+            # 完全相同的名称判为不等而匹配失败。
+            text = "".join(
+                ch for ch in unicodedata.normalize("NFKD", str(text))
+                if not unicodedata.combining(ch)
+            )
             text = re.sub(r"[\u200B-\u200D\uFEFF]",
                           "",
                           re.sub(r"%s" % CONVERT_EMPTY_CHARS, replace_word, text),

@@ -816,3 +816,36 @@ def test_sanitize_filename_edge_cases(raw, expect):
 
     impl = TemplateContextBuilder._TemplateContextBuilder__convert_invalid_characters
     assert impl(raw) == expect
+
+# ---------------------------------------------------------------------------
+# 变音符号归一化
+#
+# 片名的罗马字写法与 TMDB 别名常只差一个重音符号（Paris ni Saku Étoile
+# 对 Paris Ni Saku Etoile）。StringUtils.clear 若不做 Unicode 归一化，
+# 两者会判为不等而导致识别失败。
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "left,right",
+    [
+        ("Paris ni Saku Étoile", "Paris Ni Saku Etoile"),
+        ("Amélie", "Amelie"),
+        ("Léon: The Professional", "Leon The Professional"),
+        ("Pokémon Detective Pikachu", "Pokemon Detective Pikachu"),
+        ("Björk", "Bjork"),
+        ("Señor", "Senor"),
+        ("Café Society", "Cafe Society"),
+    ],
+)
+def test_clear_normalizes_diacritics(left, right):
+    """带变音符号的字母归一化后应与基本字母等同。"""
+    from app.utils.string import StringUtils
+
+    assert StringUtils.clear(left).upper() == StringUtils.clear(right).upper()
+
+
+def test_clear_keeps_chinese_and_hyphen_behavior():
+    """归一化不应影响原有的中文与标点处理。"""
+    from app.utils.string import StringUtils
+
+    assert StringUtils.clear("普通中文") == "普通中文"
+    assert StringUtils.clear("Spider-Man") == StringUtils.clear("Spider Man")
