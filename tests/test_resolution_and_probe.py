@@ -957,3 +957,71 @@ def test_anime_bracket_title_not_swallowed(title, expect_name):
     from app.core.metainfo import MetaInfo
 
     assert MetaInfo(title).name == expect_name
+
+
+# ---------------------------------------------------------------------------
+# 无组名时不从片名猜组名
+#
+# 组表里有大量与片名、地区标签同名的条目（Paris / GB）。仅凭「独占一个
+# 方括号」无法区分，因此在不知道组名的情况下应让该字段为空，而不是猜。
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "title,groups,expect_team",
+    [
+        # 无组名：片名里的 Paris 不得被当作组名
+        ("[Paris ni Saku Etoile][1080p][JPSC].mkv",
+         "Paris|SweetSub", None),
+        ("[Anime Name][01][1080p][BDRip].mkv",
+         "Anime|SweetSub", None),
+        # 地区与字幕标签不得被当作组名
+        ("[Some Show][1080p][x264][AAC][GB][JPSC].mkv",
+         "GB|JPSC|SweetSub", None),
+        # 明确位于片名之前的组名仍要识别
+        ("[SweetSub][Anime Name][01][1080p].mkv",
+         "SweetSub|Paris", "SweetSub"),
+        (
+            "[Nekomoe kissaten][Paris ni Saku Etoile][Movie][1080p][JPSC].mp4",
+            "Nekomoe kissaten|Paris", "Nekomoe kissaten",
+        ),
+        ("[VCB-Studio] Anime Name [01][1080p].mkv",
+         "VCB-Studio|Paris", "VCB-Studio"),
+        # 中文组名
+        ("【喵萌奶茶屋】[巴黎绽放的星辰][1080p].mkv",
+         "喵萌奶茶屋|Paris", "喵萌奶茶屋"),
+    ],
+)
+def test_no_team_guessing_from_title(title, groups, expect_team):
+    """
+    无组名时组名字段留空，明确组名仍正常识别。
+
+    显式传入组表：全量运行时有其它用例会清空数据库配置，依赖真实组表
+    会让本组用例的行为漂移。
+    """
+    from app.core.meta.releasegroup import ReleaseGroupsMatcher
+    from app.core.metainfo import MetaInfo
+
+    meta = MetaInfo(title)
+    teams = ReleaseGroupsMatcher().match_list(
+        title=meta.org_string or title,
+        groups=groups,
+        reserved_words={t for t in (meta.name or "").split()},
+    )
+    if expect_team is None:
+        assert teams == []
+    else:
+        assert teams == [expect_team]
+
+
+@pytest.mark.parametrize(
+    "tag",
+    ["GB", "JPSC", "CHS", "CHT", "AAC", "x264", "BDRip", "MKV"],
+)
+def test_technical_tags_never_matched_as_team(tag):
+    """技术标签显式排除，即使组表里存在同名条目也不当作组名。"""
+    from app.core.meta.releasegroup import ReleaseGroupsMatcher
+
+    teams = ReleaseGroupsMatcher().match_list(
+        title=f"[Some Show][1080p][{tag}].mkv",
+        groups="|".join([tag, "SweetSub"]),
+    )
+    assert tag not in teams

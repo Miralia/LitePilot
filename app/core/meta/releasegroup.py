@@ -14,7 +14,26 @@ from app.utils.singleton import Singleton
 _REGEX_STRUCTURE = _std_re.compile(r"\(\?:|\(\?=|\(\?!|\\[dDwWsS]|\[\^?[^\]]*\]|\|")
 
 # @ 上游部分的停止字符：常规分段符都算，避免把标题前缀当成组名
-_UPSTREAM_STOP_CHARS = frozenset("[]【】￡@&/\\ ._-")
+_UPSTREAM_STOP_CHARS = frozenset("[]【】￡&/\\ ._-")
+
+# 常被误认成制作组的短标签：地区、字幕语言、音轨标记等。
+# 它们与组名共用「独占一个方括号」的写法，仅凭位置无法区分，
+# 且组表可能因为收录来源站点而包含同名条目（如 GB）。
+_EXCLUDED_TAGS = frozenset({
+    # 地区 / 版本
+    "GB", "GBR", "UK", "US", "USA", "JP", "JPN", "CN", "CHN", "TW", "TWN",
+    "HK", "HKG", "KR", "KOR", "FR", "FRA", "DE", "GER", "IT", "ITA",
+    "ES", "ESP", "RU", "RUS", "EU", "EUR",
+    # 字幕语言与编码
+    "JPSC", "JPTC", "CHS", "CHT", "CHS&JPN", "BIG5", "GBK", "UTF8",
+    "JPN", "ENG", "CHI", "KOR", "MULTI", "DUAL",
+    # 音轨 / 常见技术标记
+    "AAC", "AC3", "DDP", "FLAC", "DTS", "MP3", "OPUS", "TRUEHD",
+    "H264", "H265", "X264", "X265", "HEVC", "AVC", "AV1", "VP9",
+    "MKV", "MP4", "AVI", "ISO", "BDMV",
+    # 其它高频非组名标签
+    "RAW", "SUB", "DUB", "BDRIP", "WEBRIP", "BLURAY", "REMUX",
+})
 
 # 组名长度上限：真实组名很少超过这个长度，超长条目多是把多个组拼在一起
 # 的脏数据（如 SeaDex 里用 = 与 - 串起来的联合发布），保留会拖慢匹配且永不命中
@@ -237,8 +256,12 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
         reserved = {str(word).strip().upper() for word in (reserved_words or set())}
         unique_groups: List[str] = []
         for match in groups_re.finditer(title):
-            if reserved and match.group(0).strip().upper() in reserved:
+            candidate = match.group(0).strip().upper()
+            if reserved and candidate in reserved:
                 # 该词已归属片名等字段，不再重复认定为制作组
+                continue
+            if candidate in _EXCLUDED_TAGS:
+                # 地区、字幕语言等技术标签，不是制作组
                 continue
             start, end = match.start(), match.end()
 

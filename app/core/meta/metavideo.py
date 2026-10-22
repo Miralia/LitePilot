@@ -479,6 +479,10 @@ class MetaVideo(MetaBase):
                 # 片名占用后即锁定该 token，避免同一段文字被组名等字段复用
                 self._claim_name_token()
 
+    # 括号内常见的短标记：字幕语言、地区、来源渠道等。
+    # 这类标签通常 2~4 个字符且不含小写，与片名词形态差别明显。
+    _BRACKET_TAG_RE = re.compile(r"^[A-Z0-9+]{2,5}$")
+
     @classmethod
     def __rest_lacks_title(cls, rest: str) -> bool:
         """
@@ -486,14 +490,15 @@ class MetaVideo(MetaBase):
 
         用于区分 `[组名][片名][参数]` 与 `[片名][参数]`：前者剩余部分里
         还有片名，首个括号应丢弃；后者剩余部分全是技术标记，首个括号
-        就是片名，必须保留。判据是「剩余部分能否拆出非技术词」，不需要
-        真正执行一次完整解析。
+        就是片名，必须保留。
 
-        扩展名需先剥离：`.mkv` 这类后缀会被切成独立 token，若不排除，
-        任何带扩展名的输入都会被判定为「仍有片名」。
+        判据不能用「存在非技术词」，因为括号里的短标签（``JPSC`` 字幕
+        语言、``GB`` 地区）也会被算作非技术词，导致片名被误当作组名
+        丢弃。改为要求剩余部分存在**像片名的词**：至少两个字母词，或
+        单个较长的词（≥4 字符且非全大写标签）。
 
         :param rest: 去掉首个括号后的文本
-        :return: 剩余部分不含任何非技术词时返回 True
+        :return: 剩余部分不含任何像片名的词时返回 True
         """
         if not rest:
             return True
@@ -504,14 +509,22 @@ class MetaVideo(MetaBase):
             suffix = text[dot + 1:].strip().lower()
             if suffix and suffix.isalnum():
                 text = text[:dot]
+        title_like = 0
         for token in Tokens(text).tokens:
             if not token or not token.strip():
                 continue
             if cls.__is_technical_token(token):
                 continue
-            # 出现任意非技术词就认为剩余部分仍有片名
-            return False
-        return True
+            if cls._BRACKET_TAG_RE.match(token):
+                # JPSC / GB / AAC 这类短标签，不是片名
+                continue
+            if token.isdigit():
+                continue
+            title_like += 1
+            # 出现两个以上片名候选，可以确定剩余部分确有片名
+            if title_like >= 2:
+                return False
+        return title_like == 0
 
     @classmethod
     def __is_technical_token(cls, token: str) -> bool:
