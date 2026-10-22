@@ -282,6 +282,48 @@ class MetaAnime(MetaBase):
             if audio:
                 self.audio_encode = str(audio).strip() or None
 
+    # 括号内的补充说明，如 `Animations(动画片)` 里的 `(动画片)`
+    _CATEGORY_NOTE_RE = re.compile(r"[\(（\[【][^\)）\]】]*[\)）\]】]")
+
+    @classmethod
+    def __is_category_tag(cls, text: str) -> bool:
+        """
+        判断某个括号段是否整体就是分类标签。
+
+        分类标签在发布名里独立占一个括号，因此要求整段内容都落在分类词表
+        内，而不是包含其中某个词。``[Anime Name]`` 这类片名会因首词命中
+        ``Anime`` 被误删，整段匹配正是为了避开这种误伤——漏删分类标签只
+        会让名称多几个字，误删片名则直接导致识别失败。
+
+        允许两种常见变体：括号内附带说明（``Animations(动画片)``）与英文
+        复数形式（``Animations``）。
+
+        :param text: 括号内的文本（已去掉括号）
+        :return: 整段为分类标签时返回 True
+        """
+        normalized = zhconv_convert(str(text or "").strip(), "zh-hans").strip()
+        if not normalized:
+            return False
+        # 去掉括号注释后再判断
+        stripped = cls._CATEGORY_NOTE_RE.sub("", normalized).strip()
+        if not stripped:
+            return False
+        candidates = [stripped]
+        # 英文复数：Animations / Documentaries
+        lower = stripped.lower()
+        if lower.endswith("ies") and len(stripped) > 3:
+            candidates.append(stripped[:-3] + "y")
+        if lower.endswith("s") and len(stripped) > 2:
+            candidates.append(stripped[:-1])
+        for candidate in candidates:
+            if CATEGORY_TAG_RE.fullmatch(candidate):
+                return True
+        # 空格或斜杠分隔的多段，逐段判定
+        parts = [part for part in re.split(r"[\s/|、,，]+", stripped) if part]
+        if len(parts) > 1 and all(CATEGORY_TAG_RE.fullmatch(part) for part in parts):
+            return True
+        return False
+
     @staticmethod
     def __prepare_title(title: str):
         """
@@ -297,9 +339,14 @@ class MetaAnime(MetaBase):
             title = ANIME_PREFIX_RE.sub("", title)
         elif match:
             title = title[:title.rfind("[")]
-        # 截掉分类
-        first_item = title.split("]")[0]
-        if first_item and CATEGORY_TAG_RE.search(zhconv_convert(first_item, "zh-hans")):
+        # 截掉分类标签
+        #
+        # 分类标签在发布名里总是独立占一个括号（``[动画]``、``[TV]``），
+        # 因此只在「整个括号段完全就是分类标签」时才删除。原实现用子串
+        # 匹配，``[Anime Name]`` 会因为首词命中 ``Anime`` 而整段被删掉，
+        # 片名随之丢失，后续 anitopy 与括号兜底都拿不到标题。
+        first_item = title.split("]")[0].lstrip("[【").strip()
+        if first_item and MetaAnime.__is_category_tag(first_item):
             title = LEADING_BRACKET_BLOCK_RE.sub("", title).strip()
         # 去掉大小
         title = FILE_SIZE_RE.sub("", title)

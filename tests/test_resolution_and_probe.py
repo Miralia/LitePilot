@@ -904,3 +904,56 @@ def test_tokens_claim_is_first_win():
     assert tokens.is_claimed(0) is True
     assert tokens.is_claimed(1) is False
     assert tokens.claimed_texts("name") == {"Paris"}
+
+
+# ---------------------------------------------------------------------------
+# 分类标签判定
+#
+# 分类标签在发布名里独立占一个括号。原实现用子串匹配，[Anime Name] 会因
+# 首词命中 Anime 而被整段删除，片名随之丢失，anitopy 与括号兜底都救不回。
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "text,expect",
+    [
+        # 片名：不得判为分类
+        ("Anime Name", False),
+        ("Some Movie Name", False),
+        ("Dune", False),
+        ("诛仙", False),
+        # 纯分类标签
+        ("Anime", True),
+        ("Animation", True),
+        ("Movie", True),
+        ("TV", True),
+        ("动画", True),
+        ("动画片", True),
+        # 分类附带括号说明
+        ("Animations(动画片)", True),
+    ],
+)
+def test_is_category_tag(text, expect):
+    """分类标签需整段命中，片名不应被误判。"""
+    from app.core.meta.metaanime import MetaAnime
+
+    impl = MetaAnime._MetaAnime__is_category_tag
+    assert impl(text) is expect
+
+
+@pytest.mark.parametrize(
+    "title,expect_name",
+    [
+        # 首个括号是片名：不得被当作分类标签删除
+        ("[Anime Name][01][1080p][BDRip].mkv", "Anime Name"),
+        # 首个括号是分类标签：删除后仍能取到片名
+        ("[SweetSub][Anime Name][01][1080p].mkv", "Anime Name"),
+        (
+            "[Nekomoe kissaten][Paris ni Saku Etoile][Movie][1080p][JPSC].mp4",
+            "Paris Ni Saku Etoile",
+        ),
+    ],
+)
+def test_anime_bracket_title_not_swallowed(title, expect_name):
+    """动漫括号命名中，片名不因分类标签判定或组名假设而丢失。"""
+    from app.core.metainfo import MetaInfo
+
+    assert MetaInfo(title).name == expect_name

@@ -153,16 +153,26 @@ class MetaVideo(MetaBase):
                 self.begin_season = int(season)
                 self.total_season = 1
             return
-        # 去掉名称中第1个[]的内容
+        # 首个方括号的处理
+        #
+        # 动漫发布名有两种常见排列：`[组名][片名][参数]` 与 `[片名][参数]`。
+        # 原实现一律丢弃首个括号，当前者成立时无碍，后者则会把片名整段
+        # 丢掉，随后 `[片名][1080p]` 这类名字只剩参数、解析不出任何标题。
+        # 因此改为先判断首个括号是否可能为片名：若剩余部分已无片名可用
+        # （全是分辨率、编码、集号等技术标记），就把首个括号保留下来。
         _first_bracket = FIRST_BRACKET_RE.match(title)
         if _first_bracket:
             _bracket_content = _first_bracket.group(1)
+            _rest = title[_first_bracket.end():]
             # 如果第一个括号内为点分隔的英文发布名格式（含年份+资源类型），保留内容去掉括号
             if BRACKET_DOT_TITLE_RE.search(_bracket_content) \
                     and BRACKET_RESOURCE_RE.search(_bracket_content):
-                title = _bracket_content + title[_first_bracket.end():]
+                title = _bracket_content + _rest
+            elif self.__rest_lacks_title(_rest):
+                # 剩余部分只含技术标记，说明首个括号就是片名，保留其内容
+                title = _bracket_content + _rest
             else:
-                title = title[_first_bracket.end():]
+                title = _rest
         # 把xxxx-xxxx年份换成前一个年份，常出现在季集上
         title = YEAR_RANGE_RE.sub(r'\1\2', title)
         # 把大小去掉
@@ -468,6 +478,69 @@ class MetaVideo(MetaBase):
                 self._last_token_type = "enname"
                 # 片名占用后即锁定该 token，避免同一段文字被组名等字段复用
                 self._claim_name_token()
+
+    @classmethod
+    def __rest_lacks_title(cls, rest: str) -> bool:
+        """
+        判断去掉首个括号后的剩余部分是否已无片名可用。
+
+        用于区分 `[组名][片名][参数]` 与 `[片名][参数]`：前者剩余部分里
+        还有片名，首个括号应丢弃；后者剩余部分全是技术标记，首个括号
+        就是片名，必须保留。判据是「剩余部分能否拆出非技术词」，不需要
+        真正执行一次完整解析。
+
+        扩展名需先剥离：`.mkv` 这类后缀会被切成独立 token，若不排除，
+        任何带扩展名的输入都会被判定为「仍有片名」。
+
+        :param rest: 去掉首个括号后的文本
+        :return: 剩余部分不含任何非技术词时返回 True
+        """
+        if not rest:
+            return True
+        text = str(rest)
+        # 去掉扩展名，避免后缀被当作片名词
+        dot = text.rfind(".")
+        if dot > 0:
+            suffix = text[dot + 1:].strip().lower()
+            if suffix and suffix.isalnum():
+                text = text[:dot]
+        for token in Tokens(text).tokens:
+            if not token or not token.strip():
+                continue
+            if cls.__is_technical_token(token):
+                continue
+            # 出现任意非技术词就认为剩余部分仍有片名
+            return False
+        return True
+
+    @classmethod
+    def __is_technical_token(cls, token: str) -> bool:
+        """
+        判断单个 token 是否为技术标记（分辨率、编码、来源、季集等）。
+
+        :param token: 待判断的 token
+        :return: 属于技术标记返回 True
+        """
+        text = token.strip()
+        if not text:
+            return True
+        # 方括号里的年份、纯数字集号、CRC 校验和、特典标签
+        if cls._is_release_noise(text):
+            return True
+        if text.isdigit():
+            return True
+        patterns = (
+            cls._resources_pix_pattern,
+            cls._resources_pix_pattern2,
+            cls._resources_type_pattern,
+            cls._source_pattern,
+            cls._video_encode_pattern,
+            cls._audio_encode_pattern,
+            cls._season_pattern,
+            cls._episode_pattern,
+            cls._fps_pattern,
+        )
+        return any(pattern.search(text) for pattern in patterns)
 
     def _claim_name_token(self) -> None:
         """
