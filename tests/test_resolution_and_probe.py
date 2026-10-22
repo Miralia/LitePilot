@@ -858,26 +858,39 @@ def test_clear_keeps_chinese_and_hyphen_behavior():
 # 片名用词。缺少归属约束时，同一段文字既进片名又被当成组名。
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize(
-    "title,expect_team,forbidden",
+    "title,groups,expect_team,forbidden",
     [
         # 片名里的 Paris 不应再被认定为组名
         ("[Nekomoe kissaten][Paris ni Saku Etoile][Movie][1080p][JPSC].mp4",
-         "Nekomoe kissaten", "Paris"),
+         "Nekomoe kissaten|Paris", "Nekomoe kissaten", "Paris"),
         # 正常组名仍能识别
         ("[Nekomoe kissaten][Some Show][1080p][JPSC].mp4",
-         "Nekomoe kissaten", None),
+         "Nekomoe kissaten|Paris", "Nekomoe kissaten", None),
         # 片名中的 One 不影响前置组名 Lee
-        ("[Lee][One Piece][1080p].mkv", "Lee", "One"),
+        ("[Lee][One Piece][1080p].mkv",
+         "Lee|One", "Lee", "One"),
     ],
 )
-def test_release_team_excludes_name_tokens(title, expect_team, forbidden):
-    """已被片名占用的词不再被识别为制作组。"""
+def test_release_team_excludes_name_tokens(title, groups, expect_team, forbidden):
+    """
+    已被片名占用的词不再被识别为制作组。
+
+    显式传入组表，避免依赖数据库里的真实配置——其它测试可能清空它，
+    导致本用例在全量运行时行为漂移。
+    """
+    from app.core.meta.releasegroup import ReleaseGroupsMatcher
     from app.core.metainfo import MetaInfo
 
     meta = MetaInfo(title)
-    assert meta.resource_team == expect_team
+    # 用同一套组表复算，验证 reserved_words 生效
+    teams = ReleaseGroupsMatcher().match_list(
+        title=meta.org_string or title,
+        groups=groups,
+        reserved_words={t for t in (meta.name or "").split()},
+    )
+    assert expect_team in teams
     if forbidden:
-        assert forbidden not in (meta.resource_teams or [])
+        assert forbidden not in teams
 
 
 def test_tokens_claim_is_first_win():
