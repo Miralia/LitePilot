@@ -205,7 +205,12 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
             self.__groups_re_cache[groups] = groups_re
         return groups_re
 
-    def match_list(self, title: str = None, groups: str = None) -> List[str]:
+    def match_list(
+            self,
+            title: str = None,
+            groups: str = None,
+            reserved_words: Optional[set] = None,
+    ) -> List[str]:
         """
         匹配出全部制作组，支持合作发布。
 
@@ -214,8 +219,14 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
         - `&` 是合作发布，两侧各算一个小组：`SweetSub&VCB-Studio` 得到两个组。
         - `@` 是从属关系，整体算一个小组：`Baha@SweetSub` 得到 `Baha@SweetSub`。
 
+        词表里存在大量单单词规则（Paris、One、Lee、Ao 等），它们同时也是
+        常见片名用词。调用方应把已被片名等字段占用的词通过
+        ``reserved_words`` 传入，命中这些词的候选直接跳过，避免同一个词
+        既属于片名又被当成制作组。
+
         :param title: 资源标题或文件名
         :param groups: 制作组/字幕组
+        :param reserved_words: 已被其它字段占用的词，命中即跳过
         :return: 去重后的组名列表，按出现顺序
         """
         if not title:
@@ -223,8 +234,12 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
         if not groups:
             groups = self.get_release_groups()
         groups_re = self.__get_groups_re(groups)
+        reserved = {str(word).strip().upper() for word in (reserved_words or set())}
         unique_groups: List[str] = []
         for match in groups_re.finditer(title):
+            if reserved and match.group(0).strip().upper() in reserved:
+                # 该词已归属片名等字段，不再重复认定为制作组
+                continue
             start, end = match.start(), match.end()
 
             # 命中项前面是 @：把它与上游合起来当作一个小组，

@@ -172,6 +172,8 @@ class MetaVideo(MetaBase):
         media_exts = settings.RMT_MEDIAEXT + settings.RMT_SUBEXT + settings.RMT_AUDIOEXT
         # 拆分tokens
         tokens = Tokens(title)
+        # 保留引用：片名消费过的 token 需要登记归属，避免被制作组等字段重复认领
+        self._tokens = tokens
         # 实例化StreamingPlatforms对象，并按需应用用户词表与输出形态
         streaming_platforms = StreamingPlatforms()
         streaming_platforms.ensure_loaded()
@@ -295,8 +297,13 @@ class MetaVideo(MetaBase):
                 if cn_name and len(cn_name) == len(self.en_name.split()):
                     # 中文名和拼音单词数相同，认为是中文名
                     self.cn_name = cn_name
-        # 制作组/字幕组：合作发布（&）记录多个，从属关系（@）视为一个
-        _teams = ReleaseGroupsMatcher().match_list(title=original_title)
+        # 制作组/字幕组：合作发布（&）记录多个，从属关系（@）视为一个。
+        # 已被片名占用的词不再参与匹配，避免 Paris 这类常见词既是片名
+        # 的一部分又被当作制作组
+        _reserved = tokens.claimed_texts("name") if tokens else set()
+        _teams = ReleaseGroupsMatcher().match_list(
+            title=original_title, reserved_words=_reserved
+        )
         # MetaVideo 使用自定义 __init__，不走 dataclass 生成器，
         # 因此新增字段需要显式赋值，否则实例上不会存在该属性。
         self.resource_teams = list(_teams)
@@ -382,14 +389,20 @@ class MetaVideo(MetaBase):
         if StringUtils.is_chinese(token):
             # 含有中文，直接做为标题（连着的数字或者英文会保留），且不再取用后面出现的中文
             self._last_token_type = "cnname"
+            claimed = False
             if not self.cn_name:
                 self.cn_name = token
+                claimed = True
             elif not self._stop_cnname_flag:
                 if self._name_movie_words_pattern.search(token) \
                         or (not self._name_no_chinese_pattern.search(token)
                             and not any(w in token for w in self._name_se_words)):
                     self.cn_name = "%s %s" % (self.cn_name, token)
+                    claimed = True
                 self._stop_cnname_flag = True
+            if claimed:
+                # 片名占用后即锁定该 token，避免同一段文字被组名等字段复用
+                self._claim_name_token()
         else:
             is_roman_digit = self._roman_numerals_pattern.search(token)
             # 阿拉伯数字或者罗马数字
@@ -417,8 +430,10 @@ class MetaVideo(MetaBase):
                         # 4位以下的数字或者罗马数字，拼装到已有标题中
                         if self._last_token_type == "cnname":
                             self.cn_name = "%s %s" % (self.cn_name, token)
+                            self._claim_name_token()
                         elif self._last_token_type == "enname":
                             self.en_name = "%s %s" % (self.en_name, token)
+                            self._claim_name_token()
                         self._continue_flag = False
                     elif token.isdigit() and len(token) == 4:
                         # 4位数字，可能是年份，也可能真的是标题的一部分，也有可能是集
@@ -451,6 +466,21 @@ class MetaVideo(MetaBase):
                 else:
                     self.en_name = token
                 self._last_token_type = "enname"
+                # 片名占用后即锁定该 token，避免同一段文字被组名等字段复用
+                self._claim_name_token()
+
+    def _claim_name_token(self) -> None:
+        """
+        把当前 token 登记为片名所有。
+
+        片名一旦占用某个词，制作组等基于全文正则的字段就不得再认领它。
+        缺少这层约束时，片名里的常见词（Paris、One、Lee 这类）会同时
+        被当作制作组名，导致名称与小组信息互相污染。
+        """
+        tokens = getattr(self, "_tokens", None)
+        if tokens is None:
+            return
+        tokens.claim(self._index - 1, "name")
 
     # 纯十六进制校验和（8 位）与常见的校验和/特典占位词
     _CRC_TOKEN_RE = re.compile(r"^[0-9A-F]{8}$", re.IGNORECASE)

@@ -849,3 +849,45 @@ def test_clear_keeps_chinese_and_hyphen_behavior():
 
     assert StringUtils.clear("普通中文") == "普通中文"
     assert StringUtils.clear("Spider-Man") == StringUtils.clear("Spider Man")
+
+
+# ---------------------------------------------------------------------------
+# token 归属：片名占用的词不得被制作组复用
+#
+# 组表里有大量单单词规则（Paris、One、Lee、Ao 等），它们同时也是常见
+# 片名用词。缺少归属约束时，同一段文字既进片名又被当成组名。
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "title,expect_team,forbidden",
+    [
+        # 片名里的 Paris 不应再被认定为组名
+        ("[Nekomoe kissaten][Paris ni Saku Etoile][Movie][1080p][JPSC].mp4",
+         "Nekomoe kissaten", "Paris"),
+        # 正常组名仍能识别
+        ("[Nekomoe kissaten][Some Show][1080p][JPSC].mp4",
+         "Nekomoe kissaten", None),
+        # 片名中的 One 不影响前置组名 Lee
+        ("[Lee][One Piece][1080p].mkv", "Lee", "One"),
+    ],
+)
+def test_release_team_excludes_name_tokens(title, expect_team, forbidden):
+    """已被片名占用的词不再被识别为制作组。"""
+    from app.core.metainfo import MetaInfo
+
+    meta = MetaInfo(title)
+    assert meta.resource_team == expect_team
+    if forbidden:
+        assert forbidden not in (meta.resource_teams or [])
+
+
+def test_tokens_claim_is_first_win():
+    """token 归属先到先得，重复登记不覆盖。"""
+    from app.utils.tokens import Tokens
+
+    tokens = Tokens("Paris ni Saku Etoile")
+    tokens.claim(0, "name")
+    tokens.claim(0, "team")
+    assert tokens.owners()[0] == "name"
+    assert tokens.is_claimed(0) is True
+    assert tokens.is_claimed(1) is False
+    assert tokens.claimed_texts("name") == {"Paris"}
