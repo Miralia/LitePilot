@@ -1259,3 +1259,45 @@ def test_notify_key_separates_seasons():
 
     assert chain._notify_generation[key_s1] == 2
     assert chain._notify_generation[key_s2] == 1
+
+
+def test_notify_not_gated_by_manual_flag():
+    """
+    手动「立即整理」也必须发送通知。
+
+    旧条件 (background or not manual) 把手动立即整理排除在外，而那
+    恰恰是最需要回执的场景：重命名结果、目标路径、实际入库数量都
+    不会出现在进度条上。判定只应看 need_notify。
+    """
+    chain = make_transfer_chain()
+    task = make_task(episode=1)
+    task.background = False
+    task.manual = True
+
+    scheduled: list = []
+    chain._schedule_notify = lambda t, i: scheduled.append((t, i))
+
+    transferinfo = TransferInfo(success=True, need_notify=True)
+    with patch("app.chain.transfer.TransferHistoryOper"), \
+            patch.object(chain, "eventmanager", create=True):
+        chain._TransferChain__default_callback(task, transferinfo)
+
+    assert len(scheduled) == 1, "手动立即整理应调度通知"
+
+
+def test_notify_respects_need_notify_false():
+    """need_notify 为 False 时不调度通知。"""
+    chain = make_transfer_chain()
+    task = make_task(episode=1)
+    task.background = True
+    task.manual = False
+
+    scheduled: list = []
+    chain._schedule_notify = lambda t, i: scheduled.append((t, i))
+
+    transferinfo = TransferInfo(success=True, need_notify=False)
+    with patch("app.chain.transfer.TransferHistoryOper"), \
+            patch.object(chain, "eventmanager", create=True):
+        chain._TransferChain__default_callback(task, transferinfo)
+
+    assert scheduled == [], "need_notify=False 不应通知"

@@ -1100,10 +1100,12 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                     self.jobview.size(task.mediainfo, task.meta.begin_season)
                     or task.fileitem.size
             )
-            # 发送通知，实时手动整理时不发
-            if transferinfo.need_notify and (task.background or not task.manual):
-                # 不在此刻直接发送：同批文件是逐个到达的，立即发送会让
-                # 一批文件产生多条通知，改为窗口内无新完成才聚合发送
+            # 只看 need_notify：它已经是调用方表达「本次是否通知」的开关。
+            # 旧条件额外要求 background 或非 manual，会把手动「立即整理」
+            # 排除在通知之外——而那恰恰是最需要回执的场景（重命名结果、
+            # 目标路径、实际入库数量都不会出现在进度条上）。
+            # 批量整理不会刷屏，_schedule_notify 的延迟聚合会合并成一条。
+            if transferinfo.need_notify:
                 self._schedule_notify(task, transferinfo)
 
         transferhis = TransferHistoryOper()
