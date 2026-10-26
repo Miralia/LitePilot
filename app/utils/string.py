@@ -4,7 +4,7 @@ import hashlib
 import random
 import re
 import unicodedata
-from typing import Union, Tuple, Optional, Any, List, Generator
+from typing import Union, Tuple, Optional, Any, List, Generator, Dict
 from urllib import parse
 
 import cn2an
@@ -751,6 +751,55 @@ class StringUtils:
             result.append(f"{start}-{end}")
 
         return ",".join(result)
+
+    @staticmethod
+    def format_season_episode(pairs: List[Tuple[int, int]]) -> str:
+        """
+        把 (季, 集) 列表格式化为紧凑的季集区间。
+
+        季集要连写成 ``S02E50``，而不是 ``S02 E50``——前者是发布名与媒体
+        库通用的写法，也便于一眼读出属于哪一季哪一集。
+
+        输出规则：
+
+        - 单集：``S02E50``
+        - 同季连续：``S02E50-E52``
+        - 同季不连续：``S02E50、S02E52``（全部列出，不做折叠）
+        - 跨季：``S02E50-S03E02``，首集与末集各带完整季号
+
+        :param pairs: (季, 集) 元组列表
+        :return: 格式化后的季集串，无有效输入时返回空串
+        """
+        if not pairs:
+            return ""
+        # 去重并排序，季优先
+        ordered = sorted({(int(s), int(e)) for s, e in pairs if s is not None and e is not None})
+        if not ordered:
+            return ""
+        if len(ordered) == 1:
+            season, episode = ordered[0]
+            return f"S{season:02d}E{episode:02d}"
+
+        # 按季分组
+        grouped: Dict[int, List[int]] = {}
+        for season, episode in ordered:
+            grouped.setdefault(season, []).append(episode)
+
+        # 单季：区间或逐个列出
+        if len(grouped) == 1:
+            season = next(iter(grouped))
+            episodes = sorted(grouped[season])
+            if episodes[-1] - episodes[0] + 1 == len(episodes):
+                return f"S{season:02d}E{episodes[0]:02d}-E{episodes[-1]:02d}"
+            return "、".join(f"S{season:02d}E{episode:02d}" for episode in episodes)
+
+        # 跨季：首集与末集各带季号
+        first_season, first_episode = ordered[0]
+        last_season, last_episode = ordered[-1]
+        return (
+            f"S{first_season:02d}E{first_episode:02d}"
+            f"-S{last_season:02d}E{last_episode:02d}"
+        )
 
     @staticmethod
     def format_ep(nums: List[int]) -> str:

@@ -811,6 +811,66 @@ class JobManager:
         with job_lock:
             return list(self._job_view.values())
 
+    def media_totals(self, media: MediaInfo) -> Tuple[int, int]:
+        """
+        统计同一媒体下所有已完成任务的文件数与总体积。
+
+        跨季批次落在不同作业里，按季统计会漏掉其它季的文件，因此提供
+        按媒体聚合的版本，供入库通知使用。
+
+        :param media: 媒体信息
+        :return: (文件数, 总体积字节)
+        """
+        if not media:
+            return 0, 0
+        media_key = self.__get_media_id(media=media)[0]
+        count = 0
+        total_size = 0
+        with job_lock:
+            for job_id, job in self._job_view.items():
+                if not job_id or job_id[0] != media_key:
+                    continue
+                for task in job.tasks:
+                    if task.state != "completed":
+                        continue
+                    count += 1
+                    size = task.fileitem.size
+                    if size is None and task.fileitem.storage == "local":
+                        size = SystemUtils.get_directory_size(Path(task.fileitem.path))
+                    total_size += size or 0
+        return count, total_size
+
+    def media_season_episodes(self, media: MediaInfo) -> List[Tuple[int, int]]:
+        """
+        收集同一媒体下所有已完成任务的 (季, 集)。
+
+        一次下载可能横跨多季（如 S02E50 至 S03E02），这些任务落在不同的
+        作业里，因此需要跨作业收集。返回去重后的 (季, 集) 列表，供通知
+        格式化成分段区间。
+
+        :param media: 媒体信息
+        :return: (季, 集) 元组列表；无有效数据时返回空列表
+        """
+        if not media:
+            return []
+        pairs = []
+        with job_lock:
+            for job_id, job in self._job_view.items():
+                # 作业键为 ((来源, ID), 季)，只取同一媒体的作业
+                if not job_id or job_id[0] != self.__get_media_id(media=media)[0]:
+                    continue
+                for task in job.tasks:
+                    if task.state != "completed":
+                        continue
+                    meta = task.meta
+                    if not meta:
+                        continue
+                    season = getattr(meta, "begin_season", None)
+                    for episode in getattr(meta, "episode_list", None) or []:
+                        if season is not None and episode is not None:
+                            pairs.append((int(season), int(episode)))
+        return sorted(set(pairs))
+
     def season_episodes(
             self, media: MediaInfo, season: Optional[int] = None
     ) -> List[int]:
@@ -940,7 +1000,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         # 入库通知的延迟聚合状态：按 (媒体标识, 季) 记录代号，
         # 代号变化意味着窗口期内又有文件完成，上一轮定时器自行放弃
         self._notify_generation: Dict[Tuple, int] = {}
-        self._notify_pending: Dict[Tuple, Tuple[Any, Any]] = {}
+        self._notify_pending: Dict[Tuple, Tuple[Any, Any, Dict[str, Any]]] = {}
         # 批次级刮削缓冲，避免同一批多文件入库重复触发目录刮削
         self._scrape_batches: Dict[str, Dict[str, Any]] = {}
         # 整理进度进度
@@ -4132,8 +4192,14 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         任务全部完成」，立即发送会让一批文件产生多条通知且数量逐个递增。
 
         做法是窗口内无新文件完成才发送：每次有文件完成就递增该批次的代号
-        并重置定时器，到期时代号未变才真正发送。到期时重新统计整批数据，
-        而不是沿用触发那一刻的快照。
+        并重置定时器，到期时代号未变才真正发送。
+
+        批次键只按媒体区分，不区分季：一次下载可能横跨多季
+        （S02E50 至 S03E02），按季分组会把同一批拆成多条通知。
+
+        统计数据必须在调度时刻快照。延迟窗口内 __handle_transfer 的
+        finally 会调用 try_remove_job 清空作业视图，等到定时器到期再读
+        就只剩空集，季集信息会退化成只有季号。
 
         :param task: 刚完成的任务
         :param transferinfo: 该文件的整理结果
@@ -4142,15 +4208,17 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             key = (
                 task.mediainfo.media_id if task.mediainfo else None,
                 task.mediainfo.source if task.mediainfo else None,
-                task.meta.begin_season if task.meta else None,
             )
         except AttributeError:
-            key = (None, None, None)
+            key = (None, None)
+
+        # 快照：此刻作业视图仍完整
+        snapshot = self._build_notify_snapshot(task, transferinfo)
 
         with job_lock:
             self._notify_generation[key] = self._notify_generation.get(key, 0) + 1
             generation = self._notify_generation[key]
-            self._notify_pending[key] = (task, transferinfo)
+            self._notify_pending[key] = (task, transferinfo, snapshot)
 
         def fire():
             threading.Event().wait(NOTIFY_DEBOUNCE_SECONDS)
@@ -4169,30 +4237,60 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
 
         threading.Thread(target=fire, daemon=True).start()
 
-    def _send_aggregated_notify(
+    def _build_notify_snapshot(
             self, task: TransferTask, transferinfo: TransferInfo
+    ) -> Dict[str, Any]:
+        """
+        在调度时刻快照通知所需的统计数据。
+
+        延迟窗口内作业视图会被清理，因此不能等定时器到期再读。季集按
+        (季, 集) 收集后格式化为 S02E50 / S02E50-E52 / S02E50-S03E02 形式，
+        跨季的批次也能正确表达。
+
+        :param task: 刚完成的任务
+        :param transferinfo: 该文件的整理结果
+        :return: 含文件数、总体积与季集文本的快照
+        """
+        pairs = self.jobview.media_season_episodes(task.mediainfo) if task.mediainfo else []
+        count, total_size = (
+            self.jobview.media_totals(task.mediainfo)
+            if task.mediainfo else (0, 0)
+        )
+        return {
+            "file_count": count or 1,
+            "total_size": total_size or task.fileitem.size,
+            "season_episode": StringUtils.format_season_episode(pairs) or None,
+        }
+
+    def _send_aggregated_notify(
+            self,
+            task: TransferTask,
+            transferinfo: TransferInfo,
+            snapshot: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
-        用整批已完成任务的数据发送入库通知。
+        用调度时刻的快照发送入库通知。
 
-        触发任务只用于定位媒体与季集，文件数与总体积必须重新从作业视图
-        统计，否则通知内容会停留在触发那一刻、漏掉窗口期内完成的文件。
+        作业视图在延迟窗口内已被 try_remove_job 清理，此时再读只能拿到
+        空集。因此文件数、总体积与季集文本一律取自快照；快照缺失时退回
+        当前任务自身的数据，保证通知仍可发出。
 
         :param task: 批次内最后一个完成的任务
         :param transferinfo: 该任务的整理结果
+        :param snapshot: 调度时刻的统计数据快照
         """
-        season = task.meta.begin_season if task.meta else None
-        transferinfo.file_count = self.jobview.count(task.mediainfo, season) or 1
-        transferinfo.total_size = (
-                self.jobview.size(task.mediainfo, season) or task.fileitem.size
-        )
-        se_str = None
-        if task.mediainfo and task.mediainfo.type == MediaType.TV:
-            season_episodes = self.jobview.season_episodes(task.mediainfo, season)
-            if season_episodes:
-                se_str = f"{task.meta.season} {StringUtils.format_ep(season_episodes)}"
-            else:
-                se_str = task.meta.season
+        data = snapshot or {}
+        transferinfo.file_count = data.get("file_count") or 1
+        transferinfo.total_size = data.get("total_size") or task.fileitem.size
+        se_str = data.get("season_episode")
+        if not se_str and task.meta and task.mediainfo \
+                and task.mediainfo.type == MediaType.TV:
+            # 快照缺失时用当前文件自身的季集兜底
+            fallback = []
+            if task.meta.begin_season is not None:
+                for episode in task.meta.episode_list or []:
+                    fallback.append((task.meta.begin_season, episode))
+            se_str = StringUtils.format_season_episode(fallback) or task.meta.season
         self.send_transfer_message(
             meta=task.meta,
             mediainfo=task.mediainfo,
