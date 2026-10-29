@@ -153,6 +153,8 @@ class ChainEventType(Enum):
 
 # 系统配置Key字典
 class SystemConfigKey(Enum):
+    # 入库后是否刷新媒体服务器媒体库
+    RefreshMediaServerAfterTransfer = "RefreshMediaServerAfterTransfer"
     # 下载器配置
     Downloaders = "Downloaders"
     # 媒体服务器配置

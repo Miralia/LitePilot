@@ -1055,3 +1055,34 @@ def test_format_season_episode(pairs, expect):
     from app.utils.string import StringUtils
 
     assert StringUtils.format_season_episode(pairs) == expect
+
+
+# ---------------------------------------------------------------------------
+# 媒体库刷新
+#
+# 取消二级分类时删掉了 category 的赋值，但 RefreshMediaItem 构造处仍引用
+# 该变量，抛出的 NameError 被外层 except 静默吞掉，导致入库后媒体库再也
+# 没有被刷新过。
+# ---------------------------------------------------------------------------
+def test_refresh_media_item_without_category():
+    """媒体库刷新项不再依赖已取消的二级分类字段。"""
+    import app.schemas as schemas
+    from app.schemas.types import MediaType
+
+    item = schemas.RefreshMediaItem(
+        title="死神",
+        year="2004",
+        type=MediaType.TV,
+        target_path="/media/Anime/Bleach (2004) [tmdbid=30984]",
+    )
+    assert item.category is None
+    assert item.target_path is not None
+
+
+def test_refresh_config_key_exists():
+    """入库后刷新媒体库的开关配置项存在。"""
+    from app.schemas.types import SystemConfigKey
+
+    assert SystemConfigKey.RefreshMediaServerAfterTransfer.value == (
+        "RefreshMediaServerAfterTransfer"
+    )

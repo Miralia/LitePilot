@@ -1352,11 +1352,9 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             __notify()
             if not task.transfer_batch_id:
                 self.__send_metadata_scrape_event(task, transferinfo)
-            # 入库后刷新媒体服务器媒体库，否则媒体服务器不知道有新文件
-            try:
-                self.__refresh_media_server_library(task, transferinfo)
-            except Exception as err:  # pylint: disable=broad-except
-                logger.warning(f"媒体库刷新异常（不影响入库）：{err}")
+            # 媒体库刷新移到通知发送时执行：通知已改为延迟聚合，
+            # 在整理完成时立刻刷新会让一批文件重复刷 N 次，且部分文件
+            # 可能尚未落盘
             # 队列全部处理完后再更新封面：批量入库时只触发一次，
             # 避免每部都重新生成造成重复开销与阻塞
             try:
@@ -1630,6 +1628,16 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         :param task: 整理任务
         :param transferinfo: 整理结果信息
         """
+        # 开关未开启时直接跳过，避免无谓的接口调用
+        try:
+            enabled = SystemConfigOper().get(
+                SystemConfigKey.RefreshMediaServerAfterTransfer
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"读取媒体库刷新开关失败：{err}")
+            enabled = None
+        if enabled is False:
+            return
         try:
             servers = MediaServerHelper().get_services()
         except Exception as err:  # pylint: disable=broad-except
@@ -1658,13 +1666,12 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         if not title:
             return
 
-        # 二级分类已取消，目录配置不再带类别；刷新媒体库时留空，
-        # 库定位会自动退回按路径匹配
+        # 二级分类已取消，不再传 category；媒体库定位只用
+        # title / year / type / target_path，按路径匹配所属库
         item = schemas.RefreshMediaItem(
             title=title,
             year=year,
             type=mtype,
-            category=category,
             target_path=target_path,
         )
         for name, service in servers.items():
@@ -4299,6 +4306,12 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             episodes_info=task.episodes_info,
             username=task.username,
         )
+        # 此刻整批文件已全部落盘，刷新一次即可；放在通知发送处而非整理
+        # 完成处，可避免批量入库时每集各刷一次，也保证文件确实可被扫描到
+        try:
+            self.__refresh_media_server_library(task, transferinfo)
+        except Exception as err:  # pylint: disable=broad-except
+            logger.warning(f"媒体库刷新异常（不影响入库）：{err}")
 
     def send_transfer_message(
             self,

@@ -682,7 +682,10 @@ class Emby:
                         return folder.get("Id")
                 except Exception as err:
                     logger.debug(f"匹配子目录出错：{err} - {traceback.format_exc()}")
-        # 如果找不到，只要路径中有分类目录名就命中
+        # 如果找不到，只要路径中有分类目录名就命中。
+        # 二级分类已取消，category 通常为空，此时跳过该兜底
+        if not item.category:
+            return "/"
         for folder in self.folders:
             for subfolder in folder.get("SubFolders"):
                 if subfolder.get("Path") and re.search(r"[/\\]%s" % item.category,
