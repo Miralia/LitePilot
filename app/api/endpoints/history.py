@@ -159,7 +159,11 @@ def delete_transfer_history(
                 success=False, message=f"{src_fileitem.path} 删除失败"
             )
         # 删除下载记录中关联的文件
-        DownloadFiles.delete_by_fullpath(db, Path(src_fileitem.path).as_posix())
+        DownloadFiles.delete_by_fullpath(
+            db,
+            Path(src_fileitem.path).as_posix(),
+            download_hash=history.download_hash,
+        )
         # 发送事件
         eventmanager.send_event(
             EventType.DownloadFileDeleted,
