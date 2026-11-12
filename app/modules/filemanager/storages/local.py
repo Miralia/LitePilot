@@ -12,6 +12,10 @@ from app.schemas.exception import StorageQueryError
 from app.schemas.types import StorageSchema
 from app.utils.system import SystemUtils
 
+# 新建目录的权限位。整理服务可能以 root 运行，而媒体服务器以独立用户（如 emby）
+# 运行，默认 umask 022 建出的目录对其他用户不可写，媒体服务器将无法删除或改名文件。
+CREATED_DIR_MODE = 0o777
+
 
 class LocalStorage(StorageBase):
     """
@@ -118,6 +122,32 @@ class LocalStorage(StorageBase):
             ret_items.append(self.__get_fileitem(item))
         return ret_items
 
+    @staticmethod
+    def __mkdir_permissive(path: Path) -> None:
+        """
+        创建目录，并把本次新建的每一层目录权限显式放宽。
+
+        mkdir 的权限会被进程 umask 收窄，systemd 拉起整理服务时 umask 为 022，
+        以 root 运行就会建出 root:root 0755 的目录。媒体服务器多以独立用户
+        （如 emby）运行，删除或重命名文件需要父目录可写，否则会报权限不足。
+        这里对新建目录补回权限位，已存在的目录一律不动，避免改写用户既有策略。
+
+        :param path: 待创建的目录路径
+        """
+        created_dirs: List[Path] = []
+        current = Path(path)
+        while not current.exists():
+            created_dirs.append(current)
+            if current.parent == current:
+                break
+            current = current.parent
+        Path(path).mkdir(parents=True, exist_ok=True)
+        for created in created_dirs:
+            try:
+                created.chmod(CREATED_DIR_MODE)
+            except OSError as err:
+                logger.warn(f"【本地】目录 {created} 权限修正失败：{err}")
+
     def create_folder(self, fileitem: schemas.FileItem, name: str) -> Optional[schemas.FileItem]:
         """
         创建目录
@@ -128,7 +158,7 @@ class LocalStorage(StorageBase):
             return None
         path_obj = Path(fileitem.path) / name
         if not path_obj.exists():
-            path_obj.mkdir(parents=True, exist_ok=True)
+            self.__mkdir_permissive(path_obj)
         return self.__get_diritem(path_obj)
 
     def get_folder(self, path: Path) -> Optional[schemas.FileItem]:
@@ -136,7 +166,7 @@ class LocalStorage(StorageBase):
         获取目录
         """
         if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
+            self.__mkdir_permissive(path)
         return self.__get_diritem(path)
 
     def get_item(self, path: Path) -> Optional[schemas.FileItem]:

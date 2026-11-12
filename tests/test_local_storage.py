@@ -151,3 +151,43 @@ def test_same_device_move_still_uses_rename(tmp_path: Path) -> None:
     assert target.stat().st_ino == source_stat.st_ino
     assert target.stat().st_mode & 0o777 == 0o600
     copy_mock.assert_not_called()
+
+
+def test_get_folder_makes_new_dirs_writable_for_other_users(tmp_path: Path) -> None:
+    """新建的媒体库目录必须对其他用户可写，否则媒体服务器无法删除入库文件。"""
+    storage = _make_storage()
+    target = tmp_path / "Movie" / "Example (2026) [tmdbid=1]"
+    # 模拟 systemd 启动时的默认 umask，确保测试覆盖真实故障场景
+    original_umask = os.umask(0o022)
+    try:
+        item = storage.get_folder(target)
+    finally:
+        os.umask(original_umask)
+
+    assert item is not None
+    assert target.stat().st_mode & 0o777 == local_storage_module.CREATED_DIR_MODE
+    assert (target.parent).stat().st_mode & 0o777 == 0o777
+
+
+def test_get_folder_keeps_existing_dir_mode(tmp_path: Path) -> None:
+    """已存在的目录不应被改写权限，避免覆盖用户自己的目录策略。"""
+    storage = _make_storage()
+    target = tmp_path / "Existing (2026) [tmdbid=2]"
+    target.mkdir()
+    target.chmod(0o750)
+
+    item = storage.get_folder(target)
+
+    assert item is not None
+    assert target.stat().st_mode & 0o777 == 0o750
+
+
+def test_create_folder_makes_new_dir_writable_for_other_users(tmp_path: Path) -> None:
+    """显式建目录同样要对其他用户可写，与自动整理路径保持一致。"""
+    storage = _make_storage()
+    parent = schemas.FileItem(path=tmp_path.as_posix())
+
+    item = storage.create_folder(parent, "Season 1")
+
+    assert item is not None
+    assert (tmp_path / "Season 1").stat().st_mode & 0o777 == 0o777
