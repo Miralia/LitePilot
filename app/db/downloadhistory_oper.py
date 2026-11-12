@@ -105,12 +105,13 @@ class DownloadHistoryOper(DbOper):
         """
         return DownloadFiles.get_by_savepath(self._db, fullpath)
 
-    def delete_file_by_fullpath(self, fullpath: str):
+    def delete_file_by_fullpath(self, fullpath: str, download_hash: Optional[str] = None):
         """
         按fullpath删除下载文件记录
         :param fullpath: 数据key
+        :param download_hash: 限定所属种子，兼容存量的相对路径记录
         """
-        DownloadFiles.delete_by_fullpath(self._db, fullpath)
+        return DownloadFiles.delete_by_fullpath(self._db, fullpath, download_hash)
 
     def get_hash_by_fullpath(self, fullpath: str) -> str:
         """

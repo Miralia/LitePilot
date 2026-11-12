@@ -47,6 +47,11 @@ class DownloadFileSyncChain(ChainBase):
         downloadhis = DownloadHistoryOper()
         history = downloadhis.get_by_hash(download_hash=torrent_hash)
         save_path = str(history.path) if history and history.path else ""
+        if not save_path:
+            # 下载历史缺失时（历史迁移、手动添加等）退回下载器自报的保存目录，
+            # 否则文件只能落成相对路径，媒体库删除时按源文件绝对路径反查不到，
+            # 种子永远不会被判定为「文件已全部删除」
+            save_path = self._resolve_save_path(torrent_hash, downloader)
 
         existing = {
             item.fullpath
@@ -72,7 +77,7 @@ class DownloadFileSyncChain(ChainBase):
                     "fullpath": fullpath,
                     "savepath": save_path,
                     "filepath": name,
-                    "torrentname": history.torrent if history else "",
+                    "torrentname": history.torrent_name if history else "",
                     "state": 1,
                 }
             )
@@ -83,6 +88,45 @@ class DownloadFileSyncChain(ChainBase):
                 f"下载文件同步：种子 {torrent_hash} 新增 {len(file_items)} 条文件记录"
             )
         return len(file_items)
+
+    def _resolve_save_path(self, torrent_hash: str, downloader: Optional[str]) -> str:
+        """
+        从下载器查询种子的保存根目录。
+
+        下载历史可能缺失（历史数据迁移、手动添加种子），此时不能拿不到路径
+        就退化成相对路径：文件记录的 fullpath 是媒体库删除时反查种子的唯一键，
+        落成相对路径会让这条种子永远无法被判定为已清空。
+
+        :param torrent_hash: 种子 Hash
+        :param downloader: 下载器名称
+        :return: 保存根目录，查询不到时返回空字符串
+        """
+        try:
+            torrents = self.list_torrents(
+                hashs=torrent_hash,
+                downloader=downloader,
+                include_all_tags=True,
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"查询种子 {torrent_hash} 保存路径失败：{err}")
+            return ""
+        target = str(torrent_hash).lower()
+        for torrent in torrents or []:
+            if str(getattr(torrent, "hash", "") or "").lower() != target:
+                continue
+            # save_path 是保存根目录；content_path 是任务内容路径，
+            # 单文件种子下它已含文件名，直接当根目录会拼出重复文件名，
+            # 因此优先 save_path，缺失时再从 content_path 反推
+            save_path = getattr(torrent, "save_path", None)
+            if save_path:
+                return str(save_path).replace("\\", "/").rstrip("/")
+            content_path = getattr(torrent, "content_path", None)
+            if content_path:
+                content = Path(str(content_path).replace("\\", "/"))
+                # 单文件种子的 content_path 即文件本身，根目录是它的父级
+                return (content.parent if content.suffix else content).as_posix()
+            return ""
+        return ""
 
     def _build_path_index(self) -> None:
         """

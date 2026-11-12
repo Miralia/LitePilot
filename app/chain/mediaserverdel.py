@@ -209,7 +209,9 @@ class MediaServerDelChain(ChainBase):
                 logger.info(f"种子 {torrent_hash} 已不存在于下载器，仅删除整理记录")
                 state = "gone"
             else:
-                self.downloadhis.delete_file_by_fullpath(fullpath=history.src)
+                self.downloadhis.delete_file_by_fullpath(
+                    fullpath=history.src, download_hash=torrent_hash
+                )
                 all_files = self.downloadhis.get_files_by_hash(
                     download_hash=torrent_hash
                 )

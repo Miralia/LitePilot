@@ -462,10 +462,40 @@ class DownloadFiles(Base):
 
     @classmethod
     @db_update
-    def delete_by_fullpath(cls, db: Session, fullpath: str):
-        db.query(cls).filter(cls.fullpath == fullpath, cls.state == 1).update(
-            {"state": 0}
-        )
+    def delete_by_fullpath(
+        cls,
+        db: Session,
+        fullpath: str,
+        download_hash: Optional[str] = None,
+    ):
+        """
+        按完整路径把文件记录标记为已删除。
+
+        早期同步在下载历史缺失时退化成只写相对路径（不带前导斜杠），
+        这类记录与调用方传入的绝对路径永远不相等，种子因此一直被判定
+        为「仍有文件未删除」，媒体库删除后种子留在下载器里。
+
+        这里把绝对路径逐级裁剪成候选相对路径，与完整路径一起精确匹配：
+        不用 LIKE 后缀匹配，避免同名文件被连带标记。
+
+        :param db: 数据库会话
+        :param fullpath: 文件完整路径
+        :param download_hash: 限定所属种子，进一步收窄匹配范围
+        """
+        normalized = str(fullpath).replace("\\", "/").strip()
+        if not normalized:
+            return 0
+        candidates = {normalized}
+        parts = normalized.strip("/").split("/")
+        for index in range(1, len(parts)):
+            candidate = "/".join(parts[index:])
+            # 仅剩文件名的候选只有在限定种子时才安全，否则同名文件会被连带标记
+            if "/" in candidate or download_hash:
+                candidates.add(candidate)
+        query = db.query(cls).filter(cls.fullpath.in_(candidates), cls.state == 1)
+        if download_hash:
+            query = query.filter(cls.download_hash == download_hash)
+        return query.update({"state": 0}, synchronize_session=False)
 
     @classmethod
     @db_update
