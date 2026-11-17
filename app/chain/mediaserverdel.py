@@ -167,7 +167,12 @@ class MediaServerDelChain(ChainBase):
 
         return _re.sub(r"(?<=[A-Za-z0-9]) (?=[A-Za-z0-9])(?=\S*[A-Z])", "+", media_path)
 
-    def _delete_source(self, history, conf=None) -> Tuple[str, Optional[str]]:
+    def _delete_source(
+        self,
+        history,
+        conf=None,
+        skip_torrent: bool = False,
+    ) -> Tuple[str, Optional[str]]:
         """
         清理媒体库文件、下载源文件与下载任务。
 
@@ -176,8 +181,13 @@ class MediaServerDelChain(ChainBase):
         种子的部分内容被删时暂停任务，等剩余内容也被删除再移除；
         最后兜底检查源文件是否仍被其它硬链接引用，避免留下孤儿。
 
+        批量删除（整季、整剧）时一个种子对应多集，调用方应先聚合再决策，
+        此时传 skip_torrent=True 只清文件与记录，种子由
+        :meth:`_apply_torrent_decision` 统一处理。
+
         :param history: 整理历史记录
         :param conf: 联动删除配置，为空时读取当前配置
+        :param skip_torrent: 跳过种子的即时决策，仅清理文件与本地兜底
         :return: (种子处理结果, 种子hash)。结果为 deleted/paused/gone/none/error
         """
         conf = conf or sync_del_by_media_server_conf()
@@ -200,10 +210,10 @@ class MediaServerDelChain(ChainBase):
             and history.mode != "move"
         )
 
-        # 3. 下载任务：先由下载器处理，删除任务会连带清理其文件
+        # 3. 下载任务：批量场景交由调用方聚合后统一决策
         torrent_hash = history.download_hash
         state = "none"
-        if conf.delete_torrent and torrent_hash:
+        if not skip_torrent and conf.delete_torrent and torrent_hash:
             if not self._torrent_exists(torrent_hash, history.downloader):
                 # 用户可能已提前删种：按预期情况处理，仅清理整理记录
                 logger.info(f"种子 {torrent_hash} 已不存在于下载器，仅删除整理记录")
@@ -212,42 +222,185 @@ class MediaServerDelChain(ChainBase):
                 self.downloadhis.delete_file_by_fullpath(
                     fullpath=history.src, download_hash=torrent_hash
                 )
-                all_files = self.downloadhis.get_files_by_hash(
-                    download_hash=torrent_hash
+                # 单条记录场景下本批源文件就是 history.src，
+                # 一并传入才能按磁盘状态判断该种子是否真的清空
+                state = self._decide_torrent_state(
+                    torrent_hash,
+                    history.downloader,
+                    [history.src] if history.src else None,
                 )
-                remain = self.downloadhis.get_files_by_hash(
-                    download_hash=torrent_hash, state=1
-                )
-                if not all_files:
-                    # 从未同步过该种子的文件清单：无法判断还剩多少内容，
-                    # 把「查不到」当成「删完了」会整季误删源文件，
-                    # 因此保守暂停任务，等清单可用或用户手动确认
-                    logger.info(
-                        f"种子 {torrent_hash} 缺少文件清单记录，暂停任务而非删除"
-                    )
-                    state = self._pause_torrent(torrent_hash)
-                elif remain:
-                    # 种子只是部分内容被删：暂停而非删除，
-                    # 等后续事件把剩余内容也删完再移除任务
-                    logger.info(
-                        f"种子 {torrent_hash} 仍有 {len(remain)} 个文件未删除，暂停下载任务"
-                    )
-                    state = self._pause_torrent(torrent_hash)
-                else:
-                    logger.info(f"种子 {torrent_hash} 文件已全部删除，删除下载任务")
-                    if DownloadChain().remove_downloading(hash_str=torrent_hash):
-                        self.eventmanager.send_event(
-                            EventType.DownloadDeleted,
-                            {"hash": torrent_hash},
-                        )
-                        state = "deleted"
-                    else:
-                        state = "error"
 
         # 4. 兜底：源文件仍有残留时按配置删除，并清理空目录
         self._cleanup_residual_source(src_path, src_exists, src_deletable, conf)
 
         return state, torrent_hash
+
+    def _decide_torrent_state(
+        self,
+        torrent_hash: str,
+        downloader: Optional[str] = None,
+        sources: Optional[List[str]] = None,
+    ) -> str:
+        """
+        根据种子在磁盘上的实际残留决定如何处理下载任务。
+
+        判断不能只看数据库清单：清单可能从未同步过，也不能只看下载器的
+        文件列表——qBittorrent 的文件列表来自种子元数据，磁盘文件被删掉后
+        仍然照常返回，据此会永远认为「还有文件」。唯一可靠依据是磁盘。
+
+        :param torrent_hash: 种子 Hash
+        :param downloader: 下载器名称
+        :param sources: 本次已决定删除的源文件路径
+        :return: 处理结果 deleted/paused/gone/error
+        """
+        if not self._torrent_exists(torrent_hash, downloader):
+            logger.info(f"种子 {torrent_hash} 已不存在于下载器，仅删除整理记录")
+            return "gone"
+        remain = self._count_torrent_remaining(torrent_hash, downloader, sources)
+        if remain is None:
+            # 既没有清单也问不到下载器：无法判断还剩多少，保守暂停
+            logger.info(f"种子 {torrent_hash} 缺少文件清单记录，暂停任务而非删除")
+            return self._pause_torrent(torrent_hash)
+        if remain:
+            logger.info(
+                f"种子 {torrent_hash} 仍有 {remain} 个文件未删除，暂停下载任务"
+            )
+            return self._pause_torrent(torrent_hash)
+        logger.info(f"种子 {torrent_hash} 文件已全部删除，删除下载任务")
+        if not DownloadChain().remove_downloading(hash_str=torrent_hash):
+            return "error"
+        self.eventmanager.send_event(
+            EventType.DownloadDeleted,
+            {"hash": torrent_hash},
+        )
+        return "deleted"
+
+    def _count_torrent_remaining(
+        self,
+        torrent_hash: str,
+        downloader: Optional[str] = None,
+        sources: Optional[List[str]] = None,
+    ) -> Optional[int]:
+        """
+        统计种子中仍存在于磁盘的文件数。
+
+        优先按整理记录里该种子的源文件逐个确认磁盘状态；整理记录不全时
+        退回下载器文件列表，把下载器报告的相对路径还原成绝对路径再判断。
+
+        :param torrent_hash: 种子 Hash
+        :param downloader: 下载器名称
+        :param sources: 本次已决定删除的源文件路径
+        :return: 仍存在的文件数；无法确定时返回 None
+        """
+        candidates = self._collect_torrent_sources(
+            torrent_hash, downloader, sources
+        )
+        if candidates is None:
+            return None
+        return sum(1 for path in candidates if Path(path).exists())
+
+    def _collect_torrent_sources(
+        self,
+        torrent_hash: str,
+        downloader: Optional[str] = None,
+        sources: Optional[List[str]] = None,
+    ) -> Optional[List[str]]:
+        """
+        汇总一个种子全部文件的绝对路径，用于判断磁盘残留。
+
+        :param torrent_hash: 种子 Hash
+        :param downloader: 下载器名称
+        :param sources: 本次已决定删除的源文件路径
+        :return: 绝对路径列表；无法确定时返回 None
+        """
+        # 种子的完整文件范围来自下载器清单（取自种子元数据，磁盘删除后仍返回）
+        # 或已同步的下载文件记录；两者都拿不到时无法判断种子是否已清空
+        live = self._list_live_torrent_files(torrent_hash, downloader)
+        known = [
+            item.fullpath
+            for item in self.downloadhis.get_files_by_hash(
+                download_hash=torrent_hash
+            )
+            if item.fullpath
+        ]
+        paths: List[str] = list(live or []) + sorted(known)
+        if not paths:
+            # 清单来源全部缺失：本批待删文件不足以代表整个种子，无法判断
+            return None
+        # 本批待删文件可能还没进入清单，补上避免漏算
+        paths.extend(sources or [])
+        # 去重并保留顺序，避免同一文件被重复计数
+        return list(dict.fromkeys(paths))
+
+    def _list_live_torrent_files(
+        self,
+        torrent_hash: str,
+        downloader: Optional[str] = None,
+    ) -> Optional[List[str]]:
+        """
+        从下载器取种子文件的绝对路径。
+
+        下载器返回的是相对种子根目录的路径，这里拼上保存根目录，
+        否则按绝对路径判断存在性会全部落空。
+
+        :param torrent_hash: 种子 Hash
+        :param downloader: 下载器名称
+        :return: 绝对路径列表；查询不可用时返回 None
+        """
+        try:
+            files = self.torrent_files(tid=torrent_hash, downloader=downloader)
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"查询种子 {torrent_hash} 文件列表失败：{err}")
+            return None
+        if not files:
+            return None
+        save_path = self._resolve_torrent_save_path(torrent_hash, downloader)
+        if not save_path:
+            return None
+        paths = []
+        for item in files:
+            name = str(getattr(item, "name", "") or "")
+            if not name:
+                continue
+            paths.append((Path(save_path) / name).as_posix())
+        return paths or None
+
+    def _resolve_torrent_save_path(
+        self,
+        torrent_hash: str,
+        downloader: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        取种子的保存根目录。
+
+        :param torrent_hash: 种子 Hash
+        :param downloader: 下载器名称
+        :return: 保存根目录；查询不到时返回 None
+        """
+        try:
+            torrents = self.list_torrents(
+                hashs=torrent_hash,
+                downloader=downloader,
+                include_all_tags=True,
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(f"查询种子 {torrent_hash} 保存路径失败：{err}")
+            return None
+        target = str(torrent_hash).lower()
+        for torrent in torrents or []:
+            if str(getattr(torrent, "hash", "") or "").lower() != target:
+                continue
+            save_path = getattr(torrent, "save_path", None)
+            if save_path:
+                return str(save_path).replace("\\", "/").rstrip("/")
+            content_path = getattr(torrent, "content_path", None)
+            if content_path:
+                content = Path(str(content_path).replace("\\", "/"))
+                return (
+                    content.parent if content.suffix else content
+                ).as_posix()
+            return None
+        return None
 
     def _pause_torrent(self, torrent_hash: str) -> str:
         """
@@ -262,6 +415,53 @@ class MediaServerDelChain(ChainBase):
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"暂停种子 {torrent_hash} 失败：{err}")
             return "error"
+
+    def _plan_torrent_decisions(self, histories, conf) -> dict:
+        """
+        按种子聚合本次要删除的源文件，得出每个种子只需执行一次的决策。
+
+        整季删除时一个种子对应十几集，逐条记录各自判断「文件是否还剩」
+        会互相看不到彼此，导致同一种子被反复暂停。这里先收集所有待删源文件，
+        一次性标记为已删除，再按种子统一判断。
+
+        :param histories: 本次待处理的整理记录
+        :param conf: 联动删除配置
+        :return: {种子hash: {"downloader": 名称, "sources": [源文件路径]}}
+        """
+        plans: dict = {}
+        for history in histories:
+            if not (conf.delete_torrent and history.download_hash):
+                continue
+            plan = plans.setdefault(
+                history.download_hash,
+                {"downloader": history.downloader, "sources": []},
+            )
+            if history.src:
+                plan["sources"].append(history.src)
+        return plans
+
+    def _apply_torrent_decision(self, torrent_hash: str, plan: dict) -> str:
+        """
+        对单个种子执行一次最终决策。
+
+        :param torrent_hash: 种子 Hash
+        :param plan: :meth:`_plan_torrent_decisions` 给出的聚合结果
+        :return: 处理结果 deleted/paused/gone/error
+        """
+        if not self._torrent_exists(torrent_hash, plan.get("downloader")):
+            # 用户可能已提前删种：按预期情况处理
+            logger.info(f"种子 {torrent_hash} 已不存在于下载器，仅删除整理记录")
+            return "gone"
+        sources = plan.get("sources") or []
+        # 先把本批涉及的源文件全部标记删除，再做剩余判断，
+        # 否则同种的其它集数仍会被算成「未删除」
+        for source in sources:
+            self.downloadhis.delete_file_by_fullpath(
+                fullpath=source, download_hash=torrent_hash
+            )
+        return self._decide_torrent_state(
+            torrent_hash, plan.get("downloader"), sources
+        )
 
     def _cleanup_residual_source(
             self,
@@ -394,6 +594,9 @@ class MediaServerDelChain(ChainBase):
         failed = 0
         dry_run_items: List[str] = []
         torrent_stats = {"deleted": 0, "paused": 0, "gone": 0, "error": 0}
+        # 一个种子常对应多集（整季一个种子是常态），逐条处理会把同一种子
+        # 反复判定并重复暂停；按 hash 聚合后每个种子只决策一次
+        torrent_decisions = self._plan_torrent_decisions(histories, conf)
         for history in histories:
             # 记录由 tmdbid + 季 + 集精确定位，直接遵循媒体服务器的删除意图，
             # 不再用标题做二次校验（译名写法差异会造成误跳过）
@@ -406,13 +609,18 @@ class MediaServerDelChain(ChainBase):
                 continue
             try:
                 self.transferhis.delete(history.id)
-                state, _hash = self._delete_source(history, conf=conf)
-                if state in torrent_stats:
-                    torrent_stats[state] += 1
+                self._delete_source(history, conf=conf, skip_torrent=True)
                 deleted += 1
             except Exception as err:
                 failed += 1
                 logger.error(f"同步删除整理记录 {history.id} 失败：{err}")
+
+        # 整理记录全部处理后，再按种子聚合结果统一下手
+        if not conf.dry_run:
+            for torrent_hash, plan in torrent_decisions.items():
+                state = self._apply_torrent_decision(torrent_hash, plan)
+                if state in torrent_stats:
+                    torrent_stats[state] += 1
 
         self._notify_result(
             msg=msg,

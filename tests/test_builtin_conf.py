@@ -379,7 +379,7 @@ def test_emby_webhook_parses_query_params_regardless_of_isvirtual(
 
 
 def test_missing_file_list_pauses_instead_of_deleting():
-    """文件清单缺失时必须暂停而非删除种子，否则会整季误删源文件。"""
+    """清单缺失且问不到下载器时无法判断残留，必须暂停而非删除种子。"""
     from unittest.mock import MagicMock, patch
 
     from app.chain.mediaserverdel import MediaServerDelChain
@@ -390,6 +390,8 @@ def test_missing_file_list_pauses_instead_of_deleting():
     chain._torrent_exists = MagicMock(return_value=True)
     chain._pause_torrent = MagicMock(return_value="paused")
     chain._cleanup_residual_source = MagicMock()
+    # 下载器也查不到文件列表：此时既无清单也无实况，只能保守暂停
+    chain._list_live_torrent_files = MagicMock(return_value=None)
 
     history = MagicMock(
         dest=None, src="/tmp/x.mkv", src_storage="local", mode="link",
