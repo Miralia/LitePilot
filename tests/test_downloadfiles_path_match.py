@@ -137,3 +137,44 @@ class _Torrent:
         self.hash = hash
         self.save_path = save_path
         self.content_path = content_path
+
+
+def test_process_syncs_all_torrents_not_only_transfer(monkeypatch) -> None:
+    """同步必须覆盖全部种子，否则已入库种子永远拿不到文件清单。"""
+    chain = object.__new__(DownloadFileSyncChain)
+    captured = {}
+
+    def fake_list_torrents(**kwargs):
+        captured.update(kwargs)
+        return []
+
+    monkeypatch.setattr(chain, "list_torrents", fake_list_torrents)
+    monkeypatch.setattr(
+        "app.chain.downloadfilesync.ServiceConfigHelper.get_downloader_configs",
+        lambda: [_DownloaderConf()],
+    )
+    monkeypatch.setattr(
+        "app.chain.downloadfilesync.download_file_sync_conf",
+        lambda: _SyncConf(),
+    )
+
+    chain.process()
+
+    # 不能再按「可转移」状态过滤：该状态会把整理过的种子排除在外
+    assert "status" not in captured or captured["status"] is None
+    assert captured.get("include_all_tags") is True
+
+
+class _DownloaderConf:
+    """下载器配置替身。"""
+
+    name = "qBittorrent"
+
+
+class _SyncConf:
+    """下载文件同步配置替身。"""
+
+    enabled = True
+    downloaders = []
+    max_torrents = 0
+    trigger_throttle_seconds = 0

@@ -7,7 +7,7 @@ from app.db.downloadhistory_oper import DownloadHistoryOper
 from app.helper.builtinconf import download_file_sync_conf
 from app.helper.service import ServiceConfigHelper
 from app.log import logger
-from app.schemas.types import SystemConfigKey, TorrentStatus
+from app.schemas.types import SystemConfigKey
 
 
 class DownloadFileSyncChain(ChainBase):
@@ -310,7 +310,12 @@ class DownloadFileSyncChain(ChainBase):
 
     def process(self) -> None:
         """
-        同步所有处于可转移状态的种子的文件列表。
+        同步下载器中全部种子的文件列表。
+
+        不能只同步「可转移」状态的种子：该状态表示「已完成且未整理」，
+        种子一旦整理入库就会被打上已整理标签而脱离这个范围。同步的目的是
+        记录每个种子包含哪些文件，供后续判断种子是否已清空，整理过的种子
+        同样需要，否则媒体库删除时查不到清单，只能保守暂停。
         """
         conf = download_file_sync_conf()
         if not conf.enabled:
@@ -333,9 +338,10 @@ class DownloadFileSyncChain(ChainBase):
             downloader_name = downloader_conf.name
             if selected and downloader_name not in selected:
                 continue
+            # 取全部状态：只同步待整理种子会让已入库的种子永远没有文件清单
             torrents = self.list_torrents(
-                status=TorrentStatus.TRANSFER,
                 downloader=downloader_name,
+                include_all_tags=True,
             )
             if not torrents:
                 continue
