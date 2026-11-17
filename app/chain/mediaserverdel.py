@@ -317,12 +317,13 @@ class MediaServerDelChain(ChainBase):
         # 或已同步的下载文件记录；两者都拿不到时无法判断种子是否已清空
         live = self._list_live_torrent_files(torrent_hash, downloader)
         known = [
-            item.fullpath
+            self._absolute_record_path(item)
             for item in self.downloadhis.get_files_by_hash(
                 download_hash=torrent_hash
             )
             if item.fullpath
         ]
+        known = [path for path in known if path]
         paths: List[str] = list(live or []) + sorted(known)
         if not paths:
             # 清单来源全部缺失：本批待删文件不足以代表整个种子，无法判断
@@ -331,6 +332,28 @@ class MediaServerDelChain(ChainBase):
         paths.extend(sources or [])
         # 去重并保留顺序，避免同一文件被重复计数
         return list(dict.fromkeys(paths))
+
+    @staticmethod
+    def _absolute_record_path(item) -> str:
+        """
+        把下载文件记录还原成绝对路径。
+
+        存在早期同步写入的相对路径记录（下载器外部添加的种子没有下载历史，
+        取不到保存目录），这类记录直接按路径判断磁盘存在性会全部落空，
+        这里用记录里已回填的 savepath 拼出绝对路径。
+
+        :param item: 下载文件记录
+        :return: 绝对路径；无法还原时返回空字符串
+        """
+        fullpath = str(getattr(item, "fullpath", "") or "").replace("\\", "/")
+        if not fullpath:
+            return ""
+        if fullpath.startswith("/"):
+            return fullpath
+        savepath = str(getattr(item, "savepath", "") or "").replace("\\", "/").rstrip("/")
+        if not savepath:
+            return ""
+        return f"{savepath}/{fullpath}"
 
     def _list_live_torrent_files(
         self,

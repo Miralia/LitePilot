@@ -46,12 +46,20 @@ class DownloadFileSyncChain(ChainBase):
 
         downloadhis = DownloadHistoryOper()
         history = downloadhis.get_by_hash(download_hash=torrent_hash)
-        save_path = str(history.path) if history and history.path else ""
-        if not save_path:
-            # 下载历史缺失时（历史迁移、手动添加等）退回下载器自报的保存目录，
-            # 否则文件只能落成相对路径，媒体库删除时按源文件绝对路径反查不到，
-            # 种子永远不会被判定为「文件已全部删除」
-            save_path = self._resolve_save_path(torrent_hash, downloader)
+        # 优先问下载器：种子可能由外部添加，此时不存在下载历史；
+        # 下载历史里的 path 还可能因移动任务而过时
+        save_path = self._resolve_save_path(torrent_hash, downloader)
+        if not save_path and history and history.path:
+            save_path = str(history.path)
+        if save_path:
+            # 顺带修复历史遗留的相对路径记录：早期同步拿不到保存目录，
+            # 只写入了相对路径，回填后才能按绝对路径精确反查
+            backfilled = downloadhis.backfill_savepath(torrent_hash, save_path)
+            if backfilled:
+                logger.debug(
+                    f"下载文件同步：种子 {torrent_hash} 回填保存目录 {save_path}，"
+                    f"修正 {backfilled} 条记录"
+                )
 
         existing = {
             item.fullpath

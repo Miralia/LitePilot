@@ -499,6 +499,52 @@ class DownloadFiles(Base):
 
     @classmethod
     @db_update
+    def backfill_savepath(
+        cls,
+        db: Session,
+        download_hash: str,
+        save_path: str,
+    ) -> int:
+        """
+        回填种子的保存根目录，并把相对路径的记录补成绝对路径。
+
+        种子由下载器外部添加时没有下载历史，早期同步因此只写入了相对路径。
+        补上 save_path 后既可让后续同步直接拼接绝对路径，也能让按绝对路径
+        反查精确命中，不必依赖逐级裁剪的候选匹配。
+
+        :param db: 数据库会话
+        :param download_hash: 种子 Hash
+        :param save_path: 保存根目录
+        :return: 更新的记录数
+        """
+        normalized = str(save_path or "").replace("\\", "/").rstrip("/")
+        if not normalized:
+            return 0
+        rows = (
+            db.query(cls)
+            .filter(cls.download_hash == download_hash)
+            .all()
+        )
+        updated = 0
+        for row in rows:
+            fullpath = str(row.fullpath or "").replace("\\", "/")
+            filepath = str(row.filepath or "").replace("\\", "/")
+            payload = {}
+            if not row.savepath:
+                payload["savepath"] = normalized
+            # 只补相对路径记录；已是绝对路径的不动，避免拼出错误层级
+            if fullpath and not fullpath.startswith("/"):
+                relative = filepath or fullpath
+                payload["fullpath"] = f"{normalized}/{relative}"
+            if not payload:
+                continue
+            for key, value in payload.items():
+                setattr(row, key, value)
+            updated += 1
+        return updated
+
+    @classmethod
+    @db_update
     def delete_orphans(
         cls,
         db: Session,

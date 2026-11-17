@@ -113,6 +113,14 @@ class DownloadHistoryOper(DbOper):
         """
         return DownloadFiles.delete_by_fullpath(self._db, fullpath, download_hash)
 
+    def backfill_savepath(self, download_hash: str, save_path: str) -> int:
+        """
+        回填种子的保存根目录并补齐相对路径记录
+        :param download_hash: 种子 Hash
+        :param save_path: 保存根目录
+        """
+        return DownloadFiles.backfill_savepath(self._db, download_hash, save_path)
+
     def get_hash_by_fullpath(self, fullpath: str) -> str:
         """
         按fullpath查询下载文件记录hash

@@ -1,8 +1,11 @@
+from unittest.mock import MagicMock
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.chain.downloadfilesync import DownloadFileSyncChain
+from app.chain.mediaserverdel import MediaServerDelChain
 from app.db import Base
 from app.db.downloadhistory_oper import DownloadHistoryOper
 from app.db.models.downloadhistory import DownloadFiles
@@ -178,3 +181,80 @@ class _SyncConf:
     downloaders = []
     max_torrents = 0
     trigger_throttle_seconds = 0
+
+
+def _add_record(session_factory, fullpath, filepath, savepath="", hash="hash-a"):
+    """写入一条下载文件记录，可指定 savepath 与 filepath。"""
+    with session_factory() as db:
+        DownloadFiles(
+            downloader="qBittorrent",
+            download_hash=hash,
+            fullpath=fullpath,
+            savepath=savepath,
+            filepath=filepath,
+            torrentname="",
+            state=1,
+        ).create(db)
+
+
+def test_backfill_converts_relative_path_to_absolute(database) -> None:
+    """回填保存目录时，相对路径记录应补成绝对路径。"""
+    _add_record(database, "Show.S01/Show.S01E01.mkv", "Show.S01/Show.S01E01.mkv")
+
+    with database() as db:
+        updated = DownloadHistoryOper(db).backfill_savepath(
+            "hash-a", "/downloads/Anime"
+        )
+
+    assert updated == 1
+    with database() as db:
+        row = db.query(DownloadFiles).one()
+        assert row.savepath == "/downloads/Anime"
+        assert row.fullpath == "/downloads/Anime/Show.S01/Show.S01E01.mkv"
+
+
+def test_backfill_keeps_existing_absolute_path(database) -> None:
+    """已记录绝对路径时只补 savepath，不得重新拼接 fullpath。"""
+    _add_record(
+        database,
+        "/downloads/Anime/Show.S01E01.mkv",
+        "Show.S01E01.mkv",
+    )
+
+    with database() as db:
+        DownloadHistoryOper(db).backfill_savepath("hash-a", "/downloads/Anime")
+
+    with database() as db:
+        row = db.query(DownloadFiles).one()
+        assert row.savepath == "/downloads/Anime"
+        # 拼接后应当与原来一致；若实现重复叠加会变成 .../Anime/Anime/...
+        assert row.fullpath == "/downloads/Anime/Show.S01E01.mkv"
+
+
+def test_backfill_is_idempotent(database) -> None:
+    """重复回填不应反复改写同一条记录。"""
+    _add_record(database, "Show.S01E01.mkv", "Show.S01E01.mkv")
+
+    with database() as db:
+        first = DownloadHistoryOper(db).backfill_savepath("hash-a", "/dl")
+    with database() as db:
+        second = DownloadHistoryOper(db).backfill_savepath("hash-a", "/dl")
+
+    assert first == 1
+    assert second == 0
+
+
+def test_absolute_record_path_uses_savepath() -> None:
+    """相对路径记录应能用 savepath 还原成绝对路径，供磁盘判断使用。"""
+    chain = object.__new__(MediaServerDelChain)
+    record = MagicMock(
+        fullpath="Show.S01/Show.S01E01.mkv",
+        savepath="/downloads/Anime",
+    )
+
+    assert (
+        chain._absolute_record_path(record)
+        == "/downloads/Anime/Show.S01/Show.S01E01.mkv"
+    )
+    # 无 savepath 时无法还原，返回空串交由调用方过滤
+    assert chain._absolute_record_path(MagicMock(fullpath="a.mkv", savepath="")) == ""

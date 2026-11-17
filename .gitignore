@@ -18,6 +18,8 @@ app/plugins/**
 config/cookies/
 config/app.env
 config/user.db*
+# 测试与本地运行会在仓库根目录生成临时库文件
+user.db*
 config/sites/**
 config/agent/
 config/logs/
