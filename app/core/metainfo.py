@@ -178,9 +178,6 @@ def _find_metainfo_python(title: str) -> Tuple[str, dict]:
     if metainfo.get('tmdbid'):
         metainfo['media_source'] = 'themoviedb'
         metainfo['media_id'] = metainfo['tmdbid']
-    elif metainfo.get('doubanid'):
-        metainfo['media_source'] = 'douban'
-        metainfo['media_id'] = metainfo['doubanid']
     elif metainfo.get('bangumiid'):
         metainfo['media_source'] = 'bangumi'
         metainfo['media_id'] = metainfo['bangumiid']

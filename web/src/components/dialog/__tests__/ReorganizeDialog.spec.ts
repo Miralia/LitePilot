@@ -452,6 +452,21 @@ describe('ReorganizeDialog submission safety', () => {
   })
 })
 
+describe('ReorganizeDialog media source boundary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    initializationRequestCount = 0
+    mocks.progressControllers.length = 0
+  })
+
+  it('only exposes the supported TheMovieDb and Bangumi sources', async () => {
+    await renderDialog()
+
+    const sourceSelect = screen.getByLabelText('数据源') as HTMLSelectElement
+    expect(Array.from(sourceSelect.options).map(option => option.textContent)).toEqual(['TheMovieDb', 'Bangumi'])
+  })
+})
+
 describe('ReorganizeDialog payloads and lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -724,7 +739,7 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
       expect.objectContaining({
         episode_group: null,
         media_id: null,
-        media_source: 'douban',
+        media_source: 'bangumi',
       }),
     )
   })

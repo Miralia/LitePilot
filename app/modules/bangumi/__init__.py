@@ -359,7 +359,7 @@ class BangumiModule(_ModuleBase):
     def bangumi_person_detail(self, person_id: int) -> Optional[schemas.MediaPerson]:
         """
         获取人物详细信息
-        :param person_id:  豆瓣人物ID
+        :param person_id:  Bangumi人物ID
         """
         personinfo = self.bangumiapi.person_detail(person_id)
         if personinfo:
@@ -369,7 +369,7 @@ class BangumiModule(_ModuleBase):
     async def async_bangumi_person_detail(self, person_id: int) -> Optional[schemas.MediaPerson]:
         """
         获取人物详细信息（异步版本）
-        :param person_id:  豆瓣人物ID
+        :param person_id:  Bangumi人物ID
         """
         personinfo = await self.bangumiapi.async_person_detail(person_id)
         if personinfo:
@@ -405,7 +405,7 @@ class BangumiModule(_ModuleBase):
 
     def bangumi_person_credits(self, person_id: int) -> List[MediaInfo]:
         """
-        根据TMDBID查询人物参演作品
+        根据Bangumi人物ID查询人物参演作品
         :param person_id:  人物ID
         """
         credits_info = self.bangumiapi.person_credits(person_id=person_id)
@@ -415,7 +415,7 @@ class BangumiModule(_ModuleBase):
 
     async def async_bangumi_person_credits(self, person_id: int) -> List[MediaInfo]:
         """
-        根据TMDBID查询人物参演作品（异步版本）
+        根据Bangumi人物ID查询人物参演作品（异步版本）
         :param person_id:  人物ID
         """
         credits_info = await self.bangumiapi.async_person_credits(person_id=person_id)

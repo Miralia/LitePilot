@@ -1,4 +1,3 @@
-import re
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Tuple, Optional
 
@@ -18,9 +17,9 @@ class MediaInfo:
 
     # 内部标记：是否命中本地识别缓存，不参与序列化
     recognize_cache_hit = False
-    # 来源：themoviedb、douban、bangumi
+    # 主来源：当前识别支持 themoviedb、bangumi，历史数据可能保留其他来源
     source: str = None
-    # 当前数据源原生ID，主要用于保留插件自定义数据源身份
+    # 当前数据源原生ID，主要用于保留历史与外部数据源身份
     media_id: str = None
     # 请求级刮削来源；为空时使用系统设置
     scrape_source: str = None
@@ -82,8 +81,6 @@ class MediaInfo:
     category: str = ""
     # TMDB INFO
     tmdb_info: dict = field(default_factory=dict)
-    # 豆瓣 INFO
-    douban_info: dict = field(default_factory=dict)
     # Bangumi INFO
     bangumi_info: dict = field(default_factory=dict)
     # 导演
@@ -147,8 +144,6 @@ class MediaInfo:
         # 设置媒体信息
         if self.tmdb_info:
             self.set_tmdb_info(self.tmdb_info)
-        if self.douban_info:
-            self.set_douban_info(self.douban_info)
         if self.bangumi_info:
             self.set_bangumi_info(self.bangumi_info)
 
@@ -343,147 +338,6 @@ class MediaInfo:
         self.directors, self.actors = __directors_actors(info)
         # 别名和译名
         self.names = info.get('names') or []
-        # 剩余属性赋值
-        for key, value in info.items():
-            if not value:
-                continue
-            if not hasattr(self, key):
-                continue
-            current_value = getattr(self, key)
-            if current_value:
-                continue
-            if current_value is None:
-                setattr(self, key, value)
-            elif type(current_value) is type(value):
-                setattr(self, key, value)
-
-    def set_douban_info(self, info: dict):
-        """
-        初始化豆瓣信息
-        """
-        if not info:
-            return
-        # 来源
-        self.source = "douban"
-        # 本体
-        self.douban_info = info
-        # 豆瓣ID
-        self.douban_id = str(info.get("id"))
-        # 类型
-        if not self.type:
-            if isinstance(info.get('media_type'), MediaType):
-                self.type = info.get('media_type')
-            elif info.get("subtype"):
-                self.type = MediaType.MOVIE if info.get("subtype") == "movie" else MediaType.TV
-            elif info.get("target_type"):
-                self.type = MediaType.MOVIE if info.get("target_type") == "movie" else MediaType.TV
-            elif info.get("type_name"):
-                self.type = MediaType(info.get("type_name"))
-            elif info.get("uri"):
-                self.type = MediaType.MOVIE if "/movie/" in info.get("uri") else MediaType.TV
-            elif info.get("type") and info.get("type") in ["movie", "tv"]:
-                self.type = MediaType.MOVIE if info.get("type") == "movie" else MediaType.TV
-        # 标题
-        if not self.title:
-            self.title = info.get("title")
-        # 英文标题，暂时不支持
-        if not self.en_title:
-            self.en_title = info.get('original_title')
-        # 原语种标题
-        if not self.original_title:
-            self.original_title = info.get("original_title")
-        # 年份
-        if not self.year:
-            self.year = info.get("year")[:4] if info.get("year") else None
-            if not self.year and info.get("extra"):
-                self.year = info.get("extra").get("year")
-        # 识别标题中的季
-        meta = MetaInfo(info.get("title"))
-        # 季
-        if self.season is None:
-            self.season = meta.begin_season
-            if self.season is not None:
-                self.type = MediaType.TV
-            elif not self.type:
-                self.type = MediaType.MOVIE
-        # 评分
-        if not self.vote_average:
-            rating = info.get("rating")
-            if rating:
-                vote_average = float(rating.get("value"))
-            else:
-                vote_average = 0
-            self.vote_average = vote_average
-        # 发行日期
-        if not self.release_date:
-            if info.get("release_date"):
-                self.release_date = info.get("release_date")
-            elif info.get("pubdate") and isinstance(info.get("pubdate"), list):
-                release_date = info.get("pubdate")[0]
-                if release_date:
-                    match = re.search(r'\d{4}-\d{2}-\d{2}', release_date)
-                    if match:
-                        self.release_date = match.group()
-        # 海报
-        if not self.poster_path:
-            if info.get("pic"):
-                self.poster_path = info.get("pic", {}).get("large")
-            if not self.poster_path and info.get("cover_url"):
-                # imageView2/0/q/80/w/9999/h/120/format/webp ->  imageView2/1/w/500/h/750/format/webp
-                self.poster_path = re.sub(r'imageView2/\d/q/\d+/w/\d+/h/\d+/format/webp', 'imageView2/1/w/500/h/750/format/webp', info.get("cover_url"))
-            if not self.poster_path and info.get("cover"):
-                if info.get("cover").get("url"):
-                    self.poster_path = info.get("cover").get("url")
-                else:
-                    self.poster_path = info.get("cover").get("large", {}).get("url")
-        # 简介
-        if not self.overview:
-            self.overview = info.get("intro") or info.get("card_subtitle") or ""
-            if not self.overview:
-                if info.get("extra", {}).get("info"):
-                    extra_info = info.get("extra").get("info")
-                    if extra_info:
-                        self.overview = "，".join(["：".join(item) for item in extra_info])
-        # 从简介中提取年份
-        if self.overview and not self.year:
-            match = re.search(r'\d{4}', self.overview)
-            if match:
-                self.year = match.group()
-        # 导演和演员
-        if not self.directors:
-            self.directors = info.get("directors") or []
-        if not self.actors:
-            self.actors = info.get("actors") or []
-        # 别名
-        if not self.names:
-            akas = info.get("aka")
-            if akas:
-                self.names = [re.sub(r'\([港台豆友译名]+\)', "", aka) for aka in akas]
-        # 剧集
-        if self.type == MediaType.TV and not self.seasons:
-            meta = MetaInfo(info.get("title"))
-            season = meta.begin_season if meta.begin_season is not None else 1
-            episodes_count = info.get("episodes_count")
-            if episodes_count:
-                self.seasons[season] = list(range(1, episodes_count + 1))
-        # 季年份
-        if self.type == MediaType.TV and not self.season_years:
-            season = self.season if self.season is not None else 1
-            self.season_years = {
-                season: self.year
-            }
-        # 风格
-        if not self.genres:
-            self.genres = [{"id": genre, "name": genre} for genre in info.get("genres") or []]
-        # 时长
-        if not self.runtime and info.get("durations"):
-            # 查找数字
-            match = re.search(r'\d+', info.get("durations")[0])
-            if match:
-                self.runtime = int(match.group())
-        # 国家
-        if not self.production_countries:
-            self.production_countries = [{"id": country, "name": country} for country in info.get("countries") or []]
         # 剩余属性赋值
         for key, value in info.items():
             if not value:
@@ -694,12 +548,11 @@ class MediaInfo:
         dicts["detail_link"] = self.detail_link
         dicts["title_year"] = self.title_year
         dicts["tmdb_info"] = None
-        dicts["douban_info"] = None
         dicts["bangumi_info"] = None
         source_ids = {
             "themoviedb": self.tmdb_id,
-            "douban": self.douban_id,
             "bangumi": self.bangumi_id,
+            "douban": self.douban_id,
         }
         media_source = self.source or next(
             (source for source, media_id in source_ids.items() if media_id is not None),
@@ -716,7 +569,6 @@ class MediaInfo:
         去除多余数据，减小体积
         """
         self.tmdb_info = {}
-        self.douban_info = {}
         self.bangumi_info = {}
         self.seasons = {}
         self.genres = []

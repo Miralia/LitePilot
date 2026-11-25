@@ -87,7 +87,7 @@ class MediaInfo(BaseModel):
     """
     识别媒体信息
     """
-    # 来源：themoviedb、douban、bangumi
+    # 主来源：当前识别支持 themoviedb、bangumi，历史数据可能保留其他来源
     source: Optional[str] = None
     # 请求级刮削来源
     scrape_source: Optional[str] = None
@@ -229,7 +229,7 @@ class MediaPerson(BaseModel):
     """
     媒体人物信息
     """
-    # 来源：themoviedb、douban、bangumi
+    # 主来源：当前识别支持 themoviedb、bangumi，历史数据可能保留其他来源
     source: Optional[str] = None
     # 公共
     id: Optional[int] = None
@@ -250,12 +250,6 @@ class MediaPerson(BaseModel):
     place_of_birth: Optional[str] = None
     popularity: Optional[float] = None
     biography: Optional[str] = None
-    # douban
-    roles: Optional[list] = Field(default_factory=list)
-    title: Optional[str] = None
-    url: Optional[str] = None
-    avatar: Optional[Union[str, dict]] = None
-    latin_name: Optional[str] = None
     # bangumi
     career: Optional[list] = Field(default_factory=list)
     relation: Optional[str] = None

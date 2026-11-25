@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import api from '@/api'
-import type { MediaDataSource, MediaInfo } from '@/api/types'
+import type { ActiveMediaDataSource, MediaInfo } from '@/api/types'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 
 // 定义输入变量
 const props = defineProps<{
-  type?: MediaDataSource
+  type?: ActiveMediaDataSource
 }>()
 
 interface MediaSelectorItem {
@@ -72,11 +72,7 @@ async function searchMedias() {
 
     // 赋值
     for (const item of result) {
-      const mediaId =
-        item.media_id ||
-        item.tmdb_id?.toString() ||
-        item.douban_id ||
-        item.bangumi_id?.toString()
+      const mediaId = item.media_id || item.tmdb_id?.toString() || item.bangumi_id?.toString() || item.douban_id
       if (!mediaId) continue
       items.value.push({
         id: mediaId,

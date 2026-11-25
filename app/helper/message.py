@@ -102,8 +102,8 @@ class TemplateContextBuilder:
         season_fmt = f"S{mediainfo.season:02d}" if mediainfo.season is not None else None
         source_ids = {
             "themoviedb": mediainfo.tmdb_id,
-            "douban": mediainfo.douban_id,
             "bangumi": mediainfo.bangumi_id,
+            "douban": mediainfo.douban_id,
         }
         media_source = mediainfo.source or next(
             (source for source, media_id in source_ids.items() if media_id is not None),

@@ -80,7 +80,7 @@ describe('RecognitionCachePanel shared recognition statistics', () => {
     expect(screen.queryByText('共享识别')).not.toBeInTheDocument()
   })
 
-  it('loads TMDB cache even when Douban is selected as the recognition source', async () => {
+  it('keeps the panel TMDB-specific when settings contain a legacy recognition source', async () => {
     mocks.apiGet.mockResolvedValue({
       data: {
         count: 0,

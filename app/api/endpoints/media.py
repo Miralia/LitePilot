@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Annotated, Any, List, Optional, Union
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from app import schemas
 from app.chain.media import MediaChain
@@ -14,10 +14,26 @@ from app.core.security import verify_token, verify_apitoken
 from app.db.models import User
 from app.db.user_oper import get_current_active_user, get_current_active_superuser
 from app.schemas import MediaType
-from app.utils.media import MEDIA_SOURCE_ID_FIELDS, parse_media_key
+from app.utils.media import (
+    MEDIA_SOURCE_ID_FIELDS,
+    is_supported_media_source,
+    normalize_media_source,
+    parse_media_key,
+)
 
 router = APIRouter()
 MediaSource = str
+
+
+def _validate_active_media_source(source: Optional[str]) -> Optional[str]:
+    """校验请求级媒体数据源，阻止已移除来源在接口边界静默回退。"""
+    normalized_source = normalize_media_source(source)
+    if normalized_source and not is_supported_media_source(normalized_source):
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的数据源：{normalized_source}，仅支持 themoviedb 或 bangumi",
+        )
+    return normalized_source
 
 
 def _build_recognize_metainfo(
@@ -104,6 +120,7 @@ async def recognize(
     :param source: 请求级识别数据源
     :param _:
     """
+    source = _validate_active_media_source(source)
     # 识别媒体信息，传入临时识别词时优先于系统配置的识别词生效
     metainfo = _build_recognize_metainfo(title, subtitle, custom_words)
     mediainfo = await MediaChain().async_recognize_by_meta(
@@ -145,6 +162,7 @@ async def recognize_file(
     """
     根据文件路径识别媒体信息
     """
+    source = _validate_active_media_source(source)
     # 识别媒体信息
     context = await MediaChain().async_recognize_by_path(path, source=source)
     if context:
@@ -189,6 +207,8 @@ async def search(
     :param _: Token校验
     :return: 搜索结果列表
     """
+
+    source = _validate_active_media_source(source)
 
     def __get_source(obj: Union[schemas.MediaInfo, schemas.MediaPerson, dict]):
         """
@@ -247,6 +267,7 @@ def scrape(
     """
     if not fileitem or not fileitem.path:
         return schemas.Response(success=False, message="刮削路径无效")
+    media_source = _validate_active_media_source(media_source)
     normalized_media_id = media_id.strip() if media_id else None
     if normalized_media_id and not media_source:
         return schemas.Response(
@@ -346,6 +367,7 @@ async def seasons(
     """
     if mediaid:
         media_source, source_media_id = parse_media_key(mediaid)
+        media_source = _validate_active_media_source(media_source)
         if media_source == "themoviedb":
             tmdbid = int(source_media_id)
             seasons_info = await TmdbChain().async_tmdb_seasons(tmdbid=tmdbid)
@@ -404,6 +426,7 @@ async def detail(
     mediainfo = None
     mediachain = MediaChain()
     media_source, source_media_id = parse_media_key(mediaid)
+    media_source = _validate_active_media_source(media_source)
     if media_source and source_media_id:
         mediainfo = await mediachain.async_recognize_media(
             source=media_source,

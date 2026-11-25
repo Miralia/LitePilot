@@ -17,6 +17,7 @@ from app.db.user_oper import (
     get_current_active_superuser,
 )
 from app.helper.directory import DirectoryHelper
+from app.utils.media import is_supported_media_source
 from app.log import logger
 from app.schemas import (
     MediaType,
@@ -287,6 +288,11 @@ def manual_transfer(
     :param db: 数据库
     :param _: Token校验
     """
+    if transer_item.media_source and not is_supported_media_source(transer_item.media_source):
+        return schemas.Response(
+            success=False,
+            message=f"不支持的数据源：{transer_item.media_source}，仅支持 themoviedb 或 bangumi",
+        )
     force = False
     downloader = None
     download_hash = None

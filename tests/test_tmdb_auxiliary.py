@@ -31,9 +31,9 @@ def _make_chain(tmdb_media: MediaInfo) -> MediaChain:
 
 
 def test_supplement_tmdb_keeps_custom_source_identity() -> None:
-    """自定义识别源补充 TMDB 后，主身份和展示字段必须保持不变。"""
+    """历史自定义识别源补充 TMDB 后，主身份和展示字段必须保持不变。"""
     primary = MediaInfo(
-        source="plugin-anime",
+        source="legacy-custom",
         media_id="subject-42",
         type=MediaType.TV,
         title="原识别标题",
@@ -56,7 +56,7 @@ def test_supplement_tmdb_keeps_custom_source_identity() -> None:
     )
 
     assert result is primary
-    assert result.source == "plugin-anime"
+    assert result.source == "legacy-custom"
     assert result.media_id == "subject-42"
     assert result.title == "原识别标题"
     assert result.tmdb_id == 12345

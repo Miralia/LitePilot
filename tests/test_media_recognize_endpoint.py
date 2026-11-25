@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from fastapi import HTTPException
 
 from app.api.endpoints.media import recognize
 from app.core.context import MediaInfo
@@ -58,3 +59,12 @@ def test_recognize_does_not_treat_non_path_title_as_file_path(title: str) -> Non
         asyncio.run(recognize(title=title, _=Mock()))
 
     meta_info_path.assert_not_called()
+
+
+def test_recognize_rejects_unsupported_media_source() -> None:
+    """识别接口不能继续接受已经移除集成模块的数据源。"""
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(recognize(title="测试电影", source="douban", _=Mock()))
+
+    assert exc_info.value.status_code == 400
+    assert "仅支持 themoviedb 或 bangumi" in exc_info.value.detail

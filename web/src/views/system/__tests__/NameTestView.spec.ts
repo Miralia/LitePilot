@@ -109,6 +109,23 @@ describe('NameTestView media identity', () => {
     expect(sourceDisplay.querySelector('.media-source-logo')).toBeInTheDocument()
   })
 
+  it('only exposes the supported TheMovieDb and Bangumi sources', async () => {
+    const user = userEvent.setup()
+    await renderWithProviders(NameTestView, {
+      initialState: {
+        globalSettings: {
+          data: { RECOGNIZE_SOURCE: 'themoviedb' },
+        },
+      },
+    })
+
+    await user.click(screen.getByLabelText('识别数据源'))
+
+    expect(await screen.findByRole('option', { name: 'TheMovieDb' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Bangumi' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: '豆瓣' })).not.toBeInTheDocument()
+  })
+
   it('shows the recognized media type and category below metadata', async () => {
     await renderRecognizedMedia({
       category: '动漫',

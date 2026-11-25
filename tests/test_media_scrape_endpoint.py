@@ -1,5 +1,8 @@
 from unittest.mock import Mock, patch
 
+import pytest
+from fastapi import HTTPException
+
 from app.api.endpoints.media import scrape
 from app.core.context import Context, MediaInfo
 from app.core.meta import MetaBase
@@ -17,7 +20,7 @@ def test_scrape_uses_explicit_media_source_and_id() -> None:
         result = scrape(
             fileitem=fileitem,
             storage="alist",
-            media_source="douban",
+            media_source="bangumi",
             media_id="123456",
             type_name=MediaType.MOVIE,
             _=Mock(),
@@ -26,11 +29,11 @@ def test_scrape_uses_explicit_media_source_and_id() -> None:
     assert result.success is True
     chain.recognize_by_path.assert_not_called()
     recognize_kwargs = chain.recognize_media.call_args.kwargs
-    assert recognize_kwargs["source"] == "douban"
+    assert recognize_kwargs["source"] == "bangumi"
     assert recognize_kwargs["mediaid"] == "123456"
     assert recognize_kwargs["mtype"] == MediaType.MOVIE
     chain.obtain_images.assert_called_once_with(mediainfo=media_info)
-    assert media_info.scrape_source == "douban"
+    assert media_info.scrape_source == "bangumi"
     scrape_kwargs = chain.scrape_metadata.call_args.kwargs
     assert scrape_kwargs["fileitem"] is fileitem
     assert scrape_kwargs["mediainfo"] is media_info
@@ -80,3 +83,18 @@ def test_scrape_rejects_media_id_without_source() -> None:
 
     assert result.success is False
     assert result.message == "指定媒体ID时必须同时指定媒体数据源"
+
+
+def test_scrape_rejects_unsupported_media_source() -> None:
+    """手动刮削不能接受已经移除集成模块的数据源。"""
+    with pytest.raises(HTTPException) as exc_info:
+        scrape(
+            fileitem=FileItem(storage="alist", path="/movies/Test.mkv", type="file"),
+            storage="alist",
+            media_source="douban",
+            media_id="123456",
+            _=Mock(),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "仅支持 themoviedb 或 bangumi" in exc_info.value.detail

@@ -28,6 +28,16 @@ def test_find_metainfo_supports_anime_source_ids(
 
 
 
+def test_find_metainfo_keeps_douban_id_as_auxiliary_only() -> None:
+    """历史豆瓣标签仍应提取ID，但不能把已移除的豆瓣源设为活跃识别源。"""
+    parsed_title, metainfo = find_metainfo("测试电影 {[doubanid=35209731;type=movie]}")
+
+    assert metainfo["doubanid"] == "35209731"
+    assert metainfo["media_source"] is None
+    assert metainfo["media_id"] is None
+    assert "doubanid=" not in parsed_title
+
+
 def test_metainfo_path_inherits_bangumi_id_from_parent() -> None:
     """文件路径识别应从父目录继承Bangumi来源ID。"""
     meta = MetaInfoPath(

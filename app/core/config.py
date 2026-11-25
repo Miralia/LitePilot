@@ -18,6 +18,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.log import logger, log_settings, LogConfigModel
 from app.schemas import MediaType
+from app.utils.media import is_supported_media_source, normalize_media_source
 from app.utils.system import SystemUtils
 from app.utils.url import UrlUtils
 from version import APP_VERSION
@@ -169,11 +170,11 @@ class ConfigModel(BaseModel):
     # 网络代理服务器地址
     PROXY_HOST: Optional[str] = None
     # ==================== 媒体元数据配置 ====================
-    # 媒体搜索来源 themoviedb/douban/bangumi，多个用,分隔
+    # 媒体搜索来源 themoviedb/bangumi，多个用,分隔
     SEARCH_SOURCE: str = "themoviedb"
-    # 媒体识别来源 themoviedb/douban/bangumi
+    # 媒体识别来源 themoviedb/bangumi
     RECOGNIZE_SOURCE: str = "themoviedb"
-    # 刮削来源 themoviedb/douban/bangumi
+    # 刮削来源 themoviedb/bangumi
     SCRAP_SOURCE: str = "themoviedb"
 
     # ==================== TMDB配置 ====================
@@ -518,6 +519,28 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
             )
         return default, True
 
+    @staticmethod
+    def validate_media_source_setting(field_name: str, value: Any) -> Tuple[Any, bool]:
+        """
+        校验媒体数据源配置，移除已经不存在集成模块的数据源。
+        """
+        if field_name not in {"SEARCH_SOURCE", "RECOGNIZE_SOURCE", "SCRAP_SOURCE"}:
+            return value, False
+
+        default_source = "themoviedb"
+        raw_value = str(value).strip()
+        if field_name == "SEARCH_SOURCE":
+            sources = []
+            for item in raw_value.split(","):
+                source = normalize_media_source(item)
+                if source and is_supported_media_source(source) and source not in sources:
+                    sources.append(source)
+            converted_value = ",".join(sources) or default_source
+        else:
+            source = normalize_media_source(raw_value)
+            converted_value = source if is_supported_media_source(source) else default_source
+        return converted_value, converted_value != raw_value
+
     @model_validator(mode="before")
     @classmethod
     def generic_type_validator(cls, data: Any):  # noqa
@@ -549,6 +572,10 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
                 converted_value, needs_update = cls.generic_type_converter(
                     value, value, field.annotation, field.default, field_name
                 )
+                converted_value, source_needs_update = cls.validate_media_source_setting(
+                    field_name, converted_value
+                )
+                needs_update = needs_update or source_needs_update
                 if needs_update:
                     cls.update_env_config(field_name, value, converted_value)
                     data[field_name] = converted_value
@@ -624,6 +651,10 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
                 converted_value, needs_update = self.generic_type_converter(
                     value, original_value, field.annotation, field.default, key
                 )
+                converted_value, source_needs_update = self.validate_media_source_setting(
+                    key, converted_value
+                )
+                needs_update = needs_update or source_needs_update
             # 如果没有抛出异常，则统一使用 converted_value 进行更新
             if needs_update or str(value) != str(converted_value):
                 success, message = self.update_env_config(key, value, converted_value)

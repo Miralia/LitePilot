@@ -36,7 +36,6 @@ const $toast = useToast()
 // 数据源
 const sourceItems = [
   { 'title': 'TheMovieDb', 'value': 'themoviedb' },
-  { 'title': '豆瓣', 'value': 'douban' },
   { 'title': 'Bangumi', 'value': 'bangumi' },
 ]
 

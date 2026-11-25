@@ -317,7 +317,7 @@ function handleHeaderButtonClick(button: DynamicHeaderTabButton) {
 function getHorizontalTabIcon(tab: DynamicHeaderTabItem) {
   const icon = tab.icon?.trim()
 
-  // 部分页面会把业务来源标识（如 themoviedb/douban/bangumi）放进 icon 字段，
+  // 部分页面会把业务来源标识（如 themoviedb/bangumi 或历史 douban）放进 icon 字段，
   // 这些值不是菜单里的可渲染图标，三级菜单统一回退到默认图标。
   if (!icon || (!icon.startsWith('mdi-') && !icon.startsWith('tabler-') && !icon.includes(':'))) {
     return 'mdi-circle-medium'

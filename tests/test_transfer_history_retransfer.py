@@ -546,3 +546,62 @@ def test_recommend_episode_format_accepts_fileitems_without_fileitem(monkeypatch
     assert [item.path for item in captured["fileitems"]] == [
         item["path"] for item in selected_fileitems
     ]
+
+
+def test_manual_transfer_rejects_unsupported_source_before_execution():
+    """直接手动整理请求不能接受已经移除集成模块的数据源。"""
+    resp = manual_transfer(
+        transer_item=ManualTransferItem(media_source="douban", media_id="200"),
+        background=True,
+        db=object(),
+        _="token",
+    )
+
+    assert resp.success is False
+    assert "仅支持 themoviedb 或 bangumi" in resp.message
+
+
+def test_manual_transfer_from_history_keeps_legacy_douban_context(monkeypatch):
+    """历史豆瓣记录重新整理时仍应传递兼容身份，由识别链安全回退。"""
+    history = SimpleNamespace(
+        status=0,
+        mode="copy",
+        src_fileitem={"storage": "local", "path": "/downloads/test.mkv", "name": "test.mkv", "type": "file"},
+        dest_fileitem=None,
+        downloader=None,
+        download_hash=None,
+        type="电影",
+        tmdbid=None,
+        doubanid="200",
+        bangumiid=None,
+        media_source="douban",
+        media_id="200",
+        seasons=None,
+        episodes=None,
+        episode_group=None,
+    )
+    captured = {}
+
+    def fake_get(_db, logid):
+        assert logid == 1
+        return history
+
+    class FakeTransferChain:
+        def manual_transfer(self, **kwargs):
+            captured.update(kwargs)
+            return True, ""
+
+    monkeypatch.setattr("app.api.endpoints.transfer.TransferHistory.get", fake_get)
+    monkeypatch.setattr("app.api.endpoints.transfer.TransferChain", FakeTransferChain)
+
+    resp = manual_transfer(
+        transer_item=ManualTransferItem(logid=1, from_history=True),
+        background=True,
+        db=object(),
+        _="token",
+    )
+
+    assert resp.success is True
+    assert captured["media_source"] == "douban"
+    assert captured["media_id"] == "200"
+    assert captured["doubanid"] == "200"

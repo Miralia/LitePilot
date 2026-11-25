@@ -1,16 +1,15 @@
 /**
  * 通用APP深度链接工具类
- * 支持媒体服务器（Emby）和豆瓣的APP跳转和网页跳转
+ * 支持媒体服务器（Emby）的APP跳转和网页跳转
  *
  * 深度链接格式参考：
  * - Emby: https://emby.media/support/articles/Deep-Linking.html
- * - 豆瓣: 官方搜索格式
  */
 
 import { isMobileDevice, isIOSDevice, isAndroidDevice } from '@/@core/utils'
 
 // APP类型
-export type AppType = 'emby' | 'douban'
+type AppType = 'emby'
 
 // 深度链接配置
 interface DeepLinkConfig {
@@ -26,20 +25,6 @@ const DEEP_LINK_CONFIGS: Record<AppType, DeepLinkConfig> = {
     webUrl: 'https://emby.media',
     timeout: 2000,
   },
-  douban: {
-    appScheme: 'douban://',
-    webUrl: 'https://movie.douban.com',
-    timeout: 2000,
-  },
-}
-
-// 豆瓣APP跳转参数
-interface DoubanAppParams {
-  doubanId: string
-  mediaType?: string
-  title?: string
-  year?: string
-  fallbackUrl?: string
 }
 
 // 媒体服务器卡片跳转所需的最小字段集合
@@ -190,7 +175,7 @@ export async function openMediaServerItem(target: MediaServerLinkTarget): Promis
  * @param appType APP类型
  * @param params 跳转参数
  */
-export async function openApp(appType: AppType, params: string | DoubanAppParams, fallbackUrl?: string): Promise<void> {
+async function openApp(appType: AppType, params: string, fallbackUrl?: string): Promise<void> {
   // 如果不是移动设备，直接使用网页链接
   if (!isMobileDevice()) {
     const webUrl = getWebUrl(appType, params, fallbackUrl)
@@ -225,18 +210,12 @@ export async function openApp(appType: AppType, params: string | DoubanAppParams
  * @param params 参数
  * @param fallbackUrl 备用链接
  */
-function getWebUrl(appType: AppType, params: string | DoubanAppParams, fallbackUrl?: string): string {
+function getWebUrl(appType: AppType, params: string, fallbackUrl?: string): string {
   if (fallbackUrl) return fallbackUrl
 
   const config = DEEP_LINK_CONFIGS[appType]
 
-  switch (appType) {
-    case 'douban':
-      const doubanParams = params as DoubanAppParams
-      return `${config.webUrl}/subject/${doubanParams.doubanId}`
-    default:
-      return typeof params === 'string' ? params : config.webUrl
-  }
+  return params || config.webUrl
 }
 
 /**
@@ -244,17 +223,8 @@ function getWebUrl(appType: AppType, params: string | DoubanAppParams, fallbackU
  * @param appType APP类型
  * @param params 参数
  */
-function buildDeepLinkUrl(appType: AppType, params: string | DoubanAppParams): string {
-  switch (appType) {
-    case 'emby':
-      return buildEmbyDeepLink(params as string)
-
-    case 'douban':
-      return buildDoubanDeepLink(params as DoubanAppParams)
-
-    default:
-      return typeof params === 'string' ? params : ''
-  }
+function buildDeepLinkUrl(appType: AppType, params: string): string {
+  return appType === 'emby' ? buildEmbyDeepLink(params) : params
 }
 
 /**
@@ -359,22 +329,6 @@ function buildEmbyDeepLink(playUrl: string): string {
 }
 
 /**
- * 构建豆瓣深度链接
- * 使用豆瓣App官方支持的搜索格式
- * @param params 豆瓣参数
- */
-function buildDoubanDeepLink(params: DoubanAppParams): string {
-  const { title, year } = params
-
-  // 使用豆瓣App官方支持的搜索格式
-  // 格式：douban:///search?q={query}
-  const searchQuery = `${title || ''} ${year || ''}`.trim()
-  const deepLink = `douban:///search?q=${encodeURIComponent(searchQuery)}`
-
-  return deepLink
-}
-
-/**
  * 尝试启动APP
  * @param appUrl APP深度链接
  * @param timeout 超时时间
@@ -424,7 +378,7 @@ async function attemptAppLaunch(appUrl: string, timeout: number): Promise<void> 
  * @param fallbackUrl 备用网页链接
  * @param serverType 媒体服务器类型（可选，优先使用此参数）
  */
-export async function openMediaServerWithAutoDetect(
+async function openMediaServerWithAutoDetect(
   playUrl: string,
   fallbackUrl?: string,
   serverType?: string,
@@ -454,57 +408,4 @@ export async function openMediaServerWithAutoDetect(
     // 无法检测到服务器类型，直接使用网页链接
     window.open(fallbackUrl || playUrl, '_blank')
   }
-}
-
-/**
- * 打开豆瓣APP
- * @param doubanId 豆瓣ID
- * @param mediaType 媒体类型（电影/电视剧）
- * @param title 媒体标题
- * @param year 媒体年份
- * @param fallbackUrl 备用网页链接
- */
-export async function openDoubanApp(
-  doubanId: string,
-  mediaType?: string,
-  title?: string,
-  year?: string,
-  fallbackUrl?: string,
-): Promise<void> {
-  const params: DoubanAppParams = {
-    doubanId,
-    mediaType,
-    title,
-    year,
-    fallbackUrl,
-  }
-
-  await openApp('douban', params, fallbackUrl)
-}
-
-/**
- * 获取APP的下载链接
- * @param appType APP类型
- */
-export function getAppDownloadUrl(appType: AppType): string {
-  switch (appType) {
-    case 'emby':
-      return 'https://emby.media/download.html'
-    case 'douban':
-      return 'https://www.douban.com/doubanapp/'
-    default:
-      return ''
-  }
-}
-
-/**
- * 检查是否安装了特定的APP
- * 注意：由于浏览器安全限制，无法直接检测APP是否安装
- * 这个方法主要用于提示用户
- */
-export function checkAppInstalled(appType: AppType): boolean {
-  // 由于浏览器安全限制，无法直接检测APP是否安装
-  // 这里可以根据用户代理或其他信息进行推测
-  // 目前返回false，让系统总是尝试跳转
-  return false
 }

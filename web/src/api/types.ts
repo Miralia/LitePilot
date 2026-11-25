@@ -1,9 +1,11 @@
+// 媒体数据源类型包含历史兼容值；活跃请求只能使用 ActiveMediaDataSource。
 export type MediaDataSource = 'themoviedb' | 'douban' | 'bangumi' | (string & {})
+export type ActiveMediaDataSource = 'themoviedb' | 'bangumi'
 
 // 手动刮削选项
 export interface ManualScrapeOptions {
   // 媒体数据源
-  media_source: MediaDataSource
+  media_source: ActiveMediaDataSource
   // 数据源原生ID
   media_id?: string
   // 媒体类型
@@ -177,7 +179,7 @@ export interface MediaRelease {
 }
 
 export interface MediaInfo {
-  // 来源：themoviedb、douban、bangumi
+  // 来源：活跃来源为 themoviedb、bangumi，历史数据可能为 douban
   source?: string
   // 类型 电影、电视剧、合集
   type?: string
@@ -285,7 +287,7 @@ export interface MediaInfo {
 
 // TMDB人物信息
 export interface Person {
-  // 来源：themoviedb、douban、bangumi
+  // 来源：活跃来源为 themoviedb、bangumi，历史数据可能为 douban
   source?: string
   // ID
   id?: number
@@ -299,7 +301,7 @@ export interface Person {
   birthday?: string
   // 详情
   biography?: string
-  // images large/normal douban、bangumi
+  // images large/normal：Bangumi 图片尺寸兼容字段
   images?: { [key: string]: string }
   // themoviedb
   // themoviedb图片
@@ -320,17 +322,6 @@ export interface Person {
   place_of_birth?: string
   // 热度
   popularity?: number
-  // douban
-  // 角色
-  roles?: string[]
-  // 简介
-  title?: string
-  // 详情页面
-  url?: string
-  // 图片
-  avatar?: any
-  // 别名
-  latin_name?: string
   // bangumi
   // 类型
   type?: number | string
@@ -918,7 +909,7 @@ export interface TransferForm {
   // Bangumi ID
   bangumiid?: number
   // 媒体数据源
-  media_source?: MediaDataSource
+  media_source?: ActiveMediaDataSource
   // 数据源原生ID
   media_id?: string | null
   // 季号

@@ -5,13 +5,13 @@ import { numberValidator } from '@/@validators'
 import api from '@/api'
 import { transferTypeOptions } from '@/api/constants'
 import {
+  ActiveMediaDataSource,
   ApiResponse,
   FileItem,
   ManualTransferHistoryInfo,
   ManualTransferPayload,
   ManualTransferPreviewData,
   ManualTransferPreviewItem,
-  MediaDataSource,
   MediaInfo,
   StorageConf,
   TransferDirectoryConf,
@@ -43,15 +43,14 @@ const props = defineProps({
 const globalSettingsStore = useGlobalSettingsStore()
 const globalSettings = globalSettingsStore.globalSettings
 
-const mediaSourceItems = computed<{ title: string; value: MediaDataSource }[]>(() => [
+const mediaSourceItems = computed<{ title: string; value: ActiveMediaDataSource }[]>(() => [
   { title: t('setting.cache.recognitionSource.themoviedb'), value: 'themoviedb' },
-  { title: t('setting.cache.recognitionSource.douban'), value: 'douban' },
   { title: t('setting.cache.recognitionSource.bangumi'), value: 'bangumi' },
 ])
 
 // 获取后台设置中的默认识别数据源，未知值兼容回退到TheMovieDb。
-function getDefaultMediaSource(): MediaDataSource {
-  const configuredSource = globalSettings.RECOGNIZE_SOURCE as MediaDataSource
+function getDefaultMediaSource(): ActiveMediaDataSource {
+  const configuredSource = globalSettings.RECOGNIZE_SOURCE as ActiveMediaDataSource
   return mediaSourceItems.value.some(item => item.value === configuredSource) ? configuredSource : 'themoviedb'
 }
 
@@ -336,13 +335,14 @@ const transferForm = reactive<TransferForm>({
 const isReorganize = computed(() => Boolean(props.logids?.length || transferForm.reorganize))
 
 // 当前手动识别与刮削数据源。
-const mediaSource = computed(() => transferForm.media_source ?? 'themoviedb')
+const mediaSource = computed<ActiveMediaDataSource>(() =>
+  transferForm.media_source === 'bangumi' ? 'bangumi' : 'themoviedb',
+)
 
 // 当前数据源对应的原生ID标签。
 const mediaIdLabel = computed(() => {
-  const labels: Record<MediaDataSource, string> = {
+  const labels: Record<ActiveMediaDataSource, string> = {
     themoviedb: t('dialog.reorganize.tmdbId'),
-    douban: t('dialog.reorganize.doubanId'),
     bangumi: t('dialog.reorganize.bangumiId'),
   }
   return labels[mediaSource.value]

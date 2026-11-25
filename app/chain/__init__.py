@@ -38,7 +38,7 @@ from app.schemas import (
     MessageResponse,
 )
 from app.utils.identity import normalize_internal_user_id
-from app.utils.media import normalize_media_source
+from app.utils.media import is_supported_media_source, normalize_media_source
 from app.schemas.message import ChannelCapability, ChannelCapabilityManager
 from app.schemas.types import (
     TorrentStatus,
@@ -405,7 +405,7 @@ class ChainBase(metaclass=ABCMeta):
             bangumiid: Optional[int] = None,
     ) -> Tuple[Optional[str], Optional[int], Optional[str], Optional[int]]:
         """
-        统一请求级数据源ID与兼容字段，并保证同一次识别只携带一个来源ID。
+        统一请求级数据源ID与兼容字段，并保证同一次识别只携带一个活跃来源ID。
 
         :param source: 数据源名称
         :param mediaid: 数据源原生ID
@@ -415,6 +415,10 @@ class ChainBase(metaclass=ABCMeta):
         :return: 数据源及三种兼容ID
         """
         source = normalize_media_source(source)
+        if source and not is_supported_media_source(source):
+            logger.warning(f"媒体数据源 {source} 不受支持，按默认识别源回退")
+            source = None
+            mediaid = None
 
         def to_int(value) -> Optional[int]:
             """将数字ID安全转换为整数。"""
@@ -423,23 +427,23 @@ class ChainBase(metaclass=ABCMeta):
         if source:
             source_ids = {
                 "themoviedb": to_int(mediaid) if mediaid else to_int(tmdbid),
-                "douban": str(mediaid) if mediaid else str(doubanid) if doubanid else None,
                 "bangumi": to_int(mediaid) if mediaid else to_int(bangumiid),
             }
             selected_id = source_ids.get(source)
             return (
                 source,
                 selected_id if source == "themoviedb" else None,
-                selected_id if source == "douban" else None,
+                None,
                 selected_id if source == "bangumi" else None,
             )
 
         if tmdbid:
             return "themoviedb", int(tmdbid), None, None
-        if doubanid:
-            return "douban", None, str(doubanid), None
         if bangumiid:
             return "bangumi", None, None, int(bangumiid)
+        if doubanid:
+            # 豆瓣ID只作为历史兼容字段保留，不能再选择已移除的豆瓣识别源。
+            return None, None, str(doubanid), None
         return source, None, None, None
 
     def recognize_media(
@@ -478,7 +482,6 @@ class ChainBase(metaclass=ABCMeta):
             source = meta.media_source
         if not mediaid and hasattr(meta, "media_id"):
             mediaid = meta.media_id
-        requested_mediaid = mediaid
         if not episode_group and hasattr(meta, "episode_group"):
             episode_group = meta.episode_group
         source, tmdbid, doubanid, bangumiid = self._resolve_media_source_params(
@@ -488,6 +491,7 @@ class ChainBase(metaclass=ABCMeta):
             doubanid=doubanid,
             bangumiid=bangumiid,
         )
+        requested_mediaid = mediaid if source else None
         # 显式 TMDB ID 由模块自行消歧，不能被标题推断类型误导。
         if not mtype and not tmdbid and meta and meta.type in [MediaType.TV, MediaType.MOVIE]:
             mtype = meta.type
@@ -549,7 +553,6 @@ class ChainBase(metaclass=ABCMeta):
             source = meta.media_source
         if not mediaid and hasattr(meta, "media_id"):
             mediaid = meta.media_id
-        requested_mediaid = mediaid
         if not episode_group and hasattr(meta, "episode_group"):
             episode_group = meta.episode_group
         source, tmdbid, doubanid, bangumiid = self._resolve_media_source_params(
@@ -559,6 +562,7 @@ class ChainBase(metaclass=ABCMeta):
             doubanid=doubanid,
             bangumiid=bangumiid,
         )
+        requested_mediaid = mediaid if source else None
         # 显式 TMDB ID 由模块自行消歧，不能被标题推断类型误导。
         if not mtype and not tmdbid and meta and meta.type in [MediaType.TV, MediaType.MOVIE]:
             mtype = meta.type
@@ -583,62 +587,6 @@ class ChainBase(metaclass=ABCMeta):
             return mediainfo
 
         return None
-
-    def match_doubaninfo(
-            self,
-            name: str,
-            imdbid: Optional[str] = None,
-            mtype: Optional[MediaType] = None,
-            year: Optional[str] = None,
-            season: Optional[int] = None,
-            raise_exception: bool = False,
-    ) -> Optional[dict]:
-        """
-        搜索和匹配豆瓣信息
-        :param name: 标题
-        :param imdbid: imdbid
-        :param mtype: 类型
-        :param year: 年份
-        :param season: 季
-        :param raise_exception: 触发速率限制时是否抛出异常
-        """
-        return self.run_module(
-            "match_doubaninfo",
-            name=name,
-            imdbid=imdbid,
-            mtype=mtype,
-            year=year,
-            season=season,
-            raise_exception=raise_exception,
-        )
-
-    async def async_match_doubaninfo(
-            self,
-            name: str,
-            imdbid: Optional[str] = None,
-            mtype: Optional[MediaType] = None,
-            year: Optional[str] = None,
-            season: Optional[int] = None,
-            raise_exception: bool = False,
-    ) -> Optional[dict]:
-        """
-        搜索和匹配豆瓣信息（异步版本）
-        :param name: 标题
-        :param imdbid: imdbid
-        :param mtype: 类型
-        :param year: 年份
-        :param season: 季
-        :param raise_exception: 触发速率限制时是否抛出异常
-        """
-        return await self.async_run_module(
-            "async_match_doubaninfo",
-            name=name,
-            imdbid=imdbid,
-            mtype=mtype,
-            year=year,
-            season=season,
-            raise_exception=raise_exception,
-        )
 
     def match_tmdbinfo(
             self,
@@ -719,47 +667,6 @@ class ChainBase(metaclass=ABCMeta):
             season=season,
             episode=episode,
         )
-
-    def douban_info(
-            self,
-            doubanid: str,
-            mtype: Optional[MediaType] = None,
-            raise_exception: bool = False,
-    ) -> Optional[dict]:
-        """
-        获取豆瓣信息
-        :param doubanid: 豆瓣ID
-        :param mtype: 媒体类型
-        :return: 豆瓣信息
-        :param raise_exception: 触发速率限制时是否抛出异常
-        """
-        return self.run_module(
-            "douban_info",
-            doubanid=doubanid,
-            mtype=mtype,
-            raise_exception=raise_exception,
-        )
-
-    async def async_douban_info(
-            self,
-            doubanid: str,
-            mtype: Optional[MediaType] = None,
-            raise_exception: bool = False,
-    ) -> Optional[dict]:
-        """
-        获取豆瓣信息（异步版本）
-        :param doubanid: 豆瓣ID
-        :param mtype: 媒体类型
-        :return: 豆瓣信息
-        :param raise_exception: 触发速率限制时是否抛出异常
-        """
-        return await self.async_run_module(
-            "async_douban_info",
-            doubanid=doubanid,
-            mtype=mtype,
-            raise_exception=raise_exception,
-        )
-
 
     def tmdb_info(
             self, tmdbid: int, mtype: MediaType, season: Optional[int] = None

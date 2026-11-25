@@ -39,7 +39,7 @@ export function getMediaIdentity(media?: MediaInfo): MediaIdentity | undefined {
     if (declaredIdentity) return declaredIdentity
   }
 
-  for (const fallbackSource of ['themoviedb', 'douban', 'bangumi']) {
+  for (const fallbackSource of ['themoviedb', 'bangumi', 'douban']) {
     const fallbackIdentity = buildIdentity(fallbackSource, sourceIds[fallbackSource])
     if (fallbackIdentity) return fallbackIdentity
   }

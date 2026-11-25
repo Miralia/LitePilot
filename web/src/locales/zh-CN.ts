@@ -795,7 +795,7 @@ export default {
         '被替换词 => 替换词\n' +
         '前定位词 <> 后定位词 >> 集偏移量（EP）\n' +
         '被替换词 => 替换词 && 前定位词 <> 后定位词 >> 集偏移量（EP）\n' +
-        '其中替换词支持格式：&#123;[tmdbid/doubanid/bangumiid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; 直接指定媒体数据源ID识别，其中g为剧集组编号，s、e为季数和集数（均可选）',
+        '其中替换词支持格式：&#123;[tmdbid/bangumiid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; 直接指定媒体数据源ID识别，其中g为剧集组编号，s、e为季数和集数（均可选）',
       identifierSaveSuccess: '自定义识别词保存成功',
       streamingPlatform: '流媒体平台词表',
       streamingPlatformShort: '流媒体平台',
@@ -976,7 +976,6 @@ export default {
       recognitionClearConfirm: '确认清空全部 {source} 识别缓存吗？',
       recognitionSource: {
         themoviedb: 'TheMovieDb',
-        douban: '豆瓣',
         bangumi: 'Bangumi',
       },
     },
@@ -1045,7 +1044,6 @@ export default {
       mediaSource: '数据源',
       mediaSourceHint: '默认使用后台识别设置，可为本次整理与刮削单独切换',
       tmdbId: 'TheMovieDb编号',
-      doubanId: '豆瓣编号',
       bangumiId: 'Bangumi编号',
       mediaIdHint: '按名称查询媒体编号，留空自动识别',
       mediaIdPlaceholder: '留空自动识别',

@@ -3,7 +3,7 @@ import { computed, nextTick, reactive, ref } from 'vue'
 import { useToast } from 'vue-toastification'
 import { requiredValidator } from '@/@validators'
 import api from '@/api'
-import type { Context, MediaDataSource, MediaInfo } from '@/api/types'
+import type { Context, ActiveMediaDataSource, MediaInfo } from '@/api/types'
 import { getMediaId, getMediaIdentity } from '@/utils/mediaIdentity'
 import router from '@/router'
 import { useGlobalSettingsStore } from '@/stores'
@@ -34,7 +34,7 @@ interface MediaSourceDisplay {
 
 interface NameTestForm {
   customWords: string | null
-  source: MediaDataSource
+  source: ActiveMediaDataSource
   subtitle: string | null
   title: string | null
 }
@@ -60,15 +60,14 @@ const emit = defineEmits<{ close: [] }>()
 const { t } = useI18n()
 const globalSettingsStore = useGlobalSettingsStore()
 
-const mediaSourceItems = computed<{ title: string; value: MediaDataSource }[]>(() => [
+const mediaSourceItems = computed<{ title: string; value: ActiveMediaDataSource }[]>(() => [
   { title: t('setting.cache.recognitionSource.themoviedb'), value: 'themoviedb' },
-  { title: t('setting.cache.recognitionSource.douban'), value: 'douban' },
   { title: t('setting.cache.recognitionSource.bangumi'), value: 'bangumi' },
 ])
 
 // 获取后台默认识别数据源，未知值兼容回退到TheMovieDb。
-function getDefaultMediaSource(): MediaDataSource {
-  const configuredSource = globalSettingsStore.globalSettings.RECOGNIZE_SOURCE as MediaDataSource
+function getDefaultMediaSource(): ActiveMediaDataSource {
+  const configuredSource = globalSettingsStore.globalSettings.RECOGNIZE_SOURCE as ActiveMediaDataSource
   return mediaSourceItems.value.some(item => item.value === configuredSource) ? configuredSource : 'themoviedb'
 }
 

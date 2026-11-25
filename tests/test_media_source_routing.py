@@ -23,17 +23,34 @@ def test_generic_source_id_wins_over_legacy_ids() -> None:
     assert resolved == ("bangumi", None, None, 154587)
 
 
-def test_custom_plugin_source_is_not_discarded() -> None:
-    """插件自定义来源应保留来源名，并通过通用原生 ID 交给插件。"""
+def test_unsupported_source_falls_back_to_default_recognition() -> None:
+    """已移除或未知的数据源不能再作为识别源进入模块调度。"""
     resolved = ChainBase._resolve_media_source_params(
-        source="plugin_source",
-        mediaid="custom-1",
+        source="douban",
+        mediaid="35209731",
     )
 
-    assert resolved == ("plugin_source", None, None, None)
+    assert resolved == (None, None, None, None)
 
 
-def test_explicit_source_recognition_reaches_plugins_with_all_ids() -> None:
+def test_douban_id_is_auxiliary_and_does_not_select_douban_source() -> None:
+    """历史豆瓣ID只保留为兼容字段，不能推断出已移除的豆瓣识别源。"""
+    resolved = ChainBase._resolve_media_source_params(doubanid="35209731")
+
+    assert resolved == (None, None, "35209731", None)
+
+
+def test_bangumi_id_wins_over_legacy_douban_id() -> None:
+    """同一请求同时存在历史豆瓣ID与Bangumi ID时应使用可执行的Bangumi源。"""
+    resolved = ChainBase._resolve_media_source_params(
+        doubanid="35209731",
+        bangumiid=400602,
+    )
+
+    assert resolved == ("bangumi", None, None, 400602)
+
+
+def test_explicit_source_recognition_reaches_modules_with_all_ids() -> None:
     """显式选择数据源时应保留通用参数并进入完整模块调度。"""
     chain = _chain_without_init()
     media = MediaInfo(
@@ -61,7 +78,7 @@ def test_explicit_source_recognition_reaches_plugins_with_all_ids() -> None:
 
 
 def test_default_recognition_passes_empty_generic_identity() -> None:
-    """默认识别也应向插件传递完整但为空的通用媒体身份参数。"""
+    """默认识别也应向模块传递完整但为空的通用媒体身份参数。"""
     chain = _chain_without_init()
     media = MediaInfo(title="测试电影", type=MediaType.MOVIE, tmdb_id=1)
     chain.run_module = Mock(return_value=media)
@@ -80,3 +97,21 @@ def test_default_recognition_passes_empty_generic_identity() -> None:
 
 
 
+
+
+def test_unsupported_source_does_not_pass_legacy_native_id_to_modules() -> None:
+    """历史豆瓣来源回退默认识别时，豆瓣原生ID不能继续参与模块调度。"""
+    chain = _chain_without_init()
+    media = MediaInfo(title="测试电影", type=MediaType.MOVIE, tmdb_id=1)
+    chain.run_module = Mock(return_value=media)
+    meta = MetaBase("测试电影")
+    meta.cn_name = "测试电影"
+    meta.type = MediaType.MOVIE
+
+    result = chain.recognize_media(meta=meta, source="douban", mediaid="35209731")
+
+    assert result is media
+    call = chain.run_module.call_args
+    assert call.kwargs["source"] is None
+    assert call.kwargs["mediaid"] is None
+    assert call.kwargs["doubanid"] is None

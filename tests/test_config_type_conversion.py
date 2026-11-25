@@ -53,3 +53,54 @@ def test_validate_api_token_does_not_log_generated_secret(monkeypatch) -> None:
     assert len(generated_token) >= 16
     assert messages
     assert generated_token not in "".join(messages)
+
+
+def test_update_setting_replaces_unsupported_recognize_source(monkeypatch) -> None:
+    """已移除的识别源配置应自动回退到可执行的TMDB源。"""
+    persisted: dict[str, Any] = {}
+
+    def persist_setting(
+        field_name: str,
+        original_value: Any,
+        converted_value: Any,
+    ) -> tuple[bool, None]:
+        """记录待持久化配置，避免测试写入真实配置文件。"""
+        persisted.update(
+            field_name=field_name,
+            original_value=original_value,
+            converted_value=converted_value,
+        )
+        return True, None
+
+    monkeypatch.setattr(settings, "RECOGNIZE_SOURCE", "themoviedb")
+    monkeypatch.setattr(
+        type(settings),
+        "update_env_config",
+        staticmethod(persist_setting),
+    )
+
+    success, _ = settings.update_setting("RECOGNIZE_SOURCE", "douban")
+
+    assert success is True
+    assert settings.RECOGNIZE_SOURCE == "themoviedb"
+    assert persisted["converted_value"] == "themoviedb"
+
+
+def test_media_source_setting_filters_unsupported_search_sources() -> None:
+    """搜索源列表应过滤无集成模块的来源，并保留有效来源顺序。"""
+    converted, needs_update = settings.validate_media_source_setting(
+        "SEARCH_SOURCE", "douban,bangumi,unknown,themoviedb"
+    )
+
+    assert converted == "bangumi,themoviedb"
+    assert needs_update is True
+
+
+def test_media_source_setting_accepts_supported_sources() -> None:
+    """当前支持的TMDB与Bangumi配置不应被改写。"""
+    converted, needs_update = settings.validate_media_source_setting(
+        "SEARCH_SOURCE", "themoviedb,bangumi"
+    )
+
+    assert converted == "themoviedb,bangumi"
+    assert needs_update is False

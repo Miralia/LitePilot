@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { numberValidator } from '@/@validators'
-import type { FileItem, ManualScrapeOptions, MediaDataSource, MediaInfo } from '@/api/types'
+import type { ActiveMediaDataSource, FileItem, ManualScrapeOptions, MediaInfo } from '@/api/types'
 import { useGlobalSettingsStore } from '@/stores'
 import { useI18n } from 'vue-i18n'
 import MediaIdSelector from '../misc/MediaIdSelector.vue'
@@ -24,15 +24,14 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
 }>()
 
-const mediaSourceItems = computed<{ title: string; value: MediaDataSource }[]>(() => [
+const mediaSourceItems = computed<{ title: string; value: ActiveMediaDataSource }[]>(() => [
   { title: t('setting.cache.recognitionSource.themoviedb'), value: 'themoviedb' },
-  { title: t('setting.cache.recognitionSource.douban'), value: 'douban' },
   { title: t('setting.cache.recognitionSource.bangumi'), value: 'bangumi' },
 ])
 
 const globalSettingsStore = useGlobalSettingsStore()
 const mediaType = ref('')
-const mediaSource = ref<MediaDataSource>(getDefaultMediaSource())
+const mediaSource = ref<ActiveMediaDataSource>(getDefaultMediaSource())
 const mediaId = ref<string | null>(null)
 const mediaSelectorDialog = ref(false)
 
@@ -49,9 +48,8 @@ const dialogSubtitle = computed(() => {
 })
 
 const mediaIdLabel = computed(() => {
-  const labels: Record<MediaDataSource, string> = {
+  const labels: Record<ActiveMediaDataSource, string> = {
     themoviedb: t('dialog.reorganize.tmdbId'),
-    douban: t('dialog.reorganize.doubanId'),
     bangumi: t('dialog.reorganize.bangumiId'),
   }
   return labels[mediaSource.value]
@@ -63,8 +61,8 @@ const canSubmit = computed(() => {
 })
 
 // 获取后台设置中的默认识别数据源，未知值兼容回退到 TheMovieDb。
-function getDefaultMediaSource(): MediaDataSource {
-  const configuredSource = globalSettingsStore.globalSettings.RECOGNIZE_SOURCE as MediaDataSource
+function getDefaultMediaSource(): ActiveMediaDataSource {
+  const configuredSource = globalSettingsStore.globalSettings.RECOGNIZE_SOURCE as ActiveMediaDataSource
   return mediaSourceItems.value.some(item => item.value === configuredSource) ? configuredSource : 'themoviedb'
 }
 

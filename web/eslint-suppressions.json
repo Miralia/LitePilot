@@ -59,7 +59,7 @@
   },
   "src/api/types.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 24
+      "count": 23
     },
     "@typescript-eslint/no-wrapper-object-types": {
       "count": 2
@@ -290,9 +290,6 @@
   },
   "src/utils/appDeepLink.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "no-case-declarations": {
       "count": 1
     },
     "no-useless-escape": {

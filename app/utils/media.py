@@ -16,9 +16,12 @@ MEDIA_SOURCE_PREFIXES = {
 
 MEDIA_SOURCE_ID_FIELDS = {
     "themoviedb": ("tmdb_id", "tmdbid"),
-    "douban": ("douban_id", "doubanid"),
     "bangumi": ("bangumi_id", "bangumiid"),
+    "douban": ("douban_id", "doubanid"),
 }
+
+
+SUPPORTED_MEDIA_SOURCES = frozenset({"themoviedb", "bangumi"})
 
 
 def normalize_media_source(source: Optional[str]) -> Optional[str]:
@@ -27,6 +30,11 @@ def normalize_media_source(source: Optional[str]) -> Optional[str]:
         return None
     normalized = str(source).strip().casefold()
     return MEDIA_SOURCE_ALIASES.get(normalized, normalized or None)
+
+
+def is_supported_media_source(source: Optional[str]) -> bool:
+    """判断数据源是否为当前可实际识别、搜索和刮削的集成来源。"""
+    return normalize_media_source(source) in SUPPORTED_MEDIA_SOURCES
 
 
 def parse_media_key(media_key: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
@@ -52,8 +60,8 @@ def resolve_media_identity(
     """
     从统一媒体对象、通用身份或兼容 ID 中解析主媒体身份。
 
-    显式 ``source/media_id`` 优先；未指定来源时按 TMDB、豆瓣、Bangumi
-    的兼容顺序选择首个有效 ID。
+    显式 ``source/media_id`` 优先；未指定来源时按 TMDB、Bangumi、豆瓣
+    的兼容顺序选择首个有效 ID，历史豆瓣身份仅作为最后兜底。
     """
     normalized_source = normalize_media_source(source)
     if normalized_source and media_id is not None and str(media_id).strip():
@@ -61,8 +69,8 @@ def resolve_media_identity(
 
     values = {
         "themoviedb": tmdbid,
-        "douban": doubanid,
         "bangumi": bangumiid,
+        "douban": doubanid,
     }
     if media is not None:
         normalized_source = normalized_source or normalize_media_source(

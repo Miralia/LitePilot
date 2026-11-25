@@ -4,7 +4,7 @@ from app.schemas.types import MediaType
 
 
 def test_message_context_contains_all_media_identity_fields() -> None:
-    """消息模板上下文应向插件暴露全部媒体源 ID 和当前主身份。"""
+    """消息模板上下文应暴露全部媒体源 ID 和当前主身份。"""
     context = {}
     media = MediaInfo(
         source="bangumi",
@@ -26,13 +26,13 @@ def test_message_context_contains_all_media_identity_fields() -> None:
     assert media.to_dict()["media_id"] == "499390"
 
 
-def test_media_info_preserves_plugin_source_identity() -> None:
-    """核心媒体对象应原样保留插件自定义数据源的原生 ID。"""
+def test_media_info_preserves_legacy_custom_source_identity() -> None:
+    """核心媒体对象应原样保留历史自定义数据源的原生 ID。"""
     media = MediaInfo(
-        source="plugin_source",
+        source="legacy_custom",
         media_id="custom-100",
         type=MediaType.MOVIE,
-        title="插件电影",
+        title="历史电影",
     )
 
     assert media.media_id == "custom-100"
