@@ -13,3 +13,5 @@ security:
       reason: This vulnerability is resolved by upgrading `python-multipart` to version 0.0.9.
     64930:
       reason: This vulnerability is resolved by upgrading `python-multipart` to version 0.0.9.
+    SFTY-20261008-90293:
+      reason: LitePilot uses APScheduler only through BackgroundScheduler with the default in-memory job store; JSONSerializer and CBORSerializer are not used, no untrusted serialized job data is deserialized, and upstream provides no fixed 3.x release.
