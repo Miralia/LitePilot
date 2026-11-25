@@ -103,3 +103,17 @@ git -C /opt/moviepilot pull --ff-only
 ```
 
 数据库结构变更由启动时的 Alembic 迁移自动完成；若迁移失败，用升级前的备份回滚。
+
+## 离线构建后同步静态产物
+
+生产机内存或 CPU 有限时，可以在构建机执行 `./scripts/build-frontend.sh --skip-install`，再只同步
+`public/`。同步前保留当前线上静态目录副本；同步时必须清理旧哈希文件，否则 `public/` 会同时残留
+多套构建产物，后续排障时无法判断实际生效版本：
+
+```bash
+cp -a /opt/moviepilot/public /root/litepilot-public-rollback-$(date +%Y%m%d%H%M%S)
+rsync -a --checksum --delete public/ root@<host>:/opt/moviepilot/public/
+```
+
+同步后访问入口页、入口 JS 与 `service-worker.js`，确认均为 200；后端未变更时无需重启
+`litepilot.service`。
