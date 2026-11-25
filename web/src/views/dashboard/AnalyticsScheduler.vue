@@ -96,7 +96,7 @@ async function loadSchedulerList() {
     schedulerList.value = schedulers as unknown as ScheduleInfo[]
     transferQueue.value = queue as unknown as TransferQueue[]
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 

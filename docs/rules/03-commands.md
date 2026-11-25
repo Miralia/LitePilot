@@ -128,7 +128,7 @@ moviepilot logs --stdio --follow
 
 ```bash
 # One-line bootstrap installer
-curl -fsSL https://raw.githubusercontent.com/jxxghp/MoviePilot/v2/scripts/bootstrap-local.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Miralia/LitePilot/main/scripts/bootstrap-local.sh | bash
 
 # Install backend dependencies
 moviepilot install deps
@@ -136,13 +136,9 @@ moviepilot install deps --python python3.11
 moviepilot install deps --venv /path/to/venv
 moviepilot install deps --recreate
 
-# Install frontend release
+# Build and install the in-repository frontend
 moviepilot install frontend
-moviepilot install frontend --version latest
-moviepilot install frontend --version v2.9.31
-
-# Install resource files
-moviepilot install resources
+moviepilot install frontend --node-version 24.22.3
 
 # Initialize local config
 moviepilot init
@@ -167,14 +163,13 @@ moviepilot uninstall
 ```bash
 moviepilot update backend
 moviepilot update backend --ref latest
-moviepilot update backend --ref v2.9.31
+moviepilot update backend --ref main
 
 moviepilot update frontend
-moviepilot update frontend --frontend-version latest
+moviepilot update frontend --node-version 24.22.3
 
 moviepilot update all
-moviepilot update all --ref latest --frontend-version latest
-moviepilot update all --skip-resources
+moviepilot update all --ref latest
 ```
 
 ---
@@ -207,9 +202,28 @@ moviepilot config describe API_TOKEN --show-secrets
 
 ---
 
-## Local CLI — Tools and Scheduler
+## Local CLI — Deployment, Backup, and Migration
 
 ```bash
+moviepilot deploy --print-only
+moviepilot deploy --prefix /mp/
+moviepilot backup
+moviepilot backup --output /path/to/moviepilot-backup.tar.gz
+moviepilot restore /path/to/moviepilot-backup.tar.gz
+moviepilot restore /path/to/moviepilot-backup.tar.gz --config-dir /path/to/config --overwrite
+moviepilot migrate --config-dir /path/to/legacy-config
+```
+
+---
+
+## Local CLI — Scheduler
+
+```bash
+moviepilot scheduler list
+moviepilot scheduler run transfer
+```
+
+---
 
 ## Local CLI — Help Discovery
 
@@ -220,9 +234,11 @@ moviepilot commands
 moviepilot help install
 moviepilot help init
 moviepilot help setup
+moviepilot help uninstall
 moviepilot help update
+moviepilot help startup
+moviepilot help backup
 moviepilot help config
-moviepilot help tool
 moviepilot help scheduler
 ```
 

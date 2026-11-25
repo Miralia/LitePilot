@@ -172,7 +172,7 @@ async function loadTransferTypeItems() {
       props.directory.transfer_type = ''
     }
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 
@@ -226,15 +226,12 @@ watch(
 )
 
 // 媒体类型变更非空时，将按类型建子目录的开关置为 false
-watch(
-  [() => props.directory.media_type],
-  ([newMediaType], [oldMediaType]) => {
-    if (newMediaType && newMediaType !== oldMediaType) {
-      props.directory.download_type_folder = false
-      props.directory.library_type_folder = false
-    }
-  },
-)
+watch([() => props.directory.media_type], ([newMediaType], [oldMediaType]) => {
+  if (newMediaType && newMediaType !== oldMediaType) {
+    props.directory.download_type_folder = false
+    props.directory.library_type_folder = false
+  }
+})
 
 // 监听monitor_type变化，如果为downloader则设置为本地
 watch(

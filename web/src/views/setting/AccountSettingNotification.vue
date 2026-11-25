@@ -174,7 +174,7 @@ async function loadNotificationSetting() {
     const result: { [key: string]: any } = await api.get('system/setting/Notifications')
     notifications.value = result.data?.value ?? []
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -240,7 +240,7 @@ async function loadNotificationTime() {
     const result: { [key: string]: any } = await api.get('system/setting/NotificationSendTime')
     notificationTime.value = result.data?.value ?? { start: '00:00', end: '23:59' }
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -252,7 +252,7 @@ async function saveNotificationSetting() {
       $toast.success(t('setting.notification.saveSuccess'))
     } else $toast.error(t('setting.notification.saveFailed'))
   } catch (error) {
-    console.log(error)
+    console.error(error)
     $toast.error(t('setting.notification.saveFailed'))
   }
 }
@@ -265,7 +265,7 @@ async function saveNotificationTime() {
       $toast.success(t('setting.notification.timeSaveSuccess'))
     } else $toast.error(t('setting.notification.timeSaveFailed'))
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -293,7 +293,7 @@ async function loadNotificationSwitchs() {
       notificationSwitchs.value = savedSwitchs
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -307,7 +307,7 @@ async function saveNotificationSwitchs() {
     if (result.success) $toast.success(t('setting.notification.switchSaveSuccess'))
     else $toast.error(t('setting.notification.switchSaveFailed'))
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 

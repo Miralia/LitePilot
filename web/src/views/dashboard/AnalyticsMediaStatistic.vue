@@ -101,7 +101,7 @@ async function loadMediaStatistic() {
     episodeCountMonth.value = statistic.episode_count_month
     writeSnapshot(statistic)
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 

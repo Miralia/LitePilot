@@ -202,7 +202,7 @@ async function loadDownloaderSetting() {
     const result: { [key: string]: any } = await api.get('system/setting/Downloaders')
     downloaders.value = result.data?.value ?? []
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -221,7 +221,7 @@ async function saveDownloaderSetting() {
 
     await loadDownloaderSetting()
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -247,7 +247,7 @@ async function loadMediaServerSetting() {
     const result: { [key: string]: any } = await api.get('system/setting/MediaServers')
     mediaServers.value = result.data?.value ?? []
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -260,7 +260,7 @@ async function saveMediaServerSetting() {
 
     await loadMediaServerSetting()
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -279,7 +279,7 @@ async function loadSystemSettings() {
       }
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -294,7 +294,7 @@ async function saveSystemSetting(value: { [key: string]: any }) {
       return false
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
   return false
 }
@@ -345,7 +345,7 @@ async function copyValue(value: string) {
     else $toast.error(t('setting.system.copyFailed'))
   } catch (error) {
     $toast.error(t('setting.system.copyError'))
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -483,7 +483,7 @@ async function loadScrapingSwitchs() {
       ScrapingPolicies.value = { ...ScrapingPolicies.value, ...loadedSwitches }
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -498,7 +498,7 @@ async function saveScrapingSwitchs() {
       return false
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
     $toast.error(t('setting.system.scrapingSwitchSaveError'))
     return false
   }

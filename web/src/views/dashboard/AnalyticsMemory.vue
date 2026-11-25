@@ -177,7 +177,7 @@ async function loadMemoryData() {
       if (item.data.length > 30) item.data.shift()
     })
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 
@@ -186,7 +186,7 @@ const { loading, refresh } = useDataRefresh(
   'analytics-memory',
   loadMemoryData,
   3000, // 3秒间隔
-  true // 立即执行
+  true, // 立即执行
 )
 
 useKeepAliveRefresh(refresh)
@@ -197,7 +197,9 @@ useKeepAliveRefresh(refresh)
     <VCardItem>
       <template #prepend><VIcon icon="mdi-memory" size="20" class="me-2" /></template>
       <VCardTitle>{{ t('dashboard.memoryUsage') }}</VCardTitle>
-      <template #append><strong class="dashboard-chart-current">{{ memoryUsage.toFixed(1) }}%</strong></template>
+      <template #append
+        ><strong class="dashboard-chart-current">{{ memoryUsage.toFixed(1) }}%</strong></template
+      >
     </VCardItem>
     <VCardText class="dashboard-chart-content">
       <div class="dashboard-memory-value">
@@ -208,9 +210,17 @@ useKeepAliveRefresh(refresh)
         <VApexChart type="area" :options="chartOptions" :series="series" height="100%" />
       </div>
       <div class="dashboard-chart-footer">
-        <span><i class="memory-dot memory-dot--used" />{{ t('dashboard.memoryUsed') }} {{ animatedUsedMemoryText }}</span>
-        <span><i class="memory-dot memory-dot--cached" />{{ t('dashboard.memoryCached') }} {{ animatedCachedMemoryText }}</span>
-        <span><i class="memory-dot memory-dot--available" />{{ t('dashboard.memoryAvailable') }} {{ animatedAvailableMemoryText }}</span>
+        <span
+          ><i class="memory-dot memory-dot--used" />{{ t('dashboard.memoryUsed') }} {{ animatedUsedMemoryText }}</span
+        >
+        <span
+          ><i class="memory-dot memory-dot--cached" />{{ t('dashboard.memoryCached') }}
+          {{ animatedCachedMemoryText }}</span
+        >
+        <span
+          ><i class="memory-dot memory-dot--available" />{{ t('dashboard.memoryAvailable') }}
+          {{ animatedAvailableMemoryText }}</span
+        >
       </div>
     </VCardText>
   </VCard>

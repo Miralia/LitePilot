@@ -10,11 +10,9 @@ import telegramLogo from '@/assets/images/logos/telegram.webp'
 import downloaderLogo from '@/assets/images/logos/downloader.png'
 import mediaserverLogo from '@/assets/images/logos/mediaserver.png'
 import notificationLogo from '@/assets/images/logos/notification.png'
-import chromeLogo from '@/assets/images/logos/chrome.png'
 import githubLogo from '@/assets/images/logos/github.png'
 import tmdbLogo from '@/assets/images/logos/tmdb.png'
 import bangumiLogo from '@/assets/images/logos/bangumi.png'
-import doubanLogo from '@/assets/images/logos/douban.png'
 import pythonLogo from '@/assets/images/logos/python.png'
 
 // 图标映射表
@@ -25,11 +23,9 @@ const logoMap: Record<string, string> = {
   downloader: downloaderLogo,
   mediaserver: mediaserverLogo,
   notification: notificationLogo,
-  chrome: chromeLogo,
   github: githubLogo,
   tmdb: tmdbLogo,
   bangumi: bangumiLogo,
-  douban: doubanLogo,
   python: pythonLogo,
 }
 
@@ -68,26 +64,7 @@ export function getDisplayImageUrl(url: string, useCache = false): string {
   const encodedUrl = encodeURIComponent(url)
   if (isBangumiImageUrl(url))
     return `${import.meta.env.VITE_API_BASE_URL}system/img/1?imgurl=${encodedUrl}${useCache ? '&cache=true' : ''}`
-  if (useCache)
-    return `${import.meta.env.VITE_API_BASE_URL}system/cache/image?url=${encodedUrl}`
-  if (url.includes('doubanio.com'))
-    return `${import.meta.env.VITE_API_BASE_URL}system/img/0?imgurl=${encodedUrl}`
+  if (useCache) return `${import.meta.env.VITE_API_BASE_URL}system/cache/image?url=${encodedUrl}`
+  if (url.includes('doubanio.com')) return `${import.meta.env.VITE_API_BASE_URL}system/img/0?imgurl=${encodedUrl}`
   return url
-}
-
-/**
- * 获取所有可用的图标名称
- * @returns 图标名称数组
- */
-export function getAvailableLogos(): string[] {
-  return Object.keys(logoMap)
-}
-
-/**
- * 检查图标是否存在
- * @param logoName 图标名称
- * @returns 是否存在
- */
-export function hasLogo(logoName: string): boolean {
-  return logoName in logoMap
 }

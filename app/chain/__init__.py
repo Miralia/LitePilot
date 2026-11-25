@@ -457,12 +457,10 @@ class ChainBase(metaclass=ABCMeta):
             bangumiid: Optional[int] = None,
             episode_group: Optional[str] = None,
             cache: bool = True,
-            share_meta: MetaBase = None,
     ) -> Optional[MediaInfo]:
         """
         识别媒体信息，不含Fanart图片
         :param meta:     识别的元数据
-        :param share_meta: 共享识别查询/上报使用的原始元数据
         :param mtype:    识别的媒体类型，与tmdbid配套
         :param source:   请求级识别数据源
         :param mediaid:  与source配套的数据源原生ID
@@ -495,7 +493,6 @@ class ChainBase(metaclass=ABCMeta):
         # 显式 TMDB ID 由模块自行消歧，不能被标题推断类型误导。
         if not mtype and not tmdbid and meta and meta.type in [MediaType.TV, MediaType.MOVIE]:
             mtype = meta.type
-        share_query_meta = share_meta or meta
         module_kwargs = {
             "meta": meta,
             "mtype": mtype,
@@ -528,12 +525,10 @@ class ChainBase(metaclass=ABCMeta):
             bangumiid: Optional[int] = None,
             episode_group: Optional[str] = None,
             cache: bool = True,
-            share_meta: MetaBase = None,
     ) -> Optional[MediaInfo]:
         """
         识别媒体信息，不含Fanart图片（异步版本）
         :param meta:     识别的元数据
-        :param share_meta: 共享识别查询/上报使用的原始元数据
         :param mtype:    识别的媒体类型，与tmdbid配套
         :param source:   请求级识别数据源
         :param mediaid:  与source配套的数据源原生ID
@@ -566,7 +561,6 @@ class ChainBase(metaclass=ABCMeta):
         # 显式 TMDB ID 由模块自行消歧，不能被标题推断类型误导。
         if not mtype and not tmdbid and meta and meta.type in [MediaType.TV, MediaType.MOVIE]:
             mtype = meta.type
-        share_query_meta = share_meta or meta
         module_kwargs = {
             "meta": meta,
             "mtype": mtype,

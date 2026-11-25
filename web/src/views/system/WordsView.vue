@@ -72,7 +72,7 @@ async function queryStreamingDisplay() {
     const value = result?.data?.value
     streamingDisplayMode.value = value === 'short' ? 'short' : 'full'
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -87,7 +87,7 @@ async function changeStreamingDisplay(value: string) {
       return
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
   streamingDisplayMode.value = previous
   $toast.error(t('setting.words.streamingPlatformDisplaySaveFailed'))
@@ -449,7 +449,7 @@ async function queryTextSection(section: TextSectionKey) {
     textSectionModels[section].value = value
     savedTextValues[section] = value
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -469,7 +469,7 @@ async function saveTextSection(section: TextSectionKey) {
 
     $toast.error(setting.failedMessage)
   } catch (error) {
-    console.log(error)
+    console.error(error)
     $toast.error(setting.failedMessage)
   }
 
@@ -485,7 +485,7 @@ async function queryEpisodeFormatRules() {
     episodeFormatRules.value = normalizeEpisodeFormatRules(result?.data?.value ?? [])
     savedEpisodeRules.value = serializeEpisodeFormatRules()
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -514,7 +514,7 @@ async function saveEpisodeFormatRules() {
 
     $toast.error(result.message || t('setting.words.episodeFormatRuleSaveFailed'))
   } catch (error) {
-    console.log(error)
+    console.error(error)
     $toast.error(t('setting.words.episodeFormatRuleSaveFailed'))
   }
 

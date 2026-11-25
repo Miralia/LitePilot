@@ -101,7 +101,7 @@ async function loadSystemSettings() {
       }
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -113,7 +113,7 @@ async function loadMountedLocalDiskDeleteEmptyDirs() {
     )
     mountedLocalDiskDeleteEmptyDirs.value = result.data?.value ?? true
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -132,7 +132,7 @@ async function loadStorages() {
 
     storages.value = result.data?.value ?? []
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -143,7 +143,7 @@ async function saveStorages() {
     if (result.success) $toast.success(t('setting.directory.storageSaveSuccess'))
     else $toast.error(t('setting.directory.storageSaveFailed'))
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -153,7 +153,7 @@ async function loadDirectories() {
     const result: { [key: string]: any } = await api.get('system/setting/public/Directories')
     directories.value = result.data?.value ?? []
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -171,7 +171,7 @@ async function saveDirectories() {
       $toast.success(t('setting.directory.directorySaveSuccess'))
     } else $toast.error(t('setting.directory.directorySaveFailed'))
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -255,7 +255,7 @@ async function saveSystemSettings(value: any) {
       $toast.success(t('setting.directory.organizeSaveSuccess'))
     } else $toast.error(t('setting.directory.organizeSaveFailed'))
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 

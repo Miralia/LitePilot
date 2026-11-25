@@ -1,57 +1,47 @@
-# MoviePilot-Frontend
+# LitePilot Frontend
 
-*[中文](README.md) | English*
+_[中文](README.md) | English_
 
-Frontend project for [MoviePilot](https://github.com/jxxghp/MoviePilot), NodeJS version required: >= `v20.12.1`.
+Frontend application for LitePilot. The user interface is Simplified Chinese only.
+
+## Requirements
+
+- Node.js `>= 20.19`
+- Corepack with Yarn 1
 
 ## Features
 
-- Modern interface built with Vue 3 and Vuetify 3
-- Fast development experience with Vite build tool
-- Multi-language support (Chinese/English)
-- Complete plugin system with dynamic remote component loading
+- Vue 3, TypeScript and Vuetify 3
+- Vite development and production builds
+- Route-level lazy loading for large visualization and editor dependencies
+- Progressive Web App support for the production build
 
 ## Development
 
-### Recommended IDE Setup
-
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=johnsoncodehk.volar) (disable Vetur).
-
-### Configure Vite 
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
-### Install Dependencies
+Install dependencies:
 
 ```sh
-yarn
+corepack yarn install
 ```
 
-### Development Server
+Start the development server:
 
 ```sh
-yarn dev
+corepack yarn dev
 ```
 
-### Build for Production
+Run checks:
 
 ```sh
-yarn build
+corepack yarn typecheck
+corepack yarn lint
+corepack yarn test:run
 ```
 
-### Static Deployment
+Build for production:
 
-1. Host the `dist` static files using a web server like `nginx`. Refer to `public/nginx.conf` for nginx configuration.
+```sh
+corepack yarn build
+```
 
-2. Alternatively, run the `service.js` directly with the `node` command. It listens on port `3000` by default. Set the `NGINX_PORT` environment variable to adjust the port.
-
-```shell
-node dist/service.js
-``` 
-
-### Module Federation
-
-MoviePilot now supports Module Federation, allowing plugin developers to create dynamically loadable remote components for richer plugin user interfaces.
-
-- [Module Federation Troubleshooting Guide](docs/federation-troubleshooting.md) - Common issues and solutions
-- [Plugin Remote Component Example](examples/plugin-component/) - Complete example project for developing plugin components
+The production output is written to `dist/`. LitePilot's local CLI builds this directory from the repository source and copies it to the top-level `public/` runtime directory; it does not download an upstream frontend release.

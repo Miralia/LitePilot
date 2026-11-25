@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
   apiPost: vi.fn(),
-  routerPush: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
   toastWarning: vi.fn(),
@@ -17,12 +16,6 @@ vi.mock('@/api', () => ({
   default: {
     get: mocks.apiGet,
     post: mocks.apiPost,
-  },
-}))
-
-vi.mock('@/router', () => ({
-  default: {
-    push: mocks.routerPush,
   },
 }))
 
@@ -74,7 +67,6 @@ describe('NameTestView media identity', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
-    mocks.routerPush.mockResolvedValue(undefined)
   })
 
   it.each([
@@ -82,11 +74,6 @@ describe('NameTestView media identity', () => {
       'TheMovieDb',
       { media_id: '271016', source: 'themoviedb', title: '测试剧集', type: '电视剧', year: '2026' },
       'https://www.themoviedb.org/tv/271016',
-    ],
-    [
-      'Douban',
-      { media_id: '1295644', source: 'douban', title: '测试电影', type: '电影', year: '1994' },
-      'https://movie.douban.com/subject/1295644',
     ],
     [
       'Bangumi',
@@ -107,6 +94,38 @@ describe('NameTestView media identity', () => {
     expect(sourceDisplay).toHaveAccessibleName(sourceLabel)
     expect(sourceDisplay.closest('.pipeline-step')).toHaveTextContent(`识别数据源${sourceLabel}`)
     expect(sourceDisplay.querySelector('.media-source-logo')).toBeInTheDocument()
+  })
+
+  it('does not render the removed Douban source as a native link', async () => {
+    mocks.apiGet.mockResolvedValueOnce({
+      media_info: {
+        media_id: '1295644',
+        source: 'douban',
+        title: '历史电影',
+        type: '电影',
+        year: '1994',
+      },
+      meta_info: {
+        apply_words: [],
+        name: '历史电影',
+        org_string: 'Legacy.Movie',
+      },
+    })
+    await renderWithProviders(NameTestView, {
+      initialState: {
+        globalSettings: {
+          data: { RECOGNIZE_SOURCE: 'themoviedb' },
+        },
+      },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('标题'), 'Legacy.Movie')
+    await user.click(screen.getByRole('button', { name: '识别' }))
+
+    expect(await screen.findByText('1295644')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '1295644' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Douban')).not.toBeInTheDocument()
   })
 
   it('only exposes the supported TheMovieDb and Bangumi sources', async () => {
@@ -140,12 +159,7 @@ describe('NameTestView media identity', () => {
     expect(classificationStep).toHaveTextContent('媒体分类电视剧 · 动漫')
   })
 
-  it('closes the recognition dialog before navigating to the media detail', async () => {
-    const eventOrder: string[] = []
-    const onClose = vi.fn(() => eventOrder.push('close'))
-    mocks.routerPush.mockImplementation(async () => {
-      eventOrder.push('push')
-    })
+  it('does not expose the removed internal media detail route', async () => {
     const media = {
       media_id: '271016',
       source: 'themoviedb',
@@ -153,21 +167,9 @@ describe('NameTestView media identity', () => {
       type: '电视剧',
       year: '2026',
     }
-    const { user } = await renderRecognizedMedia(media, onClose)
+    await renderRecognizedMedia(media)
 
-    await user.click(screen.getByRole('button', { name: '查看详情' }))
-
-    expect(eventOrder).toEqual(['close', 'push'])
-    expect(onClose).toHaveBeenCalledOnce()
-    expect(mocks.routerPush).toHaveBeenCalledWith({
-      path: '/media',
-      query: {
-        mediaid: 'tmdb:271016',
-        title: '测试剧集',
-        type: '电视剧',
-        year: '2026',
-      },
-    })
+    expect(screen.queryByRole('button', { name: '查看详情' })).not.toBeInTheDocument()
   })
 
   it('persists the five most recent unique titles and restores them in the combobox', async () => {

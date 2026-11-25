@@ -5,10 +5,6 @@ init-hook='import sys; sys.path.append(".")'
 # 忽略的文件和目录
 ignore=.git,__pycache__,.venv,build,dist,tests,docs
 
-# 通过 `pylint app/` 检查主程序时不扫描内置插件目录，
-# 插件依赖和动态模型较多，容易产生与主程序无关的误报。
-ignore-paths=^app/plugins(/|$)
-
 # 并行作业数量
 jobs=0
 
@@ -73,5 +69,3 @@ ignore-imports=yes
 [TYPECHECK]
 # 生成缺失成员提示的类列表
 generated-members=requests.packages.urllib3
-# app.helper.sites 会主动隐藏模块属性枚举，避免误报 no-name-in-module
-ignored-modules=app.helper.sites

@@ -30,6 +30,8 @@ ROOT = Path(__file__).resolve().parents[1]
 LEGACY_CONFIG_DIR = ROOT / "config"
 HELPER_DIR = ROOT / "app" / "helper"
 PUBLIC_DIR = ROOT / "public"
+WEB_DIR = ROOT / "web"
+WEB_DIST_DIR = WEB_DIR / "dist"
 RUNTIME_DIR = ROOT / ".runtime"
 NODE_DIR = RUNTIME_DIR / "node"
 INSTALL_ENV_FILE = ROOT / ".moviepilot.env"
@@ -45,23 +47,14 @@ TEMP_DIR = CONFIG_DIR / "temp"
 COOKIE_DIR = CONFIG_DIR / "cookies"
 ENV_FILE = CONFIG_DIR / "app.env"
 
-DEFAULT_NODE_VERSION = "20.12.1"
-FRONTEND_LATEST_API = (
-    "https://api.github.com/repos/jxxghp/MoviePilot-Frontend/releases/latest"
-)
-FRONTEND_TAG_API = (
-    "https://api.github.com/repos/jxxghp/MoviePilot-Frontend/releases/tags/{tag}"
-)
-RESOURCES_MAIN_ZIP = (
-    "https://github.com/jxxghp/MoviePilot-Resources/archive/refs/heads/main.zip"
-)
+DEFAULT_NODE_VERSION = "24.22.3"
 RUNTIME_PACKAGE = {
     "name": "moviepilot-frontend-runtime",
     "private": True,
     "license": "UNLICENSED",
     "dependencies": {
-        "express": "^4.18.2",
-        "express-http-proxy": "^2.0.0",
+        "express": "4.22.3",
+        "express-http-proxy": "2.1.1",
     },
 }
 
@@ -606,7 +599,7 @@ def ensure_supported_python(python_bin: str) -> None:
     version = get_python_version(python_bin)
     if version < MIN_PYTHON_VERSION:
         raise RuntimeError(
-            f"MoviePilot 本地安装需要 {SUPPORTED_PYTHON_TEXT}，当前解释器为 {python_bin} "
+            f"LitePilot 本地安装需要 {SUPPORTED_PYTHON_TEXT}，当前解释器为 {python_bin} "
             f"({version[0]}.{version[1]}.{version[2]})"
         )
 
@@ -689,28 +682,6 @@ def ensure_api_token(force_token: bool = False, token: Optional[str] = None) -> 
     return new_token
 
 
-def _download_to_stdout(url: str) -> str:
-    headers = [
-        "-H",
-        "Accept: application/vnd.github+json",
-        "-H",
-        "User-Agent: MoviePilot-CLI",
-    ]
-    if command_exists("curl"):
-        return capture(["curl", "-fsSL", *headers, url])
-    if command_exists("wget"):
-        return capture(
-            [
-                "wget",
-                "-qO-",
-                "--header=Accept: application/vnd.github+json",
-                "--header=User-Agent: MoviePilot-CLI",
-                url,
-            ]
-        )
-    raise RuntimeError("未找到可用的下载工具，请先安装 curl 或 wget")
-
-
 def download_file(url: str, target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     if command_exists("curl"):
@@ -721,23 +692,6 @@ def download_file(url: str, target: Path) -> None:
         return
     raise RuntimeError("未找到可用的下载工具，请先安装 curl 或 wget")
 
-
-def fetch_json(url: str) -> dict[str, Any]:
-    payload = _download_to_stdout(url)
-    try:
-        data = json.loads(payload)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"无法解析远程响应：{url}") from exc
-    if (
-        isinstance(data, dict)
-        and data.get("message")
-        and isinstance(data.get("message"), str)
-        and "API rate limit" in data["message"]
-    ):
-        raise RuntimeError(f"访问 GitHub API 失败：{data['message']}")
-    if not isinstance(data, dict):
-        raise RuntimeError(f"接口返回格式异常：{url}")
-    return data
 
 
 def extract_archive(archive_path: Path, target_dir: Path) -> None:
@@ -762,38 +716,10 @@ def _remove_path(path: Path) -> None:
     shutil.rmtree(path)
 
 
-def _resolve_frontend_release(frontend_version: str) -> tuple[str, str]:
-    frontend_version = (frontend_version or "").strip() or _repo_frontend_version()
-    if frontend_version == "latest":
-        release = fetch_json(FRONTEND_LATEST_API)
-    else:
-        release = fetch_json(FRONTEND_TAG_API.format(tag=frontend_version))
-
-    tag_name = str(release.get("tag_name") or "").strip()
-    if not tag_name:
-        raise RuntimeError("未能获取前端版本号")
-
-    for asset in release.get("assets") or []:
-        if asset.get("name") == "dist.zip" and asset.get("browser_download_url"):
-            return tag_name, str(asset["browser_download_url"])
-    raise RuntimeError(f"前端版本 {tag_name} 未找到 dist.zip 发布资产")
-
-
-def _frontend_runtime_ready(frontend_version: str) -> bool:
-    version_file = PUBLIC_DIR / "version.txt"
-    if not version_file.exists() or not (PUBLIC_DIR / "service.js").exists():
-        return False
-    if not (PUBLIC_DIR / "node_modules" / "express").exists():
-        return False
-    try:
-        return version_file.read_text(encoding="utf-8").strip() == frontend_version
-    except OSError:
-        return False
-
 
 def _write_local_frontend_service_script(target_dir: Path) -> None:
     """
-    覆盖前端 release 自带的 service.js，统一使用本地 CLI 的受控代理脚本。
+    写入本地 CLI 托管前端服务使用的受控代理脚本。
     """
     (target_dir / "service.js").write_text(
         LOCAL_FRONTEND_SERVICE_SCRIPT,
@@ -833,7 +759,24 @@ def get_npm_bin(node_dir: Path = NODE_DIR) -> Path:
     return node_dir / "bin" / "npm"
 
 
+def get_corepack_bin(node_dir: Path = NODE_DIR) -> Path:
+    if os.name == "nt":
+        return node_dir / "corepack.cmd"
+    return node_dir / "bin" / "corepack"
+
+
 def install_node_runtime(node_version: str) -> Path:
+    version_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", node_version.strip())
+    if not version_match:
+        raise RuntimeError(
+            f"Node 版本格式无效：{node_version}，前端构建要求 Node.js 20.19 或更高版本"
+        )
+    major, minor, _patch = (int(part) for part in version_match.groups())
+    if (major, minor) < (20, 19):
+        raise RuntimeError(
+            f"Node 版本过低：{node_version}，前端构建要求 Node.js 20.19 或更高版本"
+        )
+
     node_bin = get_node_bin()
     if node_bin.exists():
         try:
@@ -868,28 +811,56 @@ def install_node_runtime(node_version: str) -> Path:
     return node_bin
 
 
-def install_frontend(frontend_version: str, node_version: str) -> dict[str, str]:
-    version_tag, download_url = _resolve_frontend_release(frontend_version)
+def _local_node_env() -> dict[str, str]:
+    env = build_package_install_env()
+    node_bin_dir = get_node_bin().parent
+    current_path = env.get("PATH", "")
+    env["PATH"] = (
+        f"{node_bin_dir}{os.pathsep}{current_path}"
+        if current_path
+        else str(node_bin_dir)
+    )
+    env.setdefault("COREPACK_ENABLE_DOWNLOAD_PROMPT", "0")
+    return env
+
+
+def build_frontend_from_source() -> None:
+    """构建仓内前端源码，并把产物同步到本地运行时目录。"""
+    if not WEB_DIR.is_dir():
+        raise RuntimeError(f"未找到前端源码目录：{WEB_DIR}")
+
+    corepack_bin = get_corepack_bin()
+    if not corepack_bin.exists():
+        raise RuntimeError("未找到 corepack 可执行文件，Node 运行时可能损坏")
+
+    env = _local_node_env()
+    print_step("安装前端构建依赖")
+    run(
+        [str(corepack_bin), "yarn", "install", "--frozen-lockfile"],
+        cwd=WEB_DIR,
+        env=env,
+    )
+    print_step("构建仓内前端源码")
+    run(
+        [str(corepack_bin), "yarn", "build"],
+        cwd=WEB_DIR,
+        env=env,
+    )
+
+    if not (WEB_DIST_DIR / "index.html").exists():
+        raise RuntimeError("前端构建产物缺少 dist/index.html")
+    _remove_path(PUBLIC_DIR)
+    shutil.copytree(WEB_DIST_DIR, PUBLIC_DIR)
+
+
+def install_frontend(node_version: str) -> dict[str, str]:
+    version_tag = _repo_frontend_version()
     node_bin = install_node_runtime(node_version)
 
-    if _frontend_runtime_ready(version_tag):
-        _write_local_frontend_service_script(PUBLIC_DIR)
-        print_step(f"前端发布包已是最新版本：{version_tag}")
-        return {"version": version_tag, "node": str(node_bin)}
-
-    print_step(f"下载前端发布包：{version_tag}")
-    with TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        archive_path = temp_path / "dist.zip"
-        extract_dir = temp_path / "extract"
-        download_file(download_url, archive_path)
-        extract_archive(archive_path, extract_dir)
-        dist_dir = extract_dir / "dist"
-        if not dist_dir.exists():
-            raise RuntimeError("前端发布包中未找到 dist 目录")
-        _remove_path(PUBLIC_DIR)
-        shutil.move(str(dist_dir), str(PUBLIC_DIR))
-
+    build_frontend_from_source()
+    if not (PUBLIC_DIR / "index.html").exists():
+        raise RuntimeError("前端构建产物未正确同步到 public 目录")
+    (PUBLIC_DIR / "version.txt").write_text(version_tag, encoding="utf-8")
     _write_local_frontend_service_script(PUBLIC_DIR)
 
     runtime_package = dict(RUNTIME_PACKAGE)
@@ -913,161 +884,9 @@ def install_frontend(frontend_version: str, node_version: str) -> dict[str, str]
             "--omit=dev",
         ],
         cwd=PUBLIC_DIR,
+        env=_local_node_env(),
     )
     return {"version": version_tag, "node": str(node_bin)}
-
-
-def local_resource_status() -> bool:
-    return (HELPER_DIR / "user.sites.v2.bin").exists() and bool(
-        list(HELPER_DIR.glob("sites*"))
-    )
-
-
-def copy_resource_files(source_dir: Path) -> list[str]:
-    if not source_dir.is_dir():
-        raise FileNotFoundError(f"资源目录不存在：{source_dir}")
-
-    copied: list[str] = []
-    for source in sorted(source_dir.iterdir()):
-        if source.is_dir():
-            continue
-        target = HELPER_DIR / source.name
-        shutil.copy2(source, target)
-        copied.append(source.name)
-
-    if not copied:
-        raise RuntimeError(f"资源目录中未找到可复制文件：{source_dir}")
-    print_step(f"已同步资源文件到 {HELPER_DIR}")
-    return copied
-
-
-def _get_platform_tag() -> str:
-    system = platform.system().lower()
-    machine = platform.machine().lower()
-    if system == "darwin":
-        if machine in {"arm64", "aarch64"}:
-            return "darwin", "arm64"
-        if machine in {"x86_64", "amd64"}:
-            return "darwin", "x86_64"
-    elif system == "linux":
-        if machine in {"aarch64", "arm64"}:
-            return "linux", "aarch64"
-        if machine in {"x86_64", "amd64"}:
-            return "linux", "x86_64"
-    elif system == "windows":
-        return "windows", "amd64"
-    raise RuntimeError(f"不支持的平台：{system} / {machine}")
-
-
-def _get_python_version_tag() -> str:
-    version = sys.version_info
-    return f"cp{version.major}{version.minor}"
-
-
-def _filter_resources_files(
-    source_dir: Path, platform_tag: str, python_version: str
-) -> list[Path]:
-    matched_files: list[Path] = []
-    for file in source_dir.iterdir():
-        if not file.is_file():
-            continue
-        filename = file.name
-        if filename == "user.sites.v2.bin":
-            matched_files.append(file)
-            continue
-        if not filename.startswith("sites."):
-            continue
-        if platform_tag == "windows":
-            if filename == f"sites.cp{python_version.replace('cp', '')}-win_amd64.pyd":
-                matched_files.append(file)
-        elif platform_tag == "darwin":
-            if (
-                filename
-                == f"sites.cpython-{python_version.replace('cp', '')}-darwin.so"
-            ):
-                matched_files.append(file)
-        elif platform_tag == "linux":
-            if (
-                f"cpython-{python_version.replace('cp', '')}" in filename
-                and "linux-gnu" in filename
-            ):
-                matched_files.append(file)
-    return matched_files
-
-
-def _download_resources_dir() -> Path:
-    with TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        archive_path = temp_path / "resources.zip"
-        extract_dir = temp_path / "extract"
-        print_step("下载资源包")
-        download_file(RESOURCES_MAIN_ZIP, archive_path)
-        extract_archive(archive_path, extract_dir)
-        source_dir = extract_dir / "MoviePilot-Resources-main" / "resources.v2"
-        if not source_dir.exists():
-            raise RuntimeError("资源压缩包中未找到 resources.v2 目录")
-
-        platform_name, machine = _get_platform_tag()
-        python_version = _get_python_version_tag()
-        print_step(
-            f"当前平台：{platform_name}-{machine}，Python 版本：{python_version}"
-        )
-
-        matched_files = _filter_resources_files(
-            source_dir, platform_name, python_version
-        )
-        if not matched_files:
-            raise RuntimeError(
-                f"未找到匹配的 sites 资源文件：{platform_name} / {python_version}"
-            )
-
-        staging_dir = temp_path / "staging"
-        staging_dir.mkdir(parents=True, exist_ok=True)
-        for file in matched_files:
-            target = staging_dir / file.name
-            shutil.copy2(file, target)
-
-        persisted = TEMP_DIR / "resources.v2"
-        _remove_path(persisted)
-        shutil.copytree(staging_dir, persisted)
-        print_step(f"已筛选对应平台的资源文件，共 {len(matched_files)} 个")
-        return persisted
-
-
-def _resolve_local_resource_dir(
-    resources_repo: Optional[Path], resource_dir: Optional[Path]
-) -> Optional[Path]:
-    if resource_dir:
-        resolved = resource_dir.expanduser().resolve()
-        if resolved.is_dir():
-            return resolved
-        raise FileNotFoundError(f"资源目录不存在：{resolved}")
-
-    if resources_repo:
-        repo_dir = resources_repo.expanduser().resolve()
-        candidates = [
-            repo_dir / "resources.v2",
-            repo_dir / "resources" / "resources.v2",
-            repo_dir / "resources" / "v2",
-            repo_dir / "resources.v2",
-        ]
-        for candidate in candidates:
-            if candidate.is_dir():
-                return candidate
-        raise FileNotFoundError(f"未在 {repo_dir} 下找到 resources.v2 目录")
-    return None
-
-
-def install_resources(
-    resources_repo: Optional[Path], resource_dir: Optional[Path]
-) -> list[str]:
-    ensure_local_dirs()
-    source_dir = _resolve_local_resource_dir(resources_repo, resource_dir)
-    if source_dir is None:
-        source_dir = _download_resources_dir()
-    copied = copy_resource_files(source_dir)
-    print_step(f"资源初始化完成，共处理 {len(copied)} 个文件")
-    return copied
 
 
 def _is_interactive() -> bool:
@@ -1314,7 +1133,7 @@ def _collect_path_mapping() -> list[tuple[str, str]]:
         return []
 
     storage_path = _prompt_path(
-        "MoviePilot 可访问的下载目录根路径", default=ROOT.parent / "downloads"
+        "LitePilot 可访问的下载目录根路径", default=ROOT.parent / "downloads"
     )
     download_path = _prompt_text("下载器中对应的目录根路径", default="/downloads")
     return [(storage_path, download_path)]
@@ -1707,7 +1526,7 @@ def _apply_local_system_config_inner(config_payload: dict[str, Any]) -> None:
         from app.schemas.types import SystemConfigKey
     except ModuleNotFoundError as exc:
         raise RuntimeError(
-            "当前环境尚未安装 MoviePilot 运行依赖，请先执行 moviepilot install deps 或 moviepilot setup"
+            "当前环境尚未安装 LitePilot 运行依赖，请先执行 moviepilot install deps 或 moviepilot setup"
         ) from exc
 
     init_db()
@@ -1848,7 +1667,7 @@ def _sync_superuser_account_inner() -> None:
         from app.db.init import init_db, update_db
     except ModuleNotFoundError as exc:
         raise RuntimeError(
-            "当前环境尚未安装 MoviePilot 运行依赖，请先执行 moviepilot install deps 或 moviepilot setup"
+            "当前环境尚未安装 LitePilot 运行依赖，请先执行 moviepilot install deps 或 moviepilot setup"
         ) from exc
 
     init_db()
@@ -1932,10 +1751,6 @@ def _apply_autostart_choice(
 
 def init_local(
     *,
-    resources_repo: Optional[Path],
-    resource_dir: Optional[Path],
-    skip_resources: bool,
-    resources_ready: bool,
     force_token: bool,
     wizard: bool,
     superuser: Optional[str],
@@ -1977,14 +1792,6 @@ def init_local(
     if wizard_payload and wizard_payload.get("env_settings"):
         write_env_values(wizard_payload["env_settings"])
         print_step(f"已写入环境配置到 {ENV_FILE}")
-
-    if skip_resources:
-        if resources_ready:
-            print_step("资源文件已完成同步")
-        else:
-            print_step("已跳过资源初始化")
-    else:
-        install_resources(resources_repo=resources_repo, resource_dir=resource_dir)
 
     if wizard_payload:
         apply_local_system_config(wizard_payload, runtime_python=runtime_python)
@@ -2102,7 +1909,7 @@ def _resolve_runtime_python_for_startup(
             return candidate
 
     raise RuntimeError(
-        "未找到可用于启动 MoviePilot 的 Python 运行环境，请先执行 moviepilot install deps 或 moviepilot setup"
+        "未找到可用于启动 LitePilot 的 Python 运行环境，请先执行 moviepilot install deps 或 moviepilot setup"
     )
 
 
@@ -2360,7 +2167,7 @@ def _enable_autostart_linux_systemd(
     unit_content = textwrap.dedent(
         f"""\
         [Unit]
-        Description=MoviePilot local autostart
+        Description=LitePilot local autostart
         Wants=network-online.target
         After=network-online.target
 
@@ -2426,8 +2233,8 @@ def _enable_autostart_linux_xdg(config_dir: Path, python_bin: Path) -> dict[str,
         [Desktop Entry]
         Type=Application
         Version=1.0
-        Name=MoviePilot
-        Comment=Start MoviePilot on login
+        Name=LitePilot
+        Comment=Start LitePilot on login
         Exec=/bin/bash {_double_quote(launcher)}
         Path={ROOT}
         Terminal=false
@@ -2763,7 +2570,7 @@ def uninstall_local(
     print(f"  - 删除虚拟环境：{venv_dir}")
     print(f"  - 删除前端运行时目录：{PUBLIC_DIR}")
     print(f"  - 删除本地 Node 运行时目录：{RUNTIME_DIR}")
-    print(f"  - 删除资源文件：{HELPER_DIR}/sites*、{HELPER_DIR}/user.sites*.bin")
+    print(f"  - 清理历史站点资源文件：{HELPER_DIR}/sites*、{HELPER_DIR}/user.sites*.bin")
     if linked_cli_paths:
         print("  - 删除全局 CLI 软链接：")
         for path in linked_cli_paths:
@@ -2784,7 +2591,7 @@ def uninstall_local(
     else:
         print(f"  - 保留配置目录：{config_dir}")
 
-    if not _prompt_yes_no("第一次确认：是否继续卸载 MoviePilot", default=False):
+    if not _prompt_yes_no("第一次确认：是否继续卸载 LitePilot", default=False):
         print_step("已取消卸载")
         return {"cancelled": True}
 
@@ -2938,7 +2745,7 @@ def handle_startup_command(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="MoviePilot 本地安装与初始化工具")
+    parser = argparse.ArgumentParser(description="LitePilot 本地安装与初始化工具")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     install_parser = subparsers.add_parser(
@@ -2960,10 +2767,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     frontend_parser = subparsers.add_parser(
-        "install-frontend", help="下载前端 release 并安装本地运行时"
-    )
-    frontend_parser.add_argument(
-        "--version", help="前端版本，默认使用 version.py 中的 APP_VERSION"
+        "install-frontend", help="构建仓内前端并安装本地运行时"
     )
     frontend_parser.add_argument(
         "--node-version", default=DEFAULT_NODE_VERSION, help="本地 Node 运行时版本"
@@ -2972,25 +2776,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--config-dir", help="配置目录，默认使用程序目录外的系统配置目录"
     )
 
-    resources_parser = subparsers.add_parser(
-        "install-resources", help="下载资源文件并同步到 app/helper"
-    )
-    resources_parser.add_argument(
-        "--resources-repo", help="本地 MoviePilot-Resources 仓库路径"
-    )
-    resources_parser.add_argument("--resource-dir", help="直接指定 resources.v2 目录")
-    resources_parser.add_argument(
-        "--config-dir", help="配置目录，默认使用程序目录外的系统配置目录"
-    )
 
-    init_parser = subparsers.add_parser("init", help="初始化本地配置与资源文件")
-    init_parser.add_argument(
-        "--resources-repo", help="本地 MoviePilot-Resources 仓库路径"
-    )
-    init_parser.add_argument("--resource-dir", help="直接指定 resources.v2 目录")
-    init_parser.add_argument(
-        "--skip-resources", action="store_true", help="只初始化配置，不同步资源文件"
-    )
+    init_parser = subparsers.add_parser("init", help="初始化本地配置")
     init_parser.add_argument(
         "--force-token", action="store_true", help="强制重置 API_TOKEN"
     )
@@ -3004,7 +2791,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     setup_parser = subparsers.add_parser(
-        "setup", help="执行 install-deps、install-frontend、install-resources 和 init"
+        "setup", help="执行 install-deps、install-frontend 和 init"
     )
     setup_parser.add_argument(
         "--python",
@@ -3016,17 +2803,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--recreate", action="store_true", help="删除并重建虚拟环境"
     )
     setup_parser.add_argument(
-        "--frontend-version", help="前端版本，默认使用 version.py 中的 APP_VERSION"
-    )
-    setup_parser.add_argument(
         "--node-version", default=DEFAULT_NODE_VERSION, help="本地 Node 运行时版本"
-    )
-    setup_parser.add_argument(
-        "--resources-repo", help="本地 MoviePilot-Resources 仓库路径"
-    )
-    setup_parser.add_argument("--resource-dir", help="直接指定 resources.v2 目录")
-    setup_parser.add_argument(
-        "--skip-resources", action="store_true", help="只初始化配置，不同步资源文件"
     )
     setup_parser.add_argument(
         "--force-token", action="store_true", help="强制重置 API_TOKEN"
@@ -3058,9 +2835,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--ref", default="latest", help="后端 Git 版本，默认 latest"
     )
     update_parser.add_argument(
-        "--frontend-version", help="前端版本，默认使用 version.py 中的 APP_VERSION"
-    )
-    update_parser.add_argument(
         "--node-version", default=DEFAULT_NODE_VERSION, help="本地 Node 运行时版本"
     )
     update_parser.add_argument(
@@ -3073,9 +2847,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     update_parser.add_argument(
         "--recreate", action="store_true", help="删除并重建虚拟环境"
-    )
-    update_parser.add_argument(
-        "--skip-resources", action="store_true", help="更新 all 时跳过资源同步"
     )
     update_parser.add_argument(
         "--config-dir", help="配置目录，默认使用程序目录外的系统配置目录"
@@ -3119,7 +2890,6 @@ def main() -> int:
     persist_config_commands = {
         "install-deps",
         "install-frontend",
-        "install-resources",
         "init",
         "setup",
         "update",
@@ -3142,29 +2912,12 @@ def main() -> int:
             return 0
 
         if args.command == "install-frontend":
-            result = install_frontend(
-                frontend_version=args.version, node_version=args.node_version
-            )
+            result = install_frontend(node_version=args.node_version)
             print_step(f"前端安装完成，版本：{result['version']}")
-            return 0
-
-        if args.command == "install-resources":
-            install_resources(
-                resources_repo=Path(args.resources_repo)
-                if args.resources_repo
-                else None,
-                resource_dir=Path(args.resource_dir) if args.resource_dir else None,
-            )
             return 0
 
         if args.command == "init":
             init_local(
-                resources_repo=Path(args.resources_repo)
-                if args.resources_repo
-                else None,
-                resource_dir=Path(args.resource_dir) if args.resource_dir else None,
-                skip_resources=args.skip_resources,
-                resources_ready=False,
                 force_token=args.force_token,
                 wizard=args.wizard,
                 superuser=args.superuser,
@@ -3182,25 +2935,8 @@ def main() -> int:
                 venv_dir=Path(args.venv),
                 recreate=args.recreate,
             )
-            install_frontend(
-                frontend_version=args.frontend_version, node_version=args.node_version
-            )
-            resources_installed = False
-            if not args.skip_resources:
-                install_resources(
-                    resources_repo=Path(args.resources_repo)
-                    if args.resources_repo
-                    else None,
-                    resource_dir=Path(args.resource_dir) if args.resource_dir else None,
-                )
-                resources_installed = True
+            install_frontend(node_version=args.node_version)
             init_local(
-                resources_repo=Path(args.resources_repo)
-                if args.resources_repo
-                else None,
-                resource_dir=Path(args.resource_dir) if args.resource_dir else None,
-                skip_resources=args.skip_resources or resources_installed,
-                resources_ready=resources_installed,
                 force_token=args.force_token,
                 wizard=args.wizard,
                 superuser=args.superuser,
@@ -3231,14 +2967,8 @@ def main() -> int:
                     recreate=args.recreate,
                 )
             if args.target in {"frontend", "all"}:
-                frontend_result = install_frontend(
-                    frontend_version=args.frontend_version,
-                    node_version=args.node_version,
-                )
+                frontend_result = install_frontend(node_version=args.node_version)
                 print_step(f"前端更新完成，版本：{frontend_result['version']}")
-            if args.target == "all" and not args.skip_resources:
-                install_resources(resources_repo=None, resource_dir=None)
-                print_step("资源文件已同步到最新")
             print_step(f"更新完成，当前配置目录：{config_dir}")
             return 0
 

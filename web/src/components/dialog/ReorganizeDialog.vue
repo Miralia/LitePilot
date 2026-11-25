@@ -201,7 +201,7 @@ async function loadStorages() {
 
     storages.value = result.data?.value ?? []
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -365,7 +365,7 @@ async function loadDirectories() {
     const result: { [key: string]: any } = await api.get('system/setting/public/Directories')
     directories.value = result.data?.value ?? []
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -954,7 +954,7 @@ async function loadEpisodeFormatRuleConfiguration() {
     const result: { [key: string]: any } = await api.get('system/setting/public/EpisodeFormatRuleTable')
     episodeFormatRuleConfigured.value = Boolean(result.data?.value?.length)
   } catch (error) {
-    console.log(error)
+    console.error(error)
     episodeFormatRuleConfigured.value = undefined
   }
 }
@@ -1017,7 +1017,7 @@ async function handleRecommendEpisodeFormat() {
         : t('dialog.reorganize.episodeFormatRecommendSuccess'),
     )
   } catch (error: any) {
-    console.log(error)
+    console.error(error)
     $toast.error(error?.message || t('dialog.reorganize.episodeFormatRecommendFailed'))
   } finally {
     episodeFormatRecommendState.loading = false
@@ -1273,7 +1273,7 @@ async function handleTransfer(item: FileItem, background: boolean = false) {
     if (background) $toast.success(t('dialog.reorganize.successMessage', { name: item.name }))
     return true
   } catch (error: unknown) {
-    console.log(error)
+    console.error(error)
     if (error instanceof Error) $toast.error(error.message)
     return false
   }
@@ -1290,7 +1290,7 @@ async function handleTransferBatch(items: FileItem[], background: boolean = fals
     if (background) $toast.success(t('dialog.reorganize.successMessage', { name: getBatchItemsLabel(items) }))
     return true
   } catch (error: unknown) {
-    console.log(error)
+    console.error(error)
     if (error instanceof Error) $toast.error(error.message)
     return false
   }
@@ -1307,7 +1307,7 @@ async function handleTransferLog(logid: number, background: boolean = false) {
     if (background) $toast.success(`历史记录 ${logid} 已加入整理队列！`)
     return true
   } catch (error: unknown) {
-    console.log(error)
+    console.error(error)
     if (error instanceof Error) $toast.error(error.message)
     return false
   }

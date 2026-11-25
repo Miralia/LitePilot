@@ -1,5 +1,7 @@
 """媒体数据源能力边界回归测试。"""
 
+import inspect
+
 from app.chain import ChainBase
 from app.chain.media import MediaChain
 from app.core.context import MediaInfo
@@ -60,3 +62,9 @@ def test_douban_only_identity_remains_readable_as_legacy_fallback() -> None:
     serialized = media_info.to_dict()
     assert serialized["source"] == "douban"
     assert serialized["media_id"] == "35209731"
+
+
+def test_shared_recognition_residue_is_removed() -> None:
+    """共享识别链路已经移除，不应保留无效的共享元数据参数。"""
+    assert "share_meta" not in inspect.signature(ChainBase.recognize_media).parameters
+    assert "share_meta" not in inspect.signature(ChainBase.async_recognize_media).parameters

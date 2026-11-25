@@ -142,7 +142,7 @@ async function getWeeklyData() {
     await nextTick()
     series.value = [{ data: res }]
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 

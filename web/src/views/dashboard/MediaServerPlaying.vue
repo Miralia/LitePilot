@@ -63,7 +63,7 @@ async function loadMediaServerSetting() {
     mediaServers.value = result.data?.value ?? []
     return true
   } catch (error) {
-    console.log(error)
+    console.error(error)
     return false
   }
 }
@@ -81,7 +81,7 @@ async function loadPlayingList(server: string, count: number) {
 
     return (result ?? []).map(item => ({ ...item, dashboardServer: server }))
   } catch (e) {
-    console.log(e)
+    console.error(e)
 
     return undefined
   }

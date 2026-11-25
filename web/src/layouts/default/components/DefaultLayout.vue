@@ -52,9 +52,6 @@ const canAdmin = computed(() => hasPermission(userPermissions.value, 'admin'))
 // 开始菜单项
 const startMenus = ref<NavMenu[]>([])
 
-// 发现菜单项
-const discoveryMenus = ref<NavMenu[]>([])
-
 // 整理菜单项
 const organizeMenus = ref<NavMenu[]>([])
 
@@ -69,7 +66,6 @@ const showHorizontalThemeNav = computed(() => {
 const horizontalNavGroups = computed(() =>
   [
     { title: t('menu.start'), icon: 'mdi-home-outline', items: startMenus.value },
-    { title: t('menu.discovery'), icon: 'mdi-compass-outline', items: discoveryMenus.value },
     { title: t('menu.organize'), icon: 'mdi-folder-play-outline', items: organizeMenus.value },
     { title: t('menu.system'), icon: 'mdi-cog-outline', items: systemMenus.value },
   ].filter(group => group.items.length > 0),
@@ -367,7 +363,6 @@ onBeforeUnmount(() => {
 /** 重建所有侧栏分组。 */
 function rebuildSidebarMenus() {
   startMenus.value = getMenuList(t('menu.start'))
-  discoveryMenus.value = getMenuList(t('menu.discovery'))
   organizeMenus.value = getMenuList(t('menu.organize'))
   systemMenus.value = getMenuList(t('menu.system'))
 }
@@ -520,14 +515,6 @@ onMounted(async () => {
 
     <template #vertical-nav-content>
       <VerticalNavLink v-for="item in startMenus" :key="`start-${getMenuIdentity(item)}`" :item="item" />
-      <!-- 👉 发现 -->
-      <VerticalNavSectionTitle
-        v-if="discoveryMenus.length > 0"
-        :item="{
-          heading: t('menu.discovery'),
-        }"
-      />
-      <VerticalNavLink v-for="item in discoveryMenus" :key="`discovery-${getMenuIdentity(item)}`" :item="item" />
       <!-- 👉 整理 -->
       <VerticalNavSectionTitle
         v-if="organizeMenus.length > 0"

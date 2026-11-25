@@ -36,7 +36,7 @@ async function loadSchedulerList() {
 
     schedulerList.value = Array.isArray(res) ? res : []
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 
@@ -94,7 +94,7 @@ function runCommand(id: string) {
       loadSchedulerList()
     }, 1000)
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 

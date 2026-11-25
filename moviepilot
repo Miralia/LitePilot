@@ -10,10 +10,9 @@ Usage: moviepilot [BOOTSTRAP COMMAND] | [RUNTIME COMMAND]
 
 Bootstrap Commands:
   moviepilot install deps [--python PYTHON] [--venv PATH] [--recreate] [--config-dir PATH]
-  moviepilot install frontend [--version TAG] [--node-version 20.12.1] [--config-dir PATH]
-  moviepilot install resources [--resources-repo PATH] [--resource-dir PATH] [--config-dir PATH]
-  moviepilot init [--skip-resources] [--force-token] [--wizard] [--superuser NAME] [--superuser-password PASSWORD] [--config-dir PATH]
-  moviepilot setup [--python PYTHON] [--venv PATH] [--recreate] [--frontend-version TAG] [--node-version 20.12.1] [--wizard] [--superuser NAME] [--superuser-password PASSWORD] [--config-dir PATH]
+  moviepilot install frontend [--node-version 24.22.3] [--config-dir PATH]
+  moviepilot init [--force-token] [--wizard] [--superuser NAME] [--superuser-password PASSWORD] [--config-dir PATH]
+  moviepilot setup [--python PYTHON] [--venv PATH] [--recreate] [--node-version 24.22.3] [--wizard] [--superuser NAME] [--superuser-password PASSWORD] [--config-dir PATH]
   moviepilot uninstall [--venv PATH] [--config-dir PATH]
   moviepilot update {backend|frontend|all} [OPTIONS]
   moviepilot startup {enable|disable|status} [--venv PATH] [--config-dir PATH]
@@ -40,7 +39,6 @@ Discovery Commands:
 Examples:
   moviepilot install deps
   moviepilot install frontend
-  moviepilot install resources
   moviepilot setup --wizard
   moviepilot uninstall
   moviepilot update all
@@ -61,7 +59,6 @@ show_commands() {
 Bootstrap Commands
   install deps
   install frontend
-  install resources
   init
   setup
   uninstall
@@ -104,7 +101,6 @@ show_install_help() {
 Usage:
   moviepilot install deps [OPTIONS]
   moviepilot install frontend [OPTIONS]
-  moviepilot install resources [OPTIONS]
 
 Options:
   deps:
@@ -115,13 +111,7 @@ Options:
     说明            Rust 加速扩展通过 moviepilot-rust PyPI 依赖安装
 
   frontend:
-    --version TAG         前端版本，默认使用 version.py 中的 APP_VERSION
-    --node-version VER    本地 Node 运行时版本，默认 20.12.1
-    --config-dir PATH     指定配置目录
-
-  resources:
-    --resources-repo PATH 本地 MoviePilot-Resources 仓库路径
-    --resource-dir PATH   直接指定 resources.v2 目录
+    --node-version VER    本地 Node 运行时版本，默认 24.22.3
     --config-dir PATH     指定配置目录
 
   -h, --help              显示帮助
@@ -133,7 +123,6 @@ show_init_help() {
 Usage: moviepilot init [OPTIONS]
 
 Options:
-  --skip-resources          跳过资源同步
   --force-token             强制重置 API_TOKEN
   --wizard                  启动交互式初始化向导
   --superuser NAME          预设超级管理员用户名
@@ -151,9 +140,7 @@ Options:
   --python PYTHON           用于创建虚拟环境的 Python 解释器，默认自动选择本地 3.11+ 版本
   --venv PATH               虚拟环境目录，默认 ./venv
   --recreate                删除并重建虚拟环境
-  --frontend-version TAG    前端版本，默认使用 version.py 中的 APP_VERSION
-  --node-version VER        本地 Node 运行时版本，默认 20.12.1
-  --skip-resources          跳过资源同步
+  --node-version VER        本地 Node 运行时版本，默认 24.22.3
   --force-token             强制重置 API_TOKEN
   --wizard                  安装完成后启动交互式初始化向导
   --superuser NAME          预设超级管理员用户名
@@ -192,12 +179,10 @@ Usage:
 
 Options:
   --ref REF                 后端 Git 版本，默认 latest
-  --frontend-version TAG    前端版本，默认使用 version.py 中的 APP_VERSION
-  --node-version VER        本地 Node 运行时版本，默认 20.12.1
+  --node-version VER        本地 Node 运行时版本，默认 24.22.3
   --python PYTHON           用于安装后端依赖的 Python 解释器，默认自动选择本地 3.11+ 版本
   --venv PATH               虚拟环境目录，默认 ./venv
   --recreate                删除并重建虚拟环境
-  --skip-resources          更新 all 时跳过资源同步
   --config-dir PATH         指定配置目录
   -h, --help                显示帮助
 
@@ -315,7 +300,7 @@ default_config_dir() {
 
 legacy_config_exists() {
   local legacy_dir="$ROOT/config"
-  [[ -f "$legacy_dir/app.env" ]] || [[ -f "$legacy_dir/user.db" ]] || [[ -d "$legacy_dir/logs" ]] || [[ -d "$legacy_dir/temp" ]] || [[ -d "$legacy_dir/cache" ]] || [[ -d "$legacy_dir/cookies" ]] || [[ -d "$legacy_dir/sites" ]]
+  [[ -f "$legacy_dir/app.env" ]] || [[ -f "$legacy_dir/user.db" ]] || [[ -d "$legacy_dir/logs" ]] || [[ -d "$legacy_dir/temp" ]] || [[ -d "$legacy_dir/cache" ]] || [[ -d "$legacy_dir/cookies" ]]
 }
 
 run_runtime_cli() {
@@ -343,12 +328,8 @@ show_command_help() {
           show_install_help
           exit 0
           ;;
-        resources)
-          show_install_help
-          exit 0
-          ;;
         *)
-          echo "仅支持：moviepilot help install、moviepilot help install deps、moviepilot help install frontend、moviepilot help install resources" >&2
+          echo "仅支持：moviepilot help install、moviepilot help install deps、moviepilot help install frontend" >&2
           exit 1
           ;;
       esac
@@ -450,12 +431,8 @@ case "${1:-}" in
         shift
         exec "$BOOTSTRAP_PYTHON" "$SETUP_SCRIPT" install-frontend "$@"
         ;;
-      resources)
-        shift
-        exec "$BOOTSTRAP_PYTHON" "$SETUP_SCRIPT" install-resources "$@"
-        ;;
       *)
-        echo "支持的命令：moviepilot install deps|frontend|resources" >&2
+        echo "支持的命令：moviepilot install deps|frontend" >&2
         exit 1
         ;;
     esac

@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useToast } from 'vue-toastification'
 import { requiredValidator } from '@/@validators'
 import api from '@/api'
 import type { Context, ActiveMediaDataSource, MediaInfo } from '@/api/types'
-import { getMediaId, getMediaIdentity } from '@/utils/mediaIdentity'
-import router from '@/router'
+import { getMediaIdentity } from '@/utils/mediaIdentity'
 import { useGlobalSettingsStore } from '@/stores'
 import { getLogoUrl } from '@/utils/imageUtils'
 import { useI18n } from 'vue-i18n'
@@ -41,20 +40,16 @@ interface NameTestForm {
 
 const MEDIA_SOURCE_LABELS: Record<string, string> = {
   bangumi: 'Bangumi',
-  douban: 'Douban',
   themoviedb: 'TheMovieDb',
 }
 
 const MEDIA_SOURCE_LOGOS: Record<string, string> = {
   bangumi: getLogoUrl('bangumi'),
-  douban: getLogoUrl('douban'),
   themoviedb: getLogoUrl('tmdb'),
 }
 
 const NAME_TEST_TITLE_HISTORY_KEY = 'MP_NAME_TEST_TITLE_HISTORY'
 const NAME_TEST_TITLE_HISTORY_LIMIT = 5
-
-const emit = defineEmits<{ close: [] }>()
 
 // 国际化
 const { t } = useI18n()
@@ -165,13 +160,6 @@ const resourceChips = computed(() => {
     metaInfo.value?.resource_team,
   ].filter(Boolean) as string[]
 })
-// 是否已匹配到具体媒体，决定是否展示查看详情入口
-const canViewMediaDetail = computed(() =>
-  Boolean(
-    mediaInfo.value?.tmdb_id || mediaInfo.value?.douban_id || mediaInfo.value?.bangumi_id || mediaInfo.value?.media_id,
-  ),
-)
-
 /** 生成媒体源官方详情页地址。 */
 function getMediaOfficialLink(media: MediaInfo, source: string, mediaId: string) {
   const encodedId = encodeURIComponent(mediaId)
@@ -181,8 +169,6 @@ function getMediaOfficialLink(media: MediaInfo, source: string, mediaId: string)
       const mediaType = media.type?.trim().toLowerCase()
       return `https://www.themoviedb.org/${mediaType === '电影' || mediaType === 'movie' ? 'movie' : 'tv'}/${encodedId}`
     }
-    case 'douban':
-      return `https://movie.douban.com/subject/${encodedId}`
     case 'bangumi':
       return `https://bgm.tv/subject/${encodedId}`
     default:
@@ -253,25 +239,6 @@ const pipelineSteps = computed<PipelineStep[]>(() => [
 function getPosterImage(url = '') {
   if (!url) return ''
   return url.replace('original', 'w500')
-}
-
-/** 关闭识别测试弹窗后，跳转查看当前识别结果匹配到的媒体详情。 */
-async function viewMediaDetail() {
-  if (!canViewMediaDetail.value || !mediaInfo.value) return
-
-  const target = {
-    path: '/media',
-    query: {
-      mediaid: getMediaId(mediaInfo.value),
-      title: mediaInfo.value.title,
-      year: mediaInfo.value.year,
-      type: mediaInfo.value.type,
-    },
-  }
-
-  emit('close')
-  await nextTick()
-  await router.push(target)
 }
 
 /** 调用媒体识别接口并刷新解析工作台，输入的识别词会临时应用于本次识别测试。 */
@@ -469,17 +436,6 @@ async function saveCustomWords() {
             <p v-if="mediaInfo?.overview" class="hero-overview text-body-2 text-medium-emphasis mt-3">
               {{ mediaInfo.overview }}
             </p>
-            <VBtn
-              v-if="canViewMediaDetail"
-              class="mt-3"
-              size="small"
-              variant="tonal"
-              color="primary"
-              append-icon="mdi-chevron-right"
-              @click="viewMediaDetail"
-            >
-              {{ t('common.viewDetails') }}
-            </VBtn>
           </div>
         </div>
 

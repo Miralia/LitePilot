@@ -65,7 +65,7 @@ pip install -r requirements-dev.in
 ./scripts/start-local.sh
 ./scripts/start-local.sh backend
 
-# 如果已经安装前端发布包，可启动完整的前后端服务
+# 如果已经用仓内源码构建并安装前端，可启动完整的前后端服务
 ./scripts/start-local.sh service start
 
 # 管理完整服务
@@ -101,15 +101,7 @@ chmod +x scripts/start-local.sh
 2. **开发 / 测试 / 静态检查 / 构建依赖**：只用于单测、覆盖率、lint 辅助、源码构建等，不应进入生产运行时，写入 `requirements-dev.in`。
 3. **工具依赖**：`pip-tools`、`uv`、`safety` 这类安装或审计工具不属于主程序运行依赖，按脚本或 CI 场景显式安装。
 
-### 4. 准备资源目录
-
-本地源码开发时，主程序需要读取识别与刮削所需的资源文件：
-
-- **资源文件**：将 [MoviePilot-Resources](https://github.com/jxxghp/MoviePilot-Resources) 仓库中 `resources.v2/` 下的文件同步到本仓库的 `app/helper/` 目录下。CLI 安装流程也会按这个位置准备资源。
-
-如果资源文件没有放到 `app/helper/`，识别、刮削和内置资源相关能力可能无法按本地开发预期工作。
-
-### 5. 运行安全检查
+### 4. 运行安全检查
 
 我们使用 `safety` 工具检查依赖项中是否存在已知安全漏洞。更新运行时依赖后，应至少检查运行时入口；更新开发测试依赖时，也应覆盖开发入口。
 
@@ -131,7 +123,7 @@ safety check -r requirements.txt --policy-file=safety.policy.yml > safety_report
 
 这将生成一个名为 `safety_report.txt` 的报告文件，您可以查看其中的漏洞报告并进行相应处理。
 
-### 6. 提交代码前的检查
+### 5. 提交代码前的检查
 
 在提交代码之前，请确保完成以下步骤：
 
@@ -145,9 +137,8 @@ safety check -r requirements.txt --policy-file=safety.policy.yml > safety_report
    pytest
    ```
 
-### 7. 参考资源
+### 6. 参考资源
 
 - [pip-tools 官方文档](https://github.com/jazzband/pip-tools)
 - [uv 官方文档](https://docs.astral.sh/uv/)
 - [safety 官方文档](https://pyup.io/safety/)
-- [MoviePilot-Resources](https://github.com/jxxghp/MoviePilot-Resources)

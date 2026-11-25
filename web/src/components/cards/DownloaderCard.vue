@@ -66,7 +66,7 @@ async function loadDownloaderInfo() {
       download_rate.value = res.download_speed
     }
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 
@@ -142,7 +142,10 @@ onUnmounted(() => {
             />
             <span class="app-card-summary__title text-h6">{{ downloader.name }}</span>
           </div>
-          <div v-if="downloaderDict[downloader.type] && props.downloader.enabled" class="app-card-summary__meta text-sm">
+          <div
+            v-if="downloaderDict[downloader.type] && props.downloader.enabled"
+            class="app-card-summary__meta text-sm"
+          >
             <span class="app-card-summary__meta-item">{{ `↑ ${formatFileSize(upload_rate, 1)}/s` }}</span>
             <span class="app-card-summary__meta-item">{{ `↓ ${formatFileSize(download_rate, 1)}/s` }}</span>
           </div>

@@ -40,7 +40,7 @@ async function loadMediaServerSetting() {
     mediaServers.value = result.data?.value ?? []
     return true
   } catch (error) {
-    console.log(error)
+    console.error(error)
     return false
   }
 }
@@ -56,7 +56,7 @@ async function loadLibrary(server: string) {
     })
     return (result ?? []).map(library => ({ ...library, dashboardServer: server }))
   } catch (e) {
-    console.log(e)
+    console.error(e)
     return undefined
   }
 }

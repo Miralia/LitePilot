@@ -1,5 +1,4 @@
 import os
-from copy import deepcopy
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from threading import Lock
@@ -711,7 +710,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             obtain_images: bool = False,
     ) -> Optional[MediaInfo]:
         """
-        根据标题识别媒体信息，必要时回退到辅助识别。
+        根据标题识别媒体信息。
 
         :param metainfo: 标题解析元数据
         :param source: 请求级识别数据源
@@ -722,14 +721,12 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         if not metainfo:
             return None
         title = metainfo.title
-        share_meta = deepcopy(metainfo)
 
         def native_recognize() -> Optional[MediaInfo]:
             """使用请求级数据源执行原生识别。"""
             return self.recognize_media(
                 meta=metainfo,
                 source=source,
-                share_meta=share_meta,
                 episode_group=episode_group,
             )
 
@@ -1486,7 +1483,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             obtain_images: bool = False,
     ) -> Optional[MediaInfo]:
         """
-        异步根据标题识别媒体信息，必要时回退到辅助识别。
+        异步根据标题识别媒体信息。
 
         :param metainfo: 标题解析元数据
         :param source: 请求级识别数据源
@@ -1497,14 +1494,12 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         if not metainfo:
             return None
         title = metainfo.title
-        share_meta = deepcopy(metainfo)
 
         async def native_recognize() -> Optional[MediaInfo]:
             """异步使用请求级数据源执行原生识别。"""
             return await self.async_recognize_media(
                 meta=metainfo,
                 source=source,
-                share_meta=share_meta,
                 episode_group=episode_group,
             )
 

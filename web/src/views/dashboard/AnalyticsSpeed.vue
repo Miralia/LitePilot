@@ -36,31 +36,50 @@ const downloadInfo = ref<DownloaderInfo>({
   free_space: 0,
 })
 
-const animatedUploadSpeed = useAnimatedDashboardNumber(computed(() => downloadInfo.value.upload_speed), {
-  duration: 520,
-})
+const animatedUploadSpeed = useAnimatedDashboardNumber(
+  computed(() => downloadInfo.value.upload_speed),
+  {
+    duration: 520,
+  },
+)
 
-const animatedDownloadSpeed = useAnimatedDashboardNumber(computed(() => downloadInfo.value.download_speed), {
-  duration: 520,
-})
+const animatedDownloadSpeed = useAnimatedDashboardNumber(
+  computed(() => downloadInfo.value.download_speed),
+  {
+    duration: 520,
+  },
+)
 
-const animatedUploadSize = useAnimatedDashboardNumber(computed(() => downloadInfo.value.upload_size), {
-  delay: 80,
-  duration: 760,
-})
+const animatedUploadSize = useAnimatedDashboardNumber(
+  computed(() => downloadInfo.value.upload_size),
+  {
+    delay: 80,
+    duration: 760,
+  },
+)
 
-const animatedDownloadSize = useAnimatedDashboardNumber(computed(() => downloadInfo.value.download_size), {
-  delay: 130,
-  duration: 760,
-})
+const animatedDownloadSize = useAnimatedDashboardNumber(
+  computed(() => downloadInfo.value.download_size),
+  {
+    delay: 130,
+    duration: 760,
+  },
+)
 
-const animatedFreeSpace = useAnimatedDashboardNumber(computed(() => downloadInfo.value.free_space), {
-  delay: 180,
-  duration: 760,
-})
+const animatedFreeSpace = useAnimatedDashboardNumber(
+  computed(() => downloadInfo.value.free_space),
+  {
+    delay: 180,
+    duration: 760,
+  },
+)
 
-const uploadSpeedText = computed(() => `${formatDashboardFileSize(animatedUploadSpeed.value, 2, downloadInfo.value.upload_speed)}/s`)
-const downloadSpeedText = computed(() => `${formatDashboardFileSize(animatedDownloadSpeed.value, 2, downloadInfo.value.download_speed)}/s`)
+const uploadSpeedText = computed(
+  () => `${formatDashboardFileSize(animatedUploadSpeed.value, 2, downloadInfo.value.upload_speed)}/s`,
+)
+const downloadSpeedText = computed(
+  () => `${formatDashboardFileSize(animatedDownloadSpeed.value, 2, downloadInfo.value.download_speed)}/s`,
+)
 
 // 显示项
 const infoItems = computed(() => [
@@ -98,7 +117,7 @@ async function loadDownloaderInfo() {
       free_space: Number(res.free_space) || 0,
     }
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 
@@ -107,7 +126,7 @@ const { loading } = useDataRefresh(
   'analytics-speed',
   loadDownloaderInfo,
   3000, // 3秒间隔
-  true // 立即执行
+  true, // 立即执行
 )
 </script>
 
@@ -203,5 +222,4 @@ const { loading } = useDataRefresh(
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
   font-size: 0.72rem;
 }
-
 </style>

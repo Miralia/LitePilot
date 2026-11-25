@@ -58,7 +58,7 @@ async function loadMediaServerSetting() {
     mediaServers.value = response.data?.value ?? []
     return true
   } catch (error) {
-    console.log(t('dashboard.errors.loadMediaServer'), error)
+    console.error(t('dashboard.errors.loadMediaServer'), error)
     return false
   }
 }
@@ -76,7 +76,7 @@ async function loadLatest(server: string, count: number) {
 
     return response ?? []
   } catch (e) {
-    console.log(t('dashboard.errors.loadLatest', { server }), e)
+    console.error(t('dashboard.errors.loadLatest', { server }), e)
 
     return undefined
   }

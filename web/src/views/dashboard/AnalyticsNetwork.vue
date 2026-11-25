@@ -52,7 +52,9 @@ const animatedCurrentUpload = useAnimatedDashboardNumber(currentUpload, {
 const animatedCurrentDownload = useAnimatedDashboardNumber(currentDownload, {
   duration: 520,
 })
-const animatedCurrentUploadText = computed(() => `${formatDashboardFileSize(animatedCurrentUpload.value, 2, currentUpload.value)}/s`)
+const animatedCurrentUploadText = computed(
+  () => `${formatDashboardFileSize(animatedCurrentUpload.value, 2, currentUpload.value)}/s`,
+)
 const animatedCurrentDownloadText = computed(
   () => `${formatDashboardFileSize(animatedCurrentDownload.value, 2, currentDownload.value)}/s`,
 )
@@ -185,7 +187,7 @@ async function getNetworkUsage() {
       series.value[1].data.shift()
     }
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 
@@ -194,7 +196,7 @@ const { refresh } = useDataRefresh(
   'dashboard-network',
   getNetworkUsage,
   2000, // 2秒间隔
-  true // 立即执行
+  true, // 立即执行
 )
 
 useKeepAliveRefresh(refresh)
@@ -211,8 +213,14 @@ useKeepAliveRefresh(refresh)
         <VApexChart type="area" :options="chartOptions" :series="series" height="100%" />
       </div>
       <div class="dashboard-chart-footer">
-        <span><i class="network-dot network-dot--upload" />{{ t('dashboard.upload') }} {{ animatedCurrentUploadText }}</span>
-        <span><i class="network-dot network-dot--download" />{{ t('dashboard.download') }} {{ animatedCurrentDownloadText }}</span>
+        <span
+          ><i class="network-dot network-dot--upload" />{{ t('dashboard.upload') }}
+          {{ animatedCurrentUploadText }}</span
+        >
+        <span
+          ><i class="network-dot network-dot--download" />{{ t('dashboard.download') }}
+          {{ animatedCurrentDownloadText }}</span
+        >
       </div>
     </VCardText>
   </VCard>
@@ -265,5 +273,4 @@ useKeepAliveRefresh(refresh)
 .network-dot--download {
   background: rgb(var(--v-theme-info));
 }
-
 </style>

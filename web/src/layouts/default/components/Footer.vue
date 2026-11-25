@@ -41,10 +41,8 @@ const userPermissions = computed(() => {
   if (!userStore || userStore.userID === -1) {
     return {
       is_superuser: false,
-      discovery: false,
-      search: false,
-      subscribe: false,
       manage: false,
+      features: {},
     }
   }
 
@@ -60,7 +58,7 @@ const navMenus = computed(() => {
 // 根据当前路径获取匹配的菜单路径
 function getMenuPathFromRoute(path: string): string {
   const matchedMenu = navMenus.value.find((menu: NavMenu) => menu.footer === true && path.startsWith(menu.to as string))
-  return matchedMenu ? (matchedMenu.to as string) : '/apps'
+  return matchedMenu ? (matchedMenu.to as string) : '/dashboard'
 }
 
 // 当前选中的菜单，初始值基于当前路由
@@ -74,9 +72,8 @@ const footerMenus = computed(() => {
   // 优先获取有 footer: true 属性的菜单
   const footerMenusWithProperty = allAuthorizedMenus.filter((menu: NavMenu) => menu.footer === true)
 
-  // 设置期望的底部菜单数量（不包括"更多"按钮）
-  // 一般来说，底部导航栏显示 3-4 个主要功能比较合适
-  const expectedFooterMenuCount = 3
+  // 当前精简导航最多只有四个主功能入口，移动端可以直接完整展示。
+  const expectedFooterMenuCount = 4
 
   // 如果有 footer 属性的菜单已经足够，优先显示它们
   if (footerMenusWithProperty.length >= expectedFooterMenuCount) {
@@ -245,23 +242,6 @@ function handleDynamicMenuItemClick(item: DynamicButtonMenuItem) {
                 <div class="btn-content">
                   <VIcon :icon="menu.icon" size="32"></VIcon>
                   <span class="text-xs">{{ menu.title }}</span>
-                </div>
-              </VBtn>
-
-              <!-- 更多按钮 -->
-              <VBtn
-                :variant="currentMenu === '/apps' ? 'text' : 'plain'"
-                color="primary"
-                :ripple="false"
-                to="/apps"
-                rounded="pill"
-                class="footer-nav-btn"
-                :class="{ 'footer-nav-btn-active': currentMenu === '/apps' }"
-                value="/apps"
-              >
-                <div class="btn-content">
-                  <VIcon icon="mdi-dots-horizontal" size="32"></VIcon>
-                  <span class="text-xs">{{ t('nav.more') }}</span>
                 </div>
               </VBtn>
             </VBtnToggle>

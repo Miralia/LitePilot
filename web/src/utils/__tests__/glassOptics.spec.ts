@@ -349,7 +349,7 @@ describe('glass optics geometry', () => {
       textureSource: 'wallpaper',
       trailCount: 4,
     })
-    expect(getGlassOpticalRenderProfile('high', '/subscribe/movie')).toEqual({
+    expect(getGlassOpticalRenderProfile('high', '/history')).toEqual({
       bufferQuality: 'high',
       contentProtection: true,
       diffusionSamples: 9,

@@ -185,7 +185,6 @@ export default {
   },
   menu: {
     start: '开始',
-    discovery: '发现',
     organize: '整理',
     system: '系统',
   },
@@ -223,9 +222,6 @@ export default {
     passwordHint: '请输入登录密码',
     confirmPassword: '确认密码',
     email: '邮箱',
-  },
-  nav: {
-    more: '更多',
   },
   profile: {
     setupAuthenticator: '设置身份验证器',
@@ -1002,7 +998,6 @@ export default {
       complete: '完成',
       reset: '重置',
     },
-    pluginMarketSetting: {},
     transferQueue: {
       title: '整理队列',
       queueSummary: '{media} 部媒体 · {tasks} 个文件',

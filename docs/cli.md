@@ -1,22 +1,20 @@
-# MoviePilot CLI
+# LitePilot CLI
 
-`moviepilot` 是 MoviePilot 本地源码模式的一体化入口，负责本地安装、初始化、更新，以及前后端服务管理。
+`moviepilot` 是 LitePilot 本地源码模式的一体化入口，负责本地安装、初始化、更新，以及前后端服务管理。
 
 ## 一键安装
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/jxxghp/MoviePilot/v2/scripts/bootstrap-local.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Miralia/LitePilot/main/scripts/bootstrap-local.sh | bash
 ```
 
 脚本会自动：
 
 - 检测操作系统
 - 自动检查并尽量安装 `git`、`curl`、`Python 3.11+`
-- 克隆 `MoviePilot`
+- 克隆 `LitePilot`
 - 安装后端依赖
-- 按当前仓库 `version.py` 中的 `FRONTEND_VERSION` 下载对应前端 release 的 `dist.zip`
-- 下载 `MoviePilot-Resources` 主分支资源
-- 将 `resources.v2/*` 同步到后端 [app/helper](../app/helper)
+- 使用仓内 `web/` 源码构建前端，不再下载上游前端 release
 - 下载本地 Node 运行时并安装前端运行依赖
 - 执行初始化向导
 - 创建全局 `moviepilot` 命令
@@ -104,7 +102,6 @@ moviepilot config describe API_TOKEN
 ```text
 moviepilot install deps
 moviepilot install frontend
-moviepilot install resources
 moviepilot init
 moviepilot setup
 moviepilot uninstall
@@ -153,37 +150,21 @@ moviepilot install deps --config-dir /path/to/moviepilot-config
 
 - 默认会自动选择本地已安装的 `Python 3.11+` 解释器
 
-安装前端 release：
+构建并安装仓内前端：
 
 ```shell
 moviepilot install frontend
-moviepilot install frontend --version latest
-moviepilot install frontend --version v2.9.31
-moviepilot install frontend --node-version 20.12.1
+moviepilot install frontend --node-version 24.22.3
 moviepilot install frontend --config-dir /path/to/moviepilot-config
 ```
 
 说明：
 
-- 默认按当前仓库 `version.py` 中的 `FRONTEND_VERSION` 下载对应前端 release 的 `dist.zip`
-- 如需覆盖默认行为，仍可显式传入 `--version latest` 或指定具体 tag
+- 始终使用当前仓库 `web/` 源码构建前端，产物版本写入 `version.py` 中的 `APP_VERSION`
+- 不提供独立前端 release 版本参数，避免运行时界面与后端源码不一致
 - 会自动安装本地 Node 运行时
 - 会自动安装 `service.js` 所需的运行依赖
 
-安装资源文件：
-
-```shell
-moviepilot install resources
-moviepilot install resources --resources-repo /path/to/MoviePilot-Resources
-moviepilot install resources --resource-dir /path/to/resources.v2
-moviepilot install resources --config-dir /path/to/moviepilot-config
-```
-
-说明：
-
-- 默认直接从 GitHub 下载 `MoviePilot-Resources` 主分支压缩包
-- 会将 `resources.v2/*` 整体复制到 [app/helper](../app/helper)
-- 这一步与生产安装流程使用相同的资源目录布局
 
 ## 初始化命令
 
@@ -192,7 +173,6 @@ moviepilot install resources --config-dir /path/to/moviepilot-config
 ```shell
 moviepilot init
 moviepilot init --wizard
-moviepilot init --skip-resources
 moviepilot init --force-token
 moviepilot init --superuser admin --superuser-password 'ChangeMe123!'
 moviepilot init --config-dir /path/to/moviepilot-config
@@ -203,9 +183,7 @@ moviepilot init --config-dir /path/to/moviepilot-config
 ```shell
 moviepilot setup
 moviepilot setup --wizard
-moviepilot setup --frontend-version latest
-moviepilot setup --node-version 20.12.1
-moviepilot setup --skip-resources
+moviepilot setup --node-version 24.22.3
 moviepilot setup --recreate
 moviepilot setup --superuser admin --superuser-password 'ChangeMe123!'
 moviepilot setup --config-dir /path/to/moviepilot-config
@@ -214,9 +192,8 @@ moviepilot setup --config-dir /path/to/moviepilot-config
 `moviepilot setup` 会串行执行：
 
 1. 安装后端依赖
-2. 下载并安装前端 release
-3. 下载并同步资源文件
-4. 初始化本地配置
+2. 构建并安装仓内前端
+3. 初始化本地配置
 
 `--wizard` 会进入交互式初始化向导，支持配置：
 
@@ -227,7 +204,7 @@ moviepilot setup --config-dir /path/to/moviepilot-config
   可切换为 `PostgreSQL`，并填写主机、端口、数据库名、用户名、密码
 - 默认下载目录与媒体库目录
 - 开机自启
-  可按需启用，MoviePilot 会根据当前操作系统注册登录自启动
+  可按需启用，LitePilot 会根据当前操作系统注册登录自启动
 - 下载器
 - 媒体服务器
 - 消息通知渠道
@@ -235,7 +212,7 @@ moviepilot setup --config-dir /path/to/moviepilot-config
 如果希望在自动化安装时直接预设超级管理员，也可以在一键安装脚本中透传：
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/jxxghp/MoviePilot/v2/scripts/bootstrap-local.sh | \
+curl -fsSL https://raw.githubusercontent.com/Miralia/LitePilot/main/scripts/bootstrap-local.sh | \
   bash -s -- --superuser admin --superuser-password 'ChangeMe123!'
 ```
 
@@ -276,7 +253,7 @@ moviepilot uninstall --config-dir /path/to/moviepilot-config
 说明：
 
 - 卸载时会先停止当前 CLI 管理的前后端服务
-- 会删除本地虚拟环境、前端运行时、本地 Node 运行时、全局 `moviepilot` 软链接，以及同步到 `app/helper` 的资源文件
+- 会删除本地虚拟环境、前端运行时、本地 Node 运行时以及全局 `moviepilot` 软链接，并清理此前安装遗留的站点资源文件
 - 如果之前注册过开机自启，卸载时也会一并取消
 - 会询问是否同时删除配置目录，默认不删除
 - 如果当前使用的是仓库内 legacy `config/` 目录，确认删除后其中的 `category.yaml` 等配置文件也会一起删除
@@ -290,31 +267,29 @@ moviepilot uninstall --config-dir /path/to/moviepilot-config
 ```shell
 moviepilot update backend
 moviepilot update backend --ref latest
-moviepilot update backend --ref v2
-moviepilot update backend --ref v2.9.31
+moviepilot update backend --ref main
+moviepilot update backend --ref v0.1.0
 ```
 
 更新前端：
 
 ```shell
 moviepilot update frontend
-moviepilot update frontend --frontend-version latest
-moviepilot update frontend --frontend-version v2.9.31
+moviepilot update frontend --node-version 24.22.3
 ```
 
 整体更新：
 
 ```shell
 moviepilot update all
-moviepilot update all --ref latest --frontend-version latest
-moviepilot update all --skip-resources
+moviepilot update all --ref latest
 ```
 
 说明：
 
 - `update backend` 会更新 Git 仓库并重新安装后端依赖
-- `update frontend` 会按当前仓库 `version.py` 中的 `FRONTEND_VERSION` 下载并替换前端 release
-- `update all` 会先更新后端，再按更新后代码中的 `FRONTEND_VERSION` 更新前端，默认也会同步资源文件
+- `update frontend` 会重新构建当前仓库 `web/` 源码并替换 `public/` 中的本地运行时
+- `update all` 会先更新后端，再按更新后代码重新构建前端
 - 更新前请先执行 `moviepilot stop`
 
 ## 部署配置生成

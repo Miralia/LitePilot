@@ -2,10 +2,10 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/jxxghp/MoviePilot.git"
-REPO_REF="v2"
+REPO_URL="https://github.com/Miralia/LitePilot.git"
+REPO_REF="main"
 WORKDIR="$PWD"
-APP_DIR_NAME="MoviePilot"
+APP_DIR_NAME="LitePilot"
 LINK_CLI="true"
 LINK_PATH=""
 CONFIG_DIR=""
@@ -31,7 +31,7 @@ Usage: $(basename "$0") [OPTIONS]
 
 Options:
   --workdir PATH           克隆与安装的目标目录，默认当前目录
-  --app-dir NAME           MoviePilot 目录名，默认 ${APP_DIR_NAME}
+  --app-dir NAME           LitePilot 目录名，默认 ${APP_DIR_NAME}
   --repo-url URL           主项目仓库地址
   --config-dir PATH        配置目录，默认使用程序目录外的系统配置目录
   --superuser NAME         预设超级管理员用户名
@@ -61,12 +61,12 @@ repo_dirty() {
 
 sync_repo() {
   if [[ ! -d "$APP_DIR/.git" ]]; then
-    echo "==> 克隆 MoviePilot 到 $APP_DIR"
+    echo "==> 克隆 LitePilot 到 $APP_DIR"
     git clone --branch "$REPO_REF" "$REPO_URL" "$APP_DIR"
     return
   fi
 
-  echo "==> 复用已有 MoviePilot 仓库: $APP_DIR"
+  echo "==> 复用已有 LitePilot 仓库: $APP_DIR"
   if repo_dirty "$APP_DIR"; then
     echo "检测到现有仓库包含未提交改动，已停止自动更新。" >&2
     echo "请先清理 $APP_DIR 的本地修改，或换一个新的安装目录后重试。" >&2
@@ -478,13 +478,13 @@ prompt_yes_no() {
 
 run_interactive_guide() {
   printf '==> 当前系统: %s\n' "$OS_NAME" >"$PROMPT_OUTPUT"
-  printf '==> 将自动拉取 MoviePilot，并下载前端 release、资源文件与本地 Node 运行时\n' >"$PROMPT_OUTPUT"
+  printf '==> 将自动拉取 LitePilot，构建仓内前端并安装本地 Node 运行时\n' >"$PROMPT_OUTPUT"
 
   WORKDIR="$(prompt_text "安装目录" "$WORKDIR")"
   APP_DIR_NAME="$(prompt_text "主项目目录名" "$APP_DIR_NAME")"
   CONFIG_DIR="$(prompt_text "配置目录" "$CONFIG_DIR")"
 
-  if prompt_yes_no "安装过程中进入 MoviePilot 初始化向导" "y"; then
+  if prompt_yes_no "安装过程中进入 LitePilot 初始化向导" "y"; then
     RUN_WIZARD="true"
   else
     RUN_WIZARD="false"
@@ -552,7 +552,7 @@ ensure_path_configured() {
 
   if ! grep -Fqs "$export_line" "$PATH_RC_FILE"; then
     {
-      printf '\n# MoviePilot CLI\n'
+      printf '\n# LitePilot CLI\n'
       printf '%s\n' "$export_line"
     } >>"$PATH_RC_FILE"
     PATH_UPDATED="true"
@@ -661,7 +661,7 @@ if [[ "$LINK_CLI" == "true" ]]; then
 fi
 
 if [[ "$START_AFTER_INSTALL" == "true" ]]; then
-  echo "==> 启动 MoviePilot 前后端服务"
+  echo "==> 启动 LitePilot 前后端服务"
   ./moviepilot start
 fi
 

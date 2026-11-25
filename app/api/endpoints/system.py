@@ -100,8 +100,8 @@ def _build_nettest_rules() -> list[dict[str, Any]]:
     tmdb_key = settings.TMDB_API_KEY
     tmdb_domain = settings.TMDB_API_DOMAIN or "api.themoviedb.org"
 
-    github_readme_url = "https://github.com/Miralia/LitePilot/blob/v2/README.md"
-    raw_readme_url = "https://raw.githubusercontent.com/Miralia/LitePilot/v2/README.md"
+    github_readme_url = "https://github.com/Miralia/LitePilot/blob/main/README.md"
+    raw_readme_url = "https://raw.githubusercontent.com/Miralia/LitePilot/main/README.md"
 
     rules = [
         {

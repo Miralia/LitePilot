@@ -49,7 +49,7 @@ async function getStorage() {
     storage.value = Number(res.total_storage) || 0
     used.value = Number(res.used_storage) || 0
   } catch (e) {
-    console.log(e)
+    console.error(e)
   }
 }
 

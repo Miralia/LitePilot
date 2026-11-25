@@ -223,7 +223,7 @@ async function renderDashboard() {
     initialRoute: '/dashboard',
     initialState: {
       user: {
-        permissions: { ...DEFAULT_PERMISSIONS, discovery: true },
+        permissions: { ...DEFAULT_PERMISSIONS },
         superUser: true,
       },
     },
