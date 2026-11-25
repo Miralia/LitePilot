@@ -1,12 +1,10 @@
 import asyncio
 import collections
 import re
-import sys
 import threading
 import time
 import weakref
 from contextlib import AsyncExitStack, contextmanager, asynccontextmanager
-from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
 import chardet
@@ -284,43 +282,6 @@ def cookie_parse(cookies_str: str, array: bool = False) -> Union[list, dict]:
     return cookie_dict
 
 
-def get_caller():
-    """
-    获取调用者的名称，识别是否为插件调用
-    """
-    # 调用者名称
-    caller_name = None
-
-    try:
-        frame = sys._getframe(3)  # noqa
-    except (AttributeError, ValueError):
-        return None
-
-    while frame:
-        filepath = Path(frame.f_code.co_filename)
-        parts = filepath.parts
-        if "app" in parts:
-            if not caller_name and "plugins" in parts:
-                try:
-                    plugins_index = parts.index("plugins")
-                    if plugins_index + 1 < len(parts):
-                        plugin_candidate = parts[plugins_index + 1]
-                        if plugin_candidate != "__init__.py":
-                            caller_name = plugin_candidate
-                        break
-                except ValueError:
-                    pass
-            if "main.py" in parts:
-                break
-        elif len(parts) != 1:
-            break
-        try:
-            frame = frame.f_back
-        except AttributeError:
-            break
-    return caller_name
-
-
 class RequestUtils:
     """
     HTTP请求工具类，提供同步HTTP请求的基本功能
@@ -357,10 +318,6 @@ class RequestUtils:
         if headers:
             self._headers = headers
         else:
-            if ua and ua == settings.USER_AGENT:
-                caller_name = get_caller()
-                if caller_name:
-                    ua = f"{settings.USER_AGENT} Plugin/{caller_name}"
             self._headers = {
                 "User-Agent": ua,
                 "Content-Type": content_type,
@@ -1041,10 +998,6 @@ class AsyncRequestUtils:
             # 过滤掉None值的headers
             self._headers = {k: v for k, v in headers.items() if v is not None}
         else:
-            if ua and ua == settings.USER_AGENT:
-                caller_name = get_caller()
-                if caller_name:
-                    ua = f"{settings.USER_AGENT} Plugin/{caller_name}"
             self._headers = {}
             if ua:
                 self._headers["User-Agent"] = ua

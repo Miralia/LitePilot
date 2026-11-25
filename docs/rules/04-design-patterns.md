@@ -104,7 +104,7 @@ def on_transfer_complete(self, event: Event):
 eventmanager.send_event(EventType.TransferComplete, data_dict)
 ```
 
-**Event types** are defined as `EventType` and `ChainEventType` enums in `app/schemas/types.py`. Add new event types there when extending the event system.
+**Event types** are defined as the `EventType` enum in `app/schemas/types.py`. LitePilot only uses broadcast events for internal module coordination; do not reintroduce chain extension events for external plugins.
 
 ---
 

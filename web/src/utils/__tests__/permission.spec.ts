@@ -35,7 +35,7 @@ describe('permission utilities', () => {
     expect(normalizeUserPermissions(null)).toEqual(DEFAULT_PERMISSIONS)
   })
 
-  it('builds default and plugin feature contracts', () => {
+  it('builds default feature contracts', () => {
     const disabledFeatures = buildDefaultFeaturePermissions(false)
 
     expect(Object.keys(disabledFeatures)).toHaveLength(USER_PERMISSION_FEATURES.length)

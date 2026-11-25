@@ -114,11 +114,12 @@ def test_system_public_setting_allows_only_non_sensitive_keys(monkeypatch):
     assert response.data == {"value": [{"path": "/downloads"}]}
     assert calls == [SystemConfigKey.Directories]
 
-    with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(system_endpoint.get_public_setting("API_TOKEN"))
+    for removed_or_sensitive_key in ("API_TOKEN", "IndexerSites"):
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(system_endpoint.get_public_setting(removed_or_sensitive_key))
 
-    assert exc_info.value.status_code == 404
-    assert exc_info.value.detail == "配置项不存在"
+        assert exc_info.value.status_code == 404
+        assert exc_info.value.detail == "配置项不存在"
 
 
 def test_system_ping_returns_success():

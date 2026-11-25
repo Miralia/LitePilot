@@ -1,7 +1,6 @@
 """pytest 全局引导：隔离 CONFIG_DIR、建表、装载网络守卫。
 
-引导与网络守卫均复用 ``app/testing`` 的共享 harness（与插件仓 conftest 同源），
-引导逻辑只在 ``app/testing`` 维护一处。
+引导与网络守卫均复用 ``app/testing`` 的测试 harness，引导逻辑只在 ``app/testing`` 维护一处。
 """
 import sys
 
@@ -12,7 +11,7 @@ from app.testing.bootstrap import prepare_backend
 
 prepare_backend()
 
-# 复用共享 autouse 网络守卫；同一实现亦供各插件仓 conftest import 复用，避免逐仓维护
+# 装载 autouse 网络守卫，确保所有用例默认禁止真实外连
 from app.testing.network_guard import block_real_network  # noqa: E402,F401
 
 

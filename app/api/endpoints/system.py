@@ -54,7 +54,6 @@ _PUBLIC_SYSTEM_CONFIG_KEYS = {
     for item in (
         SystemConfigKey.Directories,
         SystemConfigKey.Storages,
-        SystemConfigKey.IndexerSites,
         SystemConfigKey.EpisodeFormatRuleTable,
     )
 }
@@ -295,7 +294,7 @@ async def _build_log_zip_response(name: str) -> StreamingResponse:
 
     打包前逐个校验文件仍位于日志根目录内，避免符号链接或并发文件变更绕过
     `name` 到固定目录的映射约束。zip 内使用日志根目录相对路径，便于区分
-    主程序日志与插件日志。
+    主程序日志。
     """
     zip_data, zip_stem = await anyio.to_thread.run_sync(_build_log_zip_data, name)
     headers = {
@@ -735,6 +734,9 @@ async def get_logging(
     length = -1 时, 返回text/plain
     否则 返回格式SSE
     """
+    if logfile != "moviepilot.log":
+        raise HTTPException(status_code=404, detail="Not Found")
+
     base_path = AsyncPath(settings.LOG_PATH)
     log_path = base_path / logfile
 
@@ -843,7 +845,7 @@ async def download_logging(
     _: schemas.TokenPayload = Depends(_verify_log_resource_superuser),
 ):
     """
-    按日志标识下载主程序或插件滚动日志，返回 zip 文件。
+    按日志标识下载主程序滚动日志，返回 zip 文件。
     """
     return await _build_log_zip_response(name)
 
@@ -1028,10 +1030,7 @@ def run_scheduler(jobid: str, _: User = Depends(get_current_active_superuser)):
     """
     if not jobid:
         return schemas.Response(success=False, message="命令不能为空！")
-    if jobid in {"recommend_refresh", "cookiecloud"}:
-        Scheduler().start(jobid, manual=True)
-    else:
-        Scheduler().start(jobid)
+    Scheduler().start(jobid)
     return schemas.Response(success=True)
 
 
@@ -1045,8 +1044,5 @@ def run_scheduler2(jobid: str, _: Annotated[str, Depends(verify_apitoken)]):
     if not jobid:
         return schemas.Response(success=False, message="命令不能为空！")
 
-    if jobid in {"recommend_refresh", "cookiecloud"}:
-        Scheduler().start(jobid, manual=True)
-    else:
-        Scheduler().start(jobid)
+    Scheduler().start(jobid)
     return schemas.Response(success=True)

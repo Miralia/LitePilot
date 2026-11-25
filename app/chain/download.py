@@ -26,10 +26,8 @@ from app.helper.directory import DirectoryHelper, validate_download_save_path
 from app.helper.thread import ThreadHelper
 from app.helper.torrent import TorrentHelper
 from app.log import logger
-from app.schemas import ExistMediaInfo, FileURI, NotExistMediaInfo, DownloaderTorrent, Notification, ResourceSelectionEventData, \
-    ResourceDownloadEventData
-from app.schemas.types import MediaType, TorrentStatus, EventType, MessageChannel, NotificationType, ContentType, \
-    ChainEventType
+from app.schemas import ExistMediaInfo, FileURI, NotExistMediaInfo, DownloaderTorrent, Notification
+from app.schemas.types import MediaType, TorrentStatus, EventType, MessageChannel, NotificationType, ContentType
 from app.utils.http import RequestUtils
 from app.utils.media import build_media_key, resolve_media_identity
 from app.utils.string import StringUtils
@@ -815,34 +813,6 @@ class DownloadChain(ChainBase):
         _media = MediaChain().supplement_tmdb_info(_media, _meta)
         context.media_info = _media
 
-        # 发送资源下载事件，允许外部拦截下载
-        event_data = ResourceDownloadEventData(
-            context=context,
-            episodes=episodes or context.meta_info.episode_list,
-            channel=channel,
-            origin=source,
-            downloader=downloader,
-            options={
-                "save_path": save_path,
-                "userid": userid,
-                "username": username,
-                "media_category": _media.category
-            }
-        )
-        # 触发资源下载事件
-        event = eventmanager.send_event(ChainEventType.ResourceDownload, event_data)
-        if event and event.event_data:
-            event_data: ResourceDownloadEventData = event.event_data
-            # 如果事件被取消，跳过资源下载
-            if event_data.cancel:
-                logger.debug(
-                    f"Resource download canceled by event: {event_data.source},"
-                    f"Reason: {event_data.reason}")
-                return (None, "下载被事件取消") if return_detail else None
-            # 如果事件修改了下载路径，使用新路径
-            if event_data.options and "save_path" in event_data.options:
-                save_path = event_data.options.get("save_path")
-
         if save_path is not None:
             try:
                 save_path = validate_download_save_path(save_path)
@@ -1159,21 +1129,7 @@ class DownloadChain(ChainBase):
             """
             return _context.media_info.title_year
 
-        # 发送资源选择事件，允许外部修改上下文数据
         logger.debug(f"Initial contexts: {len(contexts)} items, Downloader: {downloader}")
-        event_data = ResourceSelectionEventData(
-            contexts=contexts,
-            downloader=downloader,
-            origin=source
-        )
-        event = eventmanager.send_event(ChainEventType.ResourceSelection, event_data)
-        # 如果事件修改了上下文数据，使用更新后的数据
-        if event and event.event_data:
-            event_data: ResourceSelectionEventData = event.event_data
-            if event_data.updated and event_data.updated_contexts is not None:
-                logger.debug(f"Contexts updated by event: "
-                             f"{len(event_data.updated_contexts)} items (source: {event_data.source})")
-                contexts = event_data.updated_contexts
 
         # 仅排序，不提前按媒体控重；下载失败时需要继续尝试同组后续候选。
         contexts = TorrentHelper().sort_torrents(contexts)

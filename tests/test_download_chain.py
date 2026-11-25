@@ -193,8 +193,8 @@ def test_download_single_submits_download_added_to_background(monkeypatch):
     )
 
 
-def test_download_single_supplements_category_before_download_event(monkeypatch):
-    """下载事件和目录选择前应已有 TMDB 分类，同时保留原识别源身份。"""
+def test_download_single_supplements_category_before_directory_resolution(monkeypatch):
+    """目录选择前应已有 TMDB 分类，同时保留原识别源身份。"""
     captured = {}
 
     class _FakeMediaChain:
@@ -207,14 +207,22 @@ def test_download_single_supplements_category_before_download_event(monkeypatch)
             media.category = "日本动画"
             return media
 
-    def cancel_download(_event_type, event_data):
-        """捕获下载事件后取消，避免进入真实下载流程。"""
-        captured["event_data"] = event_data
-        event_data.cancel = True
-        return SimpleNamespace(event_data=event_data)
+    class _FakeTorrentHelper:
+        """避免解析测试用磁力文本。"""
+
+        def get_fileinfo_from_torrent_content(self, _content):
+            """返回固定种子文件清单。"""
+            return "测试动画", ["测试动画.S01E01.mkv"]
+
+    def resolve_download_dir(_self, media_info, save_path):
+        """捕获目录解析时的媒体信息并提前结束下载流程。"""
+        captured["media_info"] = media_info
+        captured["save_path"] = save_path
+        return "local", None, "未找到下载目录"
 
     monkeypatch.setattr(download_module, "MediaChain", _FakeMediaChain)
-    monkeypatch.setattr(download_module.eventmanager, "send_event", cancel_download)
+    monkeypatch.setattr(download_module, "TorrentHelper", _FakeTorrentHelper)
+    monkeypatch.setattr(DownloadChain, "_resolve_media_download_dir", resolve_download_dir)
     media = MediaInfo(
         source="bangumi",
         media_id="40000",
@@ -227,15 +235,17 @@ def test_download_single_supplements_category_before_download_event(monkeypatch)
         media_info=media,
         torrent_info=TorrentInfo(title="测试动画 S01"),
     )
+    chain = DownloadChain.__new__(DownloadChain)
+    chain.messagehelper = MagicMock()
 
-    result = DownloadChain.__new__(DownloadChain).download_single(
+    result = chain.download_single(
         context=context,
         torrent_content="magnet:?xt=urn:btih:test",
         return_detail=True,
     )
 
-    assert result == (None, "下载被事件取消")
-    assert captured["event_data"].options["media_category"] == "日本动画"
+    assert result == (None, "未找到下载目录")
+    assert captured["media_info"].category == "日本动画"
     assert context.media_info.source == "bangumi"
     assert context.media_info.media_id == "40000"
     assert context.media_info.tmdb_id == 12345

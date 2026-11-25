@@ -8,16 +8,15 @@ from app.chain.download import DownloadChain
 from app.chain.message import MessageChain
 from app.chain.system import SystemChain
 from app.chain.transfer import TransferChain
-from app.core.event import Event as ManagerEvent, eventmanager, Event
+from app.core.event import Event as ManagerEvent, eventmanager
 from app.helper.message import MessageHelper
 from app.helper.thread import ThreadHelper
 from app.log import logger
 from app.scheduler import Scheduler
-from app.schemas import Notification, CommandRegisterEventData
-from app.schemas.types import EventType, MessageChannel, ChainEventType
+from app.schemas import Notification
+from app.schemas.types import EventType, MessageChannel
 from app.utils.object import ObjectUtils
 from app.utils.singleton import Singleton
-from app.utils.structures import DictUtils
 
 
 class CommandChain(ChainBase):
@@ -42,7 +41,6 @@ class Command(metaclass=Singleton):
     """
 
     def __init__(self):
-        # 插件管理器
         super().__init__()
         # 注册的命令集合
         self._registered_commands = {}
@@ -92,8 +90,6 @@ class Command(metaclass=Singleton):
                 "data": {},
             },
         }
-        # 其他命令集合
-        self._other_commands = {}
         # 初始化锁
         self._rlock = threading.RLock()
         # 定时服务管理
@@ -103,80 +99,44 @@ class Command(metaclass=Singleton):
         # 初始化命令
         self.init_commands()
 
-    def init_commands(self, pid: Optional[str] = None) -> None:
+    def init_commands(self) -> None:
         """
         初始化菜单命令
         """
         # 使用线程池提交后台任务，避免引起阻塞
-        ThreadHelper().submit(self.__init_commands_background, pid)
+        ThreadHelper().submit(self.__init_commands_background)
 
-    def __init_commands_background(self, pid: Optional[str] = None) -> None:
+    def __init_commands_background(self) -> None:
         """
         后台初始化菜单命令
         """
         try:
             with self._rlock:
                 logger.debug("Acquired lock for initializing commands in background.")
-                self._commands = {
-                    **self._preset_commands,
-                    **self._other_commands,
-                }
+                self._commands = dict(self._preset_commands)
 
-                # 强制触发注册
-                force_register = False
-                # 触发事件允许可以拦截和调整命令
-                event, initial_commands = self.__trigger_register_commands_event()
+                initial_commands = self.__build_register_commands()
+                logger.debug(f"Registering initial command count: {len(initial_commands)}")
 
-                if event and event.event_data:
-                    # 如果事件返回有效的 event_data，使用事件中调整后的命令
-                    event_data: CommandRegisterEventData = event.event_data
-                    # 如果事件被取消，跳过命令注册
-                    if event_data.cancel:
-                        logger.debug(
-                            f"Command initialization canceled by event: {event_data.source}"
-                        )
-                        return
-                    initial_commands = event_data.commands or {}
-                    logger.debug(
-                        f"Registering command count from event: {len(initial_commands)}"
-                    )
-                else:
-                    logger.debug(
-                        f"Registering initial command count: {len(initial_commands)}"
-                    )
-
-                # initial_commands 必须是 self._commands 的子集
-                filtered_initial_commands = DictUtils.filter_keys_to_subset(
-                    initial_commands, self._commands
-                )
-                # 如果 filtered_initial_commands 为空，则跳过注册
-                if not filtered_initial_commands and not force_register:
-                    logger.debug("Filtered commands are empty, skipping registration.")
+                if not initial_commands:
+                    logger.debug("Commands are empty, skipping registration.")
                     return
 
                 # 对比调整后的命令与当前命令
-                if (
-                    filtered_initial_commands != self._registered_commands
-                    or force_register
-                ):
-                    logger.debug(
-                        "Command set has changed or force registration is enabled."
-                    )
-                    self._registered_commands = filtered_initial_commands
-                    CommandChain().register_commands(commands=filtered_initial_commands)
+                if initial_commands != self._registered_commands:
+                    self._registered_commands = initial_commands
+                    CommandChain().register_commands(commands=initial_commands)
                 else:
-                    logger.debug(
-                        "Command set unchanged, skipping broadcast registration."
-                    )
+                    logger.debug("Command set unchanged, skipping broadcast registration.")
         except Exception as e:
             logger.error(
                 f"Error occurred during command initialization in background: {e}",
                 exc_info=True,
             )
 
-    def __trigger_register_commands_event(self) -> tuple[Optional[Event], dict]:
+    def __build_register_commands(self) -> dict:
         """
-        触发事件，允许调整命令数据
+        构建需要注册到消息渠道的菜单命令。
         """
 
         def add_commands(source, command_type):
@@ -197,14 +157,8 @@ class Command(metaclass=Singleton):
         # 初始化命令字典
         commands: Dict[str, dict] = {}
         add_commands(self._preset_commands, "preset")
-        add_commands(self._other_commands, "other")
 
-        # 触发事件允许可以拦截和调整命令
-        event_data = CommandRegisterEventData(
-            commands=commands, origin="CommandChain", service=None
-        )
-        event = eventmanager.send_event(ChainEventType.CommandRegister, event_data)
-        return event, commands
+        return commands
 
 
     def __run_command(
@@ -274,10 +228,7 @@ class Command(metaclass=Singleton):
         if not self._commands:
             with self._rlock:
                 if not self._commands:
-                    self._commands = {
-                        **self._preset_commands,
-                        **self._other_commands,
-                    }
+                    self._commands = dict(self._preset_commands)
         return self._commands
 
     def get(self, cmd: str) -> Any:
@@ -285,27 +236,6 @@ class Command(metaclass=Singleton):
         获取命令
         """
         return self._commands.get(cmd, {})
-
-    def register(
-        self,
-        cmd: str,
-        func: Any,
-        data: Optional[dict] = None,
-        desc: Optional[str] = None,
-        category: Optional[str] = None,
-        show: bool = True,
-    ) -> None:
-        """
-        注册单个命令
-        """
-        # 单独调用的，统一注册到其他
-        self._other_commands[cmd] = {
-            "func": func,
-            "description": desc,
-            "category": category,
-            "data": data or {},
-            "show": show,
-        }
 
     def execute(
         self,

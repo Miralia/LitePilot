@@ -14,8 +14,8 @@ class MessageChain(ChainBase):
     """
     外来消息处理链
 
-    本分支只保留三类交互：斜杠命令执行、整理失败通知的重试回调、插件消息回调。
-    智能体对话、订阅/技能交互、未识别资源的搜索下载交互已随对应能力一并删除。
+    本分支只保留两类交互：斜杠命令执行、整理失败通知的重试回调。
+    智能体对话、订阅/技能交互、插件回调和未识别资源的搜索下载交互已随对应能力一并删除。
     """
 
     @dataclass
@@ -188,18 +188,7 @@ class MessageChain(ChainBase):
             )
             return bool(processing_status)
 
-        # 其余文本广播给关注用户消息的模块与插件
-        self.eventmanager.send_event(
-            EventType.UserMessage,
-            {
-                "text": text,
-                "userid": userid,
-                "channel": channel,
-                "source": source,
-                "chat_id": original_chat_id,
-                "reply_to_message_id": reply_to_message_id,
-            },
-        )
+        # 其余文本没有可用交互入口，记录用户消息后直接结束。
         return False
 
     def _mark_message_processing_started(

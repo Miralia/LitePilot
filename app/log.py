@@ -363,55 +363,18 @@ class LoggerManager:
     @staticmethod
     def __get_caller():
         """
-        获取调用者的文件名称与插件名称
-        如果是插件调用内置的模块, 也能写入到插件日志文件中
+        获取调用者的文件名称。
         """
-        # 调用者文件名称
-        caller_name = None
-        # 调用者插件名称
-        plugin_name = None
-
         try:
             frame = sys._getframe(3)  # noqa
         except (AttributeError, ValueError):
-            # 如果无法获取帧，返回默认值
-            return "log.py", None
+            return "log.py"
 
-        while frame:
-            filepath = Path(frame.f_code.co_filename)
-            parts = filepath.parts
-            # 设定调用者文件名称
-            if not caller_name:
-                if parts[-1] == "__init__.py" and len(parts) >= 2:
-                    caller_name = parts[-2]
-                else:
-                    caller_name = parts[-1]
-            # 设定调用者插件名称
-            if "app" in parts:
-                if not plugin_name and "plugins" in parts:
-                    try:
-                        plugins_index = parts.index("plugins")
-                        if plugins_index + 1 < len(parts):
-                            plugin_candidate = parts[plugins_index + 1]
-                            if plugin_candidate == "__init__.py":
-                                plugin_name = "plugin"
-                            else:
-                                plugin_name = plugin_candidate
-                            break
-                    except ValueError:
-                        pass
-                if "main.py" in parts:
-                    # 已经到达程序的入口，停止遍历
-                    break
-            elif len(parts) != 1:
-                # 已经超出程序范围，停止遍历
-                break
-            # 获取上一个帧
-            try:
-                frame = frame.f_back
-            except AttributeError:
-                break
-        return caller_name or "log.py", plugin_name
+        filepath = Path(frame.f_code.co_filename)
+        parts = filepath.parts
+        if parts[-1] == "__init__.py" and len(parts) >= 2:
+            return parts[-2]
+        return parts[-1]
 
     @staticmethod
     def __setup_console_logger(log_file: str):
@@ -490,8 +453,8 @@ class LoggerManager:
         if method_level < current_level:
             return
 
-        # 获取调用者文件名和插件名
-        caller_name, plugin_name = self.__get_caller()
+        # 获取调用者文件名
+        caller_name = self.__get_caller()
 
         # 格式化消息
         formatted_msg = f"{caller_name} - {msg}"
@@ -502,13 +465,7 @@ class LoggerManager:
                 # 如果格式化失败，直接拼接
                 formatted_msg = f"{formatted_msg} {' '.join(str(arg) for arg in args)}"
 
-        # 区分插件日志
-        if plugin_name:
-            # 使用插件日志文件
-            logfile = Path("plugins") / f"{plugin_name}.log"
-        else:
-            # 使用默认日志文件
-            logfile = self._default_log_file
+        logfile = self._default_log_file
 
         # 构建完整的日志文件路径
         log_file_path = log_settings.LOG_PATH / logfile

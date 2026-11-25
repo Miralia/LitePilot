@@ -105,7 +105,7 @@ const dashboardGridRef = ref<HTMLElement | null>(null)
 // GridStack 实例
 const dashboardGrid = shallowRef<GridStack | null>(null)
 
-// 仪表板配置是否已完成首次加载，包含插件仪表板配置。
+// 仪表板配置是否已完成首次加载。
 const isDashboardConfigLoaded = ref(false)
 
 // 已完成组件模块加载的仪表板项目 ID。
@@ -825,7 +825,7 @@ function cloneDashboardGridLayout(layout: DashboardGridLayoutConfig): DashboardG
   }, {})
 }
 
-// 获取仪表板组件的默认宽度，优先兼容插件旧版 cols.md / cols.cols 配置。
+// 获取仪表板组件的默认宽度，优先兼容旧版 cols.md / cols.cols 配置。
 function getDefaultDashboardGridWidth(item: DashboardItem) {
   const profile = dashboardLayoutProfile.value
   if (profile === 'mobile') return 1
@@ -836,12 +836,12 @@ function getDefaultDashboardGridWidth(item: DashboardItem) {
   return clampGridNumber(requestedWidth, 1, columns, columns)
 }
 
-// 获取仪表板组件测量前的兜底高度，兼容未来 rows 字段和插件 attrs.rows。
+// 获取仪表板组件测量前的兜底高度，兼容历史 attrs.rows 配置。
 function getDefaultDashboardGridRows(item?: DashboardItem) {
   return clampGridNumber(item?.rows ?? item?.attrs?.rows, 1, 96, DASHBOARD_GRID_FALLBACK_ROWS)
 }
 
-// 合并插件/内置组件默认尺寸与用户本地布局覆盖。
+// 合并内置组件默认尺寸与用户本地布局覆盖。
 function buildDashboardGridWidget(item: DashboardItem, id: string): GridStackWidget {
   const savedLayout = dashboardGridLayout.value[id]
   const defaultLayout = dashboardLayoutProfile.value === 'desktop' ? DASHBOARD_DESKTOP_DEFAULT_LAYOUT[id] : undefined

@@ -88,9 +88,8 @@ function normalizeText(value: unknown) {
     .trim()
 }
 
-/** 获取通知分类，统一插件、系统等历史字段差异。 */
+/** 获取通知分类，统一历史系统消息字段差异。 */
 function getNotificationKind(item: SystemNotification) {
-  if (item.type === 'plugin' || item.mtype === '插件') return 'plugin'
   if (item.type === 'system' || item.mtype === '其它') return 'system'
   return item.mtype || item.type || ''
 }
@@ -410,21 +409,16 @@ function markAllAsRead() {
 
 /** 根据通知分类和业务类型选择列表图标。 */
 function getNotificationIcon(item: SystemNotification) {
-  if (getNotificationKind(item) === 'plugin') return 'mdi-puzzle-outline'
   if (item.mtype === '资源下载') return 'mdi-download'
   if (item.mtype === '整理入库') return 'mdi-folder-check-outline'
-  if (item.mtype === '订阅') return 'mdi-rss'
-  if (item.mtype === '智能体') return 'lucide:bot'
   return getNotificationKind(item) === 'system' ? 'mdi-alert-circle-outline' : 'mdi-bell-outline'
 }
 
 /** 根据通知分类和业务类型选择图标颜色。 */
 function getNotificationColor(item: SystemNotification) {
   if (getNotificationKind(item) === 'system') return 'error'
-  if (getNotificationKind(item) === 'plugin') return 'warning'
   if (item.mtype === '资源下载') return 'info'
   if (item.mtype === '整理入库') return 'success'
-  if (item.mtype === '订阅') return 'primary'
   return 'secondary'
 }
 

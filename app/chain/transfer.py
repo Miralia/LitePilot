@@ -38,7 +38,6 @@ from app.helper.mediaserver import MediaServerHelper
 from app.helper.format import EpisodeFormatRuleHelper, FormatParser
 from app.helper.progress import ProgressHelper
 from app.log import logger
-from app.schemas import StorageOperSelectionEventData
 from app.schemas import (
     TransferInfo,
     Notification,
@@ -60,7 +59,6 @@ from app.schemas.types import (
     NotificationType,
     MessageChannel,
     SystemConfigKey,
-    ChainEventType,
     ContentType,
 )
 from app.utils.mixins import ConfigReloadMixin
@@ -2170,37 +2168,8 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             # 正在处理
             self.jobview.running_task(task)
 
-            # 广播事件，请示额外的源存储支持
             source_oper = None
-            source_event_data = StorageOperSelectionEventData(
-                storage=task.fileitem.storage,
-            )
-            source_event = eventmanager.send_event(
-                ChainEventType.StorageOperSelection, source_event_data
-            )
-            # 使用事件返回的上下文数据
-            if source_event and source_event.event_data:
-                source_event_data: StorageOperSelectionEventData = (
-                    source_event.event_data
-                )
-                if source_event_data.storage_oper:
-                    source_oper = source_event_data.storage_oper
-
-            # 广播事件，请示额外的目标存储支持
             target_oper = None
-            target_event_data = StorageOperSelectionEventData(
-                storage=task.target_storage,
-            )
-            target_event = eventmanager.send_event(
-                ChainEventType.StorageOperSelection, target_event_data
-            )
-            # 使用事件返回的上下文数据
-            if target_event and target_event.event_data:
-                target_event_data: StorageOperSelectionEventData = (
-                    target_event.event_data
-                )
-                if target_event_data.storage_oper:
-                    target_oper = target_event_data.storage_oper
 
             # 执行整理
             transferinfo: TransferInfo = self.transfer(

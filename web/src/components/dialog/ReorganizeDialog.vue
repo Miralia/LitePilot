@@ -61,7 +61,7 @@ const emit = defineEmits(['done', 'close'])
 // 生成1到100季的下拉框选项
 const seasonItems = ref(
   Array.from({ length: 101 }, (_, i) => i).map(item => ({
-    title: `${t('dialog.subscribeEdit.seasonFormat', { number: item })}`,
+    title: `${t('dialog.reorganize.seasonFormat', { number: item })}`,
     value: item,
   })),
 )

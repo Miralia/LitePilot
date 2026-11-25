@@ -13,7 +13,6 @@ import os
 import shutil
 import sys
 import tempfile
-from pathlib import Path
 from typing import Any, Optional
 
 # 本进程隔离出的临时 CONFIG_DIR，兼作幂等标记
@@ -59,17 +58,6 @@ def isolate_config_dir() -> str:
 
     atexit.register(_cleanup)
     return tmp
-
-
-def _prepend_sys_path(path: Path) -> None:
-    """把目录前置到 ``sys.path``（去重），使其内顶层包可被导入。"""
-    value = str(path)
-    if value not in sys.path:
-        sys.path.insert(0, value)
-
-
-
-
 
 
 def prepare_backend() -> None:

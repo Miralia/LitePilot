@@ -50,41 +50,22 @@
 | Module | Directory |
 |---|---|
 | qBittorrent | `app/modules/qbittorrent/` |
-| Transmission | `app/modules/transmission/` |
-| rTorrent | `app/modules/rtorrent/` |
 
 ### Media Servers
 | Module | Directory |
 |---|---|
 | Emby | `app/modules/emby/` |
-| Jellyfin | `app/modules/jellyfin/` |
-| Plex | `app/modules/plex/` |
-| TrimMedia | `app/modules/trimemedia/` |
-| Zspace | `app/modules/zspace/` |
-| Ugreen | `app/modules/ugreen/` |
 
 ### Message Channels
 | Module | Directory |
 |---|---|
 | Telegram | `app/modules/telegram/` |
-| WeChat | `app/modules/wechat/` |
-| WeChatClawBot | `app/modules/wechatclawbot/` |
-| Feishu | `app/modules/feishu/` |
-| Slack | `app/modules/slack/` |
-| Discord | `app/modules/discord/` |
-| VoceChat | `app/modules/vocechat/` |
-| Synology Chat | `app/modules/synologychat/` |
-| WebPush | `app/modules/webpush/` |
-| QQBot | `app/modules/qqbot/` |
 
 ### Metadata Sources
 | Module | Directory |
 |---|---|
 | TMDB | `app/modules/themoviedb/` |
-| TheTVDB | `app/modules/thetvdb/` |
-| Douban | `app/modules/douban/` |
 | Bangumi | `app/modules/bangumi/` |
-| Fanart | `app/modules/fanart/` |
 
 ---
 
@@ -116,7 +97,7 @@
 |---|---|
 | systemd + nginx | 唯一部署方式；后端常驻服务，前端静态产物由 nginx 托管 |
 | Local CLI | `moviepilot` CLI for source-based install; see `docs/cli.md` |
-| Frontend | Vue/TypeScript SPA served from `public/`; source in `MoviePilot-Frontend` repo |
-| Frontend proxy | Local Node `service.js` proxies `/api` and `/cookiecloud` to the backend |
+| Frontend | Vue/TypeScript SPA served from `public/`; source in `web/` |
+| Frontend proxy | Local Node `service.js` proxies `/api` to the backend for CLI-managed development installs |
 
-*Last Updated: 2026-05-25*
+*Last Updated: 2026-11-26*

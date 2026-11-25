@@ -6,7 +6,6 @@ from jinja2 import Template
 
 from app.core.config import settings
 from app.core.context import MediaInfo
-from app.core.event import eventmanager
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfoPath
 from app.helper.directory import DirectoryHelper
@@ -18,13 +17,9 @@ from app.schemas import (
     TmdbEpisode,
     TransferDirectoryConf,
     FileItem,
-    TransferInterceptEventData,
-    TransferOverwriteCheckEventData,
-    TransferRenameBuildEventData,
-    TransferRenameEventData,
 )
 from app.schemas.exception import StorageQueryError
-from app.schemas.types import MediaType, ChainEventType
+from app.schemas.types import MediaType
 from app.utils.system import SystemUtils
 
 
@@ -461,71 +456,13 @@ class TransHandler:
                             logger.info(
                                 f"目的文件系统中已经存在同名文件 {target_file}，当前整理覆盖模式设置为 {overwrite_mode}"
                             )
-                            # 触发覆盖检查事件，允许插件提供源/目标文件真实大小
-                            # 或直接给出覆盖决策（例如 .strm 文件指向网盘原始文件）
-                            overwrite_event_data = TransferOverwriteCheckEventData(
-                                fileitem=fileitem,
-                                target_item=target_item,
-                                target_storage=target_storage,
-                                target_path=new_file,
-                                overwrite_mode=overwrite_mode or "",
-                                transfer_type=transfer_type,
-                            )
-                            overwrite_event = eventmanager.send_event(
-                                ChainEventType.TransferOverwriteCheck,
-                                overwrite_event_data,
-                            )
-                            plugin_overwrite: Optional[bool] = None
-                            plugin_source_size: Optional[int] = None
-                            plugin_target_size: Optional[int] = None
-                            if overwrite_event and overwrite_event.event_data:
-                                overwrite_event_data = overwrite_event.event_data
-                                plugin_overwrite = overwrite_event_data.overwrite
-                                plugin_source_size = overwrite_event_data.source_size
-                                plugin_target_size = overwrite_event_data.target_size
-                                if (
-                                    plugin_overwrite is not None
-                                    or plugin_source_size is not None
-                                    or plugin_target_size is not None
-                                ):
-                                    logger.info(
-                                        f"覆盖检查事件由 {overwrite_event_data.source} 处理："
-                                        f"overwrite={plugin_overwrite}, "
-                                        f"source_size={plugin_source_size}, "
-                                        f"target_size={plugin_target_size}, "
-                                        f"reason={overwrite_event_data.reason}"
-                                    )
-                            if plugin_overwrite is True:
-                                overflag = True
-                            elif plugin_overwrite is False:
-                                self.__update_result(
-                                    result=result,
-                                    success=False,
-                                    message=overwrite_event_data.reason
-                                    or "插件决定不覆盖已有文件",
-                                    fileitem=fileitem,
-                                    target_item=target_item,
-                                    target_diritem=target_diritem,
-                                    fail_list=[fileitem.path],
-                                    transfer_type=transfer_type,
-                                    need_notify=need_notify,
-                                )
-                                return result
-                            elif overwrite_mode == "always":
+                            if overwrite_mode == "always":
                                 # 总是覆盖同名文件
                                 overflag = True
                             elif overwrite_mode == "size":
                                 # 存在时大覆盖小
-                                source_size = (
-                                    plugin_source_size
-                                    if plugin_source_size is not None
-                                    else fileitem.size
-                                )
-                                target_size = (
-                                    plugin_target_size
-                                    if plugin_target_size is not None
-                                    else target_item.size
-                                )
+                                source_size = fileitem.size
+                                target_size = target_item.size
                                 if target_size < source_size:
                                     logger.info(
                                         f"目标文件文件大小更小，将覆盖：{new_file}"
@@ -911,23 +848,6 @@ class TransHandler:
         target_item = target_oper.get_folder(target_path)
         if not target_item:
             return None, f"获取目标目录失败：{target_path}"
-        event_data = TransferInterceptEventData(
-            fileitem=fileitem,
-            mediainfo=mediainfo,
-            target_storage=target_storage,
-            target_path=target_path,
-            transfer_type=transfer_type,
-        )
-        event = eventmanager.send_event(ChainEventType.TransferIntercept, event_data)
-        if event and event.event_data:
-            event_data = event.event_data
-            # 如果事件被取消，跳过文件整理
-            if event_data.cancel:
-                logger.debug(
-                    f"Transfer dir canceled by event: {event_data.source},"
-                    f"Reason: {event_data.reason}"
-                )
-                return None, event_data.reason
         # 处理所有文件
         state, errmsg = self.__transfer_dir_files(
             fileitem=fileitem,
@@ -1031,25 +951,6 @@ class TransHandler:
             f"正在整理文件：【{fileitem.storage}】{fileitem.path} 到 【{target_storage}】{target_file}，"
             f"操作类型：{transfer_type}"
         )
-        event_data = TransferInterceptEventData(
-            fileitem=fileitem,
-            meta=meta,
-            mediainfo=mediainfo,
-            target_storage=target_storage,
-            target_path=target_file,
-            transfer_type=transfer_type,
-            options={"over_flag": over_flag},
-        )
-        event = eventmanager.send_event(ChainEventType.TransferIntercept, event_data)
-        if event and event.event_data:
-            event_data = event.event_data
-            # 如果事件被取消，跳过文件整理
-            if event_data.cancel:
-                logger.debug(
-                    f"Transfer file canceled by event: {event_data.source},"
-                    f"Reason: {event_data.reason}"
-                )
-                return None, event_data.reason
         if target_storage == "local" and (
             target_file.exists() or target_file.is_symlink()
         ):
@@ -1219,44 +1120,12 @@ class TransHandler:
         :param source_item: 源文件信息，即待整理的文件信息
         :return: 生成的完整路径
         """
-        # 渲染前先发事件，让插件有机会往 rename_dict 写字段
-        build_event_data = TransferRenameBuildEventData(
-            template_string=template_string,
-            rename_dict=rename_dict,
-            source_path=source_path,
-            source_item=source_item,
-        )
-        build_event = eventmanager.send_event(
-            ChainEventType.TransferRenameBuild, build_event_data
-        )
-        if build_event and build_event.event_data:
-            rename_dict = build_event.event_data.rename_dict
-
         # 创建jinja2模板对象
         template = Template(template_string)
         # 渲染生成的字符串
         render_str = template.render(rename_dict)
 
         logger.debug(f"Initial render string: {render_str}")
-        # 发送智能重命名事件
-        event_data = TransferRenameEventData(
-            template_string=template_string,
-            rename_dict=rename_dict,
-            render_str=render_str,
-            path=path,
-            source_path=source_path,
-            source_item=source_item,
-        )
-        event = eventmanager.send_event(ChainEventType.TransferRename, event_data)
-        # 检查事件返回的结果
-        if event and event.event_data:
-            event_data: TransferRenameEventData = event.event_data
-            if event_data.updated and event_data.updated_str:
-                logger.debug(
-                    f"Render string updated by event: "
-                    f"{render_str} -> {event_data.updated_str} (source: {event_data.source})"
-                )
-                render_str = event_data.updated_str
 
         # 目的路径
         if path:

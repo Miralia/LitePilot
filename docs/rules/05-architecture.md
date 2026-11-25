@@ -73,19 +73,18 @@ Before creating a new file under `app/api/endpoints/`, `app/chain/`, `app/helper
 **Directory:** `app/modules/`
 
 **Responsibilities:**
-- Pluggable capability implementations: downloaders, media servers, message channels, metadata sources, storage backends, subtitle backends, filter backends, etc.
+- Built-in capability implementations: downloaders, media servers, notification channels, metadata recognition sources, file organization, and infrastructure integrations.
 - Manages lifecycle (init, stop), configuration switches, priority ordering, and independent testability.
 
 **Module categories (defined in `app/schemas/types.py`):**
 
 | Enum | Examples |
 |---|---|
-| `ModuleType.Downloader` | qBittorrent, Transmission, rTorrent |
-| `ModuleType.MediaServer` | Emby, Jellyfin, Plex, TrimMedia, Zspace, Ugreen |
-| `ModuleType.MessageChannel` | Telegram, WeChat, Feishu, Slack, Discord |
-| `ModuleType.MetaData` | TMDB, TheTVDB, Douban, Bangumi, Fanart |
-| `ModuleType.Indexer` | Site-specific torrent indexers |
-| `ModuleType.Storage` | Alist, rclone, u115, local storage |
+| `ModuleType.Downloader` | qBittorrent |
+| `ModuleType.MediaServer` | Emby |
+| `ModuleType.Notification` | Telegram |
+| `ModuleType.MediaRecognize` | TMDB, Bangumi |
+| `ModuleType.Other` | FileManager, PostgreSQL, Redis |
 
 **Rules:**
 - A module must focus on one backend or one capability. It returns domain result objects, not HTTP responses, and must not depend on FastAPI request objects or endpoint auth.

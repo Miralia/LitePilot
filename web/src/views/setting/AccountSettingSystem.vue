@@ -1155,19 +1155,6 @@ useSilentSettingRefresh(
                   </VCol>
                   <VCol cols="12" md="6">
                     <VTextField
-                      v-model.number="SystemSettings.Advanced.DATA_CLEANUP_SITE_USERDATA_DAYS"
-                      :label="t('setting.system.dataCleanupSiteUserDataDays')"
-                      :hint="t('setting.system.dataCleanupSiteUserDataDaysHint')"
-                      persistent-hint
-                      min="0"
-                      type="number"
-                      :suffix="t('setting.system.day')"
-                      :rules="dataCleanupFieldRules"
-                      prepend-inner-icon="mdi-chart-line"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="6">
-                    <VTextField
                       v-model.number="SystemSettings.Advanced.DATA_CLEANUP_TRANSFER_HISTORY_DAYS"
                       :label="t('setting.system.dataCleanupTransferHistoryDays')"
                       :hint="t('setting.system.dataCleanupTransferHistoryDaysHint')"

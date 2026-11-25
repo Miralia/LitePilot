@@ -8,14 +8,12 @@ from app.chain.media import MediaChain
 from app.chain.tmdb import TmdbChain
 from app.core.config import settings
 from app.core.context import Context
-from app.core.event import eventmanager
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfo, MetaInfoPath
 from app.core.security import verify_token, verify_apitoken
 from app.db.models import User
 from app.db.user_oper import get_current_active_user, get_current_active_superuser
-from app.schemas import MediaType, MediaRecognizeConvertEventData
-from app.schemas.types import ChainEventType
+from app.schemas import MediaType
 from app.utils.media import MEDIA_SOURCE_ID_FIELDS, parse_media_key
 
 router = APIRouter()
@@ -415,24 +413,7 @@ async def detail(
     if not mediainfo and (
         not media_source or media_source not in MEDIA_SOURCE_ID_FIELDS
     ):
-        # 旧探索插件可能只提供列表或转换事件，原生 ID 直识别失败后需保留原有兼容链路。
-        event_data = MediaRecognizeConvertEventData(
-            mediaid=mediaid, convert_type=settings.RECOGNIZE_SOURCE
-        )
-        event = await eventmanager.async_send_event(
-            ChainEventType.MediaRecognizeConvert, event_data
-        )
-        # 使用事件返回的上下文数据
-        if event and event.event_data and event.event_data.media_dict:
-            event_data: MediaRecognizeConvertEventData = event.event_data
-            new_id = event_data.media_dict.get("id")
-            if new_id is not None and event_data.convert_type:
-                mediainfo = await mediachain.async_recognize_media(
-                    source=event_data.convert_type,
-                    mediaid=str(new_id),
-                    mtype=mtype,
-                )
-        if not mediainfo and title:
+        if title:
             # 使用名称识别兜底
             meta = MetaInfo(title)
             if year:

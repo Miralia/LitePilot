@@ -61,6 +61,23 @@ def test_logging_requires_superuser_dependency(monkeypatch, isolated_log_path):
     assert isinstance(response, Response)
 
 
+def test_logging_rejects_legacy_plugin_log_name(isolated_log_path):
+    """实时日志接口只允许主程序日志，不再暴露历史插件日志文件。"""
+    (isolated_log_path / "example.log").write_text("legacy\n", encoding="utf-8")
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            system_endpoint.get_logging(
+                request=SimpleNamespace(is_disconnected=lambda: False),
+                length=-1,
+                logfile="example.log",
+                _=SimpleNamespace(id=1, name="admin", is_superuser=True),
+            )
+        )
+
+    assert exc_info.value.status_code == 404
+
+
 def test_download_moviepilot_logs_packages_latest_ten_log_files(isolated_log_path):
     """传入 moviepilot 时下载主程序滚动日志，最多打包 10 个文件。"""
     for index in range(12):

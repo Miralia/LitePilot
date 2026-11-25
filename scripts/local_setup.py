@@ -217,14 +217,6 @@ LOCAL_FRONTEND_SERVICE_SCRIPT = textwrap.dedent(
       })
     )
 
-    // 配置代理中间件将 CookieCloud 请求转发给后端 API。
-    app.use(
-      '/cookiecloud',
-      proxy(`${backendHost}:${backendPort}`, {
-        proxyReqPathResolver: req => `/cookiecloud${req.url}`
-      })
-    )
-
     // 处理根路径的请求。
     app.get('/', (req, res) => {
       res.sendFile(path.join(__dirname, 'index.html'))
@@ -259,12 +251,8 @@ LOCAL_FRONTEND_SERVICE_SCRIPT = textwrap.dedent(
 NOTIFICATION_SWITCH_TYPES = [
     "资源下载",
     "整理入库",
-    "订阅",
-    "站点",
     "媒体服务器",
     "手动处理",
-    "插件",
-    "智能体",
     "其它",
 ]
 UNINSTALL_CONFIRM_TEXT = "UNINSTALL"

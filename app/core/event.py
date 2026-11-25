@@ -14,8 +14,7 @@ from fastapi.concurrency import run_in_threadpool
 from app.core.config import global_vars
 from app.helper.thread import ThreadHelper
 from app.log import logger
-from app.schemas import ChainEventData
-from app.schemas.types import ChainEventType, EventType
+from app.schemas.types import EventType
 from app.utils.limit import ExponentialBackoffRateLimiter
 from app.utils.singleton import Singleton
 
@@ -30,11 +29,11 @@ class Event:
     事件类，封装事件的基本信息
     """
 
-    def __init__(self, event_type: Union[EventType, ChainEventType],
-                 event_data: Optional[Union[Dict, ChainEventData]] = None,
+    def __init__(self, event_type: EventType,
+                 event_data: Optional[Any] = None,
                  priority: Optional[int] = DEFAULT_EVENT_PRIORITY):
         """
-        :param event_type: 事件的类型，支持 EventType 或 ChainEventType
+        :param event_type: 事件类型
         :param event_data: 可选，事件携带的数据，默认为空字典
         :param priority: 可选，事件的优先级，默认为 10
         """
@@ -58,18 +57,18 @@ class Event:
         return self.priority < other.priority
 
     @staticmethod
-    def get_event_kind(event_type: Union[EventType, ChainEventType]) -> str:
+    def get_event_kind(event_type: EventType) -> str:
         """
-        根据事件类型判断事件是广播事件还是链式事件
-        :param event_type: 事件类型，支持 EventType 或 ChainEventType
-        :return: 返回 Broadcast Event 或 Chain Event
+        返回事件类型描述。
+        :param event_type: 事件类型
+        :return: 事件类型描述
         """
-        return "Broadcast Event" if isinstance(event_type, EventType) else "Chain Event"
+        return "Broadcast Event" if isinstance(event_type, EventType) else "Unknown Event"
 
 
 class EventManager(metaclass=Singleton):
     """
-    EventManager 负责管理和调度广播事件和链式事件，包括订阅、发送和处理事件
+    EventManager 负责管理和调度广播事件，包括订阅、发送和处理事件
     """
 
     def __init__(self):
@@ -81,8 +80,6 @@ class EventManager(metaclass=Singleton):
         self.__event_queue = PriorityQueue()
         # 广播事件的订阅者
         self.__broadcast_subscribers: Dict[EventType, Dict[str, Callable]] = {}
-        # 链式事件的订阅者
-        self.__chain_subscribers: Dict[ChainEventType, Dict[str, tuple[int, Callable]]] = {}
         # 禁用的事件处理器集合
         self.__disabled_handlers = set()
         # 禁用的事件处理器类集合
@@ -117,113 +114,77 @@ class EventManager(metaclass=Singleton):
         except Exception as e:
             logger.error(f"停止事件处理线程出错：{str(e)} - {traceback.format_exc()}")
 
-    def check(self, etype: Union[EventType, ChainEventType]) -> bool:
+    def check(self, etype: EventType) -> bool:
         """
         检查是否有启用的事件处理器可以响应某个事件类型
-        :param etype: 事件类型 (EventType 或 ChainEventType)
+        :param etype: 事件类型
         :return: 返回是否存在可用的处理器
         """
-        if isinstance(etype, ChainEventType):
-            handlers = self.__chain_subscribers.get(etype, {})
-            return any(
-                self.__is_handler_enabled(handler)
-                for _, handler in handlers.values()
-            )
-        else:
-            handlers = self.__broadcast_subscribers.get(etype, {})
-            return any(
-                self.__is_handler_enabled(handler)
-                for handler in handlers.values()
-            )
+        handlers = self.__broadcast_subscribers.get(etype, {})
+        return any(
+            self.__is_handler_enabled(handler)
+            for handler in handlers.values()
+        )
 
-    def send_event(self, etype: Union[EventType, ChainEventType], data: Optional[Union[Dict, ChainEventData]] = None,
+    def send_event(self, etype: EventType, data: Optional[Any] = None,
                    priority: Optional[int] = DEFAULT_EVENT_PRIORITY) -> Optional[Event]:
         """
-        发送事件，根据事件类型决定是广播事件还是链式事件
-        :param etype: 事件类型 (EventType 或 ChainEventType)
+        发送广播事件。
+        :param etype: 事件类型
         :param data: 可选，事件数据
         :param priority: 广播事件的优先级，默认为 10
-        :return: 如果是链式事件，返回处理后的事件数据；否则返回 None
         """
-        event = Event(etype, data, priority)
-        if isinstance(etype, EventType):
-            return self.__trigger_broadcast_event(event)
-        elif isinstance(etype, ChainEventType):
-            return self.__trigger_chain_event(event)
-        else:
+        if not isinstance(etype, EventType):
             logger.error(f"Unknown event type: {etype}")
-        return None
+            return None
+        event = Event(etype, data, priority)
+        return self.__trigger_broadcast_event(event)
 
-    async def async_send_event(self, etype: Union[EventType, ChainEventType],
-                               data: Optional[Union[Dict, ChainEventData]] = None,
+    async def async_send_event(self, etype: EventType,
+                               data: Optional[Any] = None,
                                priority: Optional[int] = DEFAULT_EVENT_PRIORITY) -> Optional[Event]:
         """
-        异步发送事件，根据事件类型决定是广播事件还是链式事件
-        :param etype: 事件类型 (EventType 或 ChainEventType)
+        异步发送广播事件。
+        :param etype: 事件类型
         :param data: 可选，事件数据
         :param priority: 广播事件的优先级，默认为 10
-        :return: 如果是链式事件，返回处理后的事件数据；否则返回 None
         """
-        event = Event(etype, data, priority)
-        if isinstance(etype, EventType):
-            return self.__trigger_broadcast_event(event)
-        elif isinstance(etype, ChainEventType):
-            return await self.__trigger_chain_event_async(event)
-        else:
+        if not isinstance(etype, EventType):
             logger.error(f"Unknown event type: {etype}")
-        return None
+            return None
+        event = Event(etype, data, priority)
+        return self.__trigger_broadcast_event(event)
 
-    def add_event_listener(self, event_type: Union[EventType, ChainEventType], handler: Callable,
+    def add_event_listener(self, event_type: EventType, handler: Callable,
                            priority: Optional[int] = DEFAULT_EVENT_PRIORITY):
         """
         注册事件处理器，将处理器添加到对应的事件订阅列表中
-        :param event_type: 事件类型 (EventType 或 ChainEventType)
+        :param event_type: 事件类型
         :param handler: 处理器
-        :param priority: 可选，链式事件的优先级，默认为 10；广播事件不需要优先级
+        :param priority: 保留参数，广播事件不使用优先级
         """
+        if not isinstance(event_type, EventType):
+            raise ValueError(f"无效的事件类型: {event_type}")
         with self.__lock:
             handler_identifier = self.__get_handler_identifier(handler)
-
-            if isinstance(event_type, ChainEventType):
-                # 链式事件，按优先级排序
-                if event_type not in self.__chain_subscribers:
-                    self.__chain_subscribers[event_type] = {}
-                handlers = self.__chain_subscribers[event_type]
-                if handler_identifier in handlers:
-                    handlers.pop(handler_identifier)
-                else:
-                    logger.debug(
-                        f"Subscribed to chain event: {event_type.value}, "
-                        f"Priority: {priority} - {handler_identifier}")
-                handlers[handler_identifier] = (priority, handler)
-                # 根据优先级排序
-                self.__chain_subscribers[event_type] = dict(
-                    sorted(self.__chain_subscribers[event_type].items(), key=lambda x: x[1][0])
-                )
+            if event_type not in self.__broadcast_subscribers:
+                self.__broadcast_subscribers[event_type] = {}
+            handlers = self.__broadcast_subscribers[event_type]
+            if handler_identifier in handlers:
+                handlers.pop(handler_identifier)
             else:
-                # 广播事件
-                if event_type not in self.__broadcast_subscribers:
-                    self.__broadcast_subscribers[event_type] = {}
-                handlers = self.__broadcast_subscribers[event_type]
-                if handler_identifier in handlers:
-                    handlers.pop(handler_identifier)
-                else:
-                    logger.debug(f"Subscribed to broadcast event: {event_type.value} - {handler_identifier}")
-                handlers[handler_identifier] = handler
+                logger.debug(f"Subscribed to broadcast event: {event_type.value} - {handler_identifier}")
+            handlers[handler_identifier] = handler
 
-    def remove_event_listener(self, event_type: Union[EventType, ChainEventType], handler: Callable):
+    def remove_event_listener(self, event_type: EventType, handler: Callable):
         """
         移除事件处理器，将处理器从对应事件的订阅列表中删除
-        :param event_type: 事件类型 (EventType 或 ChainEventType)
+        :param event_type: 事件类型
         :param handler: 要移除的处理器
         """
         with self.__lock:
             handler_identifier = self.__get_handler_identifier(handler)
-
-            if isinstance(event_type, ChainEventType) and event_type in self.__chain_subscribers:
-                self.__chain_subscribers[event_type].pop(handler_identifier, None)
-                logger.debug(f"Unsubscribed from chain event: {event_type.value} - {handler_identifier}")
-            elif event_type in self.__broadcast_subscribers:
+            if event_type in self.__broadcast_subscribers:
                 self.__broadcast_subscribers[event_type].pop(handler_identifier, None)
                 logger.debug(f"Unsubscribed from broadcast event: {event_type.value} - {handler_identifier}")
 
@@ -258,36 +219,18 @@ class EventManager(metaclass=Singleton):
     def visualize_handlers(self) -> List[Dict]:
         """
         可视化所有事件处理器，包括是否被禁用的状态
-        :return: 处理器列表，包含事件类型、处理器标识符、优先级（如果有）和状态
+        :return: 处理器列表，包含事件类型、处理器标识符和状态
         """
 
-        def parse_handler_data(data):
-            """
-            解析处理器数据，判断是否包含优先级
-            :param data: 订阅者数据，可能是元组或单一值
-            :return: (priority, handler)，若没有优先级则返回 (None, handler)
-            """
-            if isinstance(data, tuple) and len(data) == 2:
-                return data
-            return None, data
-
         handler_info = []
-        # 统一处理广播事件和链式事件
-        for event_type, subscribers in {**self.__broadcast_subscribers, **self.__chain_subscribers}.items():
-            for handler_identifier, handler_data in subscribers.items():
-                # 解析优先级和处理器
-                priority, handler = parse_handler_data(handler_data)
-                # 检查处理器的启用状态
+        for event_type, subscribers in self.__broadcast_subscribers.items():
+            for handler_identifier, handler in subscribers.items():
                 status = "enabled" if self.__is_handler_enabled(handler) else "disabled"
-                # 构建处理器信息字典
-                handler_dict = {
+                handler_info.append({
                     "event_type": event_type.value,
                     "handler_identifier": handler_identifier,
                     "status": status
-                }
-                if priority is not None:
-                    handler_dict["priority"] = priority
-                handler_info.append(handler_dict)
+                })
         return handler_info
 
     @classmethod
@@ -348,22 +291,6 @@ class EventManager(metaclass=Singleton):
 
         return True
 
-    def __trigger_chain_event(self, event: Event) -> Optional[Event]:
-        """
-        触发链式事件，按顺序调用订阅的处理器，并记录处理耗时
-        """
-        logger.debug(f"Triggering synchronous chain event: {event}")
-        dispatch = self.__dispatch_chain_event(event)
-        return event if dispatch else None
-
-    async def __trigger_chain_event_async(self, event: Event) -> Optional[Event]:
-        """
-        异步触发链式事件，按顺序调用订阅的处理器，并记录处理耗时
-        """
-        logger.debug(f"Triggering asynchronous chain event: {event}")
-        dispatch = await self.__dispatch_chain_event_async(event)
-        return event if dispatch else None
-
     def __trigger_broadcast_event(self, event: Event):
         """
         触发广播事件，将事件插入到优先级队列中
@@ -371,64 +298,6 @@ class EventManager(metaclass=Singleton):
         """
         logger.debug(f"Triggering broadcast event: {event}")
         self.__event_queue.put((event.priority, event))
-
-    def __dispatch_chain_event(self, event: Event) -> bool:
-        """
-        同步方式调度链式事件，按优先级顺序逐个调用事件处理器，并记录每个处理器的处理时间
-        :param event: 要调度的事件对象
-        """
-        handlers = self.__chain_subscribers.get(event.event_type, {})
-        if not handlers:
-            logger.debug(f"No handlers found for chain event: {event}")
-            return False
-
-        # 过滤出启用的处理器
-        enabled_handlers = {handler_id: (priority, handler) for handler_id, (priority, handler) in handlers.items()
-                            if self.__is_handler_enabled(handler)}
-
-        if not enabled_handlers:
-            logger.debug(f"No enabled handlers found for chain event: {event}. Skipping execution.")
-            return False
-
-        self.__log_event_lifecycle(event, "Started")
-        for handler_id, (priority, handler) in enabled_handlers.items():
-            start_time = time.time()
-            self.__safe_invoke_handler(handler, event)
-            logger.debug(
-                f"{self.__get_handler_identifier(handler)} (Priority: {priority}), "
-                f"completed in {time.time() - start_time:.3f}s for event: {event}"
-            )
-        self.__log_event_lifecycle(event, "Completed")
-        return True
-
-    async def __dispatch_chain_event_async(self, event: Event) -> bool:
-        """
-        异步方式调度链式事件，按优先级顺序逐个调用事件处理器，并记录每个处理器的处理时间
-        :param event: 要调度的事件对象
-        """
-        handlers = self.__chain_subscribers.get(event.event_type, {})
-        if not handlers:
-            logger.debug(f"No handlers found for chain event: {event}")
-            return False
-
-        # 过滤出启用的处理器
-        enabled_handlers = {handler_id: (priority, handler) for handler_id, (priority, handler) in handlers.items()
-                            if self.__is_handler_enabled(handler)}
-
-        if not enabled_handlers:
-            logger.debug(f"No enabled handlers found for chain event: {event}. Skipping execution.")
-            return False
-
-        self.__log_event_lifecycle(event, "Started")
-        for handler_id, (priority, handler) in enabled_handlers.items():
-            start_time = time.time()
-            await self.__safe_invoke_handler_async(handler, event)
-            logger.debug(
-                f"{self.__get_handler_identifier(handler)} (Priority: {priority}), "
-                f"completed in {time.time() - start_time:.3f}s for event: {event}"
-            )
-        self.__log_event_lifecycle(event, "Completed")
-        return True
 
     def __dispatch_broadcast_event(self, event: Event):
         """
@@ -462,7 +331,7 @@ class EventManager(metaclass=Singleton):
 
     def __safe_invoke_handler(self, handler: Callable, event: Event):
         """
-        调用处理器，处理链式或广播事件
+        调用处理器处理广播事件
         :param handler: 处理器
         :param event: 事件对象
         """
@@ -474,7 +343,7 @@ class EventManager(metaclass=Singleton):
 
     async def __safe_invoke_handler_async(self, handler: Callable, event: Event):
         """
-        异步调用处理器，处理链式事件
+        异步调用处理器处理广播事件
         :param handler: 处理器
         :param event: 事件对象
         """
@@ -700,32 +569,27 @@ class EventManager(metaclass=Singleton):
             }
         )
 
-    def register(self, etype: Union[EventType, ChainEventType, List[Union[EventType, ChainEventType]], type],
+    def register(self, etype: Union[EventType, List[EventType], type],
                  priority: Optional[int] = DEFAULT_EVENT_PRIORITY):
         """
-        事件注册装饰器，用于将函数注册为事件的处理器
+        事件注册装饰器，用于将函数注册为广播事件的处理器
         :param etype:
             - 单个事件类型成员 (如 EventType.MetadataScrape)
-            - 事件类型类 (EventType, ChainEventType)
+            - 事件类型类 (EventType)
             - 或事件类型成员的列表
-        :param priority: 可选，链式事件的优先级，默认为 DEFAULT_EVENT_PRIORITY
+        :param priority: 保留参数，广播事件不使用优先级
         """
 
         def decorator(f: Callable):
-            # 将输入的事件类型统一转换为列表格式
             if isinstance(etype, list):
-                # 传入的已经是列表，直接使用
                 event_list = etype
             else:
-                # 不是列表则包裹成单一元素的列表
                 event_list = [etype]
 
-            # 遍历列表，处理每个事件类型
             for event in event_list:
-                if isinstance(event, (EventType, ChainEventType)):
+                if isinstance(event, EventType):
                     self.add_event_listener(event, f, priority)
-                elif isinstance(event, type) and issubclass(event, (EventType, ChainEventType)):
-                    # 如果是 EventType 或 ChainEventType 类，提取该类中的所有成员
+                elif isinstance(event, type) and issubclass(event, EventType):
                     for et in event.__members__.values():
                         self.add_event_listener(et, f, priority)
                 else:

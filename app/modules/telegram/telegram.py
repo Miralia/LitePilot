@@ -140,7 +140,7 @@ class Telegram:
             def send_welcome(message):
                 _bot.reply_to(
                     message,
-                    "温馨提示：直接发送名称或`订阅`+名称，搜索或订阅电影、电视剧",
+                    "欢迎使用 LitePilot。可用命令：/downloading、/transfer、/redo、/clear_cache、/version",
                 )
 
             @_bot.message_handler(content_types=[

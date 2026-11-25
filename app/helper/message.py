@@ -951,7 +951,7 @@ class MessageQueueManager(metaclass=SingletonClass):
 
 class MessageHelper(metaclass=Singleton):
     """
-    消息队列管理器，负责系统和插件实时消息的 SSE 推送
+    消息队列管理器，负责系统实时消息的 SSE 推送
     """
 
     def __init__(self):

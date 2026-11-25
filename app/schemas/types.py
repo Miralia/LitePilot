@@ -51,9 +51,6 @@ class DownloadTaskState(Enum):
 class EventType(Enum):
     # 执行命令
     CommandExcute = "command.excute"
-    # 站点已删除
-    # 站点已更新
-    # 站点已刷新
     # 媒体文件整理完成
     TransferComplete = "transfer.complete"
     # 媒体文件整理失败
@@ -68,21 +65,14 @@ class EventType(Enum):
     AudioTransferFailed = "transfer.audio.failed"
     # 下载已添加
     DownloadAdded = "download.added"
-    # 删除历史记录
     # 删除下载源文件
     DownloadFileDeleted = "downloadfile.deleted"
     # 删除下载任务
     DownloadDeleted = "download.deleted"
-    # 收到用户外来消息
-    UserMessage = "user.message"
     # 收到Webhook消息
     WebhookMessage = "webhook.message"
     # 发送消息通知
     NoticeMessage = "notice.message"
-    # 订阅已添加
-    # 订阅已调整
-    # 订阅已删除
-    # 订阅已完成
     # 系统错误
     SystemError = "system.error"
     # 刮削元数据
@@ -105,7 +95,6 @@ EVENT_TYPE_NAMES = {
     EventType.DownloadAdded: "添加下载",
     EventType.DownloadFileDeleted: "删除下载源文件",
     EventType.DownloadDeleted: "删除下载任务",
-    EventType.UserMessage: "收到用户消息",
     EventType.WebhookMessage: "收到Webhook消息",
     EventType.NoticeMessage: "发送消息通知",
     EventType.SystemError: "系统错误",
@@ -113,28 +102,6 @@ EVENT_TYPE_NAMES = {
     EventType.ModuleReload: "模块重载",
     EventType.ConfigChanged: "配置项更新",
 }
-
-
-# 同步链式事件
-class ChainEventType(Enum):
-    # 命令注册
-    CommandRegister = "command.register"
-    # 整理重命名
-    TransferRename = "transfer.rename"
-    # 整理重命名上下文构建
-    TransferRenameBuild = "transfer.rename.build"
-    # 整理拦截
-    TransferIntercept = "transfer.intercept"
-    # 整理覆盖检查
-    TransferOverwriteCheck = "transfer.overwrite.check"
-    # 资源选择
-    ResourceSelection = "resource.selection"
-    # 资源下载
-    ResourceDownload = "resource.download"
-    # 媒体识别转换
-    MediaRecognizeConvert = "media.recognize.convert"
-    # 存储操作选择
-    StorageOperSelection = "storage.operation"
 
 
 # 系统配置Key字典
@@ -155,9 +122,6 @@ class SystemConfigKey(Enum):
     MountedLocalDiskDeleteEmptyDirs = "MountedLocalDiskDeleteEmptyDirs"
     # 存储配置
     Storages = "Storages"
-    # 搜索站点范围
-    IndexerSites = "IndexerSites"
-    # 订阅站点范围
     # 自定义制作组/字幕组
     CustomReleaseGroups = "CustomReleaseGroups"
     # 自定义占位符
@@ -184,13 +148,6 @@ class SystemConfigKey(Enum):
     MediaSourceCleanup = "MediaSourceCleanup"
     # 种子优先级规则
     TorrentsPriority = "TorrentsPriority"
-    # 用户自定义规则
-    # 用户规则组
-    # 搜索默认过滤规则组
-    # 订阅默认过滤规则组
-    # 订阅默认参数
-    # 洗版默认过滤规则组
-    # 用户自定义CSS
     # 通知发送时间
     NotificationSendTime = "NotificationSendTime"
     # 通知消息格式模板
@@ -305,24 +262,14 @@ class ModuleType(Enum):
     Notification = "notification"
     # 媒体识别
     MediaRecognize = "mediarecognize"
-    # 站点索引
-    Indexer = "indexer"
     # 其它
     Other = "other"
 
 
 # 其他杂项模块类型
 class OtherModulesType(Enum):
-    # 字幕
-    Subtitle = "站点字幕"
-    # Fanart
-    Fanart = "Fanart"
     # 文件整理
     FileManager = "文件整理"
-    # 过滤器
-    Filter = "过滤器"
-    # 站点索引
-    Indexer = "站点索引"
     # PostgreSQL
     PostgreSQL = "PostgreSQL"
     # Redis

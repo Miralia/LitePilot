@@ -17,7 +17,6 @@ from app.db.systemconfig_oper import SystemConfigOper
 from app.log import logger
 from app.schemas import FileItem
 from app.schemas.types import (
-    ChainEventType,
     EventType,
     MediaType,
     ScrapingTarget,

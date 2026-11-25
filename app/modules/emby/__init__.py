@@ -6,7 +6,7 @@ from app.core.event import eventmanager
 from app.log import logger
 from app.modules import _MediaServerBase, _ModuleBase
 from app.modules.emby.emby import Emby
-from app.schemas.types import MediaType, ModuleType, ChainEventType, MediaServerType
+from app.schemas.types import MediaType, ModuleType, MediaServerType
 
 
 class EmbyModule(_ModuleBase, _MediaServerBase[Emby]):

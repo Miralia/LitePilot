@@ -108,7 +108,7 @@ export interface DownloadHistory {
   torrent_site?: string
   // 下载用户 ID
   userid?: string
-  // 下载用户名或插件名
+  // 下载用户名
   username?: string
   // 下载渠道
   channel?: string
@@ -357,7 +357,7 @@ export interface DashboardItem {
   id: string
   // 名称
   name: string
-  // 插件的仪表板key
+  // 历史仪表板实例 key，当前内置实例为空
   key: string
   // 全局配置
   attrs: { [key: string]: any }
@@ -781,7 +781,7 @@ export interface Message {
 
 // 系统通知
 export interface SystemNotification extends Message {
-  // 通知类型 user/system/plugin/notification
+  // 通知类型 user/system/notification
   type?: string
   // 通知时间
   date?: string
