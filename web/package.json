@@ -35,6 +35,9 @@
   "resolutions": {
     "vitest/**/vite": "6.4.6",
     "vitest/vite": "6.4.6",
+    "**/js-beautify/glob": "14.0.6",
+    "**/workbox-build/glob": "14.0.6",
+    "**/editorconfig/minimatch": "11.0.9",
     "vue": "3.5.45",
     "@vue/compiler-dom": "3.5.45",
     "@vue/compiler-sfc": "3.5.45",
