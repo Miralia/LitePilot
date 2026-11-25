@@ -209,16 +209,10 @@ export async function openApp(appType: AppType, params: string | DoubanAppParams
   // 构建APP深度链接
   const appUrl = buildDeepLinkUrl(appType, params)
 
-  console.log(`构建${appType}深度链接:`, {
-    params,
-    deepLinkUrl: appUrl,
-  })
-
   // 尝试跳转到APP
   try {
     await attemptAppLaunch(appUrl, config.timeout)
-  } catch (error) {
-    console.log(`${appType} APP跳转失败，使用网页链接: ${error}`)
+  } catch {
     // APP跳转失败，使用网页链接
     const webUrl = getWebUrl(appType, params, fallbackUrl)
     window.open(webUrl, '_blank')
@@ -351,25 +345,12 @@ function buildEmbyDeepLink(playUrl: string): string {
         deepLink = `emby://${serverAddress}/item/${encodedMediaId}`
       }
 
-      console.log('Emby深度链接构建成功:', {
-        originalUrl: playUrl,
-        serverAddress,
-        mediaId,
-        serverId,
-        deviceType: isIOSDevice() ? 'iOS' : 'Android',
-        deepLink,
-      })
       return deepLink
     }
 
     // 如果无法提取媒体ID，尝试直接使用服务器地址
     // 这会打开Emby APP的主界面
     const fallbackLink = `emby://${serverAddress}`
-    console.log('Emby深度链接构建失败，使用服务器地址:', {
-      originalUrl: playUrl,
-      serverAddress,
-      fallbackLink,
-    })
     return fallbackLink
   } catch (error) {
     console.warn('构建Emby深度链接失败:', error)
@@ -389,12 +370,6 @@ function buildDoubanDeepLink(params: DoubanAppParams): string {
   // 格式：douban:///search?q={query}
   const searchQuery = `${title || ''} ${year || ''}`.trim()
   const deepLink = `douban:///search?q=${encodeURIComponent(searchQuery)}`
-
-  console.log('豆瓣深度链接构建成功:', {
-    params,
-    searchQuery,
-    deepLink,
-  })
 
   return deepLink
 }
@@ -437,7 +412,7 @@ async function attemptAppLaunch(appUrl: string, timeout: number): Promise<void> 
       try {
         window.location.href = appUrl
       } catch (error) {
-        console.log('iOS window.location跳转失败:', error)
+        console.warn('iOS window.location跳转失败:', error)
       }
     }
   })

@@ -48,7 +48,6 @@ const serviceWorkerCoordinator = createServiceWorkerCoordinator({
       type: registration.type,
     }),
   onUpdateActivated: () => {
-    console.log('[VersionChecker] Service Worker 更新已就绪，等待用户刷新')
     showUpdateNotification(i18n.global.t('common.swUpdateReady'), i18n.global.t('common.refresh'), reloadPage)
   },
   onError: error => console.error('[VersionChecker] Service Worker 注册失败:', error),
@@ -79,14 +78,12 @@ export const clearCachesAndServiceWorker = async (): Promise<void> => {
     if ('caches' in window) {
       const cacheNames = await caches.keys()
       await Promise.all(cacheNames.map(name => caches.delete(name)))
-      console.log('[VersionChecker] 已清除所有缓存')
     }
 
     // 2. 注销 Service Worker
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations()
       await Promise.all(registrations.map(registration => registration.unregister()))
-      console.log('[VersionChecker] 已注销所有 Service Worker')
     }
   } catch (error) {
     console.error('[VersionChecker] 清除缓存失败:', error)

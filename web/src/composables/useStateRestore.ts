@@ -34,7 +34,6 @@ export function useTabStateRestore(defaultTab?: string) {
       const savedTab = stateRestore.tab.getTabState(route.path)
       if (savedTab) {
         activeTab.value = savedTab
-        console.log(`恢复标签页状态: ${route.path} -> ${savedTab}`)
         return true
       }
     }
@@ -137,7 +136,6 @@ export function useStateRestore() {
   const clearAllStates = () => {
     if (stateRestore) {
       stateRestore.clearAllStates()
-      console.log('已清除所有PWA状态')
     }
   }
 

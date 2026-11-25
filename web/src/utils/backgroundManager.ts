@@ -21,10 +21,8 @@ export class BackgroundManager {
     this.isBackground = state === 'suspended'
 
     if (this.isBackground && !wasBackground) {
-      console.log('Background: 进入后台，暂停定时器')
       this.pauseAllTimers()
     } else if (!this.isBackground && wasBackground) {
-      console.log('Background: 回到前台，恢复定时器')
       this.resumeAllTimers()
     }
   }
@@ -105,8 +103,6 @@ export class BackgroundManager {
     if (!skipInitialRun) {
       wrappedCallback()
     }
-
-    console.log(`Background: 添加定时器 ${id}, 间隔 ${interval}ms`)
   }
 
   /**
@@ -119,7 +115,6 @@ export class BackgroundManager {
         clearInterval(timerConfig.timer)
       }
       this.timers.delete(id)
-      console.log(`Background: 移除定时器 ${id}`)
 
       // 没有任务时释放监听，首屏只导入模块不会产生常驻开销。
       if (this.timers.size === 0) {
@@ -242,8 +237,6 @@ export class BackgroundManager {
 
     // 清理按需注册的生命周期与活动监听
     this.removeLifecycleListeners()
-
-    console.log('Background: 管理器已销毁')
   }
 }
 

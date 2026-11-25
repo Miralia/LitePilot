@@ -10,7 +10,6 @@ export function setNavigatingState(navigating: boolean) {
 
   if (navigating) {
     // 路由切换时，中断所有未完成的请求
-    console.log('Navigation started - aborting active requests')
     abortAllActiveRequests()
   }
 }

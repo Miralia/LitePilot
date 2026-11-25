@@ -68,7 +68,7 @@ const UNREAD_COUNT_KEY = 'mp_unread_count'
 // 导航请求与 App Shell - 优先网络
 // 子路径部署时（如 /litepilot/）不能只匹配根路径，否则导航会落到
 // 静态资源的 StaleWhileRevalidate 分支，先返回旧页面再后台更新
-const isNavigationRequest = ({ request, url }: { request: Request, url: URL }) =>
+const isNavigationRequest = ({ request, url }: { request: Request; url: URL }) =>
   request.mode === 'navigate' ||
   url.pathname === '/' ||
   url.pathname === '/index.html' ||
@@ -220,7 +220,6 @@ async function cleanupRuntimeCaches(onlyOld: boolean = false) {
       const isRuntimeCache = runtimeCachePrefixes.some(prefix => cacheName.startsWith(prefix))
       if (isRuntimeCache) {
         if (!onlyOld || !currentCacheNames.includes(cacheName)) {
-          console.log('[SW] Deleting runtime cache:', cacheName)
           return caches.delete(cacheName)
         }
       }

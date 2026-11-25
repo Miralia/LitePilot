@@ -171,7 +171,6 @@ class StateRestore {
     const savedRoute = this.route.restoreRoute()
     if (savedRoute && savedRoute.path !== window.location.pathname) {
       const fullPath = savedRoute.path + savedRoute.search + savedRoute.hash
-      console.log('恢复路由:', fullPath)
       window.history.replaceState(null, '', fullPath)
     }
 
@@ -209,8 +208,6 @@ export default {
 
     // 初始化
     stateRestore.init()
-
-    console.log('PWA状态恢复插件已安装（路由 + 标签页）')
   },
 }
 

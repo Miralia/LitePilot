@@ -274,7 +274,7 @@ async function loadStorages() {
 
     storages.value = result.data?.value ?? []
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -381,7 +381,6 @@ const debouncedReloadPage = debounce(() => {
 
 // 延迟同步搜索参数到地址栏，输入完成后再重置页码并刷新。
 const debouncedReloadSearchPage = debounce(() => {
-  console.log('search: ' + (search.value ?? ''))
   void reloadPage(true)
 }, 1000)
 
