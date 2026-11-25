@@ -46,12 +46,14 @@ function isBooleanAttributeEnabled(value: unknown) {
  * 合并控件已有的描述引用与移动端提示、校验信息引用。
  */
 function mergeDescribedBy(...values: unknown[]) {
-  return [...new Set(
-    values
-      .filter((value): value is string => typeof value === 'string')
-      .flatMap(value => value.split(/\s+/))
-      .filter(Boolean),
-  )].join(' ')
+  return [
+    ...new Set(
+      values
+        .filter((value): value is string => typeof value === 'string')
+        .flatMap(value => value.split(/\s+/))
+        .filter(Boolean),
+    ),
+  ].join(' ')
 }
 
 /**
@@ -72,8 +74,8 @@ function normalizeMobileControlWidth(value: number | string | undefined) {
 /**
  * 为原生 Vuetify 录入组件创建小屏两栏适配器，桌面端保持原组件渲染路径。
  */
-export function createResponsiveInputAdapter(component: Component, options: ResponsiveInputOptions) {
-  return defineComponent({
+export function createResponsiveInputAdapter<T extends Component>(component: T, options: ResponsiveInputOptions): T {
+  const wrappedComponent = defineComponent({
     name: `App${options.name}`,
     inheritAttrs: false,
     props: {
@@ -162,38 +164,38 @@ export function createResponsiveInputAdapter(component: Component, options: Resp
         const labelContent = labelSlot?.({ label, props: { for: controlId } }) ?? String(label)
         const disabled = isBooleanAttributeEnabled(attrs.disabled)
         const isField = options.kind === 'field' || options.kind === 'multiline'
-        const isEmptyWithoutPlaceholder = isField
-          && !hasInputValue(attrs.modelValue ?? attrs['model-value'])
-          && !hasDisplayText(attrs.placeholder)
+        const isEmptyWithoutPlaceholder =
+          isField && !hasInputValue(attrs.modelValue ?? attrs['model-value']) && !hasDisplayText(attrs.placeholder)
 
-        return h('div', {
-          class: [
-            'app-responsive-input',
-            `app-responsive-input--${options.kind}`,
-            {
-              'app-responsive-input--disabled': disabled,
-              'app-responsive-input--empty': isEmptyWithoutPlaceholder,
-            },
-            rootClass,
+        return h(
+          'div',
+          {
+            class: [
+              'app-responsive-input',
+              `app-responsive-input--${options.kind}`,
+              {
+                'app-responsive-input--disabled': disabled,
+                'app-responsive-input--empty': isEmptyWithoutPlaceholder,
+              },
+              rootClass,
+            ],
+            style: [
+              rootStyle,
+              mobileControlWidth ? { '--app-responsive-input-control-width': mobileControlWidth } : undefined,
+            ],
+          },
+          [
+            h('div', { class: 'app-responsive-input__meta' }, [
+              h('label', { class: 'app-responsive-input__label', for: controlId }, labelContent),
+              showHint ? h('div', { id: hintId, class: 'app-responsive-input__hint' }, String(hint)) : null,
+            ]),
+            h('div', { class: 'app-responsive-input__control' }, [h(component, controlAttrs, controlSlots)]),
           ],
-          style: [
-            rootStyle,
-            mobileControlWidth
-              ? { '--app-responsive-input-control-width': mobileControlWidth }
-              : undefined,
-          ],
-        }, [
-          h('div', { class: 'app-responsive-input__meta' }, [
-            h('label', { class: 'app-responsive-input__label', for: controlId }, labelContent),
-            showHint
-              ? h('div', { id: hintId, class: 'app-responsive-input__hint' }, String(hint))
-              : null,
-          ]),
-          h('div', { class: 'app-responsive-input__control' }, [
-            h(component, controlAttrs, controlSlots),
-          ]),
-        ])
+        )
       }
     },
-  })
+  }) as unknown as T
+
+  // 适配器透明转发原组件的 props、attrs 与 slots，类型上保留原组件契约。
+  return wrappedComponent
 }

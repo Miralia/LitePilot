@@ -239,7 +239,6 @@ class ManualTransferItem(BaseModel):
     scrape: Optional[bool] = False
     # 媒体库类型子目录
     library_type_folder: Optional[bool] = None
-    # 媒体库类别子目录
     # 复用历史识别信息
     from_history: Optional[bool] = False
     # 剧集组

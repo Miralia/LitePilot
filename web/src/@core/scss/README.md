@@ -3,6 +3,7 @@
 ## 目录整合
 
 本项目SCSS文件已完成整合：
+
 - 主入口文件：`src/@core/scss/index.scss`
 - 实际功能文件位于：`src/@core/scss/template/index.scss`
 
@@ -15,6 +16,7 @@
 ## 整合进度
 
 已完成：
+
 - ✅ 主入口文件引用更新
 - ✅ mixins文件合并
 - ✅ placeholders目录下文件转移
@@ -24,21 +26,23 @@
 - ✅ 移除了template/index.scss中对base目录组件的依赖
 - ✅ 修复了components.scss中对base/mixins的引用
 - ✅ 修复了variables.scss中对base/variables的引用
-- ✅ 修复了apex-chart.scss和full-calendar.scss的linter错误
+- ✅ 修复了apex-chart.scss的linter错误
 - ✅ 整合并移除了对vuetify/variables的依赖
 - ✅ 修复了SCSS变量名冲突问题
 - ✅ 修复了SASS模块重复加载配置问题
 - ✅ 修复了导入路径问题（misc、utils等模块的引用路径）
 
 待完成：
+
 - ⬜ 最终测试确保无样式问题
 - ⬜ 清理冗余文件
 
 ## 使用方式
 
 在项目中引用SCSS时，应使用：
+
 ```scss
-@use "@core/scss";
+@use '@core/scss';
 ```
 
 这将自动加载所有必要的样式文件。
@@ -52,6 +56,7 @@
 ## 最近修复
 
 在最近的更新中，我们修复了以下问题：
+
 1. 解决了变量名冲突问题，通过使用命名空间（如`layouts-vars`）来引用外部模块变量
 2. 修复了SASS模块重复配置问题，将多处的`@forward...with`配置合并到了template/_variables.scss文件中
 3. 统一使用命名空间引用模块，避免后续出现冲突

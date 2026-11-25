@@ -2,9 +2,7 @@ export const responsiveInputCoreComponentNames = [
   'VAutocomplete',
   'VCheckbox',
   'VCombobox',
-  'VFileInput',
   'VRadioGroup',
-  'VRangeSlider',
   'VSelect',
   'VSlider',
   'VSwitch',
@@ -12,10 +10,6 @@ export const responsiveInputCoreComponentNames = [
   'VTextField',
 ] as const
 
-export const responsiveInputComponentNames = [
-  ...responsiveInputCoreComponentNames,
-  'VDateInput',
-  'VNumberInput',
-] as const
+export const responsiveInputComponentNames = responsiveInputCoreComponentNames
 
-export type ResponsiveInputComponentName = typeof responsiveInputComponentNames[number]
+export type ResponsiveInputComponentName = (typeof responsiveInputComponentNames)[number]

@@ -96,19 +96,6 @@ export default {
     hideDetails: 'auto',
     menuProps: { elevation: 0 },
   },
-  VRangeSlider: {
-    // set v-range-slider default color to primary
-    color: 'primary',
-    density: 'comfortable',
-    thumbLabel: true,
-    hideDetails: 'auto',
-  },
-  VRating: {
-    // set v-rating default color to primary
-    color: 'rgba(var(--v-theme-on-background),0.23)',
-    activeColor: 'warning',
-    halfIncrements: true,
-  },
   VProgressCircular: {
     // set v-progress-circular default color to primary
     color: 'primary',
@@ -133,11 +120,6 @@ export default {
     color: 'primary',
     hideDetails: 'auto',
     menuProps: { elevation: 0 },
-  },
-  VFileInput: {
-    variant: 'outlined',
-    color: 'primary',
-    hideDetails: 'auto',
   },
   VTextarea: {
     variant: 'outlined',

@@ -713,7 +713,7 @@ class MetaBase(object):
         """
         解析收尾：把各字段统一收敛成标准写法。
 
-        三条解析路径（MetaVideo / MetaAnime / Rust 加速）都在完成时调用一次，
+        MetaVideo 与 MetaAnime 两条解析路径都在完成时调用一次，
         避免各处分别实现导致写法漂移。对应原先依赖「自定义识别词」的改写逻辑。
         """
         # HDR 规格与特殊版本按唯一标准写法收敛

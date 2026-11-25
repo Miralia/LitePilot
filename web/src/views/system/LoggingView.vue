@@ -89,13 +89,23 @@ const { availableHeight } = useAvailableHeight(96, 320)
 
 const loggingViewStyle = computed(() => (display.mdAndUp.value ? { blockSize: `${availableHeight.value}px` } : {}))
 
-const levelOptions = computed(() => {
+const levels = computed(() => {
   const extraLevels = parsedLogs.value
     .map(item => item.level)
     .filter(level => level && !DEFAULT_LEVELS.includes(level) && !HIDDEN_LEVELS.includes(level))
 
   return ['ALL', ...DEFAULT_LEVELS, ...new Set(extraLevels)]
 })
+
+const levelOptions = computed(() =>
+  levels.value.map(level => ({
+    title: formatLevelOption(level),
+    value: level,
+    props: {
+      class: getLevelTextClass(level),
+    },
+  })),
+)
 
 const groupedLogs = computed(() => {
   const groups: LogGroup[] = []
@@ -122,6 +132,16 @@ const groupedLogs = computed(() => {
 
   return groups
 })
+
+/** 生成日志级别文本颜色类名。 */
+function getLevelTextClass(level: string) {
+  return level === 'ALL' ? 'text-primary' : `text-${logColorMap[level] || 'secondary'}`
+}
+
+/** 格式化日志级别选项文本。 */
+function formatLevelOption(level: string) {
+  return level === 'ALL' ? t('logging.allLevels') : level
+}
 
 const filteredGroups = computed(() => {
   return groupedLogs.value
@@ -573,7 +593,7 @@ onUnmounted(() => {
         class="logging-level-toggle"
       >
         <VBtn
-          v-for="level in levelOptions"
+          v-for="level in levels"
           :key="level"
           :value="level"
           :class="[`logging-level-toggle__button--${level.toLowerCase()}`]"
@@ -592,28 +612,9 @@ onUnmounted(() => {
         hide-details
         class="logging-level-select"
         :menu-props="{ width: 'auto' }"
-      >
-        <template #selection="{ item }">
-          <span
-            :class="item.value === 'ALL' ? 'text-primary' : `text-${logColorMap[item.value] || 'secondary'}`"
-            class="font-weight-medium"
-          >
-            {{ item.value === 'ALL' ? t('logging.allLevels') : item.value }}
-          </span>
-        </template>
-        <template #item="{ props, item }">
-          <VListItem v-bind="props" density="compact">
-            <template #title>
-              <span
-                :class="item.value === 'ALL' ? 'text-primary' : `text-${logColorMap[item.value] || 'secondary'}`"
-                class="font-weight-medium"
-              >
-                {{ item.value === 'ALL' ? t('logging.allLevels') : item.value }}
-              </span>
-            </template>
-          </VListItem>
-        </template>
-      </VSelect>
+        item-title="title"
+        item-value="value"
+      />
 
       <VTextField
         v-model="searchQuery"

@@ -493,16 +493,6 @@ export interface User {
   nickname?: string
 }
 
-// 通行密钥
-export interface PassKey {
-  id: number
-  name: string
-  created_at: string
-  last_used_at?: string
-  aaguid?: string
-  transports?: string
-}
-
 // 存储空间
 export interface Storage {
   // 总空间
@@ -653,19 +643,6 @@ export interface ScheduleInfo {
   progress_enable?: boolean
   // 进度详情
   progress_detail?: ScheduleProgress
-}
-
-// 消息通知
-export interface NotificationSwitch {
-  // 消息类型
-  mtype: string
-  // 开关
-  wechat: boolean
-  telegram: boolean
-  slack: boolean
-  synologychat: boolean
-  vocechat: boolean
-  webpush: boolean
 }
 
 // 文件浏览接口
@@ -832,7 +809,7 @@ export interface DownloaderConf {
 export interface NotificationConf {
   // 名称
   name: string
-  // 类型 telegram/wechat/vocechat/synologychat
+  // 类型 telegram
   type: string
   // 配置
   config: { [key: string]: any }
@@ -888,10 +865,8 @@ export interface TransferDirectoryConf {
   download_path?: string
   // 适用媒体类型
   media_type?: string
-  // 适用媒体类别
   // 下载类型子目录
   download_type_folder?: boolean
-  // 下载类别子目录
   // 监控方式 downloader/monitor，None为不监控
   monitor_type?: string
   // 监控模式 fast/compatibility
@@ -910,7 +885,6 @@ export interface TransferDirectoryConf {
   scraping?: boolean
   // 媒体库类型子目录
   library_type_folder?: boolean
-  // 媒体库类别子目录
   // 是否发送通知
   notify?: boolean
 }
@@ -987,8 +961,6 @@ export interface TransferForm {
   from_history: boolean
   // 媒体库类型子目录
   library_type_folder?: boolean | null
-  // 媒体库类别子目录
-  library_category_folder?: boolean | null
   // 剧集组编号
   episode_group?: string | null
   // 预览模式
@@ -1116,6 +1088,15 @@ export interface ApiResponse<T = any> {
   message?: string
   message_i18n?: string
   data: T
+}
+
+// 系统设置项响应
+export interface SystemSettingResponse<T> {
+  success?: boolean
+  message?: string
+  data?: {
+    value?: T
+  }
 }
 
 // 分类配置

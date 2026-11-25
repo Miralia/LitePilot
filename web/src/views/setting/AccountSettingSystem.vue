@@ -14,6 +14,7 @@ import { useDisplay } from 'vuetify'
 import { useSilentSettingRefresh } from '@/composables/useSilentSettingRefresh'
 
 const display = useDisplay()
+const isAdvancedDialogFullscreen = computed(() => !display.mdAndUp.value)
 
 const globalSettingsStore = useGlobalSettingsStore()
 
@@ -73,7 +74,6 @@ const SystemSettings = ref<any>({
     LOG_BACKUP_COUNT: '3',
     LOG_FILE_FORMAT: '【%(levelname)s】%(asctime)s - %(message)s',
     // 实验室
-    RUST_ACCEL: false,
     ENCODING_DETECTION_PERFORMANCE_MODE: true,
     TRANSFER_THREADS: 1,
   },
@@ -146,12 +146,6 @@ const $toast = useToast()
 const advancedDialog = ref(false)
 
 const savingBasic = ref(false)
-const rustAccelAvailable = ref(false)
-
-const rustAccelHint = computed(() =>
-  rustAccelAvailable.value ? t('setting.system.rustAccelHint') : t('setting.system.rustAccelUnavailableHint'),
-)
-
 const activeTab = ref('system')
 
 // 元数据语言
@@ -283,9 +277,6 @@ async function loadSystemSettings() {
           if (result.data.hasOwnProperty(key)) (SystemSettings.value[sectionKey] as any)[key] = result.data[key]
         })
       }
-      const accelAvailable = Boolean(result.data.RUST_ACCEL_AVAILABLE ?? result.data.RUST_ACCEL_ENABLED)
-      rustAccelAvailable.value = accelAvailable
-      if (!accelAvailable) SystemSettings.value.Advanced.RUST_ACCEL = false
     }
   } catch (error) {
     console.log(error)
@@ -324,7 +315,6 @@ async function saveBasicSettings() {
 
 // 保存高级设置
 async function saveAdvancedSettings() {
-  if (!rustAccelAvailable.value) SystemSettings.value.Advanced.RUST_ACCEL = false
   cleanEmptyFields(SystemSettings.value.Advanced, ['LOG_FILE_FORMAT'])
 
   // 同时保存高级设置和刮削开关设置
@@ -701,9 +691,6 @@ useSilentSettingRefresh(
                     <VListItem v-for="item in downloaderOptions" @click="addDownloader(item.value)">
                       <VListItemTitle>{{ item.title }}</VListItemTitle>
                     </VListItem>
-                    <VListItem @click="addDownloader('custom')">
-                      <VListItemTitle>{{ t('setting.system.custom') }}</VListItemTitle>
-                    </VListItem>
                   </VList>
                 </VMenu>
               </VBtn>
@@ -752,9 +739,6 @@ useSilentSettingRefresh(
                     <VListItem v-for="item in mediaServerOptions" @click="addMediaServer(item.value)">
                       <VListItemTitle>{{ item.title }}</VListItemTitle>
                     </VListItem>
-                    <VListItem @click="addMediaServer('custom')">
-                      <VListItemTitle>{{ t('setting.system.custom') }}</VListItemTitle>
-                    </VListItem>
                   </VList>
                 </VMenu>
               </VBtn>
@@ -771,7 +755,7 @@ useSilentSettingRefresh(
     v-model="advancedDialog"
     scrollable
     max-width="60rem"
-    :fullscreen="!display.mdAndUp.value"
+    :fullscreen="isAdvancedDialogFullscreen"
   >
     <VCard>
       <VCardItem class="py-2">
@@ -926,8 +910,7 @@ useSilentSettingRefresh(
                   />
                 </VCol>
               </VRow>
-              <VRow>
-              </VRow>
+              <VRow> </VRow>
 
               <!-- 刮削开关设置 -->
               <VRow class="mt-4">
@@ -1286,15 +1269,6 @@ useSilentSettingRefresh(
                     v-model="SystemSettings.Advanced.ENCODING_DETECTION_PERFORMANCE_MODE"
                     :label="t('setting.system.encodingDetectionPerformanceMode')"
                     :hint="t('setting.system.encodingDetectionPerformanceModeHint')"
-                    persistent-hint
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VSwitch
-                    v-model="SystemSettings.Advanced.RUST_ACCEL"
-                    :label="t('setting.system.rustAccel')"
-                    :hint="rustAccelHint"
-                    :disabled="!rustAccelAvailable"
                     persistent-hint
                   />
                 </VCol>

@@ -14,7 +14,6 @@ import { usePWA } from '@/composables/usePWA'
 import ProgressiveCardGrid from '@/components/misc/ProgressiveCardGrid.vue'
 import { useDynamicButton, type DynamicButtonMenuItem } from '@/composables/useDynamicButton'
 import { useAvailableHeight } from '@/composables/useAvailableHeight'
-import { useBackground } from '@/composables/useBackground'
 import { useGlobalSettingsStore, useUserStore } from '@/stores'
 import { openSharedDialog } from '@/composables/useSharedDialog'
 import { buildUserPermissionContext, hasPermission } from '@/utils/permission'
@@ -37,7 +36,6 @@ const isDesktop = computed(() => display.mdAndUp.value)
 const isMobile = computed(() => display.smAndDown.value)
 // PWA模式检测
 const { appMode } = usePWA()
-const { useProgressSSE } = useBackground()
 
 // 计算列表可用高度
 const { availableHeight } = useAvailableHeight(135, 300)
@@ -55,7 +53,6 @@ const canManage = computed(() =>
 let syncingRouteQuery = false
 let fetchDataRequestSeed = 0
 let mobileFetchDataRequestSeed = 0
-let componentUnmounted = false
 
 // 组合式输入法状态
 const isComposing = ref(false)
@@ -63,15 +60,6 @@ const isComposing = ref(false)
 // 当前操作记录
 const currentHistory = ref<TransferHistory>()
 
-// AI整理中的记录
-const aiRedoIds = ref<number[]>([])
-
-// AI整理进度
-const aiRedoProgressActive = ref(false)
-const aiRedoProgressText = ref(t('transferHistory.actions.aiRedoPending'))
-const aiRedoProgressSSE = ref<any>(null)
-const aiRedoProgressHistoryIds = ref<number[]>([])
-let aiRedoProgressDialogController: ReturnType<typeof openSharedDialog> | null = null
 let progressDialogController: ReturnType<typeof openSharedDialog> | null = null
 let deleteDialogController: ReturnType<typeof openSharedDialog> | null = null
 
@@ -719,7 +707,6 @@ async function removeSingle(deleteSrc: boolean, deleteDest: boolean) {
 
 // 批量删除记录
 async function removeBatch(deleteSrc: boolean, deleteDest: boolean) {
-  if (hasRunningAiRedo.value) return
   // 关闭弹窗
   closeDeleteConfirmDialog()
   // 总条数
@@ -768,7 +755,6 @@ async function deleteConfirmHandler(deleteSrc: boolean, deleteDest: boolean) {
 
 // 批量删除历史记录
 async function removeHistoryBatch() {
-  if (hasRunningAiRedo.value) return
   if (selected.value.length === 0) return
 
   // 清空当前操作记录
@@ -781,7 +767,6 @@ async function removeHistoryBatch() {
 }
 // 批量重新整理
 async function retransferBatch() {
-  if (hasRunningAiRedo.value) return
   if (selected.value.length === 0) return
 
   // 清空当前操作记录
@@ -804,180 +789,20 @@ async function transferDone() {
   await refreshDataAfterOperation()
 }
 
-// AI助手是否启用
-const aiAgentEnabled = computed(() => Boolean(globalSettingsStore.globalSettings.AI_AGENT_ENABLE))
-const hasRunningAiRedo = computed(() => aiRedoIds.value.length > 0)
-
-// AI整理中的记录
-function isAiRedoing(historyId: number) {
-  return aiRedoIds.value.includes(historyId)
-}
-
-// 停止AI整理进度
-function stopAiRedoProgress() {
-  aiRedoProgressActive.value = false
-
-  if (aiRedoProgressSSE.value) {
-    aiRedoProgressSSE.value.stop()
-    aiRedoProgressSSE.value = null
-  }
-}
-
-// AI整理完成
-async function finishAiRedo(success: boolean, errorMessage?: string) {
-  const historyIds = [...aiRedoProgressHistoryIds.value]
-  const historyIdSet = new Set(historyIds)
-
-  stopAiRedoProgress()
-  aiRedoProgressDialogController?.close()
-  aiRedoProgressDialogController = null
-  aiRedoProgressHistoryIds.value = []
-  aiRedoIds.value = aiRedoIds.value.filter(id => !historyIdSet.has(id))
-  selected.value = selected.value.filter(item => !historyIdSet.has(item.id))
-
-  await refreshDataAfterOperation()
-
-  if (!success && errorMessage) {
-    $toast.error(errorMessage)
-  }
-}
-
-// 处理AI整理进度
-async function handleAiRedoProgressMessage(event: MessageEvent) {
-  const progress = JSON.parse(event.data)
-  if (!progress) return
-
-  aiRedoProgressText.value = progress.text_i18n || progress.text || t('transferHistory.actions.aiRedoPending')
-  aiRedoProgressDialogController?.updateProps({ text: aiRedoProgressText.value })
-
-  if (progress.enable === false) {
-    await finishAiRedo(progress.data?.success !== false, progress.data?.error_i18n || progress.data?.error)
-  }
-}
-
-// 开始监听整理进度
-function startAiRedoProgress(historyId: number, progressKey: string) {
-  startAiRedoProgressBatch([historyId], progressKey)
-}
-
-// 开始监听批量整理进度
-function startAiRedoProgressBatch(historyIds: number[], progressKey: string) {
-  stopAiRedoProgress()
-
-  aiRedoProgressHistoryIds.value = historyIds
-  aiRedoProgressActive.value = true
-  aiRedoProgressText.value = t('transferHistory.actions.aiRedoPending')
-  aiRedoProgressDialogController = openSharedDialog(
-    ProgressDialog,
-    { text: aiRedoProgressText.value },
-    {},
-    { closeOn: false },
-  )
-
-  const url = `${import.meta.env.VITE_API_BASE_URL}system/progress/${progressKey}`
-
-  aiRedoProgressSSE.value = useProgressSSE(
-    url,
-    handleAiRedoProgressMessage,
-    `transfer-history-ai-redo-${progressKey}`,
-    aiRedoProgressActive,
-  )
-
-  aiRedoProgressSSE.value.start()
-}
-
-// 触发AI整理
-async function triggerAiRedo(item: TransferHistory) {
-  if (!aiAgentEnabled.value) {
-    $toast.error(t('transferHistory.aiRedoDisabled'))
-    return
-  }
-  if (hasRunningAiRedo.value) return
-
-  aiRedoIds.value = [...aiRedoIds.value, item.id]
-  let progressStarted = false
-  try {
-    const result: { [key: string]: any } = await api.post(`history/transfer/${item.id}/ai-redo`)
-    if (componentUnmounted) return
-
-    const progressKey = result.data?.progress_key
-
-    if (!result.success || !progressKey) {
-      $toast.error(result.message || t('transferHistory.aiRedoFailed'))
-      return
-    }
-    startAiRedoProgress(item.id, progressKey)
-    progressStarted = true
-  } catch (error) {
-    console.error(error)
-    if (!componentUnmounted) {
-      $toast.error(t('transferHistory.aiRedoFailed'))
-    }
-  } finally {
-    if (!progressStarted) {
-      aiRedoIds.value = aiRedoIds.value.filter(id => id !== item.id)
-    }
-  }
-}
-
-// 批量触发AI整理
-async function triggerBatchAiRedo() {
-  if (!aiAgentEnabled.value) {
-    $toast.error(t('transferHistory.aiRedoDisabled'))
-    return
-  }
-  if (hasRunningAiRedo.value) return
-
-  const historyIds = [...new Set(selected.value.map(item => item.id))]
-  if (historyIds.length === 0) return
-
-  aiRedoIds.value = [...new Set([...aiRedoIds.value, ...historyIds])]
-  let progressStarted = false
-  try {
-    const result: { [key: string]: any } = await api.post('history/transfer/ai-redo', {
-      history_ids: historyIds,
-    })
-    if (componentUnmounted) return
-
-    const progressKey = result.data?.progress_key
-    const acceptedIds = (result.data?.history_ids as number[] | undefined) ?? historyIds
-
-    if (!result.success || !progressKey) {
-      $toast.error(result.message || t('transferHistory.aiRedoFailed'))
-      return
-    }
-    startAiRedoProgressBatch(acceptedIds, progressKey)
-    selected.value = selected.value.filter(item => !acceptedIds.includes(item.id))
-    if (isMobile.value && selected.value.length === 0) {
-      mobileBatchMode.value = false
-    }
-    progressStarted = true
-  } catch (error) {
-    console.error(error)
-    if (!componentUnmounted) {
-      $toast.error(t('transferHistory.aiRedoFailed'))
-    }
-  } finally {
-    if (!progressStarted) {
-      aiRedoIds.value = aiRedoIds.value.filter(id => !historyIds.includes(id))
-    }
+interface TransferHistoryDropdownItem {
+  title: string
+  value: number
+  props: {
+    prependIcon: string
+    color?: string
+    disabled?: boolean
+    click: () => void
   }
 }
 
 // 计算下拉菜单
-function getDropdownItems(item: TransferHistory) {
+function getDropdownItems(item: TransferHistory): TransferHistoryDropdownItem[] {
   return [
-    {
-      title: isAiRedoing(item.id) ? t('transferHistory.actions.aiRedoPending') : t('transferHistory.actions.aiRedo'),
-      value: 0,
-      props: {
-        prependIcon: 'mdi-robot-outline',
-        disabled: !aiAgentEnabled.value || (hasRunningAiRedo.value && !isAiRedoing(item.id)),
-        click: () => {
-          triggerAiRedo(item)
-        },
-      },
-    },
     {
       title: t('transferHistory.actions.redo'),
       value: 1,
@@ -1274,40 +1099,28 @@ const historyDynamicMenuItems = computed(() => {
       },
     ]
 
-    if (!hasRunningAiRedo.value) {
-      items.push(
-        {
-          titleKey: 'transferHistory.actions.batchAiRedo',
-          icon: 'mdi-robot-outline',
-          color: 'info',
-          permission: 'manage',
-          disabled: !hasSelectedHistory,
-          action: () => {
-            triggerBatchAiRedo()
-          },
+    items.push(
+      {
+        titleKey: 'transferHistory.actions.batchRedo',
+        icon: 'mdi-redo-variant',
+        color: 'success',
+        permission: 'manage',
+        disabled: !hasSelectedHistory,
+        action: () => {
+          retransferBatch()
         },
-        {
-          titleKey: 'transferHistory.actions.batchRedo',
-          icon: 'mdi-redo-variant',
-          color: 'success',
-          permission: 'manage',
-          disabled: !hasSelectedHistory,
-          action: () => {
-            retransferBatch()
-          },
+      },
+      {
+        titleKey: 'transferHistory.actions.batchDelete',
+        icon: 'mdi-trash-can-outline',
+        color: 'error',
+        permission: 'manage',
+        disabled: !hasSelectedHistory,
+        action: () => {
+          removeHistoryBatch()
         },
-        {
-          titleKey: 'transferHistory.actions.batchDelete',
-          icon: 'mdi-trash-can-outline',
-          color: 'error',
-          permission: 'manage',
-          disabled: !hasSelectedHistory,
-          action: () => {
-            removeHistoryBatch()
-          },
-        },
-      )
-    }
+      },
+    )
 
     items.push({
       titleKey: 'transferHistory.actions.exitBatchMode',
@@ -1331,37 +1144,26 @@ const historyDynamicMenuItems = computed(() => {
     },
   ]
 
-  if (!hasRunningAiRedo.value) {
-    items.push(
-      {
-        titleKey: 'transferHistory.actions.batchAiRedo',
-        icon: 'mdi-robot-outline',
-        color: 'info',
-        permission: 'manage',
-        action: () => {
-          triggerBatchAiRedo()
-        },
+  items.push(
+    {
+      titleKey: 'transferHistory.actions.batchRedo',
+      icon: 'mdi-redo-variant',
+      color: 'success',
+      permission: 'manage',
+      action: () => {
+        retransferBatch()
       },
-      {
-        titleKey: 'transferHistory.actions.batchRedo',
-        icon: 'mdi-redo-variant',
-        color: 'success',
-        permission: 'manage',
-        action: () => {
-          retransferBatch()
-        },
+    },
+    {
+      titleKey: 'transferHistory.actions.batchDelete',
+      icon: 'mdi-trash-can-outline',
+      color: 'error',
+      permission: 'manage',
+      action: () => {
+        removeHistoryBatch()
       },
-      {
-        titleKey: 'transferHistory.actions.batchDelete',
-        icon: 'mdi-trash-can-outline',
-        color: 'error',
-        permission: 'manage',
-        action: () => {
-          removeHistoryBatch()
-        },
-      },
-    )
-  }
+    },
+  )
 
   return items
 })
@@ -1398,13 +1200,10 @@ onActivated(() => {
 })
 
 onUnmounted(() => {
-  componentUnmounted = true
   debouncedReloadPage.cancel()
   debouncedReloadSearchPage.cancel()
   debouncedReloadMobileSearchPage.cancel()
-  stopAiRedoProgress()
   closeProgressDialog()
-  aiRedoProgressDialogController?.close()
 })
 </script>
 
@@ -1869,7 +1668,7 @@ onUnmounted(() => {
   <Teleport to="body" v-if="!appMode && route.path === '/history'">
     <div v-if="isRefreshed && canManage" class="compact-fab-stack compact-fab-stack--history">
       <VFab
-        v-if="selected.length > 0 && !hasRunningAiRedo"
+        v-if="selected.length > 0"
         icon="mdi-trash-can-outline"
         color="warning"
         variant="tonal"
@@ -1878,22 +1677,13 @@ onUnmounted(() => {
         @click="removeHistoryBatch"
       />
       <VFab
-        v-if="selected.length > 0 && !hasRunningAiRedo"
+        v-if="selected.length > 0"
         icon="mdi-redo-variant"
         color="success"
         variant="tonal"
         appear
         class="compact-fab compact-fab--secondary"
         @click="retransferBatch"
-      />
-      <VFab
-        v-if="selected.length > 0 && !hasRunningAiRedo"
-        icon="mdi-robot-outline"
-        color="info"
-        variant="tonal"
-        appear
-        class="compact-fab compact-fab--secondary"
-        @click="triggerBatchAiRedo"
       />
       <VFab
         icon="mdi-timer-sand-paused"

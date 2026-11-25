@@ -8,10 +8,6 @@ import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vite'
 import vuetify from 'vite-plugin-vuetify'
 import { VitePWA } from 'vite-plugin-pwa'
-import VueI18n from '@intlify/unplugin-vue-i18n/vite'
-import { resolve } from 'node:path'
-import federation from '@originjs/vite-plugin-federation'
-import topLevelAwait from 'vite-plugin-top-level-await'
 import { readFileSync } from 'node:fs'
 import { responsiveInputCoreComponentNames } from './src/plugins/vuetify/responsiveInputNames'
 import {
@@ -38,32 +34,10 @@ const appVersion = (() => {
 const buildTime = new Date().getTime().toString()
 const isTestMode = (mode: string) => mode === 'test' || process.env.VITEST === 'true'
 
-/** 仅为单测提供可 mock 的 virtual federation 模块，不启用生产 federation 插件。 */
-function federationRuntimeTestModule() {
-  const moduleId = 'virtual:__federation__'
-  const resolvedModuleId = `\0${moduleId}`
-
-  return {
-    name: 'moviepilot-federation-runtime-test-module',
-    resolveId(source: string) {
-      if (source === moduleId) return resolvedModuleId
-    },
-    load(id: string) {
-      if (id !== resolvedModuleId) return
-      return `
-        export function __federation_method_getRemote() { throw new Error('Federation runtime must be mocked in tests') }
-        export function __federation_method_setRemote() { throw new Error('Federation runtime must be mocked in tests') }
-        export function __federation_method_unwrapDefault() { throw new Error('Federation runtime must be mocked in tests') }
-      `
-    },
-  }
-}
-
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode, isPreview }) => ({
   base: './',
   plugins: [
-    isTestMode(mode) && federationRuntimeTestModule(),
     shouldEnableDevServiceWorkerCleanup(command, mode, isPreview, process.env.npm_lifecycle_event) &&
       createDevServiceWorkerCleanupPlugin(),
     vue(),
@@ -71,7 +45,7 @@ export default defineConfig(({ command, mode, isPreview }) => ({
     vuetify({
       autoImport: {
         // 这些录入控件由 Vuetify 全局适配器接管，避免模板局部导入绕过移动布局。
-        ignore: [...responsiveInputCoreComponentNames],
+        ignore: ['VDialog', ...responsiveInputCoreComponentNames],
       },
       styles: {
         configFile: 'src/styles/variables/_vuetify.scss',
@@ -86,23 +60,6 @@ export default defineConfig(({ command, mode, isPreview }) => ({
       vueTemplate: true,
       dts: !isTestMode(mode),
     }),
-    VueI18n({
-      include: [resolve(__dirname, 'src/locales/*.ts')],
-    }),
-    !isTestMode(mode) &&
-      federation({
-        name: 'LitePilot',
-        filename: 'remoteEntry.js',
-        // @ts-ignore
-        remotes: {
-          // 动态remotes将在运行时注入
-          dummy: {
-            external: '',
-            format: 'var',
-          },
-        },
-        shared: ['vue', 'vuetify'],
-      }),
     !isTestMode(mode) &&
       VitePWA({
         injectRegister: false,
@@ -129,9 +86,6 @@ export default defineConfig(({ command, mode, isPreview }) => ({
             'apple-touch-icon*.png',
             'assets/index-*.js',
             'assets/index-*.css',
-            'assets/vendor-*.js',
-            'assets/date-*.js',
-            'assets/style-*.css',
           ],
         },
         devOptions: {
@@ -252,13 +206,6 @@ export default defineConfig(({ command, mode, isPreview }) => ({
           'related_applications': [],
         },
       }),
-    !isTestMode(mode) &&
-      topLevelAwait({
-        // The export name of top-level await promise for each chunk module
-        promiseExportName: '__mp_tla',
-        // The function to generate import names of top-level await promise in each chunk module
-        promiseImportName: i => `__mp_tla_${i}`,
-      }),
   ],
   define: {
     'process.env': {},
@@ -290,9 +237,7 @@ export default defineConfig(({ command, mode, isPreview }) => ({
     chunkSizeWarningLimit: 5000,
     // CSS 按异步 chunk 拆分：首屏只需加载入口样式，
     // 页面级样式随路由懒加载，避免单文件累积到近 1MB
-    // 注意：不要为 vue / vuetify 设置 manualChunks。
-    // 本项目的 federation 插件把这两个包声明为 shared，
-    // 强制拆分会破坏共享模块的初始化顺序，运行时报 "Q is not a function"
+    // 注意：不要为 vue / vuetify 设置 manualChunks，避免破坏框架模块初始化顺序。
     cssCodeSplit: true,
   },
   optimizeDeps: {
@@ -342,85 +287,18 @@ export default defineConfig(({ command, mode, isPreview }) => ({
     unstubGlobals: true,
     coverage: {
       include: [
-        'src/utils/recommendSources.ts',
-        'src/utils/permission.ts',
-        'src/utils/pluginSidebarNav.ts',
-        'src/utils/requestOptimizer.ts',
-        'src/utils/sseManager.ts',
-        'src/utils/federationLoader.ts',
-        'src/utils/federationRuntime.ts',
-        'src/stores/auth.ts',
-        'src/stores/pluginSidebarNav.ts',
-        'src/pages/appcenter.vue',
-        'src/pages/recommend.vue',
-        'src/pages/discover.vue',
-        'src/pages/browse.vue',
-        'src/pages/media.vue',
-        'src/pages/resource.vue',
-        'src/pages/site.vue',
-        'src/pages/subscribe.vue',
-        'src/pages/plugin-app.vue',
-        'src/views/dashboard/MediaRecommend.vue',
-        'src/views/discover/MediaCardSlideView.vue',
-        'src/views/subscribe/FullCalendarView.vue',
-        'src/views/subscribe/SubscribeListView.vue',
-        'src/views/subscribe/SubscribePopularView.vue',
-        'src/views/subscribe/SubscribeShareView.vue',
-        'src/composables/useMediaSubscribe.ts',
-        'src/composables/useTorrentFilter.ts',
-        'src/components/cards/SubscribeCard.vue',
-        'src/components/filter/TorrentFilterBar.vue',
-        'src/components/cards/TorrentCard.vue',
-        'src/components/cards/TorrentItem.vue',
-        'src/utils/torrentDownloadCache.ts',
-        'src/components/dialog/SiteAddEditDialog.vue',
-        'src/components/dialog/SiteCookieUpdateDialog.vue',
-        'src/components/dialog/SiteImportDialog.vue',
-        'src/components/cards/SubscribeShareCard.vue',
-        'src/components/dialog/ForkSubscribeDialog.vue',
-        'src/components/dialog/SubscribeEditDialog.vue',
-        'src/components/dialog/SubscribeFilesDialog.vue',
-        'src/components/dialog/SubscribeHistoryDialog.vue',
-        'src/components/dialog/SubscribeSeasonDialog.vue',
-        'src/components/dialog/SubscribeShareDialog.vue',
-        'src/components/dialog/SubscribeShareStatisticsDialog.vue',
-        'src/components/filebrowser/FileList.vue',
-        'src/components/dialog/DiscoverTabOrderDialog.vue',
-        'src/components/dialog/SiteResourceDialog.vue',
-        'src/components/dialog/SiteUserDataDialog.vue',
-        'src/components/dialog/AddDownloadDialog.vue',
-        'src/components/dialog/AddSubtitleDownloadDialog.vue',
         'src/components/dialog/ReorganizeDialog.vue',
         'src/components/dialog/TransferQueueDialog.vue',
-        'src/components/dialog/PluginConfigDialog.vue',
-        'src/components/dialog/PluginDataDialog.vue',
-        'src/views/reorganize/FileBrowserView.vue',
         'src/components/filebrowser/FileBrowser.vue',
-        'src/components/filebrowser/FileToolbar.vue',
+        'src/components/filebrowser/FileList.vue',
         'src/components/filebrowser/FileNavigator.vue',
-        'src/views/discover/TheMovieDbView.vue',
-        'src/views/discover/DoubanView.vue',
-        'src/views/discover/BangumiView.vue',
-        'src/views/discover/ExtraSourceView.vue',
-        'src/views/discover/MediaCardListView.vue',
-        'src/views/discover/MediaDetailView.vue',
-        'src/components/cards/MediaCard.vue',
-        'src/components/cards/SiteCard.vue',
-        'src/components/cards/DownloadingCard.vue',
-        'src/components/cards/PluginFolderCard.vue',
-        'src/components/cards/PluginCard.vue',
-        'src/components/cards/PluginAppCard.vue',
-        'src/components/dialog/PluginMarketDetailDialog.vue',
-        'src/components/dialog/PluginVersionHistoryDialog.vue',
-        'src/components/slide/VirtualSlideView.vue',
-        'src/views/discover/PersonCardSlideView.vue',
+        'src/components/filebrowser/FileToolbar.vue',
+        'src/stores/auth.ts',
+        'src/utils/permission.ts',
+        'src/utils/requestOptimizer.ts',
+        'src/utils/sseManager.ts',
+        'src/views/reorganize/FileBrowserView.vue',
         'src/views/reorganize/TransferHistoryView.vue',
-        'src/utils/mediaStatusCache.ts',
-        'src/utils/searchStream.ts',
-        'src/views/site/SiteCardListView.vue',
-        'src/views/reorganize/DownloadingListView.vue',
-        'src/views/plugin/PluginCardListView.vue',
-        'src/utils/siteIconCache.ts',
       ],
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],
@@ -430,163 +308,7 @@ export default defineConfig(({ command, mode, isPreview }) => ({
         functions: 85,
         lines: 85,
         statements: 85,
-        'src/components/cards/SubscribeCard.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/cards/TorrentCard.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/cards/TorrentItem.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/cards/PluginFolderCard.vue': {
-          branches: 80,
-          functions: 85,
-          lines: 85,
-          statements: 85,
-        },
-        'src/views/plugin/PluginCardListView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/cards/PluginCard.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/cards/PluginAppCard.vue': {
-          branches: 80,
-          functions: 85,
-          lines: 85,
-          statements: 85,
-        },
-        'src/components/dialog/PluginMarketDetailDialog.vue': {
-          branches: 80,
-          functions: 85,
-          lines: 85,
-          statements: 85,
-        },
-        'src/components/dialog/PluginVersionHistoryDialog.vue': {
-          branches: 80,
-          functions: 85,
-          lines: 85,
-          statements: 85,
-        },
-        'src/views/reorganize/FileBrowserView.vue': {
-          branches: 80,
-          functions: 85,
-          lines: 85,
-          statements: 85,
-        },
-        'src/components/filebrowser/FileBrowser.vue': {
-          branches: 80,
-          functions: 85,
-          lines: 85,
-          statements: 85,
-        },
-        'src/components/filebrowser/FileToolbar.vue': {
-          branches: 80,
-          functions: 85,
-          lines: 85,
-          statements: 85,
-        },
-        'src/components/filebrowser/FileNavigator.vue': {
-          branches: 80,
-          functions: 85,
-          lines: 85,
-          statements: 85,
-        },
-        'src/components/filebrowser/FileList.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/utils/torrentDownloadCache.ts': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/cards/SubscribeShareCard.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/ForkSubscribeDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/SiteAddEditDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/SiteCookieUpdateDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/SiteImportDialog.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/dialog/SubscribeEditDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/SubscribeFilesDialog.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/dialog/SubscribeHistoryDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/SubscribeSeasonDialog.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/dialog/SubscribeShareDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/views/reorganize/TransferHistoryView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/SubscribeShareStatisticsDialog.vue': {
+        'src/components/dialog/ReorganizeDialog.vue': {
           branches: 75,
           functions: 80,
           lines: 80,
@@ -598,65 +320,29 @@ export default defineConfig(({ command, mode, isPreview }) => ({
           lines: 85,
           statements: 85,
         },
-        'src/components/dialog/PluginConfigDialog.vue': {
+        'src/components/filebrowser/FileBrowser.vue': {
           branches: 80,
           functions: 85,
           lines: 85,
           statements: 85,
         },
-        'src/components/dialog/PluginDataDialog.vue': {
+        'src/components/filebrowser/FileList.vue': {
+          branches: 75,
+          functions: 80,
+          lines: 80,
+          statements: 80,
+        },
+        'src/components/filebrowser/FileNavigator.vue': {
           branches: 80,
           functions: 85,
           lines: 85,
           statements: 85,
         },
-        'src/composables/useMediaSubscribe.ts': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/composables/useTorrentFilter.ts': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/filter/TorrentFilterBar.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/pages/recommend.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/pages/resource.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/pages/media.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/pages/site.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/pages/subscribe.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
+        'src/components/filebrowser/FileToolbar.vue': {
+          branches: 80,
+          functions: 85,
+          lines: 85,
+          statements: 85,
         },
         'src/stores/auth.ts': {
           branches: 75,
@@ -664,31 +350,7 @@ export default defineConfig(({ command, mode, isPreview }) => ({
           lines: 80,
           statements: 80,
         },
-        'src/stores/pluginSidebarNav.ts': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/pages/appcenter.vue': {
-          branches: 80,
-          functions: 85,
-          lines: 85,
-          statements: 85,
-        },
         'src/utils/permission.ts': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/utils/pluginSidebarNav.ts': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/utils/recommendSources.ts': {
           branches: 75,
           functions: 80,
           lines: 80,
@@ -706,199 +368,13 @@ export default defineConfig(({ command, mode, isPreview }) => ({
           lines: 90,
           statements: 90,
         },
-        'src/utils/federationLoader.ts': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/utils/federationRuntime.ts': {
-          branches: 100,
-          functions: 100,
-          lines: 100,
-          statements: 100,
-        },
-        'src/pages/plugin-app.vue': {
+        'src/views/reorganize/FileBrowserView.vue': {
           branches: 80,
           functions: 85,
           lines: 85,
           statements: 85,
         },
-        'src/utils/searchStream.ts': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/views/dashboard/MediaRecommend.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/views/discover/MediaCardSlideView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/pages/discover.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/views/discover/MediaCardListView.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/views/discover/MediaDetailView.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/pages/browse.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/DiscoverTabOrderDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/SiteResourceDialog.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/dialog/SiteUserDataDialog.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/dialog/AddDownloadDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/AddSubtitleDownloadDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/dialog/ReorganizeDialog.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/views/discover/TheMovieDbView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/views/discover/DoubanView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/views/discover/BangumiView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/views/discover/ExtraSourceView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/components/cards/MediaCard.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/cards/SiteCard.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/cards/DownloadingCard.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/utils/siteIconCache.ts': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/components/slide/VirtualSlideView.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/views/discover/PersonCardSlideView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/utils/mediaStatusCache.ts': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/views/site/SiteCardListView.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/views/reorganize/DownloadingListView.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/views/subscribe/FullCalendarView.vue': {
-          branches: 85,
-          functions: 90,
-          lines: 90,
-          statements: 90,
-        },
-        'src/views/subscribe/SubscribeListView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/views/subscribe/SubscribePopularView.vue': {
-          branches: 75,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-        'src/views/subscribe/SubscribeShareView.vue': {
+        'src/views/reorganize/TransferHistoryView.vue': {
           branches: 75,
           functions: 80,
           lines: 80,

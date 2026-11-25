@@ -1,7 +1,7 @@
-@use "mixins";
-@use "vuetify/lib/styles/tools/_elevation" as mixins_elevation;
-@use "@layouts/styles/_placeholders";
-@use "@configured-variables" as variables;
+@use 'mixins';
+@use 'vuetify/lib/styles/tools/_elevation' as mixins_elevation;
+@use '@layouts/styles/_placeholders';
+@use '@configured-variables' as variables;
 
 // 👉 Alert
 .v-alert {
@@ -42,7 +42,9 @@
       margin-inline-start: -0.8rem;
     }
 
-    transition: transform 0.25s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.15s ease;
 
     &:hover {
       z-index: 2;
@@ -145,48 +147,6 @@
     .v-slide-group-item--active.v-tab--selected.text-#{$color-name} {
       background-color: rgb(var(--v-theme-#{$color-name}));
       color: rgb(var(--v-theme-on-#{$color-name})) !important;
-    }
-  }
-}
-
-// 👉 Timeline added box shadow
-.v-timeline-item {
-  .v-timeline-divider__dot {
-    .v-timeline-divider__inner-dot {
-      box-shadow: 0 0 0 0.1875rem rgb(var(--v-theme-on-surface-variant));
-
-      @each $color-name in variables.$theme-colors-name {
-
-        &.bg-#{$color-name} {
-          box-shadow: 0 0 0 0.1875rem rgba(var(--v-theme-#{$color-name}), 0.12);
-        }
-      }
-    }
-  }
-}
-
-// 👉 Timeline Outlined style
-.v-timeline-variant-outlined.v-timeline {
-  .v-timeline-divider__dot {
-    .v-timeline-divider__inner-dot {
-      box-shadow: inset 0 0 0 0.125rem rgb(var(--v-theme-on-surface-variant));
-
-      @each $color-name in variables.$theme-colors-name {
-        background-color: rgb(var(--v-theme-surface)) !important;
-
-        &.bg-#{$color-name} {
-          box-shadow: inset 0 0 0 0.125rem rgb(var(--v-theme-#{$color-name}));
-        }
-      }
-    }
-  }
-}
-
-// ℹ️ We are make even width of all v-timeline body
-.v-timeline--vertical.v-timeline {
-  .v-timeline-item {
-    .v-timeline-item__body {
-      justify-self: stretch !important;
     }
   }
 }

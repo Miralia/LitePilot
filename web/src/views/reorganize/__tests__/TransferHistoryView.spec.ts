@@ -1,5 +1,4 @@
 import type { TransferHistory } from '@/api/types'
-import i18n from '@/plugins/i18n'
 import TransferHistoryView from '@/views/reorganize/TransferHistoryView.vue'
 import { fireEvent, screen, waitFor } from '@testing-library/vue'
 import { renderWithProviders } from '@tests/support/render'
@@ -310,7 +309,6 @@ async function renderHistory(initialRoute = '/history') {
     initialState: {
       globalSettings: {
         data: {
-          AI_AGENT_ENABLE: true,
           GLOBAL_IMAGE_CACHE: false,
         },
       },
@@ -727,113 +725,5 @@ describe('TransferHistoryView', () => {
     await dialog.events.done()
     expect(historyCalls).toBeGreaterThan(1)
     expect(getDynamicMenuItems()).toBeUndefined()
-  })
-
-  it('owns the batch AI redo SSE lifecycle through the progress boundary', async () => {
-    const histories = [createHistory(1, 'AI 重整')]
-    let historyCalls = 0
-    mocks.apiGet.mockImplementation((path: string) => {
-      if (path === 'system/setting/public/Storages') return Promise.resolve(storageResponse())
-      historyCalls += 1
-      return Promise.resolve(historyResponse(histories))
-    })
-
-    const { unmount } = await renderHistory()
-    expect(await screen.findByText('AI 重整')).toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: '选择当前页' }))
-    await nextTick()
-    runDynamicAction('transferHistory.actions.batchAiRedo')
-    await flushPromises()
-
-    expect(mocks.apiPost).toHaveBeenCalledWith('history/transfer/ai-redo', { history_ids: [1] })
-    expect(mocks.progressStart).toHaveBeenCalledOnce()
-    expect(mocks.progressCallback).toBeTypeOf('function')
-
-    await mocks.progressCallback?.(
-      new MessageEvent('message', {
-        data: JSON.stringify({ enable: true, text: '处理中' }),
-      }),
-    )
-    const progressController = mocks.openSharedDialog.mock.results[0]?.value as {
-      close: ReturnType<typeof vi.fn>
-      updateProps: ReturnType<typeof vi.fn>
-    }
-    expect(progressController.updateProps).toHaveBeenCalledWith({ text: '处理中' })
-
-    await mocks.progressCallback?.(
-      new MessageEvent('message', {
-        data: JSON.stringify({ data: { error: 'AI 失败', success: false }, enable: false }),
-      }),
-    )
-    expect(mocks.progressStop).toHaveBeenCalledOnce()
-    expect(progressController.close).toHaveBeenCalledOnce()
-    expect(mocks.toastError).toHaveBeenCalledWith('AI 失败')
-    expect(historyCalls).toBeGreaterThan(1)
-
-    unmount()
-    expect(mocks.progressStop).toHaveBeenCalled()
-  })
-
-  it('starts the single AI redo progress boundary with the accepted progress key', async () => {
-    const item = createHistory(7, '单条 AI')
-    mocks.apiGet.mockImplementation((path: string) => {
-      if (path === 'system/setting/public/Storages') return Promise.resolve(storageResponse())
-      return Promise.resolve(historyResponse([item]))
-    })
-    mocks.apiPost.mockResolvedValueOnce({ data: { progress_key: 'single-progress' }, success: true })
-
-    await renderHistory()
-    expect(await screen.findByText('单条 AI')).toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: '智能助手整理' }))
-    await flushPromises()
-
-    expect(mocks.apiPost).toHaveBeenCalledWith('history/transfer/7/ai-redo')
-    expect(mocks.progressStart).toHaveBeenCalledOnce()
-    expect(mocks.openSharedDialog).toHaveBeenCalledOnce()
-  })
-
-  it('does not start a single AI redo progress boundary when its POST resolves after unmount', async () => {
-    const item = createHistory(1, '卸载中的单条 AI')
-    const pending = createDeferred<{ data: { progress_key: string }; success: boolean }>()
-    mocks.apiGet.mockImplementation((path: string) => {
-      if (path === 'system/setting/public/Storages') return Promise.resolve(storageResponse())
-      return Promise.resolve(historyResponse([item]))
-    })
-    mocks.apiPost.mockReturnValueOnce(pending.promise)
-
-    const { unmount } = await renderHistory()
-    expect(await screen.findByText('卸载中的单条 AI')).toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: '智能助手整理' }))
-    unmount()
-    pending.resolve({ data: { progress_key: 'late-single' }, success: true })
-    await flushPromises()
-
-    expect(mocks.progressStart).not.toHaveBeenCalled()
-    expect(mocks.openSharedDialog).not.toHaveBeenCalled()
-  })
-
-  it('does not start a batch AI redo progress boundary when its POST resolves after unmount', async () => {
-    const item = createHistory(1, '卸载中的批量 AI')
-    const pending = createDeferred<{
-      data: { history_ids: number[]; progress_key: string }
-      success: boolean
-    }>()
-    mocks.apiGet.mockImplementation((path: string) => {
-      if (path === 'system/setting/public/Storages') return Promise.resolve(storageResponse())
-      return Promise.resolve(historyResponse([item]))
-    })
-    mocks.apiPost.mockReturnValueOnce(pending.promise)
-
-    const { unmount } = await renderHistory()
-    expect(await screen.findByText('卸载中的批量 AI')).toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: '选择当前页' }))
-    await nextTick()
-    runDynamicAction('transferHistory.actions.batchAiRedo')
-    unmount()
-    pending.resolve({ data: { history_ids: [1], progress_key: 'late-batch' }, success: true })
-    await flushPromises()
-
-    expect(mocks.progressStart).not.toHaveBeenCalled()
-    expect(mocks.openSharedDialog).not.toHaveBeenCalled()
   })
 })

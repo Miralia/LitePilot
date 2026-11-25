@@ -8,7 +8,15 @@ const selectorScript = resolve(process.cwd(), 'scripts/format-changed.mjs')
 const temporaryRepositories: string[] = []
 
 function git(repository: string, ...args: string[]) {
-  return execFileSync('git', args, { cwd: repository, encoding: 'utf8' }).trim()
+  return execFileSync(
+    'git',
+    ['-c', 'tag.forceSignAnnotated=false', '-c', 'tag.gpgsign=false', '-c', 'commit.gpgsign=false', ...args],
+    {
+      cwd: repository,
+      encoding: 'utf8',
+      env: { ...process.env, GIT_EDITOR: 'true', EDITOR: 'true' },
+    },
+  ).trim()
 }
 
 function write(repository: string, filePath: string, content: string) {
@@ -17,10 +25,10 @@ function write(repository: string, filePath: string, content: string) {
   writeFileSync(absolutePath, content)
 }
 
-function createRepository() {
+function createRepository(initialBranch = 'v2') {
   const repository = mkdtempSync(resolve(tmpdir(), 'moviepilot-format-changed-'))
   temporaryRepositories.push(repository)
-  git(repository, 'init', '--initial-branch=v2')
+  git(repository, 'init', `--initial-branch=${initialBranch}`)
   git(repository, 'config', 'user.name', 'Format Test')
   git(repository, 'config', 'user.email', 'format-test@example.invalid')
   write(repository, '.gitignore', 'coverage/\n')
@@ -142,6 +150,24 @@ describe('Prettier 变更文件选择器', () => {
     expect(listSelected(repository)).toEqual(['src/modified.ts'])
   })
 
+  it('在仓库子目录运行时把 Git 根相对路径转换为当前包路径', () => {
+    const repository = createRepository('main')
+    write(repository, 'web/modified.ts', "export const value='package'\n")
+    write(repository, 'backend/modified.ts', "export const value='backend'\n")
+
+    expect(runSelector(resolve(repository, 'web'), [])).toEqual(['modified.ts'])
+  })
+
+  it('没有上游 v2 引用时回退到 main 基线', () => {
+    const repository = createRepository('main')
+    git(repository, 'switch', '-c', 'feature')
+    write(repository, 'src/modified.ts', "export const value='feature'\n")
+    git(repository, 'add', 'src/modified.ts')
+    git(repository, 'commit', '-m', 'feature')
+
+    expect(listSelected(repository)).toEqual(['src/modified.ts'])
+  })
+
   it('首个候选没有 merge base 时回退到后续可比较分支', () => {
     const repository = createRepository()
     const baseCommit = git(repository, 'rev-parse', 'HEAD')
@@ -189,7 +215,7 @@ const { spawnSync } = require('node:child_process')
 const { writeSync } = require('node:fs')
 const args = process.argv.slice(2)
 if (args[0] === 'ls-files') {
-  const output = Buffer.from('src/modified.ts\\0'.repeat(300_000))
+  const output = Buffer.from('src/modified.ts\\0'.repeat(70_000))
   let offset = 0
   while (offset < output.length) offset += writeSync(1, output, offset)
   process.exit(0)

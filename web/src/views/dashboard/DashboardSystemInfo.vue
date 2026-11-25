@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import api from '@/api'
 import type { DashboardSystemInfo } from '@/api/types'
-import { openSharedDialog } from '@/composables/useSharedDialog'
 import { useBackground } from '@/composables/useBackground'
 import { useI18n } from 'vue-i18n'
-
 
 const props = defineProps({
   // 是否允许刷新数据

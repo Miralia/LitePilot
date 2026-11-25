@@ -124,8 +124,8 @@ def _reload_streaming_platforms(mode: str):
         ("Show.2024.1080p.CR.WEB-DL.x264-GRP.mkv", "CR", "Crunchyroll"),
     ],
 )
-def test_rust_path_respects_display_mode(title, short, full):
-    """Rust 识别路径也要遵守简写/全称开关，不能固定输出全称。"""
+def test_meta_path_respects_display_mode(title, short, full):
+    """识别路径要遵守简写/全称开关，不能固定输出全称。"""
     from app.core.metainfo import MetaInfo
 
     _reload_streaming_platforms("short")

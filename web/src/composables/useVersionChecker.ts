@@ -1,4 +1,4 @@
-import { ref, h } from 'vue'
+import { h } from 'vue'
 import { useToast } from 'vue-toastification'
 import { Workbox } from 'workbox-window'
 import i18n from '@/plugins/i18n'
@@ -10,7 +10,6 @@ import {
 } from '@/utils/serviceWorkerCoordinator'
 
 // 全局状态
-const currentVersion = ref(__APP_VERSION__)
 let isUpdateToastShown = false
 
 const serviceWorkerRegistration =

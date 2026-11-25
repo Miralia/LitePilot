@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { SystemNotification } from '@/api/types'
 import api from '@/api'
 import { appUnreadMessageCount, clearUnreadMessages } from '@/utils/badge'
@@ -37,6 +38,11 @@ const hasBadgeUnreadMessages = computed(() => appUnreadMessageCount.value > 0)
 const canMarkAllAsRead = computed(() => hasUnreadNotifications.value || hasBadgeUnreadMessages.value)
 const hasUnreadMessageIndicator = computed(() => hasNewMessage.value || canMarkAllAsRead.value)
 const notificationDisplayList = computed(() => buildNotificationDisplayList(notificationList.value))
+
+/** 读取 renderless 虚拟滚动插槽的测量引用；Vuetify 的条件类型无法在模板中稳定收窄。 */
+function getVirtualScrollItemRef(slotProps: unknown) {
+  return (slotProps as { itemRef?: Ref<HTMLElement | undefined> }).itemRef
+}
 const notificationClearCounts = computed(() => getNotificationClearCounts())
 const notificationClearOptions = computed(() => [
   {
@@ -210,9 +216,7 @@ function rebuildNotificationKeys() {
 /** 清理已移除通知的展开状态，避免虚拟列表复用时保留无效 key。 */
 function rebuildExpandedNotificationKeys() {
   const currentKeys = new Set(notificationList.value.map(getNotificationExpansionKey))
-  expandedNotificationKeys.value = new Set(
-    [...expandedNotificationKeys.value].filter(key => currentKeys.has(key)),
-  )
+  expandedNotificationKeys.value = new Set([...expandedNotificationKeys.value].filter(key => currentKeys.has(key)))
 }
 
 /** 列表内容变化后同步未读红点和应用角标状态。 */
@@ -606,9 +610,9 @@ watch(appsMenu, handleNotificationMenuVisibleChange)
             :items="notificationDisplayList"
             :item-height="NOTIFICATION_ITEM_HEIGHT"
           >
-            <template #default="{ item, itemRef }">
+            <template #default="{ item, ...slotProps }">
               <div
-                :ref="itemRef"
+                :ref="getVirtualScrollItemRef(slotProps)"
                 :key="item.key"
                 class="notification-virtual-item"
                 :class="{ 'notification-virtual-item--section': item.kind === 'section' }"
@@ -660,7 +664,9 @@ watch(appsMenu, handleNotificationMenuVisibleChange)
                       {{ item.notification.text }}
                     </div>
                     <div class="notification-meta">
-                      <span v-if="item.notification.mtype" class="notification-type">{{ item.notification.mtype }}</span>
+                      <span v-if="item.notification.mtype" class="notification-type">{{
+                        item.notification.mtype
+                      }}</span>
                       <span>{{ formatDateDifference(getNotificationTime(item.notification)) }}</span>
                     </div>
                   </div>

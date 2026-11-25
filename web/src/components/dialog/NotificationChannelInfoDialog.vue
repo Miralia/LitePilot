@@ -60,7 +60,6 @@ const notificationTypes = [
   { value: '其它', title: t('notificationSwitch.other') },
 ]
 
-
 /** 初始化通知渠道编辑数据。 */
 function openNotificationInfoDialog() {
   // 替换成深复制，避免修改时影响原数据
@@ -98,152 +97,125 @@ onMounted(() => {
     max-width="40rem"
     :fullscreen="!display.mdAndUp.value"
   >
-      <VCard>
-        <VCardItem class="py-2">
-          <template #prepend>
-            <VIcon icon="mdi-cog" class="me-2" />
-          </template>
-          <VCardTitle>{{ t('common.config') }}</VCardTitle>
-          <VCardSubtitle>{{ props.notification.name }}</VCardSubtitle>
-        </VCardItem>
-        <VDialogCloseBtn v-model="notificationInfoDialog" />
-        <VDivider />
-        <VCardText>
-          <VForm>
-            <VRow>
-              <VCol cols="12" md="6">
-                <VSwitch v-model="notificationInfo.enabled" :label="t('notification.enabled')" />
-              </VCol>
-              <VCol cols="12">
-                <VAutocomplete
-                  v-model="notificationInfo.switchs"
-                  :items="notificationTypes"
-                  :label="t('notification.type')"
-                  :hint="t('notification.typeHint')"
-                  multiple
-                  clearable
-                  chips
-                  persistent-hint
-                  prepend-inner-icon="mdi-bell-outline"
-                />
-              </VCol>
-            </VRow>
-            <VRow v-if="notificationInfo.type == 'telegram'">
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.name"
-                  :label="t('notification.name')"
-                  :placeholder="t('notification.name')"
-                  :hint="t('notification.nameHint')"
-                  persistent-hint
-                  prepend-inner-icon="mdi-label"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.config.TELEGRAM_TOKEN"
-                  :label="t('notification.telegram.token')"
-                  :hint="t('notification.telegram.tokenHint')"
-                  persistent-hint
-                  prepend-inner-icon="mdi-key"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.config.TELEGRAM_CHAT_ID"
-                  :label="t('notification.telegram.chatId')"
-                  :hint="t('notification.telegram.chatIdHint')"
-                  persistent-hint
-                  prepend-inner-icon="mdi-chat"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.config.TELEGRAM_USERS"
-                  :label="t('notification.telegram.users')"
-                  :placeholder="t('notification.telegram.usersPlaceholder')"
-                  :hint="t('notification.telegram.usersHint')"
-                  persistent-hint
-                  prepend-inner-icon="mdi-account-group"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.config.TELEGRAM_ADMINS"
-                  :label="t('notification.telegram.admins')"
-                  :placeholder="t('notification.telegram.adminsPlaceholder')"
-                  :hint="t('notification.telegram.adminsHint')"
-                  persistent-hint
-                  prepend-inner-icon="mdi-account-supervisor"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.config.API_URL"
-                  :label="t('notification.telegram.apiUrl')"
-                  :placeholder="t('notification.telegram.apiUrlPlaceholder')"
-                  :hint="t('notification.telegram.apiUrlHint')"
-                  persistent-hint
-                  prepend-inner-icon="mdi-web"
-                />
-              </VCol>
-            </VRow>
-            <VRow v-else-if="notificationInfo.type == 'webpush'">
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.name"
-                  :label="t('notification.name')"
-                  :placeholder="t('notification.name')"
-                  :hint="t('notification.nameHint')"
-                  persistent-hint
-                  prepend-inner-icon="mdi-label"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.config.WEBPUSH_USERNAME"
-                  :label="t('notification.webpush.username')"
-                  :hint="t('notification.webpush.usernameHint')"
-                  persistent-hint
-                  prepend-inner-icon="mdi-account"
-                />
-              </VCol>
-            </VRow>
-            <VRow v-else>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.type"
-                  :label="t('notification.type')"
-                  :hint="t('notification.customTypeHint')"
-                  persistent-hint
-                  active
-                  prepend-inner-icon="mdi-cog"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="notificationInfo.name"
-                  :label="t('notification.name')"
-                  :hint="t('notification.nameRequired')"
-                  persistent-hint
-                  prepend-inner-icon="mdi-label"
-                />
-              </VCol>
-            </VRow>
-          </VForm>
-        </VCardText>
-        <VCardActions class="app-dialog-actions">
-          <VSpacer />
-          <VBtn
-            color="primary"
-            variant="flat"
-            @click="saveNotificationInfo"
-            prepend-icon="mdi-content-save"
-            class="px-5"
-          >
-            {{ t('common.confirm') }}
-          </VBtn>
-        </VCardActions>
-      </VCard>
+    <VCard>
+      <VCardItem class="py-2">
+        <template #prepend>
+          <VIcon icon="mdi-cog" class="me-2" />
+        </template>
+        <VCardTitle>{{ t('common.config') }}</VCardTitle>
+        <VCardSubtitle>{{ props.notification.name }}</VCardSubtitle>
+      </VCardItem>
+      <VDialogCloseBtn v-model="notificationInfoDialog" />
+      <VDivider />
+      <VCardText>
+        <VForm>
+          <VRow>
+            <VCol cols="12" md="6">
+              <VSwitch v-model="notificationInfo.enabled" :label="t('notification.enabled')" />
+            </VCol>
+            <VCol cols="12">
+              <VAutocomplete
+                v-model="notificationInfo.switchs"
+                :items="notificationTypes"
+                :label="t('notification.type')"
+                :hint="t('notification.typeHint')"
+                multiple
+                clearable
+                chips
+                persistent-hint
+                prepend-inner-icon="mdi-bell-outline"
+              />
+            </VCol>
+          </VRow>
+          <VRow v-if="notificationInfo.type == 'telegram'">
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="notificationInfo.name"
+                :label="t('notification.name')"
+                :placeholder="t('notification.name')"
+                :hint="t('notification.nameHint')"
+                persistent-hint
+                prepend-inner-icon="mdi-label"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="notificationInfo.config.TELEGRAM_TOKEN"
+                :label="t('notification.telegram.token')"
+                :hint="t('notification.telegram.tokenHint')"
+                persistent-hint
+                prepend-inner-icon="mdi-key"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="notificationInfo.config.TELEGRAM_CHAT_ID"
+                :label="t('notification.telegram.chatId')"
+                :hint="t('notification.telegram.chatIdHint')"
+                persistent-hint
+                prepend-inner-icon="mdi-chat"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="notificationInfo.config.TELEGRAM_USERS"
+                :label="t('notification.telegram.users')"
+                :placeholder="t('notification.telegram.usersPlaceholder')"
+                :hint="t('notification.telegram.usersHint')"
+                persistent-hint
+                prepend-inner-icon="mdi-account-group"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="notificationInfo.config.TELEGRAM_ADMINS"
+                :label="t('notification.telegram.admins')"
+                :placeholder="t('notification.telegram.adminsPlaceholder')"
+                :hint="t('notification.telegram.adminsHint')"
+                persistent-hint
+                prepend-inner-icon="mdi-account-supervisor"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="notificationInfo.config.API_URL"
+                :label="t('notification.telegram.apiUrl')"
+                :placeholder="t('notification.telegram.apiUrlPlaceholder')"
+                :hint="t('notification.telegram.apiUrlHint')"
+                persistent-hint
+                prepend-inner-icon="mdi-web"
+              />
+            </VCol>
+          </VRow>
+          <VRow v-else>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="notificationInfo.type"
+                :label="t('notification.type')"
+                :hint="t('notification.customTypeHint')"
+                persistent-hint
+                active
+                prepend-inner-icon="mdi-cog"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="notificationInfo.name"
+                :label="t('notification.name')"
+                :hint="t('notification.nameRequired')"
+                persistent-hint
+                prepend-inner-icon="mdi-label"
+              />
+            </VCol>
+          </VRow>
+        </VForm>
+      </VCardText>
+      <VCardActions class="app-dialog-actions">
+        <VSpacer />
+        <VBtn color="primary" variant="flat" @click="saveNotificationInfo" prepend-icon="mdi-content-save" class="px-5">
+          {{ t('common.confirm') }}
+        </VBtn>
+      </VCardActions>
+    </VCard>
   </VDialog>
 </template>

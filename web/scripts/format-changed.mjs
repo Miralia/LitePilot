@@ -5,7 +5,13 @@ import process from 'node:process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import * as prettier from 'prettier'
 
-const DEFAULT_BASE_REFS = ['refs/remotes/upstream/v2', 'refs/remotes/origin/v2', 'refs/heads/v2']
+const DEFAULT_BASE_REFS = [
+  'refs/remotes/upstream/v2',
+  'refs/remotes/origin/v2',
+  'refs/heads/v2',
+  'refs/remotes/origin/main',
+  'refs/heads/main',
+]
 const GIT_OUTPUT_MAX_BUFFER = 64 * 1024 * 1024
 const PRETTIER_ARGUMENT_BUDGET = 24_000
 const prettierCliPath = fileURLToPath(new URL('../node_modules/prettier/bin/prettier.cjs', import.meta.url))
@@ -66,23 +72,36 @@ function collectChangedPaths({ cwd, base, head }) {
     throw new Error('--base 与 --head 必须一起使用。')
   }
 
+  // Git 在子目录中仍输出仓库根相对路径；格式化命令则需要当前包目录相对路径。
+  // 这里统一转换，避免 `web/` 子目录运行时把 `web/src/...` 错拼成 `web/web/src/...`。
+  const repoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8' }).trim()
+  const packagePrefix = execFileSync('git', ['rev-parse', '--show-prefix'], { cwd, encoding: 'utf8' }).trim()
+  const toPackagePath = filePath => {
+    if (!packagePrefix) return filePath
+    return filePath.startsWith(packagePrefix) ? filePath.slice(packagePrefix.length) : undefined
+  }
+  const addGitPaths = (paths, filePaths) => {
+    for (const filePath of filePaths) {
+      const packagePath = toPackagePath(filePath)
+      if (packagePath) paths.add(packagePath)
+    }
+  }
+
   const explicitRange = Boolean(base)
-  const headCommit = resolveCommit(cwd, head ?? 'HEAD')
-  const baseCommit = base ? resolveCommit(cwd, base) : resolveDefaultBase(cwd, headCommit)
-  if (!hasMergeBase(cwd, baseCommit, headCommit)) {
+  const headCommit = resolveCommit(repoRoot, head ?? 'HEAD')
+  const baseCommit = base ? resolveCommit(repoRoot, base) : resolveDefaultBase(repoRoot, headCommit)
+  if (!hasMergeBase(repoRoot, baseCommit, headCommit)) {
     throw new Error('Git 比较起点与终点没有共同祖先，无法执行三点比较。')
   }
-  const paths = new Set(
-    gitPaths(cwd, ['diff', '--name-only', '--diff-filter=ACMRT', '-z', `${baseCommit}...${headCommit}`]),
+  const paths = new Set()
+  addGitPaths(
+    paths,
+    gitPaths(repoRoot, ['diff', '--name-only', '--diff-filter=ACMRT', '-z', `${baseCommit}...${headCommit}`]),
   )
 
   if (!explicitRange) {
-    for (const filePath of gitPaths(cwd, ['diff', '--name-only', '--diff-filter=ACMRT', '-z', 'HEAD'])) {
-      paths.add(filePath)
-    }
-    for (const filePath of gitPaths(cwd, ['ls-files', '--others', '--exclude-standard', '-z'])) {
-      paths.add(filePath)
-    }
+    addGitPaths(paths, gitPaths(repoRoot, ['diff', '--name-only', '--diff-filter=ACMRT', '-z', 'HEAD']))
+    addGitPaths(paths, gitPaths(repoRoot, ['ls-files', '--others', '--exclude-standard', '-z']))
   }
 
   return [...paths]

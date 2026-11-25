@@ -55,74 +55,6 @@ FRONTEND_TAG_API = (
 RESOURCES_MAIN_ZIP = (
     "https://github.com/jxxghp/MoviePilot-Resources/archive/refs/heads/main.zip"
 )
-LLM_PROVIDER_DEFAULTS = {
-    "deepseek": {
-        "model": "deepseek-chat",
-        "base_url": "https://api.deepseek.com",
-    },
-    "openai": {
-        "model": "gpt-4o-mini",
-        "base_url": "https://api.openai.com/v1",
-    },
-    "google": {
-        "model": "gemini-2.5-flash",
-        "base_url": "",
-    },
-    "anthropic": {
-        "model": "claude-sonnet-4-0",
-        "base_url": "https://api.anthropic.com/v1",
-    },
-    "baidu-qianfan-coding-plan": {
-        "model": "",
-        "base_url": "https://qianfan.baidubce.com/v2",
-    },
-    "openrouter": {
-        "model": "openai/gpt-4.1-mini",
-        "base_url": "https://openrouter.ai/api/v1",
-    },
-    "groq": {
-        "model": "llama-3.3-70b-versatile",
-        "base_url": "https://api.groq.com/openai/v1",
-    },
-    "jdcloud": {
-        "model": "",
-        "base_url": "https://modelservice.jdcloud.com/v1",
-    },
-    "china-unicom": {
-        "model": "",
-        "base_url": "https://aigw-gzgy2.cucloud.cn:8443/v1",
-        "base_url_preset": "china-unicom-coding-openai",
-    },
-    "china-mobile": {
-        "model": "",
-        "base_url": "https://ecloud.10086.cn/api",
-        "base_url_preset": "china-mobile-moma",
-    },
-    "china-telecom": {
-        "model": "",
-        "base_url": "https://wishub-x6.ctyun.cn/v1",
-        "base_url_preset": "china-telecom-token-service",
-    },
-    "kuaishou-wanqing": {
-        "model": "",
-        "base_url": "https://wanqing.streamlakeapi.com/api/gateway/v1/endpoints",
-        "base_url_preset": "kuaishou-wanqing-usage",
-    },
-}
-LLM_PROVIDER_FALLBACK_CHOICES = {
-    "deepseek": "DeepSeek",
-    "openai": "OpenAI Compatible",
-    "google": "Google",
-    "anthropic": "Anthropic",
-    "baidu-qianfan-coding-plan": "百度千帆",
-    "openrouter": "OpenRouter",
-    "groq": "Groq",
-    "jdcloud": "京东云",
-    "china-unicom": "中国联通",
-    "china-mobile": "中国移动",
-    "china-telecom": "中国电信",
-    "kuaishou-wanqing": "快手万擎",
-}
 RUNTIME_PACKAGE = {
     "name": "moviepilot-frontend-runtime",
     "private": True,
@@ -1572,9 +1504,6 @@ def _collect_notification_config() -> Optional[dict[str, Any]]:
         {
             "skip": "跳过",
             "telegram": "Telegram",
-            "wechat": "企业微信机器人",
-            "feishu": "飞书",
-            "slack": "Slack",
         },
         default="skip",
     )
@@ -1592,50 +1521,6 @@ def _collect_notification_config() -> Optional[dict[str, Any]]:
         )
         if api_url:
             config["API_URL"] = api_url
-    elif notification_type == "wechat":
-        config = {
-            "WECHAT_MODE": "bot",
-            "WECHAT_BOT_ID": _prompt_text("企业微信机器人 ID"),
-            "WECHAT_BOT_SECRET": _prompt_text("企业微信机器人 Secret", secret=True),
-        }
-        chat_id = _prompt_text("默认发送对象（可选）", default="", allow_empty=True)
-        admins = _prompt_text(
-            "管理员用户列表，多个逗号分隔（可选）", default="", allow_empty=True
-        )
-        if chat_id:
-            config["WECHAT_BOT_CHAT_ID"] = chat_id
-        if admins:
-            config["WECHAT_ADMINS"] = admins
-    elif notification_type == "feishu":
-        config = {
-            "FEISHU_APP_ID": _prompt_text("飞书应用 App ID"),
-            "FEISHU_APP_SECRET": _prompt_text("飞书应用 App Secret", secret=True),
-        }
-        open_id = _prompt_text("默认接收用户 Open ID（可选）", default="", allow_empty=True)
-        chat_id = _prompt_text("默认接收群聊 Chat ID（可选）", default="", allow_empty=True)
-        admins = _prompt_text(
-            "管理员 Open ID 列表，多个逗号分隔（可选）", default="", allow_empty=True
-        )
-        verification_token = _prompt_text("飞书事件 Verification Token（可选）", default="", allow_empty=True)
-        encrypt_key = _prompt_text("飞书事件 Encrypt Key（可选）", default="", allow_empty=True)
-        if open_id:
-            config["FEISHU_OPEN_ID"] = open_id
-        if chat_id:
-            config["FEISHU_CHAT_ID"] = chat_id
-        if admins:
-            config["FEISHU_ADMINS"] = admins
-        if verification_token:
-            config["FEISHU_VERIFICATION_TOKEN"] = verification_token
-        if encrypt_key:
-            config["FEISHU_ENCRYPT_KEY"] = encrypt_key
-    else:
-        config = {
-            "SLACK_OAUTH_TOKEN": _prompt_text("Slack OAuth Token", secret=True),
-            "SLACK_APP_TOKEN": _prompt_text("Slack App Token", secret=True),
-        }
-        channel = _prompt_text("Slack 默认频道（可选）", default="", allow_empty=True)
-        if channel:
-            config["SLACK_CHANNEL"] = channel
 
     return {
         "name": config_name,

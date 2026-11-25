@@ -13,8 +13,9 @@ nginx 直接托管。这样升级只需替换代码目录，迁移只需搬运�
 | 配置与数据库 | `/var/lib/moviepilot` | `CONFIG_DIR`，备份/迁移的唯一对象 |
 | 日志 | `/var/lib/moviepilot/logs` | 备份时自动排除 |
 
-> 生产环境若沿用 swizzin 的目录布局，也可把 `CONFIG_DIR` 指向 `~/moviepilot` 等位置；
-> 所有命令都接受 `--config-dir`，不依赖固定路径。
+> 生产环境若沿用 swizzin 的目录布局，也可把 `CONFIG_DIR` 指向 `~/moviepilot` 等位置。
+> 安装、初始化、恢复与迁移命令接受 `--config-dir`；`start`、`stop`、`backup` 等运行时命令
+> 不接受该参数，需要通过 `CONFIG_DIR` 环境变量或部署环境中的默认路径定位配置。
 
 ## 首次安装
 
@@ -32,7 +33,7 @@ git clone <repo> /opt/moviepilot && cd /opt/moviepilot
 
 # 4. 开机自启
 ./moviepilot startup enable --config-dir /var/lib/moviepilot
-./moviepilot start --config-dir /var/lib/moviepilot
+CONFIG_DIR=/var/lib/moviepilot ./moviepilot start
 ```
 
 ## nginx 反代
@@ -62,7 +63,7 @@ location /mp/api/ {
 
 ```bash
 # 备份（默认写到配置目录同级）
-./moviepilot backup --config-dir /var/lib/moviepilot --output /root/mp-backup.tar.gz
+CONFIG_DIR=/var/lib/moviepilot ./moviepilot backup --output /root/mp-backup.tar.gz
 
 # 恢复前必须先停止服务，避免数据库写入冲突
 ./moviepilot stop

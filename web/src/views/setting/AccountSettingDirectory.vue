@@ -9,7 +9,6 @@ import { useI18n } from 'vue-i18n'
 import { useTheme } from 'vuetify'
 import { storageAttributes } from '@/api/constants'
 import { useSilentSettingRefresh } from '@/composables/useSilentSettingRefresh'
-import { openSharedDialog } from '@/composables/useSharedDialog'
 import { configureAceEditorPadding } from '@/utils/aceEditor'
 
 const { t } = useI18n()
@@ -262,12 +261,7 @@ async function saveSystemSettings(value: any) {
 }
 
 async function loadPageData() {
-  await Promise.all([
-    loadDirectories(),
-    loadStorages(),,
-    loadSystemSettings(),
-    loadMountedLocalDiskDeleteEmptyDirs(),
-  ])
+  await Promise.all([loadDirectories(), loadStorages(), loadSystemSettings(), loadMountedLocalDiskDeleteEmptyDirs()])
 }
 
 // 加载数据

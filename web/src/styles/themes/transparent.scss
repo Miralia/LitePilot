@@ -3,7 +3,7 @@
 /* stylelint-disable scss/at-rule-no-unknown */
 
 // 透明主题专用样式
-html[data-theme="transparent"] {
+html[data-theme='transparent'] {
   // 定义透明度变量
   --transparent-opacity: 0.3;
   --transparent-opacity-light: 0.2;
@@ -21,10 +21,13 @@ html[data-theme="transparent"] {
   --app-grouped-list-icon-opacity: 0.88;
 
   // 应用、布局、主内容区域
-  .v-application, .v-layout, .v-main, .layout-page-content {
+  .v-application,
+  .v-layout,
+  .v-main,
+  .layout-page-content {
     background: transparent;
   }
-  
+
   // 侧边导航栏
   .layout-vertical-nav {
     backdrop-filter: blur(var(--transparent-blur-heavy));
@@ -37,7 +40,7 @@ html[data-theme="transparent"] {
     backdrop-filter: blur(var(--transparent-blur));
     background-color: rgba(var(--v-theme-surface), var(--transparent-opacity));
   }
-  
+
   // 卡片
   .v-card:not(.no-blur) {
     backdrop-filter: blur(var(--transparent-blur));
@@ -47,53 +50,6 @@ html[data-theme="transparent"] {
       backdrop-filter: none;
       background-color: transparent;
     }
-  }
-
-  // 工作流标题栏只叠加半透明状态染色，底层模糊仍由卡片统一承担。
-  .workflow-task-card {
-    --workflow-card-header-content-rgb: var(--v-theme-on-surface);
-    --workflow-card-header-background:
-      linear-gradient(145deg, rgba(var(--v-theme-on-surface), 0.12), transparent 36%),
-      linear-gradient(
-        118deg,
-        rgba(var(--workflow-status-rgb), var(--transparent-opacity-heavy)) 0%,
-        rgba(var(--workflow-status-rgb), var(--transparent-opacity)) 56%,
-        rgba(var(--workflow-status-rgb), var(--transparent-opacity-light)) 100%
-      ),
-      linear-gradient(
-        rgba(var(--v-theme-surface), var(--transparent-opacity-light)),
-        rgba(var(--v-theme-surface), var(--transparent-opacity-light))
-      );
-    --workflow-card-header-shadow: inset 0 1px 0 rgba(var(--v-theme-on-surface), 0.14);
-  }
-
-  // 订阅文件弹窗使用独立的玻璃表面参数，避免组件内通过全局选择器穿透主题。
-  .subscribe-files-dialog {
-    --sfd-accent-opacity: 0.12;
-    --sfd-blur: var(--transparent-blur-heavy);
-    --sfd-dialog-opacity: var(--transparent-opacity-heavy);
-    --sfd-hero-end-opacity: 0.42;
-    --sfd-hero-mid-opacity: 0.2;
-    --sfd-hero-shade-opacity: 0.48;
-    --sfd-hero-start-opacity: 0.52;
-    --sfd-panel-opacity: 0.14;
-    --sfd-panel-strong-opacity: var(--transparent-opacity);
-    --sfd-code-opacity: 0.14;
-  }
-
-  .subscribe-files-progress__item,
-  .subscribe-files-stat-card,
-  .subscribe-files-tab-group {
-    backdrop-filter: blur(var(--transparent-blur-light));
-    background: rgba(var(--v-theme-surface), var(--sfd-panel-opacity));
-  }
-
-  .subscribe-files-tab-group {
-    background: rgba(var(--v-theme-surface), 0.08) !important;
-  }
-
-  .subscribe-files-tab-group .v-btn:not(.subscribe-files-tab-group__button--active) {
-    background: transparent !important;
   }
 
   // 设置页彩色卡片保留透明主题的玻璃质感，只叠加极轻的图标主色。
@@ -114,7 +70,7 @@ html[data-theme="transparent"] {
     backdrop-filter: blur(var(--transparent-blur));
     background-color: rgba(var(--v-theme-surface), var(--transparent-opacity));
   }
-  
+
   // 表格
   .v-table {
     border-radius: 0;
@@ -124,7 +80,7 @@ html[data-theme="transparent"] {
       background-color: rgba(var(--v-theme-surface), var(--transparent-opacity));
     }
   }
-  
+
   // 页脚
   .v-footer {
     backdrop-filter: blur(var(--transparent-blur));
@@ -136,17 +92,17 @@ html[data-theme="transparent"] {
     backdrop-filter: blur(var(--transparent-blur));
     background-color: rgba(var(--v-theme-surface), var(--transparent-opacity));
   }
-  
+
   // 页面容器
   .layout-content-wrapper {
     background: transparent;
   }
-  
+
   // 无内容区域的背景设为透明
   .page-content-container {
     background: transparent;
   }
-  
+
   // 对话框和菜单蒙层样式
   .v-overlay__scrim {
     background: rgba(var(--v-overlay-scrim-background), var(--v-overlay-scrim-opacity));
@@ -167,7 +123,7 @@ html[data-theme="transparent"] {
   .v-field {
     background-color: rgba(var(--v-theme-surface), 0);
   }
-  
+
   // 弹出层内容
   .v-overlay__content {
     border-radius: var(--app-surface-radius);
@@ -206,11 +162,7 @@ html[data-theme="transparent"] {
   .theme-customizer-shadow-slider,
   .theme-customizer-shadow-slider__sample {
     background:
-      linear-gradient(
-        180deg,
-        rgba(var(--v-theme-on-surface), 0.02),
-        rgba(var(--v-theme-on-surface), 0.05)
-      ),
+      linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.02), rgba(var(--v-theme-on-surface), 0.05)),
       rgba(var(--v-theme-surface), var(--transparent-opacity-light));
   }
 
@@ -226,28 +178,6 @@ html[data-theme="transparent"] {
     background: rgba(var(--v-theme-surface), var(--transparent-opacity));
   }
 
-  // 智能助手面板
-  .agent-assistant-panel {
-    backdrop-filter: blur(var(--transparent-blur-heavy));
-    background-color: rgba(var(--v-theme-surface), var(--transparent-opacity-heavy)) !important;
-    border-inline-start: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  }
-
-  .agent-assistant-shell {
-    --agent-assistant-panel-bg: rgba(var(--v-theme-surface), var(--transparent-opacity-heavy));
-    --agent-assistant-panel-blur: var(--transparent-blur);
-    --agent-assistant-assistant-bg: rgba(var(--v-theme-surface), var(--transparent-opacity-heavy));
-  }
-
-  .agent-assistant-fab {
-    background-color: transparent;
-  }
-
-  .agent-assistant-fab__bubble {
-    backdrop-filter: blur(var(--transparent-blur));
-    background-color: rgba(var(--v-theme-surface), var(--transparent-opacity-heavy));
-  }
-
   .Vue-Toastification__toast {
     backdrop-filter: blur(var(--transparent-blur));
     background:
@@ -259,9 +189,9 @@ html[data-theme="transparent"] {
       ),
       rgba(var(--v-theme-surface), var(--transparent-opacity-heavy)) !important;
   }
-} 
+}
 
-html[data-theme="transparent"].transparent-background-blur-disabled {
+html[data-theme='transparent'].transparent-background-blur-disabled {
   .global-blur-layer,
   .background-image.active {
     backdrop-filter: none;
@@ -270,7 +200,7 @@ html[data-theme="transparent"].transparent-background-blur-disabled {
   }
 }
 
-html[data-theme="transparent"].transparent-glass-lightweight {
+html[data-theme='transparent'].transparent-glass-lightweight {
   --app-grouped-list-backdrop-filter: none;
 
   .global-blur-layer {
@@ -283,15 +213,12 @@ html[data-theme="transparent"].transparent-glass-lightweight {
   .v-footer,
   .theme-customizer-panel-host,
   .theme-customizer-panel,
-  .agent-assistant-panel,
-  .agent-assistant-fab__bubble,
   .nav-button {
     backdrop-filter: blur(var(--transparent-blur));
   }
 
   .layout-vertical-nav,
-  .theme-customizer-panel-host,
-  .agent-assistant-panel {
+  .theme-customizer-panel-host {
     backdrop-filter: blur(var(--transparent-blur-heavy));
   }
 
@@ -314,10 +241,6 @@ html[data-theme="transparent"].transparent-glass-lightweight {
     background-color: rgba(var(--v-theme-surface), var(--transparent-opacity-heavy));
   }
 
-  .plugin-quick-access.v-card {
-    backdrop-filter: blur(var(--transparent-blur-heavy));
-  }
-
   .v-overlay__content,
   .v-overlay__content .v-card:not(.bg-primary),
   .v-overlay__content .v-list {
@@ -334,7 +257,7 @@ html[data-theme="transparent"].transparent-glass-lightweight {
   }
 }
 
-html[data-theme="transparent"].transparent-glass-realtime {
+html[data-theme='transparent'].transparent-glass-realtime {
   --app-grouped-list-backdrop-filter: none;
 
   .background-image.active {
@@ -354,8 +277,6 @@ html[data-theme="transparent"].transparent-glass-realtime {
   .v-footer,
   .theme-customizer-panel-host,
   .theme-customizer-panel,
-  .agent-assistant-panel,
-  .agent-assistant-fab__bubble,
   .nav-button,
   .v-overlay__content,
   .v-overlay__content .v-card:not(.bg-primary),
@@ -368,18 +289,13 @@ html[data-theme="transparent"].transparent-glass-realtime {
     background-color: rgba(var(--v-theme-surface), var(--transparent-opacity-heavy));
   }
 
-  .plugin-quick-access.v-card {
-    backdrop-filter: blur(var(--transparent-blur-heavy));
-  }
-
   .layout-vertical-nav,
-  .theme-customizer-panel-host,
-  .agent-assistant-panel {
+  .theme-customizer-panel-host {
     backdrop-filter: blur(var(--transparent-blur-heavy));
   }
 }
 
-html[data-theme="transparent"].transparent-blur-disabled {
+html[data-theme='transparent'].transparent-blur-disabled {
   --app-grouped-list-backdrop-filter: none;
 
   .layout-vertical-nav,
@@ -394,8 +310,6 @@ html[data-theme="transparent"].transparent-blur-disabled {
   .v-overlay__content .v-list,
   .theme-customizer-panel-host,
   .theme-customizer-panel,
-  .agent-assistant-panel,
-  .agent-assistant-fab__bubble,
   .nav-button,
   .layout-navbar {
     backdrop-filter: none !important;

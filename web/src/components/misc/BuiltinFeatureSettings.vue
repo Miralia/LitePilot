@@ -9,6 +9,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/api'
+import type { DownloaderConf, MediaServerConf, MediaServerLibrary, SystemSettingResponse } from '@/api/types'
 import { useToast } from 'vue-toastification'
 
 const { t } = useI18n()
@@ -109,11 +110,11 @@ const loading = ref(true)
 const saving = ref(false)
 
 /** 读取单个配置，兼容历史布尔值 */
-async function loadConf<T>(key: string, fallback: T): Promise<T> {
-  const result: { [key: string]: any } = await api.get(`system/setting/${key}`)
-  const value = result?.data?.value
+async function loadConf<T extends object>(key: string, fallback: T): Promise<T> {
+  const result: SystemSettingResponse<unknown> = await api.get(`system/setting/${key}`)
+  const value = result.data?.value
   if (value === true) return { ...fallback, enabled: true }
-  if (value && typeof value === 'object') return { ...fallback, ...value }
+  if (value && typeof value === 'object' && !Array.isArray(value)) return { ...fallback, ...value }
   return fallback
 }
 
@@ -127,19 +128,19 @@ async function loadAll() {
     probeConf.value = await loadConf('MediaInfoProbe', probeConf.value)
     cleanupConf.value = await loadConf('MediaSourceCleanup', cleanupConf.value)
 
-    const downloaders: any = await api.get('system/setting/Downloaders')
-    downloaderOptions.value = (downloaders?.data?.value ?? []).map((item: any) => item.name)
+    const downloaders: SystemSettingResponse<DownloaderConf[]> = await api.get('system/setting/Downloaders')
+    downloaderOptions.value = (downloaders.data?.value ?? []).map(item => item.name)
 
-    const servers: any = await api.get('system/setting/MediaServers')
-    serverOptions.value = (servers?.data?.value ?? []).map((item: any) => item.name)
+    const servers: SystemSettingResponse<MediaServerConf[]> = await api.get('system/setting/MediaServers')
+    serverOptions.value = (servers.data?.value ?? []).map(item => item.name)
 
     // 媒体库列表接口需要按服务器查询，逐个取并去重
     const names = new Set<string>()
     for (const server of serverOptions.value) {
       try {
-        const libraries: any = await api.get('mediaserver/library', { params: { server } })
+        const libraries: MediaServerLibrary[] = await api.get('mediaserver/library', { params: { server } })
         if (Array.isArray(libraries)) {
-          libraries.forEach((item: any) => item?.name && names.add(item.name))
+          libraries.forEach(item => item?.name && names.add(item.name))
         }
       } catch (error) {
         console.log(error)
@@ -155,8 +156,8 @@ async function loadAll() {
 
 /** 保存单个配置 */
 async function saveConf(key: string, value: unknown): Promise<boolean> {
-  const result: { [key: string]: any } = await api.post(`system/setting/${key}`, value)
-  return Boolean(result?.success)
+  const result: SystemSettingResponse<unknown> = await api.post(`system/setting/${key}`, value)
+  return Boolean(result.success)
 }
 
 /** 保存全部内置功能配置 */

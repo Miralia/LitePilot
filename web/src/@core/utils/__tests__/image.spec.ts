@@ -5,11 +5,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('colorthief', () => ({
-  default: class ColorThief {
-    getColor(image: HTMLImageElement, quality?: number) {
-      return mocks.getColor(image, quality)
-    }
-  },
+  getColor: mocks.getColor,
 }))
 
 import { extractDominantColor, getDominantColor, preloadCorsImage } from '@/@core/utils/image'
@@ -29,7 +25,7 @@ describe('dominant color extraction', () => {
 
   it('shares a pending extraction and reuses only the successful result', async () => {
     const image = createImage('shared-success')
-    mocks.getColor.mockReturnValue([18, 52, 86])
+    mocks.getColor.mockResolvedValue({ array: () => [18, 52, 86] })
 
     await expect(Promise.all([extractDominantColor(image), extractDominantColor(image)])).resolves.toEqual([
       '#123456',
@@ -41,9 +37,7 @@ describe('dominant color extraction', () => {
 
   it('does not cache failures or let one caller fallback pollute another', async () => {
     const image = createImage('retry-after-failure')
-    mocks.getColor.mockImplementation(() => {
-      throw new Error('tainted canvas')
-    })
+    mocks.getColor.mockRejectedValue(new Error('tainted canvas'))
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
 
     await expect(getDominantColor(image, { fallback: '#111111' })).resolves.toBe('#111111')
@@ -57,7 +51,7 @@ describe('dominant color extraction', () => {
   })
 
   it('retains the bounded FIFO success cache', async () => {
-    mocks.getColor.mockReturnValue([1, 2, 3])
+    mocks.getColor.mockResolvedValue({ array: () => [1, 2, 3] })
 
     for (let index = 0; index <= 100; index += 1) await extractDominantColor(createImage(`fifo-${index}`))
 

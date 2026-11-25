@@ -14,16 +14,6 @@ export interface ConnectionAwareRequestConfig extends AxiosRequestConfig {
   skipConnectionTracking?: boolean
 }
 
-// 声明全局变量类型
-declare global {
-  interface Window {
-    LitePilotAPI: typeof api
-  }
-}
-
-// 将 API 实例暴露到全局，供插件使用
-window.LitePilotAPI = api
-
 // 初始化请求优化器（必须在其他拦截器之前）
 initializeRequestOptimizer(api)
 

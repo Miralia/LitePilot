@@ -4,7 +4,7 @@ import router from '@/router'
 import avatar1 from '@images/avatars/avatar-1.png'
 import api from '@/api'
 import { openSharedDialog } from '@/composables/useSharedDialog'
-import { useAuthStore, useUserStore, useGlobalSettingsStore } from '@/stores'
+import { useAuthStore, useUserStore } from '@/stores'
 import { useI18n } from 'vue-i18n'
 import { useTheme } from 'vuetify'
 import { checkPrefersColorSchemeIsDark } from '@/@core/utils'
@@ -22,6 +22,7 @@ import {
   type ThemeCustomizerSettings,
 } from '@/composables/useThemeCustomizer'
 import { buildUserPermissionContext, hasPermission } from '@/utils/permission'
+import type { User as CurrentUser } from '@/api/types'
 
 const CustomCssDialog = defineAsyncComponent(() => import('@/components/dialog/CustomCssDialog.vue'))
 const GlassSettingsDialog = defineAsyncComponent(() => import('@/components/dialog/GlassSettingsDialog.vue'))
@@ -29,13 +30,13 @@ const ProgressDialog = defineAsyncComponent(() => import('@/components/dialog/Pr
 const TransparencySettingsDialog = defineAsyncComponent(
   () => import('@/components/dialog/TransparencySettingsDialog.vue'),
 )
+const OTPAuthDialog = defineAsyncComponent(() => import('@/components/dialog/OTPAuthDialog.vue'))
+const VerifyPasswordDialog = defineAsyncComponent(() => import('@/components/dialog/VerifyPasswordDialog.vue'))
 
 // 认证 Store
 const authStore = useAuthStore()
 // 用户 Store
 const userStore = useUserStore()
-// 全局设置 Store
-const globalSettingsStore = useGlobalSettingsStore()
 // 国际化
 const { t } = useI18n()
 // PWA
@@ -53,6 +54,16 @@ const showUserMenu = ref(false)
 // 主题菜单是否显示
 const showThemeMenu = ref(false)
 
+// 二次验证设置弹窗与当前状态
+const showOtpDialog = ref(false)
+const otpEnabled = ref(false)
+
+// 关闭二次验证前的密码确认状态
+const showVerifyPasswordDialog = ref(false)
+const verifyPasswordTitle = ref('')
+const verifyPasswordText = ref('')
+let verifyPasswordCallback: ((password: string) => Promise<void>) | null = null
+
 // 语言菜单是否显示
 
 // 自定义CSS
@@ -69,6 +80,42 @@ let customCssDialogController: ReturnType<typeof openSharedDialog> | null = null
 
 // 确认框
 const { createConfirm } = useConfirm()
+
+/** 读取当前用户二次验证状态，避免依赖登录响应中的非标准扩展字段。 */
+async function loadOtpStatus() {
+  try {
+    const result = (await api.get('user/current')) as CurrentUser
+    otpEnabled.value = Boolean(result?.is_otp)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+/** 打开当前用户的二次验证管理弹窗。 */
+function showOtpSettings() {
+  showUserMenu.value = false
+  showOtpDialog.value = true
+}
+
+/** 将二次验证关闭流程转发到共享密码确认弹窗。 */
+function handleOtpVerifyPassword(payload: {
+  title: string
+  text: string
+  callback: (password: string) => Promise<void>
+}) {
+  verifyPasswordTitle.value = payload.title
+  verifyPasswordText.value = payload.text
+  verifyPasswordCallback = payload.callback
+  showVerifyPasswordDialog.value = true
+}
+
+/** 完成密码输入后执行二次验证变更；密码本身不写入响应式状态之外的存储。 */
+async function confirmVerifyPassword(password: string) {
+  const callback = verifyPasswordCallback
+  verifyPasswordCallback = null
+  showVerifyPasswordDialog.value = false
+  if (callback) await callback(password)
+}
 
 // 执行注销操作
 function logout() {
@@ -103,7 +150,7 @@ async function checkServiceStatus(): Promise<boolean> {
   try {
     const result: { [key: string]: any } = await api.get('system/ping', { timeout: 3000 })
     return result?.success === true
-  } catch (error) {
+  } catch {
     return false
   }
 }
@@ -213,12 +260,6 @@ const userPermissions = computed(() => buildUserPermissionContext(userStore.supe
 const canAdmin = computed(() => hasPermission(userPermissions.value, 'admin'))
 const userName = computed(() => userStore.userName)
 const avatar = computed(() => userStore.avatar || avatar1)
-const userLevel = computed(() => userStore.level)
-
-// 检查是否为高级模式
-const isAdvancedMode = computed(() => {
-  return globalSettingsStore.get('ADVANCED_MODE') !== false
-})
 
 // UI模式相关
 const uiModes = computed(() => [
@@ -252,7 +293,7 @@ const getUIModeIcon = computed(() => {
 })
 
 // 主题相关功能
-const { name: themeName, global: globalTheme } = useTheme()
+const { global: globalTheme } = useTheme()
 const savedTheme = ref(localStorage.getItem('theme') ?? 'auto')
 const currentThemeName = ref(savedTheme.value)
 const themeCustomizerSettings = ref(readThemeCustomizerSettings())
@@ -328,30 +369,6 @@ async function updateTheme() {
   savedTheme.value = currentThemeName.value
   // 保存主题到本地
   saveLocalTheme(currentThemeName.value, globalTheme)
-}
-
-// 切换主题
-async function changeTheme(theme: string) {
-  currentThemeName.value = theme
-  showThemeMenu.value = false
-
-  // 立即更新主题（不再刷新页面）
-  await updateTheme()
-
-  // 如果是透明主题，应用透明度设置
-  if (theme === 'transparent') {
-    applyStoredTransparencySettings()
-  }
-
-  // 保存主题到服务端
-  try {
-    persistPartialThemeCustomizerSettings({ theme: theme as ThemeCustomizerSettings['theme'] })
-    api.post('/user/config/Layout', {
-      theme,
-    })
-  } catch (e) {
-    console.error(e)
-  }
 }
 
 function handleThemeCustomizerSettingsChange(event: Event) {
@@ -444,7 +461,7 @@ async function saveCustomCSS(css: string) {
       customCssDialogController = null
       $toast.success(t('theme.customCssSaveSuccess'))
     }
-  } catch (e) {
+  } catch {
     console.error(t('theme.customCssSaveFailed'))
   }
 }
@@ -467,7 +484,7 @@ try {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async () => {
     await updateTheme()
   })
-} catch (e) {
+} catch {
   console.error(t('theme.deviceNotSupport'))
 }
 
@@ -479,6 +496,7 @@ const getThemeIcon = computed(() => {
 
 onMounted(() => {
   if (canAdmin.value) getCustomCSS()
+  void loadOtpStatus()
   window.addEventListener(THEME_CUSTOMIZER_CHANGE_EVENT, handleThemeCustomizerSettingsChange)
 
   // 初始化透明度设置
@@ -534,17 +552,21 @@ onUnmounted(() => {
         </VListItem>
         <VDivider class="mb-2" />
         <div class="px-2">
-          <VListItem
-            v-if="canAdmin"
-            link
-            @click="isAdvancedMode ? router.push('/setting') : router.push('/setup-wizard')"
-            class="mb-1 rounded-lg"
-            hover
-          >
+          <VListItem link @click="showOtpSettings" class="mb-1 rounded-lg" hover>
             <template #prepend>
-              <VIcon :icon="isAdvancedMode ? 'mdi-cog-outline' : 'mdi-wizard-hat'" />
+              <VIcon icon="mdi-shield-key-outline" />
             </template>
-            <VListItemTitle>{{ isAdvancedMode ? t('user.systemSettings') : t('user.wizardSettings') }}</VListItemTitle>
+            <VListItemTitle>{{ t('user.twoFactorAuthentication') }}</VListItemTitle>
+            <VListItemSubtitle>
+              {{ otpEnabled ? t('user.twoFactorEnabled') : t('user.twoFactorDisabled') }}
+            </VListItemSubtitle>
+          </VListItem>
+
+          <VListItem v-if="canAdmin" link @click="router.push('/setting')" class="mb-1 rounded-lg" hover>
+            <template #prepend>
+              <VIcon icon="mdi-cog-outline" />
+            </template>
+            <VListItemTitle>{{ t('user.systemSettings') }}</VListItemTitle>
           </VListItem>
 
           <!-- 👉 UI模式设置 - 使用嵌套菜单 -->
@@ -673,6 +695,22 @@ onUnmounted(() => {
       </VList>
     </VMenu>
     <!-- !SECTION -->
+    <Teleport to="body">
+      <OTPAuthDialog
+        v-if="showOtpDialog"
+        v-model="showOtpDialog"
+        :is-otp="otpEnabled"
+        @update:is-otp="otpEnabled = $event"
+        @verify-password="handleOtpVerifyPassword"
+      />
+      <VerifyPasswordDialog
+        v-if="showVerifyPasswordDialog"
+        v-model="showVerifyPasswordDialog"
+        :title="verifyPasswordTitle"
+        :text="verifyPasswordText"
+        @confirm="confirmVerifyPassword"
+      />
+    </Teleport>
   </VAvatar>
 </template>
 

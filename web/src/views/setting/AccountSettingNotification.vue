@@ -100,7 +100,6 @@ const notificationTime = ref({
   end: '23:59',
 })
 
-
 let editorDialogController: ReturnType<typeof openSharedDialog> | null = null
 
 // 关闭通知模板共享弹窗，并同步本页的弹窗占用状态。
@@ -373,14 +372,8 @@ useSilentSettingRefresh(loadPageData, {
                 <VIcon icon="mdi-plus" />
                 <VMenu :activator="'parent'" :close-on-content-click="true">
                   <VList>
-                                                                                <VListItem @click="addNotification('telegram')">
+                    <VListItem @click="addNotification('telegram')">
                       <VListItemTitle>{{ t('setting.notification.telegram') }}</VListItemTitle>
-                    </VListItem>
-                                                                                                                        <VListItem @click="addNotification('webpush')">
-                      <VListItemTitle>{{ t('setting.notification.webPush') }}</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addNotification('custom')">
-                      <VListItemTitle>{{ t('setting.system.custom') }}</VListItemTitle>
                     </VListItem>
                   </VList>
                 </VMenu>

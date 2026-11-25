@@ -1,4 +1,4 @@
-import { normalizePluginAccentColor, normalizeThemeMaterialAccent } from '@/utils/glassColor'
+import { normalizeThemeMaterialAccent } from '@/utils/glassColor'
 import { describe, expect, it } from 'vitest'
 
 interface OklchColor {
@@ -31,44 +31,6 @@ function hueDistanceDegrees(first: number, second: number) {
 
   return (radians * 180) / Math.PI
 }
-
-describe('normalizePluginAccentColor', () => {
-  it.each(['#ff0000', '#00ff00', '#0000ff', '#00ffff', '#ff00ff', '#f5c400'])(
-    'keeps chromatic %s within the plugin accent contract',
-    sourceHex => {
-      const normalized = normalizePluginAccentColor(sourceHex)
-
-      expect(normalized).toBeDefined()
-      expect(normalized?.hex).toMatch(/^#[0-9a-f]{6}$/)
-      expect(normalized?.rgb).toMatch(/^\d{1,3}, \d{1,3}, \d{1,3}$/)
-
-      const source = hexToOklch(sourceHex)
-      const output = hexToOklch(normalized!.hex)
-      expect(output.lightness).toBeGreaterThanOrEqual(0.475)
-      expect(output.lightness).toBeLessThanOrEqual(0.765)
-      expect(output.chroma).toBeLessThanOrEqual(Math.min(source.chroma, 0.18) + 0.005)
-      if (source.chroma >= 0.03 && output.chroma >= 0.03)
-        expect(hueDistanceDegrees(source.hue, output.hue)).toBeLessThanOrEqual(2)
-    },
-  )
-
-  it.each(['#000000', '#ffffff', '#7d7d7d'])('keeps neutral %s neutral without inventing chroma', sourceHex => {
-    const normalized = normalizePluginAccentColor(sourceHex)
-    const source = hexToOklch(sourceHex)
-    const output = hexToOklch(normalized!.hex)
-
-    expect(output.lightness).toBeGreaterThanOrEqual(0.475)
-    expect(output.lightness).toBeLessThanOrEqual(0.765)
-    expect(output.chroma).toBeLessThanOrEqual(source.chroma + 0.003)
-  })
-
-  it('is deterministic, case-insensitive, and rejects non-contract inputs', () => {
-    expect(normalizePluginAccentColor('#12ABef')).toEqual(normalizePluginAccentColor('#12abef'))
-    expect(normalizePluginAccentColor('#fff')).toBeUndefined()
-    expect(normalizePluginAccentColor('12abef')).toBeUndefined()
-    expect(normalizePluginAccentColor('#gg0000')).toBeUndefined()
-  })
-})
 
 describe('normalizeThemeMaterialAccent', () => {
   it.each([

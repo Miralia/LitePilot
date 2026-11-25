@@ -1,5 +1,5 @@
 import re
-from typing import Optional
+from typing import List, Optional
 
 from Pinyin2Hanzi import is_pinyin
 

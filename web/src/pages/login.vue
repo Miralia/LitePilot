@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { AxiosError } from 'axios'
-import type { Component } from 'vue'
 import { useTheme } from 'vuetify'
 import { useAuthStore, useUserStore } from '@/stores'
 import { authState, userState } from '@/stores/types'
@@ -9,10 +8,8 @@ import { getCurrentLocale } from '@/plugins/i18n'
 import router from '@/router'
 import LoginMfaStep from '@/components/auth/LoginMfaStep.vue'
 import OpticalLogoLab from '@/components/misc/OpticalLogoLab.vue'
-import { bufferToBase64Url, base64UrlToUint8Array, urlBase64ToUint8Array } from '@/@core/utils/navigator'
 import { getNavMenus } from '@/router/i18n-menu'
 import { buildUserPermissionContext, filterMenusByPermission } from '@/utils/permission'
-import type { ApiResponse } from '@/api/types'
 import type { MfaMethod } from '@/types/auth'
 import { getLoginVisualProfile } from '@/utils/loginPresentation'
 
@@ -51,7 +48,7 @@ function handleLabTap(target: LabTapTarget) {
 }
 
 // 国际化
-const { t, te } = useI18n()
+const { t } = useI18n()
 
 // 应用版本号（构建时注入，形如 v2.13.10）
 const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : ''
@@ -99,22 +96,6 @@ interface ApiErrorPayload {
   message_i18n?: unknown
   detail?: unknown
   mfa_methods?: unknown
-}
-
-interface SerializedCredentialDescriptor extends Omit<PublicKeyCredentialDescriptor, 'id'> {
-  id: string
-}
-
-interface SerializedPublicKeyRequestOptions extends Omit<
-  PublicKeyCredentialRequestOptions,
-  'allowCredentials' | 'challenge'
-> {
-  allowCredentials?: SerializedCredentialDescriptor[]
-  challenge: string
-}
-
-function getErrorMessage(error: unknown): string | undefined {
-  return error instanceof Error ? error.message : undefined
 }
 
 // Axios 请求失败由响应状态和结构化响应体共同决定登录错误语义。
@@ -174,12 +155,6 @@ function leaveMfaStep() {
   mfaStepActive.value = false
 }
 
-// 加载未登录可用的认证提供方。
-
-interface LoginStartResponse {
-  options: string // JSON 字符串
-  transaction_token: string
-}
 interface LoginResponse {
   access_token: string
   super_user: boolean
@@ -190,56 +165,24 @@ interface LoginResponse {
   permissions: Record<string, boolean>
   wizard: boolean
 }
-// 订阅推送通知
-async function subscribeForPushNotifications() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-
-  try {
-    const registration = await navigator.serviceWorker.ready
-    let subscription = await registration.pushManager.getSubscription()
-
-    if (!subscription) {
-      if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') return
-
-      const convertedVapidKey = urlBase64ToUint8Array(import.meta.env.VITE_PUBLIC_VAPID_KEY)
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey,
-      })
-    }
-
-    if (subscription) {
-      await api.post('/message/webpush/subscribe', subscription)
-    }
-  } catch (error) {
-    console.warn('WebPush subscription failed:', error)
-  }
-}
-
 // 登录后处理
-async function afterLogin(
-  superuser: boolean,
-  userPayload: userState,
-  filteredMenus: ReturnType<typeof filterMenusByPermission>,
-) {
+async function afterLogin(userPayload: userState, filteredMenus: ReturnType<typeof filterMenusByPermission>) {
   const originalPath = authStore.originalPath
   authStore.setOriginalPath(null)
 
-  // 如果需要显示设置向导，跳转到设置向导页面
+  // 精简版不再提供独立设置向导；首次登录直接进入设置页完成基础配置。
   if (userPayload.wizard) {
-    await router.push('/setup-wizard')
-  } else {
-    // 原始目标是一次性状态，持久化的旧登录页目标不得重新进入认证流程。
-    if (originalPath && originalPath !== '/' && router.resolve(originalPath).path !== '/login') {
-      await router.push(originalPath)
-    } else {
-      // 跳转到第一个有权限的菜单
-      await router.push(filteredMenus[0].to)
-    }
+    await router.push('/setting')
+    return
   }
 
-  // 订阅推送通知
-  if (superuser) void subscribeForPushNotifications()
+  // 原始目标是一次性状态，持久化的旧登录页目标不得重新进入认证流程。
+  if (originalPath && originalPath !== '/' && router.resolve(originalPath).path !== '/login') {
+    await router.push(originalPath)
+  } else {
+    // 跳转到第一个有权限的菜单
+    await router.push(filteredMenus[0].to)
+  }
 }
 
 // 处理登录成功
@@ -270,7 +213,7 @@ async function handleLoginSuccess(response: LoginResponse) {
   authStore.login(authPayLoad)
   userStore.loginUser(userPayload)
 
-  await afterLogin(userPayload.superUser, userPayload, filteredMenus)
+  await afterLogin(userPayload, filteredMenus)
 }
 
 async function requestPasswordLogin(): Promise<LoginResponse> {
@@ -372,10 +315,7 @@ onMounted(async () => {
     router.push('/')
     return
   }
-
 })
-
-
 </script>
 
 <template>
@@ -395,7 +335,6 @@ onMounted(async () => {
     <div v-if="loginVisualProfile === 'classic'" class="login-ambient-light" aria-hidden="true">
       <span class="login-ambient-light__wash" />
     </div>
-
 
     <!-- 登录表单 -->
     <div class="auth-wrapper d-flex align-center justify-center">
@@ -895,46 +834,6 @@ onMounted(async () => {
   &:active {
     box-shadow: 0 3px 10px rgba(var(--v-theme-primary), 0.18);
     transform: scale(0.99);
-  }
-}
-
-/* Passkey 按钮 */
-/* 插件认证按钮 */
-.plugin-auth-btn {
-  border-radius: 12px;
-  font-weight: 500;
-  transition:
-    background 200ms ease,
-    border-color 200ms ease,
-    transform 150ms ease;
-
-  &:hover {
-    transform: translateY(-1px);
-  }
-}
-
-/* or 分隔线 */
-.or-divider {
-  position: relative;
-  display: flex;
-  align-items: center;
-  text-align: center;
-
-  &::before,
-  &::after {
-    flex: 1;
-    border-block-end: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.7));
-    content: '';
-  }
-
-  .or-divider-text {
-    color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    padding-inline: 16px;
-    text-transform: uppercase;
-    white-space: nowrap;
   }
 }
 

@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import type { authState } from '@/stores/types'
-import { clearCachedMediaSubscribeStatuses } from '@/utils/mediaStatusCache'
 
 export const useAuthStore = defineStore('auth', {
   state: (): authState => ({
@@ -32,7 +31,6 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       this.clearToken()
       this.setOriginalPath(null)
-      clearCachedMediaSubscribeStatuses()
     },
   },
 

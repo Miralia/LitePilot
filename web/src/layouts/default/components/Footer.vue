@@ -328,9 +328,8 @@ function handleDynamicMenuItemClick(item: DynamicButtonMenuItem) {
   pointer-events: none;
 }
 
-// 移动端两个设置面板都是全屏展示，打开时隐藏底部导航，避免不可见控件继续参与焦点和合成。
-html[data-theme-customizer-open='true'],
-html[data-agent-assistant-open='true'] {
+// 移动端设置面板是全屏展示，打开时隐藏底部导航，避免不可见控件继续参与焦点和合成。
+html[data-theme-customizer-open='true'] {
   .footer-nav-container {
     visibility: hidden;
     opacity: 0;

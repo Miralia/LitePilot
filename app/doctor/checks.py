@@ -27,7 +27,6 @@ CheckFunc = Callable[["DoctorRunnerProtocol"], None]
 
 CORE_DEPENDENCIES = (
     "alembic",
-    "cloakbrowser",
     "fastapi",
     "pydantic",
     "pydantic_core",
@@ -598,6 +597,11 @@ def _check_port(
     )
 
 
+def _frontend_standalone_runtime_available(frontend_dir: Path) -> bool:
+    """判断当前前端产物是否具备独立 Node 服务运行条件。"""
+    return (frontend_dir / "service.js").exists() and (frontend_dir / "node_modules" / "express").exists()
+
+
 def _check_processes_and_ports(runner: DoctorRunnerProtocol) -> None:
     backend_process = _check_runtime_file(
         runner,
@@ -612,7 +616,22 @@ def _check_processes_and_ports(runner: DoctorRunnerProtocol) -> None:
         port=int(settings.NGINX_PORT),
     )
     _check_port(runner, name="backend", port=int(settings.PORT), managed_process=backend_process)
-    _check_port(runner, name="frontend", port=int(settings.NGINX_PORT), managed_process=frontend_process)
+
+    frontend_dir = _frontend_dir()
+    if _frontend_standalone_runtime_available(frontend_dir) or frontend_process:
+        _check_port(runner, name="frontend", port=int(settings.NGINX_PORT), managed_process=frontend_process)
+        return
+
+    runner.add(
+        finding_id="frontend.static_reverse_proxy",
+        severity=DoctorSeverity.Info,
+        status=DoctorFindingStatus.Skipped,
+        title="前端使用静态资源反代部署",
+        detail="前端产物缺少独立 Node 服务运行依赖，当前部署应由 nginx 或其他 Web 服务器直接托管静态资源，不需要监听 NGINX_PORT。",
+        recommendation="请检查外部 nginx/反向代理配置与静态资源版本；无需在前端端口启动独立进程。",
+        affects_report_status=False,
+        context={"frontend_dir": str(frontend_dir)},
+    )
 
 
 def _check_dependencies(runner: DoctorRunnerProtocol) -> None:
@@ -902,7 +921,7 @@ def _check_safe_mode(runner: DoctorRunnerProtocol) -> None:
             severity=DoctorSeverity.Warn,
             status=DoctorFindingStatus.Degraded,
             title="当前处于安全模式",
-            detail="本次启动会跳过插件、调度器、监控、命令和工作流等后台扩展能力。",
+            detail="本次启动会跳过调度器、监控、命令等后台扩展能力。",
             recommendation="修复异常插件或配置后，移除 MOVIEPILOT_SAFE_MODE 或改用普通 `moviepilot start`。",
         )
     else:
@@ -911,6 +930,6 @@ def _check_safe_mode(runner: DoctorRunnerProtocol) -> None:
             severity=DoctorSeverity.Info,
             status=DoctorFindingStatus.Ok,
             title="安全模式未启用",
-            detail="本次运行会按正常流程加载插件和后台任务。",
-            recommendation="若插件或后台任务导致无法启动，可使用 `moviepilot start --safe` 或设置 MOVIEPILOT_SAFE_MODE=true。",
+            detail="本次运行会按正常流程加载后台任务。",
+            recommendation="若后台任务导致无法启动，可使用 `moviepilot start --safe` 或设置 MOVIEPILOT_SAFE_MODE=true。",
         )

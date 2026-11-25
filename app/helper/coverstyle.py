@@ -144,7 +144,7 @@ def find_dominant_vibrant_colors(image, num_colors=5):
     img = image.copy()  
     img.thumbnail((100, 100))
     img = img.convert('RGB')
-    pixels = list(img.getdata())
+    pixels = list(img.get_flattened_data())
     filtered_pixels = [p for p in pixels if is_not_black_white_gray_near(p)]
     if not filtered_pixels:
         return []

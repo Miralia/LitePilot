@@ -5,7 +5,9 @@ import { useI18n } from 'vue-i18n'
 import { openSharedDialog } from '@/composables/useSharedDialog'
 import { useCardAccentColor } from '@/composables/useCardAccentColor'
 
-const NotificationChannelInfoDialog = defineAsyncComponent(() => import('@/components/dialog/NotificationChannelInfoDialog.vue'))
+const NotificationChannelInfoDialog = defineAsyncComponent(
+  () => import('@/components/dialog/NotificationChannelInfoDialog.vue'),
+)
 
 const { t } = useI18n()
 const { accentRgb, imageRef, updateAccentColor } = useCardAccentColor()
@@ -30,7 +32,6 @@ const emit = defineEmits(['close', 'change', 'done'])
 // 各通知类型的名称字典
 const notificationTypeNames: { [key: string]: string } = {
   telegram: t('notification.telegram.name'),
-  webpush: t('notification.webpush.name'),
   custom: t('setting.notification.custom'),
 }
 
@@ -55,8 +56,6 @@ const getIcon = computed(() => {
   switch (props.notification.type) {
     case 'telegram':
       return getLogoUrl('telegram')
-    case 'webpush':
-      return getLogoUrl('chrome')
     default:
       return getLogoUrl('notification')
   }

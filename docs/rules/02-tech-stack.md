@@ -100,17 +100,6 @@
 
 ---
 
-## Performance Extension
-
-| Item | Detail |
-|---|---|
-| Rust extension | `moviepilot_rust` — optional compiled accelerator for core processing paths |
-| Install | Installed from the `moviepilot-rust` PyPI package with normal Python dependencies |
-| Source | Maintained in the separate `MoviePilot-Rust` repository |
-| Toggle | Can be disabled/re-enabled at runtime via frontend Advanced Settings → Lab |
-
----
-
 ## Quality Tooling
 
 | Tool | Purpose | Command |

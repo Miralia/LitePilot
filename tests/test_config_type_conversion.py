@@ -20,21 +20,36 @@ def test_update_float_setting_accepts_json_integer(monkeypatch) -> None:
         )
         return True, None
 
-    monkeypatch.setattr(settings, "LLM_TEMPERATURE", 0.3)
+    monkeypatch.setattr(settings, "WRITE_TIMEOUT", 3.0)
     monkeypatch.setattr(
         type(settings),
         "update_env_config",
         staticmethod(persist_setting),
     )
 
-    success, message = settings.update_setting("LLM_TEMPERATURE", 1)
+    success, message = settings.update_setting("WRITE_TIMEOUT", 1)
 
     assert success is True
     assert message is None
-    assert settings.LLM_TEMPERATURE == 1.0
-    assert isinstance(settings.LLM_TEMPERATURE, float)
+    assert settings.WRITE_TIMEOUT == 1.0
+    assert isinstance(settings.WRITE_TIMEOUT, float)
     assert persisted == {
-        "field_name": "LLM_TEMPERATURE",
+        "field_name": "WRITE_TIMEOUT",
         "original_value": 1,
         "converted_value": 1.0,
     }
+
+
+def test_validate_api_token_does_not_log_generated_secret(monkeypatch) -> None:
+    """自动生成 API_TOKEN 时日志不得泄露 token 原文。"""
+    messages: list[str] = []
+    monkeypatch.setattr("app.core.config.logger.info", messages.append)
+    monkeypatch.setattr("app.core.config.logger.warning", messages.append)
+
+    generated_token, needs_update = settings.validate_api_token("", "")
+
+    assert needs_update is True
+    assert isinstance(generated_token, str)
+    assert len(generated_token) >= 16
+    assert messages
+    assert generated_token not in "".join(messages)

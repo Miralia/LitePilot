@@ -260,7 +260,7 @@ html[data-theme='glass'] {
       --app-grouped-list-backdrop-filter: none;
       --app-grouped-list-background: transparent;
 
-      :where(.app-surface, .v-card, .v-sheet, .v-list, .v-table, .v-expansion-panel, .v-stepper) {
+      :where(.app-surface, .v-card, .v-sheet, .v-list, .v-table, .v-expansion-panel) {
         border-color: transparent !important;
         -webkit-backdrop-filter: none !important;
         backdrop-filter: none !important;
@@ -368,7 +368,6 @@ html[data-theme='glass'] {
     .v-card:not(.no-blur, .bg-primary, .bg-success, .bg-info, .bg-warning, .bg-error),
     .v-sheet:not(.no-blur, .bg-primary, .bg-success, .bg-info, .bg-warning, .bg-error),
     .v-expansion-panel,
-    .v-stepper,
     .v-table
   ) {
     border-color: var(--glass-border) !important;
@@ -437,38 +436,24 @@ html[data-theme='glass'] {
     box-shadow: var(--glass-shadow-raised) !important;
   }
 
-  // Toast 与助手气泡属于临时浮层，直接复用菜单材质 token，避免磨砂档出现不同的底色与模糊强度。
-  :where(.Vue-Toastification__toast, .agent-assistant-fab__bubble) {
+  // Toast 属于临时浮层，直接复用菜单材质 token，避免磨砂档出现不同的底色与模糊强度。
+  .Vue-Toastification__toast {
     border-color: var(--glass-border-raised) !important;
     -webkit-backdrop-filter: var(--glass-overlay-backdrop-filter) !important;
     backdrop-filter: var(--glass-overlay-backdrop-filter) !important;
     background-color: var(--glass-overlay-surface) !important;
     background-image: var(--glass-sheen) !important;
     box-shadow: var(--glass-shadow-raised) !important;
-  }
-
-  // 气泡箭头与主体使用同一菜单表面，避免边缘露出组件默认的不透明底色。
-  .agent-assistant-fab__bubbles::before {
-    background-color: var(--glass-overlay-surface) !important;
-    background-image: var(--glass-sheen) !important;
   }
 
   // 固定浮层、移动底栏与 Vuetify 弹出层共用材质参数，避免各入口出现不同的模糊和底色。
-  :where(.theme-customizer-panel-host, .agent-assistant-panel, .footer-nav-card) {
+  :where(.theme-customizer-panel-host, .footer-nav-card) {
     border-color: var(--glass-border-raised) !important;
     -webkit-backdrop-filter: var(--glass-overlay-backdrop-filter) !important;
     backdrop-filter: var(--glass-overlay-backdrop-filter) !important;
     background-color: var(--glass-overlay-surface) !important;
     background-image: var(--glass-sheen) !important;
     box-shadow: var(--glass-shadow-raised) !important;
-  }
-
-  // 快速访问面板保留全屏无边框结构，但材质与其他弹出层完全一致。
-  .plugin-quick-access.v-card {
-    -webkit-backdrop-filter: var(--glass-overlay-backdrop-filter) !important;
-    backdrop-filter: var(--glass-overlay-backdrop-filter) !important;
-    background-color: var(--glass-overlay-surface) !important;
-    background-image: var(--glass-sheen) !important;
   }
 
   // 顶栏使用更轻的投影，避免与下方内容形成内陷感。
@@ -565,8 +550,7 @@ html[data-theme='glass'] {
     color: var(--glass-control-shortcut-color);
   }
 
-  .theme-customizer-panel,
-  .agent-assistant-shell {
+  .theme-customizer-panel {
     background-color: transparent !important;
   }
 
@@ -595,12 +579,6 @@ html[data-theme='glass'] {
   .theme-customizer-preview-option.is-active > :where(.theme-customizer-border-scene, .theme-customizer-radius-scene) {
     border-color: rgb(var(--v-theme-primary)) !important;
     background: rgba(var(--v-theme-primary), 8%) !important;
-  }
-
-  .agent-assistant-shell {
-    --agent-assistant-panel-bg: var(--glass-overlay-surface);
-    --agent-assistant-panel-blur: var(--glass-overlay-blur);
-    --agent-assistant-assistant-bg: var(--glass-surface);
   }
 
   .nav-button,
@@ -991,184 +969,8 @@ html[data-theme='glass'] {
   }
 
   // 工作流标题栏复用卡片的背景采样，只叠加状态色、吸收层与玻璃高光。
-  .workflow-task-card {
-    --workflow-card-header-content-rgb: var(--v-theme-on-surface);
-    --workflow-card-header-background:
-      var(--glass-sheen),
-      linear-gradient(
-        118deg,
-        rgba(var(--workflow-status-rgb), calc(0.16 + var(--glass-tint-density, 0.65) * 0.34)) 0%,
-        rgba(var(--workflow-status-rgb), calc(0.09 + var(--glass-tint-density, 0.65) * 0.22)) 58%,
-        rgba(var(--workflow-status-rgb), calc(0.04 + var(--glass-tint-density, 0.65) * 0.1)) 100%
-      ),
-      linear-gradient(
-        rgba(var(--v-theme-background), calc(0.08 + var(--glass-surface-density, 0.62) * 0.08)),
-        rgba(var(--v-theme-background), calc(0.14 + var(--glass-surface-density, 0.62) * 0.12))
-      );
-    --workflow-card-header-shadow: inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 rgba(2, 6, 16, 14%);
-  }
 
   // 分享卡保留原随机渐变的色相，以半透明染色、吸光和镜面层组成有色玻璃。
-  .workflow-share-card {
-    --workflow-share-glass-start-opacity: calc(0.18 + var(--glass-tint-density, 0.65) * 0.38);
-    --workflow-share-glass-end-opacity: calc(0.24 + var(--glass-tint-density, 0.65) * 0.42);
-    --workflow-share-glass-scrim: linear-gradient(
-      rgba(11, 19, 34, calc(0.1 + var(--glass-surface-density, 0.62) * 0.1)),
-      rgba(11, 19, 34, calc(0.2 + var(--glass-surface-density, 0.62) * 0.14))
-    );
-
-    background-color: var(--glass-surface) !important;
-    background-image:
-      var(--glass-sheen), var(--workflow-share-glass-scrim),
-      linear-gradient(
-        135deg,
-        rgba(var(--workflow-share-gradient-start-rgb, 74, 85, 104), var(--workflow-share-glass-start-opacity)) 0%,
-        rgba(var(--workflow-share-gradient-end-rgb, 45, 55, 72), var(--workflow-share-glass-end-opacity)) 100%
-      ) !important;
-  }
-
-  // 插件卡片头部改为染色玻璃：图标主色只作为透光色相，压暗遮罩换成玻璃吸收与高光。
-  .plugin-card__banner {
-    border-block-end: 1px solid var(--glass-border);
-
-    --plugin-card-banner-scrim: linear-gradient(
-      rgba(11, 19, 34, calc(0.2 + var(--glass-surface-density, 0.62) * 0.115)) 0%,
-      rgba(11, 19, 34, calc(0.28 + var(--glass-surface-density, 0.62) * 0.16)) 100%
-    );
-    --plugin-card-banner-tint: linear-gradient(
-      135deg,
-      rgba(var(--plugin-card-effective-accent-rgb), calc(0.2 + var(--glass-tint-density, 0.65) * 0.34)) 0%,
-      rgba(var(--plugin-card-effective-accent-rgb), calc(0.11 + var(--glass-tint-density, 0.65) * 0.2)) 58%,
-      rgba(var(--plugin-card-effective-accent-rgb), calc(0.055 + var(--glass-tint-density, 0.65) * 0.1)) 100%
-    );
-  }
-
-  // 卡片主体已经承担实时背景采样，头部只叠加静态色层与镜面高光。
-  .plugin-card__banner::before {
-    position: absolute;
-    background-image: var(--glass-sheen);
-    box-shadow: inset 0 1px 0 var(--glass-highlight);
-    content: '';
-    inset: 0;
-    pointer-events: none;
-  }
-
-  .plugin-card__banner > * {
-    position: relative;
-  }
-
-  // 磨砂材质透光更强，染色需要同步减弱以免头部压过卡片本体。
-  &[data-glass-appearance='frosted'] .plugin-card__banner {
-    --plugin-card-banner-scrim: linear-gradient(
-      rgba(11, 19, 34, calc(0.1 + var(--glass-surface-density, 0.86) * 0.09)) 0%,
-      rgba(11, 19, 34, calc(0.14 + var(--glass-surface-density, 0.86) * 0.145)) 100%
-    );
-    --plugin-card-banner-tint: linear-gradient(
-      135deg,
-      rgba(var(--plugin-card-effective-accent-rgb), calc(0.15 + var(--glass-tint-density, 0.65) * 0.2)) 0%,
-      rgba(var(--plugin-card-effective-accent-rgb), calc(0.07 + var(--glass-tint-density, 0.65) * 0.13)) 58%,
-      rgba(var(--plugin-card-effective-accent-rgb), calc(0.03 + var(--glass-tint-density, 0.65) * 0.06)) 100%
-    );
-  }
-
-  &[data-glass-appearance='frosted'] .workflow-task-card {
-    --workflow-card-header-background:
-      var(--glass-sheen),
-      linear-gradient(
-        118deg,
-        rgba(var(--workflow-status-rgb), calc(0.1 + var(--glass-tint-density, 0.65) * 0.2)) 0%,
-        rgba(var(--workflow-status-rgb), calc(0.05 + var(--glass-tint-density, 0.65) * 0.13)) 58%,
-        rgba(var(--workflow-status-rgb), calc(0.02 + var(--glass-tint-density, 0.65) * 0.06)) 100%
-      ),
-      linear-gradient(
-        rgba(var(--v-theme-background), calc(0.04 + var(--glass-surface-density, 0.86) * 0.04)),
-        rgba(var(--v-theme-background), calc(0.08 + var(--glass-surface-density, 0.86) * 0.08))
-      );
-  }
-
-  &[data-glass-appearance='frosted'] .workflow-share-card {
-    --workflow-share-glass-start-opacity: calc(0.12 + var(--glass-tint-density, 0.65) * 0.28);
-    --workflow-share-glass-end-opacity: calc(0.16 + var(--glass-tint-density, 0.65) * 0.34);
-    --workflow-share-glass-scrim: linear-gradient(
-      rgba(11, 19, 34, calc(0.06 + var(--glass-surface-density, 0.86) * 0.07)),
-      rgba(11, 19, 34, calc(0.13 + var(--glass-surface-density, 0.86) * 0.1))
-    );
-  }
-
-  // 色调材质本身带主色语义，头部染色向主色收敛保持整页同一色温。
-  &[data-glass-appearance='tinted'] .plugin-card__banner {
-    --plugin-card-banner-tint: linear-gradient(
-      135deg,
-      color-mix(
-          in srgb,
-          rgba(var(--plugin-card-effective-accent-rgb), calc(0.14 + var(--glass-tint-density, 0.65) * 0.33)) 94%,
-          rgba(var(--glass-material-accent-rgb), calc(0.14 + var(--glass-tint-density, 0.65) * 0.33))
-        )
-        0%,
-      color-mix(
-          in srgb,
-          rgba(var(--plugin-card-effective-accent-rgb), calc(0.07 + var(--glass-tint-density, 0.65) * 0.2)) 94%,
-          rgba(var(--glass-material-accent-rgb), calc(0.07 + var(--glass-tint-density, 0.65) * 0.2))
-        )
-        58%,
-      rgba(var(--plugin-card-effective-accent-rgb), calc(0.04 + var(--glass-tint-density, 0.65) * 0.095)) 100%
-    );
-  }
-
-  &[data-glass-appearance='tinted'] .workflow-task-card {
-    --workflow-card-header-background:
-      var(--glass-sheen),
-      linear-gradient(
-        118deg,
-        color-mix(
-            in srgb,
-            rgba(var(--workflow-status-rgb), calc(0.14 + var(--glass-tint-density, 0.65) * 0.33)) 74%,
-            rgba(var(--v-theme-primary), calc(0.14 + var(--glass-tint-density, 0.65) * 0.33))
-          )
-          0%,
-        color-mix(
-            in srgb,
-            rgba(var(--workflow-status-rgb), calc(0.07 + var(--glass-tint-density, 0.65) * 0.2)) 74%,
-            rgba(var(--v-theme-primary), calc(0.07 + var(--glass-tint-density, 0.65) * 0.2))
-          )
-          58%,
-        rgba(var(--workflow-status-rgb), calc(0.04 + var(--glass-tint-density, 0.65) * 0.095)) 100%
-      ),
-      linear-gradient(
-        rgba(var(--v-theme-background), calc(0.08 + var(--glass-surface-density, 0.72) * 0.08)),
-        rgba(var(--v-theme-background), calc(0.14 + var(--glass-surface-density, 0.72) * 0.12))
-      );
-  }
-
-  &[data-glass-appearance='tinted'] .workflow-share-card {
-    --workflow-share-glass-start-opacity: calc(0.16 + var(--glass-tint-density, 0.65) * 0.32);
-    --workflow-share-glass-end-opacity: calc(0.21 + var(--glass-tint-density, 0.65) * 0.38);
-    --workflow-share-glass-scrim: linear-gradient(
-      rgba(11, 19, 34, calc(0.09 + var(--glass-surface-density, 0.72) * 0.09)),
-      rgba(11, 19, 34, calc(0.18 + var(--glass-surface-density, 0.72) * 0.13))
-    );
-  }
-
-  // 文件夹卡片保留用户自选渐变作为色相，只降低不透明度让卡片本体的玻璃透出来。
-  .plugin-folder-card__bg {
-    opacity: calc(0.34 + var(--glass-surface-density, 0.62) * 0.145);
-  }
-
-  .plugin-folder-card__bg::after {
-    position: absolute;
-    background-image: var(--glass-sheen);
-    box-shadow: inset 0 1px 0 var(--glass-highlight);
-    content: '';
-    inset: 0;
-    pointer-events: none;
-  }
-
-  .plugin-folder-card__overlay {
-    background: linear-gradient(
-      rgba(11, 19, 34, calc(0.2 + var(--glass-surface-density, 0.62) * 0.115)) 0%,
-      rgba(11, 19, 34, calc(0.28 + var(--glass-surface-density, 0.62) * 0.16)) 100%
-    );
-  }
 
   // 捷径菜单的嵌套卡片会被通用弹层折叠规则抹平描边与高光，需要完整补齐标准玻璃表面。
   .shortcut-card-hover-area > .v-card {
@@ -1234,12 +1036,6 @@ html[data-theme='glass'] {
     --mobile-scheduler-card-shadow: var(--glass-shadow);
   }
 
-  .mobile-subscribe-calendar {
-    --mobile-calendar-control-bg: var(--glass-surface-soft);
-    --mobile-calendar-placeholder-bg: var(--glass-surface-soft);
-    --mobile-calendar-surface-blur: var(--glass-surface-backdrop-filter);
-  }
-
   // 用户权限编辑器由普通容器构成，通过主题变量接入玻璃表面材质。
   .user-permission-editor {
     --permission-editor-border: 1px solid var(--glass-border);
@@ -1252,15 +1048,6 @@ html[data-theme='glass'] {
     --permission-editor-shadow: inset 0 1px 0 rgba(255, 255, 255, 8%);
   }
 
-  // 智能助手折叠区使用均匀的玻璃描边，替换普通主题渐变产生的顶部黑边。
-  .ai-agent-settings-card {
-    border: 1px solid rgba(255, 255, 255, 10%) !important;
-    -webkit-backdrop-filter: var(--glass-surface-backdrop-filter) !important;
-    backdrop-filter: var(--glass-surface-backdrop-filter) !important;
-    background: var(--glass-surface-soft) !important;
-    box-shadow: none !important;
-  }
-
   // 横向榜单的滚动容器需要完整容纳玻璃卡片向上下扩散的阴影。
   .slider-container {
     --slider-shadow-bleed-start: 48px;
@@ -1268,7 +1055,7 @@ html[data-theme='glass'] {
     --slider-shadow-bleed-inline: 32px;
   }
 
-  :where(.v-card, .v-sheet) :where(.app-surface, .v-card, .v-sheet, .v-list, .v-table, .v-expansion-panel, .v-stepper) {
+  :where(.v-card, .v-sheet) :where(.app-surface, .v-card, .v-sheet, .v-list, .v-table, .v-expansion-panel) {
     border-color: transparent !important;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -1283,8 +1070,7 @@ html[data-theme='glass'] {
       .v-sheet:not(.bg-primary, .bg-success, .bg-info, .bg-warning, .bg-error),
       .v-list,
       .v-table,
-      .v-expansion-panel,
-      .v-stepper
+      .v-expansion-panel
     ) {
     background-color: transparent !important;
   }
@@ -1361,8 +1147,7 @@ html[data-theme='glass'] {
       .v-expansion-panel,
       .layout-vertical-nav,
       .layout-navbar,
-      .theme-customizer-panel-host,
-      .agent-assistant-panel
+      .theme-customizer-panel-host
     ) {
       background-color: rgba(18, 28, 45, 94%) !important;
     }

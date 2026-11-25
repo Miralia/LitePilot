@@ -8,7 +8,7 @@ import ShortcutBar from './ShortcutBar.vue'
 import UserProfile from './UserProfile.vue'
 import HeaderTab from './HeaderTab.vue'
 import ThemeCustomizer from '@/components/theme/ThemeCustomizer.vue'
-import { useGlobalSettingsStore, useUserStore } from '@/stores'
+import { useUserStore } from '@/stores'
 import { getNavMenus } from '@/router/i18n-menu'
 import { NavMenu } from '@/@layouts/types'
 import { useDisplay } from 'vuetify'
@@ -25,7 +25,6 @@ import {
 } from '@/utils/permission'
 import { usePWA } from '@/composables/usePWA'
 import OfflinePage from './OfflinePage.vue'
-import { useGlobalOfflineStatus } from '@/composables/useOfflineStatus'
 import {
   readThemeCustomizerSettings,
   THEME_CUSTOMIZER_CHANGE_EVENT,
@@ -45,7 +44,6 @@ const showThemeCustomizer = ref(false)
 
 // 用户 Store
 const userStore = useUserStore()
-const globalSettingsStore = useGlobalSettingsStore()
 
 // 获取用户权限信息
 const userPermissions = computed(() => buildUserPermissionContext(userStore.superUser, userStore.permissions))
@@ -94,9 +92,6 @@ const mainContentPaddingTop = computed(() => {
 
   return `${dynamicTabPadding + horizontalNavPadding}rem`
 })
-
-// 离线状态管理
-const { isOffline } = useGlobalOfflineStatus()
 
 // 动态标签页相关
 // 定义动态标签页类型

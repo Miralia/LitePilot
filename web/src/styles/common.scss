@@ -837,7 +837,6 @@ html[data-theme-radius='extra'] {
     .v-list,
     .v-navigation-drawer,
     .v-sheet,
-    .v-stepper,
     .v-table,
     .v-toolbar,
     .v-window,
@@ -862,7 +861,6 @@ html[data-theme-radius='extra'] {
     .v-list,
     .v-navigation-drawer,
     .v-sheet,
-    .v-stepper,
     .v-table,
     .v-toolbar,
     .v-window,
@@ -887,7 +885,6 @@ html[data-theme-radius='extra'] {
     .v-list,
     .v-navigation-drawer,
     .v-sheet,
-    .v-stepper,
     .v-table,
     .v-toolbar,
     .v-window,
@@ -913,7 +910,6 @@ html[data-theme-radius='extra'] {
     .v-list,
     .v-navigation-drawer,
     .v-sheet,
-    .v-stepper,
     .v-table,
     .v-toolbar,
     .v-window,
@@ -939,7 +935,6 @@ html[data-theme-radius='extra'] {
     .v-list,
     .v-navigation-drawer,
     .v-sheet,
-    .v-stepper,
     .v-table,
     .v-toolbar,
     .v-window,
@@ -1321,87 +1316,12 @@ html[data-theme='transparent'].transparent-glass-realtime .v-theme--transparent 
   padding-block-end: 1rem;
 }
 
-.grid-site-card {
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  padding-block-end: 1rem;
-}
-
-.grid-media-card {
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-}
-
-.grid-backdrop-card {
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-}
-
-.grid-torrent-card {
-  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-}
-
-.grid-plugin-card {
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-}
-
-// 插件卡片头部染色层：普通主题保持原有实色底＋压暗遮罩，玻璃主题只替换色层与材质。
-.plugin-card__banner {
-  position: relative;
-  -webkit-backdrop-filter: var(--plugin-card-banner-backdrop-filter, none);
-  backdrop-filter: var(--plugin-card-banner-backdrop-filter, none);
-  background-image: var(--plugin-card-banner-scrim), var(--plugin-card-banner-tint);
-  transition: background-image 0.2s ease;
-
-  --plugin-card-effective-accent-rgb: var(
-    --plugin-card-accent-rgb,
-    var(--glass-material-accent-rgb, var(--v-theme-primary))
-  );
-  --plugin-card-banner-scrim: linear-gradient(rgba(0, 0, 0, 60%) 0%, rgba(0, 0, 0, 50%) 100%);
-  --plugin-card-banner-tint: linear-gradient(
-    rgb(var(--plugin-card-effective-accent-rgb)) 0%,
-    rgb(var(--plugin-card-effective-accent-rgb)) 100%
-  );
-}
-
-.grid-downloading-card {
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-}
-
 .grid-directory-card {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
 }
 
-.grid-filterrule-card {
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-}
-
-.grid-customrule-card {
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-}
-
-.grid-subscribe-card {
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-}
-
-@media (width <= 599px) {
-  .grid-subscribe-card {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-  }
-}
-
-.grid-user-card {
-  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-}
-
 .grid-app-card {
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-}
-
-.grid-workflow-card {
-  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-}
-
-.grid-workflow-share-card {
-  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
 }
 
 // 文本样式
@@ -1497,7 +1417,6 @@ html[data-theme='transparent'].transparent-glass-realtime .v-theme--transparent 
 }
 
 :root {
-  --agent-assistant-fab-offset: 30rem;
   --theme-customizer-fab-offset: 420px;
 }
 
@@ -1612,10 +1531,8 @@ html[data-theme='transparent'].transparent-glass-realtime .v-theme--transparent 
   }
 
   // 展开后的页面操作栈应优先接收指针，避免被停靠的智能助手入口截走 hover。
-  html:not([data-agent-assistant-open='true']):not([data-theme-customizer-open='true'])
-    .compact-fab-stack:has(> :nth-child(2)):hover,
-  html:not([data-agent-assistant-open='true']):not([data-theme-customizer-open='true'])
-    .compact-fab-stack:has(> :nth-child(2)):focus-within {
+  html:not([data-theme-customizer-open='true']) .compact-fab-stack:has(> :nth-child(2)):hover,
+  html:not([data-theme-customizer-open='true']) .compact-fab-stack:has(> :nth-child(2)):focus-within {
     z-index: 2101;
   }
 
@@ -1754,26 +1671,12 @@ html[data-theme='transparent'].transparent-glass-realtime .v-theme--transparent 
   html[data-theme-customizer-open='true'] .global-action-buttons {
     inset-inline-end: calc(var(--theme-customizer-fab-offset) + 2rem);
   }
-
-  html[data-agent-assistant-open='true'] .compact-fab-stack {
-    inset-inline-end: calc(var(--agent-assistant-fab-offset) + max(1rem, calc(env(safe-area-inset-right) + 1rem)));
-  }
-
-  html[data-agent-assistant-open='true'] .global-action-buttons {
-    inset-inline-end: calc(var(--agent-assistant-fab-offset) + 2rem);
-  }
 }
 
 @media (width >= 601px) and (width <= 768px) {
   html[data-theme-customizer-open='true'] .compact-fab-stack {
     inset-inline-end: calc(
       var(--theme-customizer-fab-offset) + max(0.875rem, calc(env(safe-area-inset-right) + 0.875rem))
-    );
-  }
-
-  html[data-agent-assistant-open='true'] .compact-fab-stack {
-    inset-inline-end: calc(
-      var(--agent-assistant-fab-offset) + max(0.875rem, calc(env(safe-area-inset-right) + 0.875rem))
     );
   }
 }
@@ -1953,4 +1856,3 @@ html[data-theme='transparent'].transparent-glass-realtime .v-theme--transparent 
 .v-menu .v-overlay__content {
   box-shadow: none;
 }
-

@@ -152,8 +152,6 @@ moviepilot install deps --config-dir /path/to/moviepilot-config
 说明：
 
 - 默认会自动选择本地已安装的 `Python 3.11+` 解释器
-- `moviepilot_rust` 加速扩展通过 `moviepilot-rust` PyPI 依赖安装，主项目本地安装不需要 Rust toolchain
-- 安装完成后可在前端“高级设置 - 实验室”中关闭或重新开启 Rust 加速；如果后端未加载扩展，该开关会保持关闭且不可操作
 
 安装前端 release：
 
@@ -215,7 +213,7 @@ moviepilot setup --config-dir /path/to/moviepilot-config
 
 `moviepilot setup` 会串行执行：
 
-1. 安装后端依赖，包括 `moviepilot-rust` 加速扩展
+1. 安装后端依赖
 2. 下载并安装前端 release
 3. 下载并同步资源文件
 4. 初始化本地配置
@@ -314,7 +312,7 @@ moviepilot update all --skip-resources
 
 说明：
 
-- `update backend` 会更新 Git 仓库并重新安装后端依赖，包括 `moviepilot-rust` 加速扩展
+- `update backend` 会更新 Git 仓库并重新安装后端依赖
 - `update frontend` 会按当前仓库 `version.py` 中的 `FRONTEND_VERSION` 下载并替换前端 release
 - `update all` 会先更新后端，再按更新后代码中的 `FRONTEND_VERSION` 更新前端，默认也会同步资源文件
 - 更新前请先执行 `moviepilot stop`

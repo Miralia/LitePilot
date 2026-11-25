@@ -1,9 +1,8 @@
-import ColorThief from 'colorthief'
+import { getColor as extractColorThiefColor } from 'colorthief'
 export { preloadCorsImage } from './corsImage'
 
 const DEFAULT_DOMINANT_COLOR = '#28A9E1'
 const DOMINANT_COLOR_CACHE_LIMIT = 100
-const colorThief = new ColorThief()
 const dominantColorCache = new Map<string, string>()
 const pendingDominantColorRequests = new Map<string, Promise<string | undefined>>()
 
@@ -56,9 +55,11 @@ export async function extractDominantColor(
   if (pendingRequest) return pendingRequest
 
   const colorPromise = Promise.resolve()
-    .then(() => {
-      const dominantColor = colorThief.getColor(image, options.quality ?? 20)
-      const color = rgbStringToHex(dominantColor)
+    .then(async () => {
+      const dominantColor = await extractColorThiefColor(image, { quality: options.quality ?? 20 })
+      if (!dominantColor) throw new Error('No dominant color extracted')
+
+      const color = rgbStringToHex(dominantColor.array())
       rememberDominantColor(cacheKey, color)
 
       return color

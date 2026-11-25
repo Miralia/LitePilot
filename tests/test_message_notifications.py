@@ -45,16 +45,16 @@ def _set_message_time(title: str, reg_time: str) -> None:
 
 def test_notification_history_only_lists_sent_messages() -> None:
     """
-    通知历史应返回已发送消息，包含通过消息链登记的智能体消息。
+    通知历史应返回已发送消息，包含通过消息链登记的非系统消息。
     """
     _clear_messages()
     oper = MessageOper()
     oper.add(title="系统通知", text="下载完成", action=1, mtype=NotificationType.Download)
     oper.add(title="用户消息", text="帮我搜索", action=0)
-    oper.add(title="智能体回复", text="已处理", action=1, mtype=NotificationType.Agent)
+    oper.add(title="自动回复", text="已处理", action=1, mtype=NotificationType.Other)
 
     messages = MessageOper().list_by_page(page=1, count=10)
-    assert [message.title for message in messages if message.action == 1] == ["智能体回复", "系统通知"]
+    assert [message.title for message in messages if message.action == 1] == ["自动回复", "系统通知"]
 
 
 def test_web_message_history_returns_all_messages() -> None:
@@ -63,12 +63,12 @@ def test_web_message_history_returns_all_messages() -> None:
     """
     _clear_messages()
     oper = MessageOper()
-    oper.add(title="智能体回复", text="已处理", action=1, mtype=NotificationType.Agent)
+    oper.add(title="自动回复", text="已处理", action=1, mtype=NotificationType.Other)
     oper.add(title="用户消息", text="/ai 帮我处理", action=0)
     oper.add(title="普通通知", text="下载完成", action=1, mtype=NotificationType.Download)
 
     messages = MessageOper().list_by_page(page=1, count=10)
-    assert [message.title for message in messages] == ["普通通知", "用户消息", "智能体回复"]
+    assert [message.title for message in messages] == ["普通通知", "用户消息", "自动回复"]
 
 
 def test_notification_clear_marker_filters_history_across_requests() -> None:
@@ -132,14 +132,14 @@ def test_system_helper_message_only_enters_sse_queue() -> None:
 
 
 
-def test_agent_helper_message_does_not_enter_sse_queue() -> None:
+def test_non_system_helper_message_does_not_enter_sse_queue() -> None:
     """
-    智能体消息不进入前端 SSE 队列。
+    非系统消息不进入前端 SSE 队列。
     """
     helper = MessageHelper()
     _reset_message_helper(helper)
 
-    helper.put("智能体回复", role="agent", title="MoviePilot助手")
+    helper.put("自动回复", role="agent", title="MoviePilot助手")
 
     assert helper.get() is None
 
@@ -184,9 +184,9 @@ def test_notification_post_message_is_persisted_without_sse_queue(monkeypatch) -
     chain.messagequeue.send_message.assert_called_once()
 
 
-def test_agent_notification_post_message_is_persisted_without_sse_queue(monkeypatch) -> None:
+def test_other_notification_post_message_is_persisted_without_sse_queue(monkeypatch) -> None:
     """
-    智能体消息通过消息链发送时登记数据库，但不进入前端 SSE 队列。
+    非系统消息通过消息链发送时登记数据库，但不进入前端 SSE 队列。
     """
     _clear_messages()
     helper = MessageHelper()
@@ -198,7 +198,7 @@ def test_agent_notification_post_message_is_persisted_without_sse_queue(monkeypa
 
     chain.post_message(
         Notification(
-            mtype=NotificationType.Agent,
+            mtype=NotificationType.Other,
             title="MoviePilot助手",
             text="已完成处理",
         )
@@ -207,7 +207,7 @@ def test_agent_notification_post_message_is_persisted_without_sse_queue(monkeypa
     messages = MessageOper().list_by_page(page=1, count=10)
     assert len(messages) == 1
     assert messages[0].title == "MoviePilot助手"
-    assert messages[0].mtype == NotificationType.Agent.value
+    assert messages[0].mtype == NotificationType.Other.value
     assert helper.get() is None
     chain.messagequeue.send_message.assert_called_once()
 

@@ -661,7 +661,6 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
     await waitFor(() => expect(bodies).toHaveLength(2))
     expect(bodies[1]).toEqual(
       expect.objectContaining({
-        library_category_folder: null,
         library_type_folder: null,
         scrape: null,
         target_path: null,
@@ -697,7 +696,6 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
     await fireEvent.input(screen.getByLabelText('指定Part'), { target: { value: 'part2' } })
     await fireEvent.input(screen.getByLabelText('最小文件大小（MB）'), { target: { value: '128' } })
     await user.click(screen.getByLabelText('按类型分类'))
-    await user.click(screen.getByLabelText('按类别分类'))
     await user.click(screen.getByLabelText('刮削元数据'))
     await user.click(screen.getByRole('button', { name: '加入整理队列' }))
 

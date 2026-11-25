@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useToast } from 'vue-toastification'
 import api from '@/api'
+import type { SystemSettingResponse } from '@/api/types'
 import { useI18n } from 'vue-i18n'
 import { useTheme } from 'vuetify'
 import { configureAceEditorPadding } from '@/utils/aceEditor'
@@ -15,8 +16,15 @@ const { global: globalTheme } = useTheme()
 const WORDS_LINE_NUMBERS_STORAGE_KEY = 'MP_WORDS_SHOW_LINE_NUMBERS'
 const WORDS_SYNTAX_HIGHLIGHTING_STORAGE_KEY = 'MP_WORDS_SYNTAX_HIGHLIGHTING'
 
-type TextSectionKey = 'identifiers' | 'releaseGroups' | 'customization' | 'excludeWords' | 'streamingPlatforms'
-  | 'specialEdition' | 'cutVersion' | 'releaseInfo'
+type TextSectionKey =
+  | 'identifiers'
+  | 'releaseGroups'
+  | 'customization'
+  | 'excludeWords'
+  | 'streamingPlatforms'
+  | 'specialEdition'
+  | 'cutVersion'
+  | 'releaseInfo'
 type WordSectionKey = TextSectionKey | 'episodeRules'
 
 interface EpisodeFormatRule {
@@ -27,6 +35,8 @@ interface EpisodeFormatRule {
   pattern: string
   min_file_size_mb: number
 }
+
+type EpisodeFormatRuleInput = Partial<Omit<EpisodeFormatRule, '_localId'>> & { _localId?: string }
 
 interface WordSectionDefinition {
   color: string
@@ -58,7 +68,7 @@ const streamingDisplayMode = ref('full')
 /** 查询流媒体平台输出形态。 */
 async function queryStreamingDisplay() {
   try {
-    const result: { [key: string]: any } = await api.get('system/setting/StreamingPlatformDisplay')
+    const result: SystemSettingResponse<string> = await api.get('system/setting/StreamingPlatformDisplay')
     const value = result?.data?.value
     streamingDisplayMode.value = value === 'short' ? 'short' : 'full'
   } catch (error) {
@@ -71,7 +81,7 @@ async function changeStreamingDisplay(value: string) {
   const previous = streamingDisplayMode.value
   streamingDisplayMode.value = value
   try {
-    const result: { [key: string]: any } = await api.post('system/setting/StreamingPlatformDisplay', value)
+    const result: SystemSettingResponse<string> = await api.post('system/setting/StreamingPlatformDisplay', value)
     if (result.success) {
       $toast.success(t('setting.words.streamingPlatformDisplaySaveSuccess'))
       return
@@ -369,9 +379,7 @@ function createEpisodeRule(rule?: Partial<Omit<EpisodeFormatRule, '_localId'>>):
 }
 
 /** 规范化后端返回的集数定位规则列表。 */
-function normalizeEpisodeFormatRules(
-  rules: Array<Partial<Omit<EpisodeFormatRule, '_localId'>> & { _localId?: string }> = [],
-) {
+function normalizeEpisodeFormatRules(rules: EpisodeFormatRuleInput[] = []) {
   return rules.map(rule => createEpisodeRule(rule))
 }
 
@@ -436,7 +444,7 @@ function deleteEpisodeRule(index: number) {
 /** 查询一个多行词表配置，并同步其已保存快照。 */
 async function queryTextSection(section: TextSectionKey) {
   try {
-    const result: { [key: string]: any } = await api.get(textSectionSettings.value[section].endpoint)
+    const result: SystemSettingResponse<string[]> = await api.get(textSectionSettings.value[section].endpoint)
     const value = Array.isArray(result?.data?.value) ? result.data.value.join('\n') : ''
     textSectionModels[section].value = value
     savedTextValues[section] = value
@@ -451,7 +459,7 @@ async function saveTextSection(section: TextSectionKey) {
 
   try {
     const value = textSectionModels[section].value
-    const result: { [key: string]: any } = await api.post(setting.endpoint, value.split('\n'))
+    const result: SystemSettingResponse<string[]> = await api.post(setting.endpoint, value.split('\n'))
 
     if (result.success) {
       savedTextValues[section] = value
@@ -471,7 +479,9 @@ async function saveTextSection(section: TextSectionKey) {
 /** 查询集数定位规则，并同步其已保存快照。 */
 async function queryEpisodeFormatRules() {
   try {
-    const result: { [key: string]: any } = await api.get('system/setting/public/EpisodeFormatRuleTable')
+    const result: SystemSettingResponse<EpisodeFormatRuleInput[]> = await api.get(
+      'system/setting/public/EpisodeFormatRuleTable',
+    )
     episodeFormatRules.value = normalizeEpisodeFormatRules(result?.data?.value ?? [])
     savedEpisodeRules.value = serializeEpisodeFormatRules()
   } catch (error) {
@@ -490,7 +500,7 @@ async function saveEpisodeFormatRules() {
 
   try {
     const payload = buildEpisodeFormatRulePayload()
-    const result: { [key: string]: any } = await api.post('system/setting/EpisodeFormatRuleTable', payload)
+    const result: SystemSettingResponse<unknown> = await api.post('system/setting/EpisodeFormatRuleTable', payload)
 
     if (result.success) {
       episodeFormatRules.value.forEach((rule, index) => {
@@ -694,12 +704,7 @@ onMounted(() => {
               <span>{{ activeTextHint }}</span>
             </div>
 
-            <VCard
-              v-if="activeSection === 'streamingPlatforms'"
-              variant="tonal"
-              class="mt-4"
-              density="comfortable"
-            >
+            <VCard v-if="activeSection === 'streamingPlatforms'" variant="tonal" class="mt-4" density="comfortable">
               <VCardText class="d-flex align-center flex-wrap ga-4">
                 <div class="text-subtitle-2">{{ t('setting.words.streamingPlatformDisplay') }}</div>
                 <VBtnToggle

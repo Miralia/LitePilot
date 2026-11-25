@@ -155,7 +155,6 @@ export default {
       safari: 'Safari',
       desktop: '桌面设备',
       mobile: '移动设备',
-      other: '其他浏览器',
     },
     // 安装步骤
   },
@@ -209,13 +208,16 @@ export default {
     },
     notification: {
       title: '通知',
-      description: '通知渠道（企业微信、微信 ClawBot、Telegram、Slack、SynologyChat、VoceChat、WebPush）、消息发送范围',
+      description: '通知渠道（Telegram）与消息发送范围',
     },
   },
   user: {
     admin: '管理员',
     normal: '普通用户',
     systemSettings: '系统设定',
+    twoFactorAuthentication: '二次验证',
+    twoFactorEnabled: '已启用',
+    twoFactorDisabled: '未启用',
     wizardSettings: '设置向导',
     restart: '重启',
     username: '用户名',
@@ -226,6 +228,25 @@ export default {
   },
   nav: {
     more: '更多',
+  },
+  profile: {
+    setupAuthenticator: '设置身份验证器',
+    authenticatorManagement: '管理身份验证器',
+    authenticatorAppDescription:
+      '使用 1Password、Microsoft Authenticator 或其他兼容 TOTP 的身份验证器扫描二维码，然后输入生成的 6 位验证码完成绑定。',
+    authenticatorEnabled: '身份验证器已启用',
+    clearAuthenticatorTip: '关闭二次验证后，登录时将只需要账号密码。确认关闭前需要重新输入当前登录密码。',
+    clearAuthenticator: '关闭二次验证',
+    disableTwoFactor: '关闭二次验证',
+    confirmToDisableOtp: '请输入当前登录密码，确认关闭二次验证。',
+    enterVerificationCode: '输入 6 位验证码',
+    secretKeyTip: '如果无法扫码，可以手动输入该密钥。请妥善保管，不要分享给他人。',
+    otpCodeRequired: '请输入身份验证器生成的 6 位验证码',
+    otpGenerateFailed: '身份验证器初始化失败：{message}',
+    otpEnableSuccess: '二次验证已启用',
+    otpEnableFailed: '二次验证启用失败：{message}',
+    otpDisableSuccess: '二次验证已关闭',
+    otpDisableFailed: '二次验证关闭失败：{message}',
   },
   notification: {
     center: '通知中心',
@@ -267,11 +288,6 @@ export default {
       apiUrl: '代理API地址',
       apiUrlHint: '自定义代理API地址，格式：https://api.telegram.org',
       apiUrlPlaceholder: 'https://api.telegram.org',
-    },
-    webpush: {
-      name: 'WebPush',
-      username: '登录用户名',
-      usernameHint: '只有对应的用户登录后才会推送消息',
     },
   },
   shortcut: {
@@ -491,8 +507,7 @@ export default {
       downloaders: '限制下载器',
       downloadersHint: '留空表示同步全部下载器',
       triggerThrottle: '监控触发节流（秒）',
-      triggerThrottleHint:
-        '目录监控发现新文件时立即同步一次下载器；同一窗口内只触发一次，0 表示不节流',
+      triggerThrottleHint: '目录监控发现新文件时立即同步一次下载器；同一窗口内只触发一次，0 表示不节流',
       pruneMissing: '清理已失效种子的文件记录',
       syncDelTitle: '媒体服务器联动删除',
       syncDelGuide:
@@ -510,8 +525,7 @@ export default {
       probeGuide:
         '整理时用 mediainfo 读取真实文件的宽高、编码与 HDR 信息，用于校正标题解析结果。分辨率按 Vit 的分档规则判定（含 DCI 2K/4K 等特殊规格）。需要系统安装 mediainfo。',
       overrideResolution: '用探测结果校正分辨率',
-      overrideResolutionHint:
-        '标题里写的 1080p 未必准确，开启后以文件真实尺寸为准（如宽画幅会抬到 1440p）',
+      overrideResolutionHint: '标题里写的 1080p 未必准确，开启后以文件真实尺寸为准（如宽画幅会抬到 1440p）',
       overrideSource: '用探测结果补全来源',
       overrideSourceHint: '标题没有 ProRes / DCP / Master 标记时，按文件格式补齐',
       logFailure: '探测失败时记录告警日志',
@@ -697,9 +711,6 @@ export default {
       dataCleanupTransferHistoryDays: '整理历史表保留天数',
       dataCleanupTransferHistoryDaysHint: '单位：天，0 表示不清理整理历史表',
       downloadFilesCleanupNotice: '下载文件表没有独立时间字段，会跟随下载历史表的保留周期清理其孤儿记录。',
-      rustAccel: 'Rust 加速',
-      rustAccelHint: '启用后使用后端 Rust 扩展加速过滤、RSS、索引器和媒体识别等热路径',
-      rustAccelUnavailableHint: '当前后端未安装或未加载 Rust 加速扩展，无法启用',
       encodingDetectionPerformanceMode: '编码探测性能模式',
       encodingDetectionPerformanceModeHint: '优先提升探测效率，但可能降低编码探测的准确性',
       transferThreads: '文件整理线程数',
@@ -809,23 +820,7 @@ export default {
       timeSaveSuccess: '通知发送时间保存成功',
       timeSaveFailed: '通知发送时间保存失败！',
       channel: '通知',
-      wechat: '企业微信',
-      wechatClawBot: '微信 ClawBot',
-      feishu: '飞书',
-      resourceDownload: '资源下载',
-      mediaImport: '整理入库',
-      subscription: '订阅',
-      site: '站点',
-      mediaServer: '媒体服务器',
-      manualProcess: '手动处理',
-      plugin: '插件',
-      other: '其它',
       telegram: 'Telegram',
-      slack: 'Slack',
-      synologyChat: 'SynologyChat',
-      voceChat: 'VoceChat',
-      webPush: 'WebPush',
-      qq: 'QQ',
       custom: '自定义通知',
     },
     words: {
@@ -862,8 +857,7 @@ export default {
       identifierSaveSuccess: '自定义识别词保存成功',
       streamingPlatform: '流媒体平台词表',
       streamingPlatformShort: '流媒体平台',
-      streamingPlatformDesc:
-        '维护流媒体平台识别表。首次启用时已内置约 300 个常见平台，可自由增删改，改动即时生效。',
+      streamingPlatformDesc: '维护流媒体平台识别表。首次启用时已内置约 300 个常见平台，可自由增删改，改动即时生效。',
       streamingPlatformHint:
         '每行一条，格式 `简称 = 全称`，例如 `NF = Netflix`；只写一个值时简称与全称相同。以 # 开头为注释。\n识别时会同时匹配简称与全称，输出值由下方「输出形态」决定。',
       streamingPlatformPlaceholder: 'NF = Netflix\nAMZN = Amazon\nMYS = 我的平台',
@@ -871,32 +865,29 @@ export default {
       streamingPlatformSaveFailed: '流媒体平台词表保存失败',
       specialEdition: '特殊版本词表',
       specialEditionShort: '特殊版本',
-      specialEditionDesc:
-        '维护特殊版本识别表，用于识别 3D、IMAX、Open Matte 等影响播放方式或画幅的作品形态。',
+      specialEditionDesc: '维护特殊版本识别表，用于识别 3D、IMAX、Open Matte 等影响播放方式或画幅的作品形态。',
       specialEditionHint:
-        '每行一条，格式 `写法 = 标准名`，例如 `Open Matte = Open Matte`；只写一个值时写法与标准名相同。以 # 开头为注释。\n'
-        + '必须完整匹配整段文本才会识别，不做部分匹配，避免误判。大小写、点号、连字符与空格差异不影响匹配。',
-      specialEditionPlaceholder: "3D = 3D\nIMAX = IMAX\nOpen Matte = Open Matte",
+        '每行一条，格式 `写法 = 标准名`，例如 `Open Matte = Open Matte`；只写一个值时写法与标准名相同。以 # 开头为注释。\n' +
+        '必须完整匹配整段文本才会识别，不做部分匹配，避免误判。大小写、点号、连字符与空格差异不影响匹配。',
+      specialEditionPlaceholder: '3D = 3D\nIMAX = IMAX\nOpen Matte = Open Matte',
       specialEditionSaveSuccess: '特殊版本词表保存成功',
       specialEditionSaveFailed: '特殊版本词表保存失败',
       cutVersion: '剪辑版本词表',
       cutVersionShort: '剪辑版本',
-      cutVersionDesc:
-        '维护剪辑版本识别表，用于识别 Director\'s Cut、Extended Cut、UnCut 等影响片长与内容的版本。',
+      cutVersionDesc: "维护剪辑版本识别表，用于识别 Director's Cut、Extended Cut、UnCut 等影响片长与内容的版本。",
       cutVersionHint:
-        '每行一条，格式 `写法 = 标准名`，例如 `Directors Cut = Director\'s Cut`；只写一个值时写法与标准名相同。以 # 开头为注释。\n'
-        + '必须完整匹配整段文本才会识别，不做部分匹配。剪辑版本只记录，不进入技术描述。',
+        "每行一条，格式 `写法 = 标准名`，例如 `Directors Cut = Director's Cut`；只写一个值时写法与标准名相同。以 # 开头为注释。\n" +
+        '必须完整匹配整段文本才会识别，不做部分匹配。剪辑版本只记录，不进入技术描述。',
       cutVersionPlaceholder:
         "International Cut = International Cut\nTheatrical Cut = Theatrical Cut\nDirector's Cut = Director's Cut\nUnCut = uncut\nExtended Cut = Extended Cut\nOriginal Cut = Original Cut",
       cutVersionSaveSuccess: '剪辑版本词表保存成功',
       cutVersionSaveFailed: '剪辑版本词表保存失败',
       releaseInfo: '发布信息词表',
       releaseInfoShort: '发布信息',
-      releaseInfoDesc:
-        '维护发布信息识别表，用于识别 REPACK、PROPER、RERIP、Hybrid 等描述发布或制作方式的标记。',
+      releaseInfoDesc: '维护发布信息识别表，用于识别 REPACK、PROPER、RERIP、Hybrid 等描述发布或制作方式的标记。',
       releaseInfoHint:
-        '每行一条，格式 `写法 = 标准名`，例如 `REPACK = REPACK`；只写一个值时写法与标准名相同。以 # 开头为注释。\n'
-        + '发布信息描述的是发布状态或制作方式，不影响内容，只记录不进入技术描述。',
+        '每行一条，格式 `写法 = 标准名`，例如 `REPACK = REPACK`；只写一个值时写法与标准名相同。以 # 开头为注释。\n' +
+        '发布信息描述的是发布状态或制作方式，不影响内容，只记录不进入技术描述。',
       releaseInfoPlaceholder: 'REPACK = REPACK\nPROPER = PROPER\nRERIP = RERIP\nREAL = REAL\nHybrid = Hybrid',
       releaseInfoSaveSuccess: '发布信息词表保存成功',
       releaseInfoSaveFailed: '发布信息词表保存失败',
@@ -910,8 +901,7 @@ export default {
       identifierSaveFailed: '自定义识别词保存失败！',
 
       customReleaseGroups: '自定义制作组/字幕组',
-      releaseGroupsDesc:
-        '维护制作组/字幕组识别表。首次启用时已内置常见组，可自由增删改，改动即时生效。',
+      releaseGroupsDesc: '维护制作组/字幕组识别表。首次启用时已内置常见组，可自由增删改，改动即时生效。',
       releaseGroupsPlaceholder: 'CtrlHD\nFraMeSToR\nSweetSub\nVCB-Studio',
       releaseGroupsHint:
         '每行一个组名，按字面量精确匹配，无需转义特殊字符（VCB-Studio、SubsPlus+ 可直接写）。\n用 & 连接的是合作发布，会拆成多个小组；用 ＠ 连接的是从属关系，整体算一个小组。\n确需正则能力时，在行首加 re 冒号前缀。',
@@ -1071,8 +1061,7 @@ export default {
       complete: '完成',
       reset: '重置',
     },
-    pluginMarketSetting: {
-    },
+    pluginMarketSetting: {},
     transferQueue: {
       title: '整理队列',
       queueSummary: '{media} 部媒体 · {tasks} 个文件',
@@ -1221,7 +1210,8 @@ export default {
     loadingDirectoryStructure: '加载目录结构...',
     reorganize: '整理',
     filterPlaceholder: '搜索（支持 * ? 通配符）',
-  },  transferHistory: {
+  },
+  transferHistory: {
     searchPlaceholder: '搜索（支持 * ? 通配符）',
     titleColumn: '标题',
     pathColumn: '路径',
@@ -1255,11 +1245,7 @@ export default {
     noData: '没有数据',
     loading: '加载中...',
     pageInfo: '{begin} - {end} / {total}',
-    aiRedoDisabled: '请先在系统设置中启用 AI 智能助手',
-    aiRedoFailed: '提交智能助手整理任务失败',
     actions: {
-      aiRedo: '智能助手整理',
-      aiRedoPending: '智能助手整理中...',
       batchSelect: '批量选择',
       exitBatchSelect: '退出批量选择',
       redo: '重新整理',

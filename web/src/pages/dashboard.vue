@@ -3,7 +3,6 @@ import { GridStack } from 'gridstack'
 import type { ColumnOptions, GridItemHTMLElement, GridStackWidget } from 'gridstack'
 import 'gridstack/dist/gridstack.min.css'
 import api from '@/api'
-import { isNullOrEmptyObject } from '@/@core/utils'
 import type { DashboardItem } from '@/api/types'
 import DashboardElement from '@/components/misc/DashboardElement.vue'
 import { useDynamicButton, type DynamicButtonMenuItem } from '@/composables/useDynamicButton'
@@ -298,10 +297,7 @@ const dashboardConfigs = ref<DashboardItem[]>([
 // 当前启用且可渲染的仪表板 Grid 项。
 const dashboardGridItems = computed<DashboardGridItem[]>(() =>
   dashboardConfigs.value
-    .filter(
-      item =>
-        enableConfig.value[dashboardItemId(item.id, item.key)] && item.cols,
-    )
+    .filter(item => enableConfig.value[dashboardItemId(item.id, item.key)] && item.cols)
     .map(item => {
       const id = dashboardItemId(item.id, item.key)
 

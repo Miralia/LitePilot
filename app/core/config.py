@@ -352,8 +352,6 @@ class ConfigModel(BaseModel):
     # ==================== 性能配置 ====================
     # 大内存模式
     BIG_MEMORY_MODE: bool = False
-    # Rust 加速总开关，关闭时所有 Rust 快路径回退到 Python 实现
-    RUST_ACCEL: bool = True
     # 是否启用编码探测的性能模式
     ENCODING_DETECTION_PERFORMANCE_MODE: bool = True
     # 主动内存回收时间间隔（分钟），0为不启用
@@ -386,24 +384,9 @@ class ConfigModel(BaseModel):
     SECURITY_IMAGE_SUFFIXES: list = Field(
         default=[".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".avif"]
     )
-    # PassKey 是否强制用户验证（生物识别等）
-    PASSKEY_REQUIRE_UV: bool = True
-
-
-
     # ==================== Docker配置 ====================
     # Docker Client API地址
     DOCKER_CLIENT_API: Optional[str] = "tcp://127.0.0.1:38379"
-
-    # ==================== AI智能体配置 ====================
-    # AI智能体开关
-    AI_AGENT_ENABLE: bool = False
-    # LLM温度参数
-    LLM_TEMPERATURE: float = 0.3
-
-    # AI智能体自动重试整理失败记录开关
-    AI_AGENT_RETRY_TRANSFER: bool = False
-
 
 
 class Settings(BaseSettings, ConfigModel, LogConfigModel):
@@ -440,12 +423,10 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
         if not value or len(value) < 16:
             new_token = secrets.token_urlsafe(16)
             if not value:
-                logger.info(
-                    f"'API_TOKEN' 未设置，已随机生成新的【API_TOKEN】{new_token}"
-                )
+                logger.info("'API_TOKEN' 未设置，已随机生成新的 API_TOKEN")
             else:
                 logger.warning(
-                    f"'API_TOKEN' 长度不足 16 个字符，存在安全隐患，已随机生成新的【API_TOKEN】{new_token}"
+                    "'API_TOKEN' 长度不足 16 个字符，存在安全隐患，已随机生成新的 API_TOKEN"
                 )
             return new_token, True
         return value, str(value) != str(original_value)

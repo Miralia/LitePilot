@@ -117,8 +117,6 @@ EVENT_TYPE_NAMES = {
 
 # 同步链式事件
 class ChainEventType(Enum):
-    # 名称识别
-    NameRecognize = "name.recognize"
     # 命令注册
     CommandRegister = "command.register"
     # 整理重命名
@@ -133,22 +131,10 @@ class ChainEventType(Enum):
     ResourceSelection = "resource.selection"
     # 资源下载
     ResourceDownload = "resource.download"
-    # 探索数据源
-    DiscoverSource = "discover.source"
     # 媒体识别转换
     MediaRecognizeConvert = "media.recognize.convert"
-    # 推荐数据源
-    RecommendSource = "recommend.source"
-    # 工作流执行
-    WorkflowExecution = "workflow.execution"
     # 存储操作选择
     StorageOperSelection = "storage.operation"
-    # Agent LLM 供应商选择
-    AgentLLMProvider = "agent.llm.provider"
-    # 订阅总集数刷新
-    SubscribeEpisodesRefresh = "subscribe.episodes.refresh"
-    # 订阅完成检查
-    SubscribeCompletionCheck = "subscribe.completion.check"
 
 
 # 系统配置Key字典
@@ -246,16 +232,10 @@ class NotificationType(Enum):
     Download = "资源下载"
     # 整理入库
     Organize = "整理入库"
-    # 订阅
-    Subscribe = "订阅"
-    # 站点消息
-    SiteMessage = "站点"
     # 媒体服务器通知
     MediaServer = "媒体服务器"
     # 处理失败需要人工干预
     Manual = "手动处理"
-    # 智能体流式消息
-    Agent = "智能体"
     # 其它消息
     Other = "其它"
 

@@ -1,7 +1,14 @@
 import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
+import { VAutocomplete } from 'vuetify/components/VAutocomplete'
 import { VBtn } from 'vuetify/components/VBtn'
-import * as labsComponents from 'vuetify/labs/components'
+import { VCheckbox } from 'vuetify/components/VCheckbox'
+import { VCombobox } from 'vuetify/components/VCombobox'
+import { VRadioGroup } from 'vuetify/components/VRadioGroup'
+import { VSelect } from 'vuetify/components/VSelect'
+import { VSlider } from 'vuetify/components/VSlider'
+import { VSwitch } from 'vuetify/components/VSwitch'
+import { VTextarea } from 'vuetify/components/VTextarea'
+import { VTextField } from 'vuetify/components/VTextField'
 import AppDialog from './AppDialog'
 import { createResponsiveInputAdapter } from './AppInput'
 import defaults from './defaults'
@@ -10,19 +17,15 @@ import type { ResponsiveInputComponentName } from './responsiveInputNames'
 import theme from './theme'
 
 const responsiveInputComponents = {
-  VAutocomplete: createResponsiveInputAdapter(components.VAutocomplete, { name: 'Autocomplete', kind: 'field' }),
-  VCheckbox: createResponsiveInputAdapter(components.VCheckbox, { name: 'Checkbox', kind: 'choice' }),
-  VCombobox: createResponsiveInputAdapter(components.VCombobox, { name: 'Combobox', kind: 'field' }),
-  VDateInput: createResponsiveInputAdapter(labsComponents.VDateInput, { name: 'DateInput', kind: 'field' }),
-  VFileInput: createResponsiveInputAdapter(components.VFileInput, { name: 'FileInput', kind: 'field' }),
-  VNumberInput: createResponsiveInputAdapter(labsComponents.VNumberInput, { name: 'NumberInput', kind: 'field' }),
-  VRadioGroup: createResponsiveInputAdapter(components.VRadioGroup, { name: 'RadioGroup', kind: 'group' }),
-  VRangeSlider: createResponsiveInputAdapter(components.VRangeSlider, { name: 'RangeSlider', kind: 'range' }),
-  VSelect: createResponsiveInputAdapter(components.VSelect, { name: 'Select', kind: 'field' }),
-  VSlider: createResponsiveInputAdapter(components.VSlider, { name: 'Slider', kind: 'range' }),
-  VSwitch: createResponsiveInputAdapter(components.VSwitch, { name: 'Switch', kind: 'choice' }),
-  VTextarea: createResponsiveInputAdapter(components.VTextarea, { name: 'Textarea', kind: 'multiline' }),
-  VTextField: createResponsiveInputAdapter(components.VTextField, { name: 'TextField', kind: 'field' }),
+  VAutocomplete: createResponsiveInputAdapter(VAutocomplete, { name: 'Autocomplete', kind: 'field' }),
+  VCheckbox: createResponsiveInputAdapter(VCheckbox, { name: 'Checkbox', kind: 'choice' }),
+  VCombobox: createResponsiveInputAdapter(VCombobox, { name: 'Combobox', kind: 'field' }),
+  VRadioGroup: createResponsiveInputAdapter(VRadioGroup, { name: 'RadioGroup', kind: 'group' }),
+  VSelect: createResponsiveInputAdapter(VSelect, { name: 'Select', kind: 'field' }),
+  VSlider: createResponsiveInputAdapter(VSlider, { name: 'Slider', kind: 'range' }),
+  VSwitch: createResponsiveInputAdapter(VSwitch, { name: 'Switch', kind: 'choice' }),
+  VTextarea: createResponsiveInputAdapter(VTextarea, { name: 'Textarea', kind: 'multiline' }),
+  VTextField: createResponsiveInputAdapter(VTextField, { name: 'TextField', kind: 'field' }),
 } satisfies Record<ResponsiveInputComponentName, ReturnType<typeof createResponsiveInputAdapter>>
 
 export default createVuetify({
@@ -33,8 +36,6 @@ export default createVuetify({
   icons,
   theme,
   components: {
-    ...components,
-    ...labsComponents,
     VDialog: AppDialog,
     ...responsiveInputComponents,
   },

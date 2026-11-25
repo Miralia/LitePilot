@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import setproctitle
 import signal
@@ -46,9 +45,15 @@ class LitePilotServer(uvicorn.Server):
 
 
 # uvicorn服务
-Server = LitePilotServer(Config(app, host=settings.HOST, port=settings.PORT,
-                                 reload=settings.DEV, workers=multiprocessing.cpu_count() * 2 + 1,
-                                 timeout_graceful_shutdown=60))
+Server = LitePilotServer(
+    Config(
+        app,
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEV,
+        timeout_graceful_shutdown=60,
+    )
+)
 
 
 def request_shutdown() -> None:

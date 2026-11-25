@@ -48,9 +48,6 @@ describe('glass overlay material styles', () => {
     const loginRule = styles.match(
       /html\[data-theme='glass'\]\[data-glass-appearance='tinted'\] body\[data-theme='glass'\]\s*\{(?<declarations>[\s\S]*?)\n\}/u,
     )?.groups?.declarations
-    const workflowRule = styles.match(
-      /&\[data-glass-appearance='tinted'\] \.workflow-task-card\s*\{(?<declarations>[\s\S]*?)\n {2}\}/u,
-    )?.groups?.declarations
     const getPropertyValue = (rule: string | undefined, token: string) =>
       rule?.match(new RegExp(`${token}:\\s*(?<value>[\\s\\S]*?);`))?.groups?.value
 
@@ -81,8 +78,6 @@ describe('glass overlay material styles', () => {
     expect(wallpaperTintRule).not.toContain('var(--v-theme-primary)')
     expect(loginRule).toMatch(/\.login-card__surface[\s\S]*?var\(--glass-material-accent-rgb\)/)
     expect(loginRule).toMatch(/\.native-login-field[\s\S]*?var\(--v-theme-primary\)/)
-    expect(workflowRule).toContain('var(--workflow-status-rgb)')
-    expect(workflowRule).toContain('var(--v-theme-primary)')
   })
 
   it('renders colored chips as shadowless glass without flattening their variants', () => {
@@ -171,14 +166,11 @@ describe('glass overlay material styles', () => {
     )
   })
 
-  it('reuses the menu overlay material for toast and assistant bubbles', () => {
+  it('reuses the menu overlay material for toast', () => {
     const styles = readFileSync(resolve(cwd(), 'src/styles/themes/glass.scss'), 'utf8')
 
     expect(styles).toMatch(
-      /:where\(\.Vue-Toastification__toast, \.agent-assistant-fab__bubble\)\s*\{[\s\S]*?backdrop-filter:\s*var\(--glass-overlay-backdrop-filter\)\s*!important;[\s\S]*?background-color:\s*var\(--glass-overlay-surface\)\s*!important;/,
-    )
-    expect(styles).toMatch(
-      /\.agent-assistant-fab__bubbles::before\s*\{[\s\S]*?background-color:\s*var\(--glass-overlay-surface\)\s*!important;/,
+      /\.Vue-Toastification__toast\s*\{[\s\S]*?backdrop-filter:\s*var\(--glass-overlay-backdrop-filter\)\s*!important;[\s\S]*?background-color:\s*var\(--glass-overlay-surface\)\s*!important;/,
     )
   })
 

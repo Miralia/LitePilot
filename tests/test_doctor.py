@@ -98,7 +98,73 @@ def test_doctor_accepts_healthy_unmanaged_backend_port(monkeypatch):
 
 
 
+def test_doctor_skips_frontend_port_for_static_reverse_proxy(tmp_path, monkeypatch):
+    """纯静态前端部署不应把缺失的独立前端端口误报为故障。"""
+    (tmp_path / "index.html").write_text("<html></html>", encoding="utf-8")
+    monkeypatch.setattr(checks, "_frontend_dir", lambda: tmp_path)
+    monkeypatch.setattr(checks, "_check_runtime_file", lambda *args, **kwargs: None)
+    checked_ports: list[str] = []
 
+    def record_port(runner, *, name, port, managed_process):
+        checked_ports.append(name)
+
+    monkeypatch.setattr(checks, "_check_port", record_port)
+
+    runner = DoctorRunner()
+    checks._check_processes_and_ports(runner)
+
+    assert "backend" in checked_ports
+    assert "frontend" not in checked_ports
+    finding = runner.report.find("frontend.static_reverse_proxy")
+    assert finding is not None
+    assert finding.status == DoctorFindingStatus.Skipped
+    assert finding.affects_report_status is False
+
+
+
+def test_doctor_skips_frontend_port_when_service_js_lacks_node_runtime(tmp_path, monkeypatch):
+    """仅有 service.js 但缺少 express 运行依赖时，不应误报前端端口缺失。"""
+    (tmp_path / "index.html").write_text("<html></html>", encoding="utf-8")
+    (tmp_path / "service.js").write_text("console.log('frontend')", encoding="utf-8")
+    monkeypatch.setattr(checks, "_frontend_dir", lambda: tmp_path)
+    monkeypatch.setattr(checks, "_check_runtime_file", lambda *args, **kwargs: None)
+    checked_ports: list[str] = []
+
+    def record_port(runner, *, name, port, managed_process):
+        checked_ports.append(name)
+
+    monkeypatch.setattr(checks, "_check_port", record_port)
+
+    runner = DoctorRunner()
+    checks._check_processes_and_ports(runner)
+
+    assert "backend" in checked_ports
+    assert "frontend" not in checked_ports
+    assert runner.report.find("frontend.static_reverse_proxy") is not None
+
+
+def test_doctor_checks_frontend_port_when_node_runtime_exists(tmp_path, monkeypatch):
+    """service.js 与 express 依赖同时存在时，仍应检查独立前端端口。"""
+    (tmp_path / "service.js").write_text("console.log('frontend')", encoding="utf-8")
+    (tmp_path / "node_modules" / "express").mkdir(parents=True)
+    monkeypatch.setattr(checks, "_frontend_dir", lambda: tmp_path)
+    monkeypatch.setattr(checks, "_check_runtime_file", lambda *args, **kwargs: None)
+    checked_ports: list[str] = []
+
+    def record_port(runner, *, name, port, managed_process):
+        checked_ports.append(name)
+
+    monkeypatch.setattr(checks, "_check_port", record_port)
+
+    runner = DoctorRunner()
+    checks._check_processes_and_ports(runner)
+
+    assert "frontend" in checked_ports
+
+
+def test_doctor_core_dependencies_match_supported_runtime():
+    """核心依赖检查不应包含已从精简版移除的上游组件。"""
+    assert "cloakbrowser" not in checks.CORE_DEPENDENCIES
 
 
 def test_doctor_core_log_error_still_degrades_report(tmp_path, monkeypatch):
