@@ -136,13 +136,6 @@ class SystemUtils:
             return False, error_message
 
     @staticmethod
-    def is_docker() -> bool:
-        """
-        判断是否为Docker环境
-        """
-        return Path("/.dockerenv").exists()
-
-    @staticmethod
     def is_synology() -> bool:
         """
         判断是否为群晖系统
@@ -804,7 +797,7 @@ class SystemUtils:
     @staticmethod
     def is_hardlink(src: Path, dest: Path) -> bool:
         """
-        判断是否为硬链接（可能无法支持宿主机挂载smb盘符映射docker的场景）
+        判断是否为硬链接
         """
         try:
             if not src.exists() or not dest.exists():
@@ -897,9 +890,7 @@ class SystemUtils:
             config_dir = os.getenv("CONFIG_DIR")
         if config_dir:
             return Path(config_dir)
-        if SystemUtils.is_docker():
-            return Path("/config")
-        elif SystemUtils.is_frozen():
+        if SystemUtils.is_frozen():
             return Path(sys.executable).parent / "config"
         else:
             return Path(__file__).parents[2] / "config"

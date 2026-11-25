@@ -20,7 +20,6 @@ except Exception:
 
 from app.chain.system import SystemChain
 from app.core.config import global_vars, settings
-from app.helper.system import SystemHelper
 from app.log import logger, LoggerManager
 from app.startup.command_initializer import init_command, stop_command
 from app.startup.modules_initializer import init_modules, stop_modules
@@ -37,8 +36,6 @@ async def init_extra():
     """
     完成重启后的收尾工作
     """
-    # 设置系统已修改标志
-    SystemHelper().set_system_modified()
     # 重启完成
     SystemChain().restart_finish()
 

@@ -183,7 +183,7 @@ moviepilot install resources --config-dir /path/to/moviepilot-config
 
 - 默认直接从 GitHub 下载 `MoviePilot-Resources` 主分支压缩包
 - 会将 `resources.v2/*` 整体复制到 [app/helper](../app/helper)
-- 这一步和 Docker 构建流程保持一致
+- 这一步与生产安装流程使用相同的资源目录布局
 
 ## 初始化命令
 
@@ -397,7 +397,7 @@ moviepilot version
 说明：
 
 - `start` 会先启动后端，再启动前端
-- `start --safe` 会以安全模式启动后端，本次启动跳过插件、调度器、监控、命令和工作流等后台扩展能力，不修改用户配置
+- `start --safe` 会以安全模式启动后端，本次启动跳过调度器、监控和命令等后台任务，不修改用户配置
 - 如果开启了 `MOVIEPILOT_AUTO_UPDATE=release|true|dev`，`start/restart` 会在启动前尽力执行一次本地自动更新；更新失败只告警，不阻断当前启动
 - 通过系统内置的重启入口触发重启时，本地 CLI 安装模式也会复用同一套前后端进程管理完成重启
 - 前端默认监听 `NGINX_PORT`，默认值 `3000`
@@ -418,12 +418,12 @@ moviepilot doctor --deep
 说明：
 
 - `doctor` 不依赖后端服务已经启动，会直接读取配置目录、运行时文件、日志、进程、端口、依赖、数据库和前端资源
-- `--json` 输出稳定 JSON，可供 Agent、脚本或 Issue 流程收集
+- `--json` 输出稳定 JSON，可供脚本或 Issue 流程收集
 - `--fix` 只执行白名单安全修复，例如清理过期 runtime 文件或补齐不合法的 `API_TOKEN`
 - `--deep` 执行可能较慢的深度探测，例如 PostgreSQL TCP 连通性检查
-- Doctor 只分析最近 24 小时日志，并跨主日志、控制台镜像和插件独立日志聚合相同错误
-- 插件日志异常会保留为诊断告警并标记 `affects_report_status=false`，但不会单独降低系统整体状态；`summary.advisory` 单独统计这类建议项，核心错误仍正常参与状态聚合
-- Docker 环境可使用 `docker exec <container> moviepilot doctor`；如果容器已退出，也可用镜像挂载同一配置目录运行 `python -m app.cli doctor`
+- Doctor 只分析最近 24 小时日志，并跨主日志与控制台镜像聚合相同错误
+- `summary.advisory` 单独统计不影响整体状态的建议项，核心错误仍正常参与状态聚合
+- systemd 生产环境可使用 `CONFIG_DIR=/var/lib/moviepilot /opt/moviepilot/venv/bin/python -m app.cli doctor` 执行离线诊断
 
 日志：
 

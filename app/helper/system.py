@@ -3,18 +3,14 @@ import os
 import signal
 import subprocess
 import sys
-import threading
-import time
 from pathlib import Path
 from typing import Optional, Tuple
 
-import docker
 import psutil
 
 from app.core.config import settings
 from app.log import logger
 from app.utils.mixins import ConfigReloadMixin
-from app.utils.system import SystemUtils
 
 
 class SystemHelper(ConfigReloadMixin):
@@ -31,16 +27,20 @@ class SystemHelper(ConfigReloadMixin):
         "LOG_CONSOLE_FORMAT",
     }
 
-    __system_flag_file = "/var/log/nginx/__moviepilot__"
     __local_backend_runtime_file = settings.TEMP_PATH / "moviepilot.runtime.json"
     __local_restart_log_file = settings.LOG_PATH / "moviepilot.restart.stdout.log"
     __one_shot_update_flag_file = settings.TEMP_PATH / "moviepilot.pending_update"
-    __docker_restart_intent_file = settings.TEMP_PATH / "moviepilot.intentional_restart"
 
     def on_config_changed(self):
+        """
+        配置变更后刷新日志处理器。
+        """
         logger.update_loggers()
 
     def get_reload_name(self):
+        """
+        返回支持热重载的配置名称。
+        """
         return "日志设置"
 
     @staticmethod
@@ -48,7 +48,7 @@ class SystemHelper(ConfigReloadMixin):
         """
         判断是否可以内部重启
         """
-        return SystemUtils.is_docker() or SystemHelper._is_local_cli_managed()
+        return SystemHelper._is_local_cli_managed()
 
     @staticmethod
     def _load_runtime_file(path: Path) -> Optional[dict]:
@@ -208,117 +208,19 @@ class SystemHelper(ConfigReloadMixin):
         logger.info(f"已创建本地 CLI 重启任务，辅助进程 PID: {process.pid}")
 
     @staticmethod
-    def _get_container_id() -> str:
-        """
-        获取当前容器ID
-        """
-        container_id = None
-        try:
-            with open("/proc/self/mountinfo", "r", encoding="utf-8", errors="replace") as f:
-                data = f.read()
-                index_resolv_conf = data.find("resolv.conf")
-                if index_resolv_conf != -1:
-                    index_second_slash = data.rfind("/", 0, index_resolv_conf)
-                    index_first_slash = data.rfind("/", 0, index_second_slash) + 1
-                    container_id = data[index_first_slash:index_second_slash]
-                    if len(container_id) < 20:
-                        index_resolv_conf = data.find("/sys/fs/cgroup/devices")
-                        if index_resolv_conf != -1:
-                            index_second_slash = data.rfind(" ", 0, index_resolv_conf)
-                            index_first_slash = (
-                                    data.rfind("/", 0, index_second_slash) + 1
-                            )
-                            container_id = data[index_first_slash:index_second_slash]
-        except Exception as e:
-            logger.debug(f"获取容器ID失败: {str(e)}")
-        return container_id.strip() if container_id else None
-
-    @staticmethod
-    def _check_restart_policy() -> bool:
-        """
-        检查当前容器是否配置了自动重启策略
-        """
-        try:
-            # 获取当前容器ID
-            container_id = SystemHelper._get_container_id()
-            if not container_id:
-                return False
-
-            # 创建 Docker 客户端
-            client = docker.DockerClient(base_url=settings.DOCKER_CLIENT_API)
-            # 获取容器信息
-            container = client.containers.get(container_id)
-            restart_policy = container.attrs.get('HostConfig', {}).get('RestartPolicy', {})
-            policy_name = restart_policy.get('Name', 'no')
-            # 检查是否有有效的重启策略
-            auto_restart_policies = ['always', 'unless-stopped', 'on-failure']
-            has_restart_policy = policy_name in auto_restart_policies
-
-            logger.info(f"容器重启策略: {policy_name}, 支持自动重启: {has_restart_policy}")
-            return has_restart_policy
-
-        except Exception as e:
-            logger.warning(f"检查重启策略失败: {str(e)}")
-            return False
-
-    @staticmethod
-    def _mark_docker_intentional_restart() -> None:
-        try:
-            SystemHelper.__docker_restart_intent_file.parent.mkdir(
-                parents=True, exist_ok=True
-            )
-            SystemHelper.__docker_restart_intent_file.write_text(
-                str(os.getpid()), encoding="utf-8"
-            )
-        except OSError as err:
-            logger.warning(f"写入内置重启标记失败: {err}")
-
-    @staticmethod
-    def _clear_docker_intentional_restart() -> None:
-        try:
-            SystemHelper.__docker_restart_intent_file.unlink(missing_ok=True)
-        except OSError as err:
-            logger.warning(f"清理内置重启标记失败: {err}")
-
-    @staticmethod
     def restart() -> Tuple[bool, str]:
         """
-        执行Docker重启操作
+        执行本地 CLI 管理实例的重启操作。
         """
-        if not SystemUtils.is_docker():
-            if not SystemHelper._is_local_cli_managed():
-                return False, "当前实例不是由 moviepilot CLI 启动，无法执行内建重启！"
-            try:
-                SystemHelper._spawn_local_restart_helper()
-                # 复用与 Docker 相同的优雅退出路径，确保当前后端进程真正结束。
-                os.kill(os.getpid(), signal.SIGTERM)
-                return True, ""
-            except Exception as err:
-                logger.error(f"本地 CLI 重启失败: {str(err)}")
-                return False, f"本地 CLI 重启失败：{str(err)}"
-
+        if not SystemHelper._is_local_cli_managed():
+            return False, "当前实例不是由 moviepilot CLI 启动，请使用 systemd 或外部进程管理器重启！"
         try:
-            # 检查容器是否配置了自动重启策略
-            has_restart_policy = SystemHelper._check_restart_policy()
-            if has_restart_policy:
-                # 有重启策略，使用优雅退出方式
-                logger.info("检测到容器配置了自动重启策略，使用优雅重启方式...")
-                SystemHelper._mark_docker_intentional_restart()
-                # 启动优雅退出超时监控
-                SystemHelper._start_graceful_shutdown_monitor()
-                # 发送SIGTERM信号给当前进程，触发优雅停止
-                os.kill(os.getpid(), signal.SIGTERM)
-                return True, ""
-            else:
-                # 没有重启策略，使用Docker API强制重启
-                logger.info("容器未配置自动重启策略，使用Docker API重启...")
-                return SystemHelper._docker_api_restart()
+            SystemHelper._spawn_local_restart_helper()
+            os.kill(os.getpid(), signal.SIGTERM)
+            return True, ""
         except Exception as err:
-            logger.error(f"重启失败: {str(err)}")
-            SystemHelper._clear_docker_intentional_restart()
-            # 降级为Docker API重启
-            logger.warning("降级为Docker API重启...")
-            return SystemHelper._docker_api_restart()
+            logger.error(f"本地 CLI 重启失败: {str(err)}")
+            return False, f"本地 CLI 重启失败：{str(err)}"
 
     @staticmethod
     def upgrade(mode: str = "release") -> Tuple[bool, str]:
@@ -347,58 +249,3 @@ class SystemHelper(ConfigReloadMixin):
             return ret, msg
         effective_mode = SystemHelper.normalize_auto_update_mode(mode)
         return True, f"已安排一次性 {effective_mode} 升级并重启"
-
-    @staticmethod
-    def _start_graceful_shutdown_monitor():
-        """
-        启动优雅退出超时监控
-        如果30秒内进程没有退出，则使用Docker API强制重启
-        """
-
-        def monitor_thread():
-            time.sleep(180)  # 等待180秒
-            logger.warning("优雅退出超时180秒，使用Docker API强制重启...")
-            try:
-                SystemHelper._docker_api_restart()
-            except Exception as e:
-                logger.error(f"强制重启失败: {str(e)}")
-
-        # 在后台线程中启动监控
-        thread = threading.Thread(target=monitor_thread, daemon=True)
-        thread.start()
-
-    @staticmethod
-    def _docker_api_restart() -> Tuple[bool, str]:
-        """
-        使用Docker API重启容器，并尝试优雅停止
-        """
-        try:
-            # 创建 Docker 客户端
-            client = docker.DockerClient(base_url=settings.DOCKER_CLIENT_API)
-            container_id = SystemHelper._get_container_id()
-            if not container_id:
-                return False, "获取容器ID失败！"
-            # 重启容器
-            client.containers.get(container_id).restart()
-            return True, ""
-        except Exception as docker_err:
-            return False, f"重启时发生错误：{str(docker_err)}"
-
-    def set_system_modified(self):
-        """
-        设置系统已修改标志
-        """
-        try:
-            if SystemUtils.is_docker():
-                Path(self.__system_flag_file).touch(exist_ok=True)
-        except Exception as e:
-            print(f"设置系统修改标志失败: {str(e)}")
-
-    def is_system_reset(self) -> bool:
-        """
-        检查系统是否已被重置
-        :return: 如果系统已重置，返回 True；否则返回 False
-        """
-        if SystemUtils.is_docker():
-            return not Path(self.__system_flag_file).exists()
-        return False

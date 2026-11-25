@@ -37,6 +37,15 @@ class SystemChain(ChainBase):
         """
         重启系统
         """
+        if not SystemHelper.can_restart():
+            if channel and userid:
+                self.post_message(Notification(
+                    channel=channel,
+                    source=source,
+                    title="当前运行环境不支持内建重启，请使用 systemd 或外部进程管理器重启！",
+                    userid=userid,
+                    save_history=False))
+            return
         if channel and userid:
             self.post_message(Notification(
                 channel=channel,

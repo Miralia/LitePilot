@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-import platform
 import re
 import socket
 import sqlite3
@@ -20,7 +19,6 @@ import psutil
 
 from app.core.config import settings
 from app.doctor.models import DoctorFinding, DoctorFindingStatus, DoctorReport, DoctorSeverity
-from app.utils.system import SystemUtils
 
 
 CheckFunc = Callable[["DoctorRunnerProtocol"], None]
@@ -42,7 +40,6 @@ BACKEND_HEALTH_TIMEOUT = 0.5
 LOG_ERROR_PATTERNS = (
     re.compile(r"\btraceback\b", re.IGNORECASE),
     re.compile(r"\b(error|critical|exception)\b", re.IGNORECASE),
-    re.compile(r"加载插件.+出错"),
     re.compile(r"数据库更新失败"),
 )
 LOG_RECORD_PATTERN = re.compile(
@@ -54,10 +51,6 @@ LOG_TIMESTAMP_PATTERN = re.compile(
 LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_LOOKBACK_HOURS = 24
 CONSOLE_LOGGER_PATTERN = re.compile(r"\[([^\]]+)]")
-PLUGIN_ERROR_PATTERNS = (
-    re.compile(r"(?:^|\s-\s)plugin\.py\s+-\s", re.IGNORECASE),
-    re.compile(r"插件.+(?:出错|失败|异常|错误)"),
-)
 SENSITIVE_PATTERNS = (
     re.compile(r"(?i)(api[_-]?token|token|password|secret|cookie)(\s*[:=]\s*)[^\s&]+"),
     re.compile(r"\bghp_[A-Za-z0-9]{20,}\b"),
@@ -138,7 +131,6 @@ def default_checks() -> list[CheckFunc]:
         _check_database,
         _check_frontend_assets,
         _check_logs,
-        _check_docker,
         _check_safe_mode,
     ]
 
@@ -334,7 +326,7 @@ def _recent_log_lines(
 
 
 def _error_fingerprint(line: str) -> str:
-    """生成跨主日志、控制台镜像和插件独立日志可比较的错误指纹。"""
+    """生成跨主日志与控制台镜像可比较的错误指纹。"""
     normalized = LOG_TIMESTAMP_PATTERN.sub("<time>", line.strip())
     if " - " in normalized:
         normalized = normalized.rsplit(" - ", 1)[-1]
@@ -563,7 +555,7 @@ def _check_port(
             status=DoctorFindingStatus.Ok,
             title=f"{name} 端口由 LitePilot 相关进程监听",
             detail=f"端口 {port} 监听进程：{'; '.join(_process_description(process) for process in expected_processes)}",
-            recommendation="如果这是 Docker 或非 CLI 管理启动方式，可忽略 runtime 文件缺失。",
+            recommendation="如果这是 systemd 或其他外部进程管理器启动方式，可忽略 runtime 文件缺失。",
             context={"port": port, "pids": [process.pid for process in expected_processes]},
         )
         return
@@ -577,7 +569,7 @@ def _check_port(
                 status=DoctorFindingStatus.Ok,
                 title=f"{name} 端口由 LitePilot 后端监听",
                 detail=f"端口 {port} 健康接口响应正常；监听进程：{'; '.join(descriptions)}",
-                recommendation="Docker 或非 CLI 管理启动方式下，后端端口被当前服务监听属于正常状态。",
+                recommendation="systemd 或其他外部进程管理器启动方式下，后端端口被当前服务监听属于正常状态。",
                 context={
                     "port": port,
                     "pids": [process.pid for process in occupants],
@@ -643,7 +635,7 @@ def _check_dependencies(runner: DoctorRunnerProtocol) -> None:
             status=DoctorFindingStatus.Failed,
             title="核心 Python 依赖缺失",
             detail=f"无法导入：{', '.join(missing)}。",
-            recommendation="本地环境执行 `moviepilot install deps`；Docker 环境建议重新拉取或重建镜像。",
+            recommendation="执行 `moviepilot install deps` 安装或修复运行时依赖。",
             context={"missing": missing},
         )
         return
@@ -786,7 +778,7 @@ def _check_frontend_assets(runner: DoctorRunnerProtocol) -> None:
             status=DoctorFindingStatus.Failed,
             title="前端资源缺失",
             detail=f"缺少文件：{', '.join(str(path) for path in missing)}。",
-            recommendation="本地环境执行 `moviepilot install frontend`；Docker 环境建议重新拉取或重建镜像。",
+            recommendation="执行 `moviepilot install frontend` 或重新同步前端静态产物。",
             context={"frontend_dir": str(frontend_dir), "missing": [str(path) for path in missing]},
         )
         return
@@ -868,52 +860,6 @@ def _check_logs(runner: DoctorRunnerProtocol) -> None:
     )
 
 
-def _check_docker(runner: DoctorRunnerProtocol) -> None:
-    if not SystemUtils.is_docker():
-        runner.add(
-            finding_id="docker.environment",
-            severity=DoctorSeverity.Info,
-            status=DoctorFindingStatus.Skipped,
-            title="当前不是 Docker 环境",
-            detail=f"平台：{platform.system()} {platform.release()}。",
-            recommendation="本地源码模式可直接使用 `moviepilot doctor`。",
-        )
-        return
-
-    issues = []
-    if not Path("/config").exists():
-        issues.append("/config 不存在")
-    venv_path = Path(os.getenv("VENV_PATH", "/opt/venv")) / "bin" / "python3"
-    if not venv_path.exists():
-        issues.append(f"{venv_path} 不存在")
-    command_path = Path("/usr/local/bin/moviepilot")
-    if not command_path.exists():
-        issues.append("/usr/local/bin/moviepilot 不存在")
-
-    if issues:
-        runner.add(
-            finding_id="docker.runtime_incomplete",
-            severity=DoctorSeverity.Error,
-            status=DoctorFindingStatus.Failed,
-            title="Docker 诊断入口不完整",
-            detail="；".join(issues),
-            recommendation="重新构建镜像，或使用 `python -m app.cli doctor` 作为临时入口。",
-        )
-        return
-
-    runner.add(
-        finding_id="docker.runtime",
-        severity=DoctorSeverity.Info,
-        status=DoctorFindingStatus.Ok,
-        title="Docker 诊断入口可用",
-        detail=(
-            f"CONFIG_DIR={settings.CONFIG_PATH}；VENV_PATH={os.getenv('VENV_PATH', '/opt/venv')}；"
-            f"MOVIEPILOT_DOCKER_KEEPALIVE_ON_FAILURE={os.getenv('MOVIEPILOT_DOCKER_KEEPALIVE_ON_FAILURE', 'true')}"
-        ),
-        recommendation="主进程异常退出后容器会保活，仍可通过 `docker exec <container> moviepilot doctor` 诊断。",
-    )
-
-
 def _check_safe_mode(runner: DoctorRunnerProtocol) -> None:
     if settings.MOVIEPILOT_SAFE_MODE:
         runner.add(
@@ -922,7 +868,7 @@ def _check_safe_mode(runner: DoctorRunnerProtocol) -> None:
             status=DoctorFindingStatus.Degraded,
             title="当前处于安全模式",
             detail="本次启动会跳过调度器、监控、命令等后台扩展能力。",
-            recommendation="修复异常插件或配置后，移除 MOVIEPILOT_SAFE_MODE 或改用普通 `moviepilot start`。",
+            recommendation="修复配置或后台服务异常后，移除 MOVIEPILOT_SAFE_MODE 或改用普通 `moviepilot start`。",
         )
     else:
         runner.add(

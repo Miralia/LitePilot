@@ -200,6 +200,7 @@ def test_command_restart_failure_does_not_publish_stop_request(monkeypatch):
     stop_event = threading.Event()
     monkeypatch.setattr(global_vars, "STOP_EVENT", stop_event)
     restart = MagicMock(return_value=(False, "restart failed"))
+    monkeypatch.setattr("app.chain.system.SystemHelper.can_restart", MagicMock(return_value=True))
     monkeypatch.setattr("app.chain.system.SystemHelper.restart", restart)
 
     chain = object.__new__(SystemChain)
@@ -207,6 +208,26 @@ def test_command_restart_failure_does_not_publish_stop_request(monkeypatch):
 
     restart.assert_called_once_with()
     assert not stop_event.is_set()
+
+
+def test_command_restart_unsupported_notifies_instead_of_claiming_restart(monkeypatch):
+    """不支持内建重启的运行环境应先告知用户，不能发送误导性的重启中通知。"""
+    from app.chain.system import SystemChain
+    from app.schemas.types import MessageChannel
+
+    restart = MagicMock()
+    post_message = MagicMock()
+    monkeypatch.setattr("app.chain.system.SystemHelper.can_restart", MagicMock(return_value=False))
+    monkeypatch.setattr("app.chain.system.SystemHelper.restart", restart)
+
+    chain = object.__new__(SystemChain)
+    monkeypatch.setattr(chain, "post_message", post_message)
+    chain.restart(channel=MessageChannel.Telegram, userid="user-1")
+
+    restart.assert_not_called()
+    notification = post_message.call_args.args[0]
+    assert "不支持" in notification.title
+    assert "系统正在重启" not in notification.title
 
 
 def test_stop_modules_continues_after_internal_owner_failures(monkeypatch):

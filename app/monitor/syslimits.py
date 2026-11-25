@@ -74,9 +74,7 @@ def get_system_optimization_tips() -> List[str]:
             "增加 inotify 监控数量限制:",
             "echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf",
             "echo fs.inotify.max_user_instances=524288 | sudo tee -a /etc/sysctl.conf",
-            "sudo sysctl -p",
-            "",
-            "如果在Docker中运行，请在宿主机上执行以上命令"
+            "sudo sysctl -p"
         ])
     elif system == 'Darwin':
         tips.extend([

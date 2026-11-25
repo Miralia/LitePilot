@@ -33,6 +33,17 @@ def test_doctor_report_has_stable_json_shape(tmp_path, monkeypatch):
     assert any(item["id"] == "runtime.paths" for item in payload["findings"])
 
 
+def test_doctor_report_does_not_include_docker_control_plane(tmp_path, monkeypatch):
+    """精简版不提供 Docker 部署，doctor 不应保留 Docker 专用诊断与环境字段。"""
+    monkeypatch.setattr(settings, "CONFIG_DIR", str(tmp_path))
+    (settings.LOG_PATH).mkdir(parents=True, exist_ok=True)
+
+    payload = run_doctor().to_dict()
+
+    assert "is_docker" not in payload["environment"]
+    assert not any(item["id"].startswith("docker.") for item in payload["findings"])
+
+
 def test_doctor_formatters_include_status_and_finding(tmp_path, monkeypatch):
     """doctor 文本和 JSON 格式化应展示状态与诊断项。"""
     monkeypatch.setattr(settings, "CONFIG_DIR", str(tmp_path))

@@ -74,7 +74,7 @@ class ConfigModel(BaseModel):
     NGINX_PORT: int = 3000
     # 配置文件目录
     CONFIG_DIR: Optional[str] = None
-    # 安全模式，仅保留核心 API，跳过插件、调度器、监控、命令和工作流等扩展启动项
+    # 安全模式，仅保留核心 API，跳过调度器、监控、命令等后台启动项
     MOVIEPILOT_SAFE_MODE: bool = False
     # 是否启用 Btrfs FSID 子卷容量去重（仅 Linux amd64/arm64）
     BTRFS_FSID_DEDUP: bool = False
@@ -384,9 +384,6 @@ class ConfigModel(BaseModel):
     SECURITY_IMAGE_SUFFIXES: list = Field(
         default=[".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".avif"]
     )
-    # ==================== Docker配置 ====================
-    # Docker Client API地址
-    DOCKER_CLIENT_API: Optional[str] = "tcp://127.0.0.1:38379"
 
 
 class Settings(BaseSettings, ConfigModel, LogConfigModel):
@@ -688,8 +685,6 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
     def CONFIG_PATH(self):
         if self.CONFIG_DIR:
             return Path(self.CONFIG_DIR)
-        elif SystemUtils.is_docker():
-            return Path("/config")
         elif SystemUtils.is_frozen():
             return Path(sys.executable).parent / "config"
         return self.ROOT_PATH / "config"

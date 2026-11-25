@@ -14,7 +14,6 @@ from app.doctor.models import (
     DoctorReport,
     DoctorSeverity,
 )
-from app.utils.system import SystemUtils
 from version import APP_VERSION
 
 
@@ -104,7 +103,7 @@ class DoctorRunner:
     def _environment() -> dict[str, Any]:
         """收集 Doctor 报告所需的本地运行环境信息。"""
         return {
-            "runtime": "Docker" if SystemUtils.is_docker() else platform.system(),
+            "runtime": platform.system(),
             "platform": platform.platform(),
             "python": sys.executable,
             "python_version": platform.python_version(),
@@ -112,7 +111,6 @@ class DoctorRunner:
             "config_path": str(settings.CONFIG_PATH),
             "log_path": str(settings.LOG_PATH),
             "temp_path": str(settings.TEMP_PATH),
-            "is_docker": SystemUtils.is_docker(),
             "safe_mode": settings.MOVIEPILOT_SAFE_MODE,
             "pid": os.getpid(),
         }

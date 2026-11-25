@@ -754,7 +754,7 @@ def cli() -> None:
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.option("--timeout", default=60, show_default=True, help="等待后端与前端就绪的秒数")
-@click.option("--safe", is_flag=True, help="安全模式启动，仅保留核心 API，跳过插件和后台任务")
+@click.option("--safe", is_flag=True, help="安全模式启动，仅保留核心 API，跳过调度器、监控和命令等后台任务")
 def start(timeout: int, safe: bool) -> None:
     """后台启动本地 LitePilot 前后端服务"""
     _ensure_frontend_not_running_alone(timeout=min(timeout, 15))
@@ -901,7 +901,7 @@ def logs(lines: int, follow: bool, stdio: bool, frontend_log: bool) -> None:
 @click.option("--fix", is_flag=True, help="执行白名单安全修复")
 @click.option("--deep", is_flag=True, help="执行可能较慢的深度检查")
 def doctor(json_output: bool, fix: bool, deep: bool) -> None:
-    """离线诊断本地 LitePilot 运行环境，插件日志告警不影响整体状态"""
+    """离线诊断本地 LitePilot 运行环境"""
     from app.doctor import run_doctor
     from app.doctor.formatters import format_json_report, format_text_report
 
