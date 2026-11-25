@@ -115,19 +115,19 @@ eventmanager.send_event(EventType.TransferComplete, data_dict)
 **Convention:** Each SQLAlchemy model in `app/db/models/` has a corresponding `<Model>Oper` class in `app/db/<model>_oper.py`.
 
 ```
-app/db/models/subscribe.py       → app/db/transferhistory_oper.py  (TransferHistoryOper)
-app/db/models/systemconfig.py    → app/db/systemconfig_oper.py (SystemConfigOper)
 app/db/models/transferhistory.py → app/db/transferhistory_oper.py (TransferHistoryOper)
+app/db/models/systemconfig.py    → app/db/systemconfig_oper.py (SystemConfigOper)
+app/db/models/user.py            → app/db/user_oper.py (UserOper)
 ```
 
 **Usage:**
 
 ```python
-from app.db.subscribe_oper import TransferHistoryOper
+from app.db.transferhistory_oper import TransferHistoryOper
 
 oper = TransferHistoryOper()
-subscribe = oper.get(sid=1)
-oper.add(Subscribe(name="Example", type="电影"))
+history = oper.get(hid=1)
+oper.add(TransferHistory(title="Example", type="电影"))
 ```
 
 ---
@@ -187,8 +187,8 @@ from app.schemas.types import SystemConfigKey
 from app.db.systemconfig_oper import SystemConfigOper
 
 oper = SystemConfigOper()
-value = oper.get(SystemConfigKey.RssUrls)
-oper.set(SystemConfigKey.RssUrls, ["https://..."])
+value = oper.get(SystemConfigKey.DownloadFileSync)
+oper.set(SystemConfigKey.DownloadFileSync, {"enabled": True})
 ```
 
 **Rule:** Never use raw string literals as SystemConfig keys. Always add a new entry to the `SystemConfigKey` enum first.

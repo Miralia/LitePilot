@@ -202,120 +202,6 @@ class MediaInfo(BaseModel):
     episode_group: Optional[str] = None
 
 
-class TorrentInfo(BaseModel):
-    """
-    搜索种子信息
-    """
-    # 站点ID
-    site: Optional[int] = None
-    # 站点名称
-    site_name: Optional[str] = None
-    # 站点Cookie
-    site_cookie: Optional[str] = None
-    # 站点UA
-    site_ua: Optional[str] = None
-    # 站点是否使用代理
-    site_proxy: Optional[bool] = False
-    # 站点优先级
-    site_order: Optional[int] = 0
-    # 站点下载器
-    site_downloader: Optional[str] = None
-    # 种子名称
-    title: Optional[str] = None
-    # 种子副标题
-    description: Optional[str] = None
-    # IMDB ID
-    imdbid: Optional[str] = None
-    # 种子链接
-    enclosure: Optional[str] = None
-    # 详情页面
-    page_url: Optional[str] = None
-    # 种子大小
-    size: Optional[float] = 0.0
-    # 做种者
-    seeders: Optional[int] = 0
-    # 下载者
-    peers: Optional[int] = 0
-    # 完成者
-    grabs: Optional[int] = 0
-    # 发布时间
-    pubdate: Optional[str] = None
-    # 已过时间
-    date_elapsed: Optional[str] = None
-    # 免费截止时间
-    freedate: Optional[str] = None
-    # 上传因子
-    uploadvolumefactor: Optional[float] = None
-    # 下载因子
-    downloadvolumefactor: Optional[float] = None
-    # HR
-    hit_and_run: Optional[bool] = False
-    # 种子标签
-    labels: Optional[list] = Field(default_factory=list)
-    # 种子优先级
-    pri_order: Optional[int] = 0
-    # 种子分类 电影/电视剧
-    category: Optional[str] = None
-    # 促销
-    volume_factor: Optional[str] = None
-    # 剩余免费时间
-    freedate_diff: Optional[str] = None
-
-
-class SubtitleInfo(BaseModel):
-    """
-    搜索字幕信息
-    """
-    # 站点ID
-    site: Optional[int] = None
-    # 站点名称
-    site_name: Optional[str] = None
-    # 站点Cookie
-    site_cookie: Optional[str] = None
-    # 站点UA
-    site_ua: Optional[str] = None
-    # 站点是否使用代理
-    site_proxy: Optional[bool] = False
-    # 站点优先级
-    site_order: Optional[int] = 0
-    # 字幕标题
-    title: Optional[str] = None
-    # 字幕描述
-    description: Optional[str] = None
-    # 字幕下载链接
-    enclosure: Optional[str] = None
-    # 详情页面
-    page_url: Optional[str] = None
-    # 语言
-    language: Optional[str] = None
-    # 语言图标
-    language_icon: Optional[str] = None
-    # 字幕大小
-    size: Optional[float] = 0.0
-    # 发布时间
-    pubdate: Optional[str] = None
-    # 已过时间
-    date_elapsed: Optional[str] = None
-    # 点击/下载次数
-    grabs: Optional[int] = 0
-    # 上传者
-    uploader: Optional[str] = None
-    # 举报页面
-    report_url: Optional[str] = None
-    # 种子ID
-    torrent_id: Optional[str] = None
-    # 字幕ID
-    subtitle_id: Optional[str] = None
-    # 下载文件名
-    file_name: Optional[str] = None
-    # 识别元数据
-    meta_info: Optional[MetaInfo] = None
-    # SxxExx
-    season_episode: Optional[str] = None
-    # 集列表
-    episode_list: Optional[List[int]] = Field(default_factory=list)
-
-
 class Context(BaseModel):
     """
     上下文
@@ -324,18 +210,6 @@ class Context(BaseModel):
     meta_info: Optional[Union[MetaInfo, Any]] = None
     # 媒体信息
     media_info: Optional[Union[MediaInfo, Any]] = None
-    # 种子信息
-    torrent_info: Optional[TorrentInfo] = None
-    # 候选资源来源：rss、spider、search、unknown
-    resource_source: Optional[str] = "unknown"
-    # 候选匹配来源：tmdbid、doubanid、bangumiid、imdbid、title、unknown
-    match_source: Optional[str] = "unknown"
-    # 候选自身是否已经识别出有效媒体 ID
-    candidate_recognized: Optional[bool] = False
-    # 当前 media_info 是否为目标媒体回填
-    media_info_is_target: Optional[bool] = False
-    # 下载层确认候选资源覆盖完整目标范围，供订阅事实写入判断整包资源
-    confirmed_full_coverage: Optional[bool] = False
 
 
 class MediaSeason(BaseModel):

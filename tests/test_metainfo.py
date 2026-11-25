@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 from app.core.metainfo import MetaInfo, MetaInfoPath, find_metainfo
 from app.core.meta.metaanime import MetaAnime
-from app.helper.torrent import TorrentHelper
 from app.schemas.types import MediaType
 from tests.cases.meta import meta_cases
 
@@ -110,55 +109,6 @@ def test_metainfo_preserves_original_name_when_custom_words_applied():
     meta = MetaInfo(title="电影测试替换名称 (2024)", custom_words=custom_words)
     assert meta.name == "电影名称"
     assert meta.original_name == "电影测试替换名称"
-
-
-def test_torrent_title_match_ignores_question_mark_variants():
-    """问号差异不应导致番剧罗马字标题匹配失败。"""
-    mediainfo = SimpleNamespace(
-        title="哪里有温柔对待阿宅的辣妹！？",
-        original_title="オタクに優しいギャルはいない!?",
-        names=["Otaku ni Yasashii Gal wa Inai!?"],
-        type=MediaType.TV,
-        year=None,
-        tmdb_id=None,
-        douban_id=None,
-        imdb_id=None,
-        season_years={},
-    )
-    torrent_meta = SimpleNamespace(
-        tmdbid=None,
-        doubanid=None,
-        bangumiid=None,
-        anilistid=None,
-        cn_name=None,
-        en_name="Otaku ni Yasashii Gal wa Inai",
-        type=MediaType.TV,
-        year=None,
-        org_string=None,
-    )
-    torrent = SimpleNamespace(
-        site_name="MiKan",
-        title="[今晚月色真美][Otaku ni Yasashii Gal wa Inai!?][12][1080P]",
-        category=MediaType.TV.value,
-        imdbid=None,
-        description=None,
-    )
-
-    assert TorrentHelper.match_torrent(
-        mediainfo=mediainfo,
-        torrent_meta=torrent_meta,
-        torrent=torrent,
-    )
-
-    mediainfo.names = []
-    torrent_meta.cn_name = "哪里有温柔对待阿宅的辣妹"
-    torrent_meta.en_name = None
-    assert TorrentHelper.match_torrent(
-        mediainfo=mediainfo,
-        torrent_meta=torrent_meta,
-        torrent=torrent,
-    )
-
 
 def test_python_metainfo_fallback_preserves_xxx_movie_title():
     """Python 兜底解析不应删除合法 xXx 片名。"""

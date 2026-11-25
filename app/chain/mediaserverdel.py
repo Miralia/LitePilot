@@ -269,10 +269,6 @@ class MediaServerDelChain(ChainBase):
         logger.info(f"种子 {torrent_hash} 文件已全部删除，删除下载任务")
         if not DownloadChain().remove_downloading(hash_str=torrent_hash):
             return "error"
-        self.eventmanager.send_event(
-            EventType.DownloadDeleted,
-            {"hash": torrent_hash},
-        )
         return "deleted"
 
     def _count_torrent_remaining(

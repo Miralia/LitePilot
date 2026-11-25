@@ -4,7 +4,7 @@ import { useToast } from 'vue-toastification'
 import { requiredValidator } from '@/@validators'
 import api from '@/api'
 import type { Context, MediaDataSource, MediaInfo } from '@/api/types'
-import { getMediaSubscribeId, getMediaSubscribeIdentity } from '@/utils/mediaIdentity'
+import { getMediaId, getMediaIdentity } from '@/utils/mediaIdentity'
 import router from '@/router'
 import { useGlobalSettingsStore } from '@/stores'
 import { getLogoUrl } from '@/utils/imageUtils'
@@ -12,13 +12,13 @@ import { useI18n } from 'vue-i18n'
 
 interface PipelineStep {
   icon: string
-  identity?: MediaIdentity
+  identity?: MediaIdentityDisplay
   source?: MediaSourceDisplay
   title: string
   value: string
 }
 
-interface MediaIdentity {
+interface MediaIdentityDisplay {
   id: string
   link?: string
   source: string
@@ -169,10 +169,7 @@ const resourceChips = computed(() => {
 // 是否已匹配到具体媒体，决定是否展示查看详情入口
 const canViewMediaDetail = computed(() =>
   Boolean(
-    mediaInfo.value?.tmdb_id ||
-    mediaInfo.value?.douban_id ||
-    mediaInfo.value?.bangumi_id ||
-    mediaInfo.value?.media_id,
+    mediaInfo.value?.tmdb_id || mediaInfo.value?.douban_id || mediaInfo.value?.bangumi_id || mediaInfo.value?.media_id,
   ),
 )
 
@@ -195,10 +192,10 @@ function getMediaOfficialLink(media: MediaInfo, source: string, mediaId: string)
 }
 
 /** 生成识别结果中的数据源原生 ID，并兼容旧接口字段。 */
-function getMediaIdentity(media?: MediaInfo): MediaIdentity | undefined {
+function resolveMediaIdentity(media?: MediaInfo): MediaIdentityDisplay | undefined {
   if (!media) return undefined
 
-  const identity = getMediaSubscribeIdentity(media)
+  const identity = getMediaIdentity(media)
   if (!identity) return undefined
 
   return {
@@ -209,7 +206,7 @@ function getMediaIdentity(media?: MediaInfo): MediaIdentity | undefined {
   }
 }
 
-const mediaIdentity = computed(() => getMediaIdentity(mediaInfo.value))
+const mediaIdentity = computed(() => resolveMediaIdentity(mediaInfo.value))
 const recognizedMediaSource = computed<MediaSourceDisplay>(() => {
   const sourceKey = mediaIdentity.value?.sourceKey || nameTestForm.source
 
@@ -266,7 +263,7 @@ async function viewMediaDetail() {
   const target = {
     path: '/media',
     query: {
-      mediaid: getMediaSubscribeId(mediaInfo.value),
+      mediaid: getMediaId(mediaInfo.value),
       title: mediaInfo.value.title,
       year: mediaInfo.value.year,
       type: mediaInfo.value.type,

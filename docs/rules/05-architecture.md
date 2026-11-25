@@ -149,7 +149,7 @@ Before creating a new file under `app/api/endpoints/`, `app/chain/`, `app/helper
 | `app/core/module.py` | `ModuleManager` — discovers and manages module instances |
 
 | `app/core/event.py` | `EventManager` + `Event` — the application event bus |
-| `app/core/context.py` | `Context`, `MediaInfo`, `TorrentInfo` — shared domain context objects |
+| `app/core/context.py` | `Context`, `MediaInfo`，共享媒体识别上下文对象 |
 | `app/main.py` | Application startup and FastAPI instance |
 | `database/versions/` | Alembic migration scripts |
 

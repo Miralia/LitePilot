@@ -10,7 +10,6 @@ Models are SQLAlchemy declarative classes. Each model maps to one database table
 |---|---|
 | `TransferHistory` | 整理历史记录 |
 | `DownloadHistory` / `DownloadFiles` | 下载任务历史与种子文件清单 |
-| `DownloadFailure` | 整理失败记录 |
 | `MediaServerItem` | 媒体服务器条目缓存 |
 | `SystemConfig` | 运行时键值配置 |
 | `UserConfig` | 用户级配置 |
@@ -18,6 +17,8 @@ Models are SQLAlchemy declarative classes. Each model maps to one database table
 | `Message` | 消息记录 |
 
 站点、订阅、插件、工作流、PassKey 等模型已随功能一并移除，不要重新引入。
+
+`downloadfailure` 属于历史迁移遗留表，当前版本不再读写。为避免在未单独确认的情况下破坏既有数据库，不通过自动迁移删除该表；新增代码不得再依赖它。
 
 ---
 
@@ -52,7 +53,6 @@ Each model has a corresponding `*_oper.py` file containing the data access class
 | `SystemConfigOper` | `systemconfig_oper.py` |
 | `TransferHistoryOper` | `transferhistory_oper.py` |
 | `DownloadHistoryOper` | `downloadhistory_oper.py` |
-| `DownloadFailureOper` | `downloadfailure_oper.py` |
 | `MediaServerOper` | `mediaserver_oper.py` |
 | `UserOper` | `user_oper.py` |
 | `UserConfigOper` | `userconfig_oper.py` |
@@ -86,10 +86,10 @@ from app.db.systemconfig_oper import SystemConfigOper
 oper = SystemConfigOper()
 
 # Read
-rss_urls = oper.get(SystemConfigKey.RssUrls)
+sync_config = oper.get(SystemConfigKey.DownloadFileSync)
 
 # Write
-oper.set(SystemConfigKey.RssUrls, ["https://example.com/rss"])
+oper.set(SystemConfigKey.DownloadFileSync, {"enabled": True})
 ```
 
 **Rule:** Never use raw string literals as `SystemConfig` keys. Always define a new `SystemConfigKey` enum entry first. Raw string key lookups are not searchable and cannot be refactored safely.

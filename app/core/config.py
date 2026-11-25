@@ -28,18 +28,10 @@ class SystemConfModel(BaseModel):
     系统关键资源大小配置
     """
 
-    # 缓存种子数量
-    torrents: int = 0
-    # 订阅刷新处理数量
-    refresh: int = 0
     # TMDB请求缓存数量
     tmdb: int = 0
-    # 豆瓣请求缓存数量
-    douban: int = 0
     # Bangumi请求缓存数量
     bangumi: int = 0
-    # Fanart请求缓存数量
-    fanart: int = 0
     # 元数据缓存过期时间（秒）
     meta: int = 0
     # 调度器数量
@@ -722,23 +714,15 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
         """
         if self.BIG_MEMORY_MODE:
             return SystemConfModel(
-                torrents=200,
-                refresh=100,
                 tmdb=1024,
-                douban=512,
                 bangumi=512,
-                fanart=512,
                 meta=(self.META_CACHE_EXPIRE or 72) * 3600,
                 scheduler=100,
                 threadpool=100,
             )
         return SystemConfModel(
-            torrents=100,
-            refresh=50,
             tmdb=256,
-            douban=256,
             bangumi=256,
-            fanart=128,
             meta=(self.META_CACHE_EXPIRE or 24) * 3600,
             scheduler=50,
             threadpool=50,

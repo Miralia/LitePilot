@@ -2,7 +2,6 @@ import json
 import re
 from typing import Dict, Optional, Union, List, Tuple, Any
 
-from app.core.context import MediaInfo, Context
 from app.log import logger
 from app.modules import _ModuleBase, _MessageBase
 from app.modules.telegram.telegram import Telegram
@@ -534,56 +533,6 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
                         disable_web_page_preview=message.disable_web_page_preview,
                         parse_mode=message.parse_mode,
                     )
-
-    def post_medias_message(
-        self, message: Notification, medias: List[MediaInfo]
-    ) -> None:
-        """
-        发送媒体信息选择列表
-        :param message: 消息体
-        :param medias: 媒体列表
-        :return: 成功或失败
-        """
-        for conf in self.get_configs().values():
-            if not self.check_message(message, conf.name):
-                continue
-            client: Telegram = self.get_instance(conf.name)
-            if client:
-                client.send_medias_msg(
-                    title=message.title,
-                    medias=medias,
-                    userid=message.userid,
-                    link=message.link,
-                    buttons=message.buttons,
-                    original_message_id=message.original_message_id,
-                    original_chat_id=message.original_chat_id,
-                    parse_mode=message.parse_mode,
-                )
-
-    def post_torrents_message(
-        self, message: Notification, torrents: List[Context]
-    ) -> None:
-        """
-        发送种子信息选择列表
-        :param message: 消息体
-        :param torrents: 种子列表
-        :return: 成功或失败
-        """
-        for conf in self.get_configs().values():
-            if not self.check_message(message, conf.name):
-                continue
-            client: Telegram = self.get_instance(conf.name)
-            if client:
-                client.send_torrents_msg(
-                    title=message.title,
-                    torrents=torrents,
-                    userid=message.userid,
-                    link=message.link,
-                    buttons=message.buttons,
-                    original_message_id=message.original_message_id,
-                    original_chat_id=message.original_chat_id,
-                    parse_mode=message.parse_mode,
-                )
 
     def delete_message(
         self,

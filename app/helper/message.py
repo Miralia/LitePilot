@@ -16,7 +16,7 @@ from jinja2 import Template
 
 from app.core.cache import TTLCache
 from app.core.config import global_vars
-from app.core.context import MediaInfo, TorrentInfo
+from app.core.context import MediaInfo
 from app.core.meta import MetaBase
 from app.db.systemconfig_oper import SystemConfigOper
 from app.log import logger
@@ -55,7 +55,6 @@ class TemplateContextBuilder:
             self,
             meta: Optional[MetaBase] = None,
             mediainfo: Optional[MediaInfo] = None,
-            torrentinfo: Optional[TorrentInfo] = None,
             transferinfo: Optional[TransferInfo] = None,
             file_extension: Optional[str] = None,
             episodes_info: Optional[List[TmdbEpisode]] = None,
@@ -70,7 +69,6 @@ class TemplateContextBuilder:
 
         :param meta: 媒体元数据
         :param mediainfo: 识别的媒体信息
-        :param torrentinfo: 种子信息
         :param transferinfo: 整理结果信息
         :param file_extension: 文件扩展名
         :param episodes_info: 当前季的全部集信息
@@ -81,13 +79,12 @@ class TemplateContextBuilder:
         self._add_episode_details(context, meta, episodes_info)
         self._add_media_info(context, mediainfo)
         self._add_transfer_info(context, transferinfo)
-        self._add_torrent_info(context, torrentinfo)
         self._add_file_info(context, file_extension)
         if kwargs:
             context.update(kwargs)
 
         if include_raw_objects:
-            self._add_raw_objects(context, meta, mediainfo, torrentinfo, transferinfo, episodes_info)
+            self._add_raw_objects(context, meta, mediainfo, transferinfo, episodes_info)
 
         # 移除空值
         return {k: v for k, v in context.items() if v is not None}
@@ -268,54 +265,6 @@ class TemplateContextBuilder:
         }
         context.update({**meta_info, **tech_metadata, **episode_data})
 
-    @staticmethod
-    def _add_torrent_info(context: Dict[str, Any], torrentinfo: Optional[TorrentInfo]) -> None:
-        """
-        将种子信息写入 ``context``，描述字段会去除 HTML 标签。
-
-        副作用提醒：当 ``torrentinfo.description`` 包含 HTML 时，会就地清洗
-        原对象的 description 字段——保留原始行为，避免破坏现有调用方对清洗后
-        描述的依赖。
-        """
-        if not torrentinfo:
-            return
-        if torrentinfo.size:
-            if str(torrentinfo.size).replace(".", "").isdigit():
-                size = StringUtils.str_filesize(torrentinfo.size)
-            else:
-                size = torrentinfo.size
-        else:
-            size = 0
-
-        if torrentinfo.description:
-            html_re = re.compile(r'<[^>]+>', re.S)
-            description = html_re.sub('', torrentinfo.description)
-            torrentinfo.description = re.sub(r'<[^>]+>', '', description)
-
-        torrent_info = {
-            # 种子标题
-            "torrent_title": torrentinfo.title,
-            # 发布时间
-            "pubdate": torrentinfo.pubdate,
-            # 免费剩余时间
-            "freedate": torrentinfo.freedate_diff,
-            # 做种数
-            "seeders": torrentinfo.seeders,
-            # 促销信息
-            "volume_factor": torrentinfo.volume_factor,
-            # Hit&Run
-            "hit_and_run": "是" if torrentinfo.hit_and_run else "否",
-            # 种子标签
-            "labels": ' '.join(torrentinfo.labels),
-            # 描述
-            "description": torrentinfo.description,
-            # 站点名称
-            "site_name": torrentinfo.site_name,
-            # 种子大小
-            "size": size,
-        }
-        context.update(torrent_info)
-
     # 规格行宽度上限。内容基准仍是 36，加上统一的三字符中文标签
     # （"版本：" "片源：" "规格：" 均为 3 字符，含全角冒号），故为 39。
     # 标签等长使 "标签+内容 <= 39" 与 "内容 <= 36" 完全等价。
@@ -461,7 +410,6 @@ class TemplateContextBuilder:
             context: Dict[str, Any],
             meta: Optional[MetaBase],
             mediainfo: Optional[MediaInfo],
-            torrentinfo: Optional[TorrentInfo],
             transferinfo: Optional[TransferInfo],
             episodes_info: Optional[List[TmdbEpisode]],
     ) -> None:
@@ -475,8 +423,6 @@ class TemplateContextBuilder:
             "__meta__": meta,
             # 识别的媒体信息
             "__mediainfo__": mediainfo,
-            # 种子信息
-            "__torrentinfo__": torrentinfo,
             # 文件转移信息
             "__transferinfo__": transferinfo,
             # 当前季的全部集信息

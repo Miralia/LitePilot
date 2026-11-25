@@ -495,5 +495,5 @@ moviepilot scheduler list
 立即执行调度任务：
 
 ```shell
-moviepilot scheduler run subscribe_refresh
+moviepilot scheduler run transfer
 ```

@@ -107,7 +107,6 @@ def _resolve_addrinfo_to_ips(
 
 class SecurityUtils:
     _SIGNED_URL_PURPOSE = "image-proxy"
-    _SUBTITLE_DOWNLOAD_PURPOSE_PREFIX = "subtitle-download"
 
     @staticmethod
     def is_safe_path(base_path: Path, user_path: Path,
@@ -463,12 +462,6 @@ class SecurityUtils:
         parsed_url = urlparse(url)
         return urlunparse(parsed_url._replace(fragment=""))
 
-    @staticmethod
-    def subtitle_download_purpose(site_id: int) -> str:
-        """
-        构造字幕下载 URL 签名用途，签名必须绑定站点 ID，避免跨站点复用。
-        """
-        return f"{SecurityUtils._SUBTITLE_DOWNLOAD_PURPOSE_PREFIX}:{site_id}"
 
     @staticmethod
     def sign_url(

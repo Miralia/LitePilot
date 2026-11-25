@@ -24,9 +24,9 @@ All new code must follow these conventions. Consistent naming is how the codebas
 | Chain classes | `<Domain>Chain` | `DownloadChain`, `MediaChain`, `TransferChain` |
 | Module classes | `<Backend>Module` | `QbittorrentModule`, `EmbyModule`, `TelegramModule` |
 | Oper (data access) classes | `<Model>Oper` | `TransferHistoryOper`, `SystemConfigOper`, `TransferHistoryOper` |
-| Helper classes | `<Domain>Helper` | `TorrentHelper`, `DirectoryHelper`, `MessageHelper` |
-| Pydantic schema models | `PascalCase`, noun-focused | `MediaInfo`, `TorrentInfo`, `DownloadingTorrent` |
-| SQLAlchemy model classes | `PascalCase`, singular noun | `Subscribe`, `TransferHistory`, `SystemConfig` |
+| Helper classes | `<Domain>Helper` | `DirectoryHelper`, `MessageHelper`, `ServiceConfigHelper` |
+| Pydantic schema models | `PascalCase`, noun-focused | `MediaInfo`, `TransferInfo`, `DownloaderTorrent` |
+| SQLAlchemy model classes | `PascalCase`, singular noun | `TransferHistory`, `SystemConfig`, `User` |
 | Enum classes | `PascalCase` | `MediaType`, `EventType`, `ModuleType` |
 | Manager classes | `<Domain>Manager` | `ModuleManager`, `EventManager` |
 | General classes | `PascalCase` | `MetaInfo`, `Context`, `ChainBase` |
@@ -37,8 +37,8 @@ All new code must follow these conventions. Consistent naming is how the codebas
 
 | Context | Convention | Examples |
 |---|---|---|
-| All functions and methods | `snake_case` | `get_subscribe`, `run_module`, `on_config_changed` |
-| Private methods | `_snake_case` (leading underscore) | `_submit_download_added_task`, `_parse_result` |
+| All functions and methods | `snake_case` | `manual_transfer`, `run_module`, `on_config_changed` |
+| Private methods | `_snake_case` (leading underscore) | `_resolve_manual_transfer_source_fileitems`, `_parse_result` |
 | Event handler methods | `on_<event_name>` or descriptive | `on_transfer_complete`, `handle_config_changed` |
 | Module interface methods | Match `_ModuleBase` contract | `init_module`, `init_setting`, `get_name`, `get_type`, `test`, `stop` |
 | Oper methods | Verb + noun | `get`, `add`, `update`, `delete`, `list` |
@@ -64,7 +64,7 @@ All new code must follow these conventions. Consistent naming is how the codebas
 | Enum class name | `PascalCase` | `MediaType`, `TorrentStatus`, `EventType` |
 | Enum members | `PascalCase` (for complex enums) | `MediaType.MOVIE`, `EventType.TransferComplete` |
 | String enum values | Match the domain language | `MediaType.MOVIE = '电影'`, `TorrentStatus.TRANSFER = '可转移'` |
-| `SystemConfigKey` values | Match the config key as a string | `SystemConfigKey.RssUrls = "RssUrls"` |
+| `SystemConfigKey` values | Match the config key as a string | `SystemConfigKey.DownloadFileSync = "DownloadFileSync"` |
 
 ---
 
@@ -72,9 +72,9 @@ All new code must follow these conventions. Consistent naming is how the codebas
 
 | Context | Convention | Examples |
 |---|---|---|
-| `Settings` / `ConfigModel` fields | `UPPER_SNAKE_CASE` | `API_TOKEN`, `LLM_MODEL`, `QB_HOST` |
-| `SystemConfigKey` enum members | `PascalCase` | `SystemConfigKey.RssUrls`, `SystemConfigKey.SubscribeFilter` |
-| Environment variable names | `UPPER_SNAKE_CASE` | `AI_AGENT_ENABLE`, `DB_TYPE` |
+| `Settings` / `ConfigModel` fields | `UPPER_SNAKE_CASE` | `API_TOKEN`, `DB_TYPE`, `PROXY_HOST` |
+| `SystemConfigKey` enum members | `PascalCase` | `SystemConfigKey.NotificationTemplates`, `SystemConfigKey.DownloadFileSync` |
+| Environment variable names | `UPPER_SNAKE_CASE` | `API_TOKEN`, `DB_TYPE` |
 
 ---
 
@@ -82,9 +82,9 @@ All new code must follow these conventions. Consistent naming is how the codebas
 
 | Context | Convention | Examples |
 |---|---|---|
-| Endpoint function names | `snake_case`, verb-first | `get_subscribe_list`, `add_download`, `delete_history` |
-| URL path segments | `kebab-case` or `snake_case` matching existing patterns | `/api/v1/subscribe`, `/api/v1/transfer/history` |
-| Router tags | Match the resource domain name | `"subscribe"`, `"download"`, `"media"` |
+| Endpoint function names | `snake_case`, verb-first | `recognize`, `manual_transfer`, `query_queue` |
+| URL path segments | `kebab-case` or `snake_case` matching existing patterns | `/api/v1/media/recognize`, `/api/v1/transfer/manual` |
+| Router tags | Match the resource domain name | `"transfer"`, `"download"`, `"media"` |
 
 ---
 
@@ -94,10 +94,10 @@ All new code must follow these conventions. Consistent naming is how the codebas
 |---|---|
 | `class downloadchain:` | `class DownloadChain:` |
 | `class QBModule:` | `class QbittorrentModule:` |
-| `def GetSubscribe():` | `def get_subscribe():` |
+| `def ManualTransfer():` | `def manual_transfer():` |
 | `TORRENT_info = ...` | `torrent_info = ...` |
 | `def handleConfigChanged():` | `def on_config_changed():` or `def handle_config_changed():` |
-| `SystemConfigOper().get("RssUrls")` | `SystemConfigOper().get(SystemConfigKey.RssUrls)` |
-| `class subscribe_oper:` | `class TransferHistoryOper:` |
+| `SystemConfigOper().get("DownloadFileSync")` | `SystemConfigOper().get(SystemConfigKey.DownloadFileSync)` |
+| `class transferhistoryoper:` | `class TransferHistoryOper:` |
 
 *Last Updated: 2026-06-23*

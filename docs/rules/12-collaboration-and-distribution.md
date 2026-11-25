@@ -35,7 +35,7 @@ fix: sign media server image proxy URLs
 docs: add REST API client configuration examples
 chore: upgrade pydantic to 2.9.0
 refactor: extract transfer path resolution into helper
-test: add subscribe endpoint validation tests
+test: add transfer endpoint validation tests
 ci: cache build dependencies
 ```
 

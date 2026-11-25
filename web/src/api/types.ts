@@ -793,7 +793,7 @@ export interface SystemNotification extends Message {
 export interface DownloaderConf {
   // 名称
   name: string
-  // 类型 qbittorrent/transmission
+  // 类型 qbittorrent
   type: string
   // 是否默认
   default: boolean
@@ -887,24 +887,6 @@ export interface TransferDirectoryConf {
   library_type_folder?: boolean
   // 是否发送通知
   notify?: boolean
-}
-
-// 自定义规则项
-export interface CustomRule {
-  // 规则ID
-  id: string
-  // 名称
-  name: string
-  // 包含
-  include?: string
-  // 排除
-  exclude?: string
-  // 大小范围
-  size_range?: string
-  // 最少做种人数
-  seeders?: string
-  // 发布时间
-  publish_time?: string
 }
 
 // 规则测试结果

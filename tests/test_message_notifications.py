@@ -4,7 +4,6 @@ from unittest.mock import Mock
 
 from app.api.endpoints.message import clear_notification_message, get_notification_message
 from app.chain import ChainBase
-from app.core.context import Context, MediaInfo, TorrentInfo
 from app.core.meta import MetaBase
 from app.db import AsyncSessionFactory, SessionFactory
 from app.db.message_oper import MessageOper
@@ -129,9 +128,6 @@ def test_system_helper_message_only_enters_sse_queue() -> None:
     assert realtime_message["title"] == "系统错误"
     assert realtime_message["text"] == "调度任务执行失败"
 
-
-
-
 def test_non_system_helper_message_does_not_enter_sse_queue() -> None:
     """
     非系统消息不进入前端 SSE 队列。
@@ -234,35 +230,3 @@ def test_transient_notification_post_message_skips_history_but_dispatches(monkey
     assert "save_history" not in chain.eventmanager.send_event.call_args.kwargs["data"]
     chain.eventmanager.send_event.assert_called_once()
     chain.messagequeue.send_message.assert_called_once()
-
-
-def test_transient_media_and_torrent_lists_skip_history_but_dispatch(monkeypatch) -> None:
-    """
-    传统交互候选列表标记为不保存历史时，只发送到渠道，不写入消息表。
-    """
-    _clear_messages()
-    chain = ChainBase()
-    media = MediaInfo(type=MediaType.MOVIE, title="星际穿越", year="2014")
-    torrent = Context(
-        meta_info=MetaBase("星际穿越"),
-        media_info=media,
-        torrent_info=TorrentInfo(
-            title="星际穿越.2014.1080p",
-            site_name="TestSite",
-            enclosure="https://example.com/demo.torrent",
-        ),
-    )
-
-    chain.messagequeue.send_message = Mock()
-
-    chain.post_medias_message(
-        Notification(title="请选择媒体", save_history=False),
-        medias=[media],
-    )
-    chain.post_torrents_message(
-        Notification(title="请选择资源", save_history=False),
-        torrents=[torrent],
-    )
-
-    assert MessageOper().list_by_page(page=1, count=10) == []
-    assert chain.messagequeue.send_message.call_count == 2

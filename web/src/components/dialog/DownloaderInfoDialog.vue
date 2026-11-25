@@ -274,42 +274,6 @@ onMounted(() => {
             </VCol>
             <VCol cols="12" md="6">
               <VSwitch
-                v-model="downloaderInfo.config.category"
-                :label="t('downloader.category')"
-                :hint="t('downloader.category')"
-                persistent-hint
-                active
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <VSwitch
-                v-model="downloaderInfo.config.sequentail"
-                :label="t('downloader.sequentail')"
-                :hint="t('downloader.sequentail')"
-                persistent-hint
-                active
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <VSwitch
-                v-model="downloaderInfo.config.force_resume"
-                :label="t('downloader.force_resume')"
-                :hint="t('downloader.force_resume')"
-                persistent-hint
-                active
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <VSwitch
-                v-model="downloaderInfo.config.first_last_piece"
-                :label="t('downloader.first_last_piece')"
-                :hint="t('downloader.first_last_piece')"
-                persistent-hint
-                active
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <VSwitch
                 v-model="downloaderInfo.config.incomplete_files_ext"
                 :label="t('downloader.incomplete_files_ext')"
                 :hint="t('downloader.incomplete_files_extHint')"

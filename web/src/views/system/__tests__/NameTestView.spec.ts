@@ -51,7 +51,6 @@ async function renderRecognizedMedia(media: RecognizedMedia, onClose = vi.fn()) 
       name: media.title,
       org_string: 'Test.Release',
     },
-    torrent_info: {},
   })
 
   const result = await renderWithProviders(NameTestView, {
@@ -168,7 +167,6 @@ describe('NameTestView media identity', () => {
         name: options.params.title,
         org_string: options.params.title,
       },
-      torrent_info: {},
     }))
     const result = await renderWithProviders(NameTestView, {
       initialState: {

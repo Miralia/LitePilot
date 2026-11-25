@@ -63,12 +63,8 @@ class EventType(Enum):
     AudioTransferComplete = "transfer.audio.complete"
     # 音频文件整理失败
     AudioTransferFailed = "transfer.audio.failed"
-    # 下载已添加
-    DownloadAdded = "download.added"
     # 删除下载源文件
     DownloadFileDeleted = "downloadfile.deleted"
-    # 删除下载任务
-    DownloadDeleted = "download.deleted"
     # 收到Webhook消息
     WebhookMessage = "webhook.message"
     # 发送消息通知
@@ -92,9 +88,7 @@ EVENT_TYPE_NAMES = {
     EventType.SubtitleTransferFailed: "字幕整理失败",
     EventType.AudioTransferComplete: "音频整理完成",
     EventType.AudioTransferFailed: "音频整理失败",
-    EventType.DownloadAdded: "添加下载",
     EventType.DownloadFileDeleted: "删除下载源文件",
-    EventType.DownloadDeleted: "删除下载任务",
     EventType.WebhookMessage: "收到Webhook消息",
     EventType.NoticeMessage: "发送消息通知",
     EventType.SystemError: "系统错误",
@@ -146,8 +140,6 @@ class SystemConfigKey(Enum):
     MediaInfoProbe = "MediaInfoProbe"
     # 整理后源文件清理
     MediaSourceCleanup = "MediaSourceCleanup"
-    # 种子优先级规则
-    TorrentsPriority = "TorrentsPriority"
     # 通知发送时间
     NotificationSendTime = "NotificationSendTime"
     # 通知消息格式模板

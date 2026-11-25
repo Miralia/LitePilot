@@ -23,19 +23,17 @@ def get_name() -> str:
 ### Multi-line (for methods with parameters, return values, or non-obvious behavior)
 
 ```python
-def download(
+def manual_transfer(
     self,
-    context: Context,
-    torrent: TorrentInfo,
-    download_dir: Path,
-) -> Optional[str]:
+    fileitems: List[FileItem],
+    target_path: Path,
+) -> Optional[TransferInfo]:
     """
-    添加下载任务到下载器
+    按用户选择的源文件和目标目录执行手动整理
 
-    :param context: 当前媒体上下文，包含识别结果和种子选择信息
-    :param torrent: 要下载的种子信息
-    :param download_dir: 目标保存目录
-    :return: 成功时返回下载任务 ID，失败时返回 None
+    :param fileitems: 待整理的源文件清单
+    :param target_path: 媒体库目标目录
+    :return: 成功时返回整理结果，失败时返回 None
     """
     ...
 ```
@@ -43,9 +41,9 @@ def download(
 ### Class docstrings
 
 ```python
-class DownloadChain(ChainBase):
+class TransferChain(ChainBase):
     """
-    下载处理链，负责协调搜索结果的种子选择、下载器调度和下载后处理
+    文件整理链，负责识别源文件、执行入库整理并同步整理结果
     """
 ```
 
@@ -96,8 +94,8 @@ if not self._initialized:
 ## Incorrect Examples
 
 ```python
-# 获取订阅列表  ← 这只是在重述代码，不需要
-subscribes = TransferHistoryOper().list()
+# 获取整理历史  ← 这只是在重述代码，不需要
+histories = TransferHistoryOper().list()
 
 # 如果 result 为 None 则返回  ← 无意义
 if result is None:
