@@ -11,4 +11,10 @@ describe('PWA service worker subpath assets', () => {
     expect(source).not.toContain("caches.match('/offline.html')")
     expect(existsSync('src/types/workbox-precaching.d.ts')).toBe(false)
   })
+
+  it('retires the font runtime route while still cleaning legacy font caches', () => {
+    expect(source).not.toContain("request.destination === 'font'")
+    expect(source).not.toContain('`font-cache-${RESOURCE_VERSION}`')
+    expect(source).toContain("'font-cache'")
+  })
 })

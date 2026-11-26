@@ -121,23 +121,6 @@ registerRoute(
   }),
 )
 
-// 字体资源 - 优先缓存
-registerRoute(
-  ({ request }) => request.destination === 'font',
-  new CacheFirst({
-    cacheName: `font-cache-${RESOURCE_VERSION}`,
-    plugins: [
-      new CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-      new ExpirationPlugin({
-        maxEntries: 50,
-        maxAgeSeconds: 365 * 24 * 60 * 60, // 1年
-      }),
-    ],
-  }),
-)
-
 // TMDB 图片 - 优先缓存
 registerRoute(
   ({ url }) => url.hostname === 'image.tmdb.org',
@@ -198,6 +181,7 @@ setCatchHandler(async ({ request }) => {
 // 清理运行时缓存
 async function cleanupRuntimeCaches(onlyOld: boolean = false) {
   const cacheNames = await caches.keys()
+  // font-cache 已随系统字体栈退役；保留前缀只用于清除旧客户端中的远程字体缓存。
   const runtimeCachePrefixes = [
     'app-shell',
     'static-resources',
@@ -212,7 +196,6 @@ async function cleanupRuntimeCaches(onlyOld: boolean = false) {
     `app-shell-${CACHE_VERSION}`,
     `static-resources-${CACHE_VERSION}`,
     `image-cache-${RESOURCE_VERSION}`,
-    `font-cache-${RESOURCE_VERSION}`,
     `tmdb-image-cache-${RESOURCE_VERSION}`,
     `api-cache-${CACHE_VERSION}`,
   ]

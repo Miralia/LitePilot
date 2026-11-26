@@ -1,6 +1,5 @@
 // 1. 配置与兼容性
 import '@/@core/utils/compatibility'
-import '@/plugins/webfontloader'
 
 // 2. 核心插件和 UI 框架
 import { createApp, defineAsyncComponent } from 'vue'
