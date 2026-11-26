@@ -118,7 +118,7 @@ async function confirmVerifyPassword(password: string) {
 }
 
 // 执行注销操作
-function logout() {
+async function logout() {
   // 清理重启相关状态
   isRestarting.value = false
   if (restartPollingId.value) {
@@ -127,8 +127,9 @@ function logout() {
   }
 
   // 清除登录状态信息
-  authStore.logout()
+  const logoutPromise = authStore.logout()
   userStore.reset()
+  await logoutPromise
   // 重定向到登录页面或其他适当的页面
   router.push('/login')
 }

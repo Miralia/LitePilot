@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
 import router from '@/router'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useUserStore } from '@/stores'
 import { initializeRequestOptimizer } from '@/utils/requestOptimizer'
 import { useGlobalOfflineStatus } from '@/composables/useOfflineStatus'
 import { getCurrentLocale } from '@/plugins/i18n'
@@ -73,7 +73,7 @@ api.interceptors.response.use(
     globalOfflineStatus.markServerOnline()
     return normalizeLocalizedMessage(response.data)
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     if (!error.response) {
       const requestConfig = error.config as ConnectionAwareRequestConfig | undefined
       const failureReason = resolveConnectionFailureReason(error)
@@ -99,8 +99,10 @@ api.interceptors.response.use(
       normalizeLocalizedMessage(error.response.data)
       // 认证 Store
       const authStore = useAuthStore()
-      // 清除登录状态信息
-      authStore.logout()
+      // 清除登录状态与持久化用户资料
+      const logoutPromise = authStore.logout()
+      useUserStore().reset()
+      await logoutPromise
       // token验证失败，跳转到登录页面
       router.push('/login')
     } else {

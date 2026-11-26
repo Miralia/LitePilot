@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { authState } from '@/stores/types'
+import { clearUserDataCaches } from '@/utils/userDataCache'
 
 export const useAuthStore = defineStore('auth', {
   state: (): authState => ({
@@ -28,9 +29,14 @@ export const useAuthStore = defineStore('auth', {
       this.setToken(payload.token)
       this.setRemember(payload.remember)
     },
-    logout() {
+    async logout() {
       this.clearToken()
       this.setOriginalPath(null)
+      try {
+        await clearUserDataCaches()
+      } catch (error) {
+        console.error('Failed to clear user data caches', error)
+      }
     },
   },
 
