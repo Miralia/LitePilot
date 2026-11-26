@@ -372,6 +372,25 @@ describe('ReorganizeDialog submission safety', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
   })
 
+  it('hides filesystem link modes when the selected target storage differs from the source', async () => {
+    await renderDialog({
+      items: [createFileItem({ storage: 'smb' })],
+      storages: [
+        { type: 'local', name: '本地', config: {} },
+        { type: 'smb', name: 'SMB', config: {} },
+      ],
+    })
+
+    await selectOption('目的存储', 2)
+    await selectOption('整理方式', 3)
+    await selectOption('目的存储', 1)
+
+    const transferTypeSelect = screen.getByLabelText('整理方式') as HTMLSelectElement
+    await waitFor(() => expect(transferTypeSelect.value).toBe('1'))
+    const optionLabels = Array.from(transferTypeSelect.options).map(option => option.textContent)
+    expect(optionLabels).toEqual(['自动', '复制', '移动'])
+  })
+
   it('keeps the dialog open when the backend reports a business failure', async () => {
     server.use(
       http.post(new URL('transfer/manual', API_BASE_URL).href, () =>

@@ -98,7 +98,7 @@ Before creating a new file under `app/api/endpoints/`, `app/chain/`, `app/helper
 **Directory:** `app/helper/`
 
 **Responsibilities:**
-- Reusable low-level support: path handling, config aggregation, site index loading, protocol wrappers, rate limiting, cache utilities, page parsing, notification helpers.
+- Reusable low-level support: path handling, config aggregation, protocol wrappers, rate limiting, cache utilities, page parsing, notification helpers.
 
 **Rules:**
 - Add a new helper only when the logic is reused in multiple places, or it is clearly a standalone low-level concern.

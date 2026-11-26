@@ -267,15 +267,19 @@ class LocalStorage(StorageBase):
         """
         分块复制文件并回调进度
         """
-        src_stat = src.stat()
-        total_size = src_stat.st_size
         copied_size = 0
-        progress_callback = transfer_process(src.as_posix())
+        copy_started = False
+        progress_callback = None
         try:
+            src_stat = src.stat()
+            total_size = src_stat.st_size
+            progress_callback = transfer_process(src.as_posix())
             with open(src, "rb") as fsrc, open(dest, "wb") as fdst:
+                copy_started = True
                 while True:
                     if global_vars.is_transfer_stopped(src.as_posix()):
                         logger.info(f"【本地】{src} 复制已取消！")
+                        dest.unlink(missing_ok=True)
                         return False
                     buf = fsrc.read(self.chunk_size)
                     if not buf:
@@ -290,9 +294,12 @@ class LocalStorage(StorageBase):
             return True
         except Exception as e:
             logger.error(f"【本地】复制文件 {src} 失败：{e}")
+            if copy_started:
+                dest.unlink(missing_ok=True)
             return False
         finally:
-            progress_callback(100)
+            if progress_callback:
+                progress_callback(100)
 
     def upload(
             self,

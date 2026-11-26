@@ -147,6 +147,17 @@ class SMB(StorageBase, metaclass=WeakSingleton):
         if not self._connected or not self._server_path:
             raise SMBConnectionError("【SMB】连接未建立或已断开，请检查配置！")
 
+    @staticmethod
+    def _remove_incomplete_remote_file(smb_path: str) -> None:
+        """
+        清理上传中断产生的新远端残片，清理失败不影响原始错误返回。
+        """
+        try:
+            if smbclient.path.exists(smb_path):
+                smbclient.remove(smb_path)
+        except Exception as err:
+            logger.warning(f"【SMB】清理未完成文件失败：{smb_path} - {err}")
+
     def _normalize_path(self, path: Union[str, Path]) -> str:
         """
         标准化路径格式为SMB路径
@@ -530,13 +541,15 @@ class SMB(StorageBase, metaclass=WeakSingleton):
             progress_callback = transfer_process(Path(fileitem.path).as_posix())
 
             # 使用更高效的文件传输方式
+            cancelled = False
             with smbclient.open_file(smb_path, mode="rb") as src_file:
                 with open(local_path, "wb") as dst_file:
                     downloaded_size = 0
                     while True:
                         if global_vars.is_transfer_stopped(fileitem.path):
                             logger.info(f"【SMB】{fileitem.path} 下载已取消！")
-                            return None
+                            cancelled = True
+                            break
                         chunk = src_file.read(self.chunk_size)
                         if not chunk:
                             break
@@ -546,6 +559,11 @@ class SMB(StorageBase, metaclass=WeakSingleton):
                         if file_size:
                             progress = (downloaded_size * 100) / file_size
                             progress_callback(progress)
+
+            if cancelled:
+                if local_path.exists():
+                    local_path.unlink()
+                return None
 
             # 完成下载
             progress_callback(100)
@@ -569,8 +587,10 @@ class SMB(StorageBase, metaclass=WeakSingleton):
         target_path = Path(fileitem.path) / target_name
         smb_path = self._normalize_path(str(target_path))
 
+        target_existed = False
         try:
             self._check_connection()
+            target_existed = smbclient.path.exists(smb_path)
 
             # 获取文件大小
             file_size = path.stat().st_size
@@ -580,13 +600,15 @@ class SMB(StorageBase, metaclass=WeakSingleton):
             progress_callback = transfer_process(path.as_posix())
 
             # 使用更高效的文件传输方式
+            cancelled = False
             with open(path, "rb") as src_file:
                 with smbclient.open_file(smb_path, mode="wb") as dst_file:
                     uploaded_size = 0
                     while True:
                         if global_vars.is_transfer_stopped(path.as_posix()):
                             logger.info(f"【SMB】{path} 上传已取消！")
-                            return None
+                            cancelled = True
+                            break
                         chunk = src_file.read(self.chunk_size)
                         if not chunk:
                             break
@@ -597,6 +619,11 @@ class SMB(StorageBase, metaclass=WeakSingleton):
                             progress = (uploaded_size * 100) / file_size
                             progress_callback(progress)
 
+            if cancelled:
+                if not target_existed:
+                    self._remove_incomplete_remote_file(smb_path)
+                return None
+
             # 完成上传
             progress_callback(100)
             logger.info(f"【SMB】上传完成: {target_name}")
@@ -606,6 +633,8 @@ class SMB(StorageBase, metaclass=WeakSingleton):
 
         except Exception as e:
             logger.error(f"【SMB】上传失败: {target_name} - {e}")
+            if not target_existed:
+                self._remove_incomplete_remote_file(smb_path)
             return None
 
     def copy(self, fileitem: schemas.FileItem, path: Path, new_name: str) -> bool:

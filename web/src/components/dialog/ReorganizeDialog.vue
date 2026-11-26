@@ -219,17 +219,6 @@ const storageOptions = computed(() => {
   ]
 })
 
-// 整理方式选项，包含可提交 null 的自动项。
-const manualTransferTypeOptions = computed(() => {
-  return [
-    {
-      title: t('dialog.reorganize.auto'),
-      value: null,
-    },
-    ...transferTypeOptions,
-  ]
-})
-
 // 剧集组选项属性
 function episodeGroupItemProps(item: { title: string; subtitle?: string }) {
   return {
@@ -329,6 +318,37 @@ const transferForm = reactive<TransferForm>({
   library_type_folder: null,
   episode_group: null,
   reorganize: Boolean(props.logids?.length),
+})
+
+// 任一源文件与显式目的存储不同时，后端只能执行复制或移动。
+const crossStorageTransfer = computed(() => {
+  if (!transferForm.target_storage || !normalizedItems.value.length) return false
+  return normalizedItems.value.some(item => (item.storage || 'local') !== transferForm.target_storage)
+})
+
+// 整理方式选项，包含可提交 null 的自动项。
+const manualTransferTypeOptions = computed(() => {
+  return [
+    {
+      title: t('dialog.reorganize.auto'),
+      value: null,
+    },
+    ...transferTypeOptions.filter(
+      option => !crossStorageTransfer.value || option.value === 'copy' || option.value === 'move',
+    ),
+  ]
+})
+
+// 目的存储切换为跨存储后，已选的文件系统链接方式不能继续提交。
+watchEffect(() => {
+  if (
+    crossStorageTransfer.value &&
+    transferForm.transfer_type &&
+    transferForm.transfer_type !== 'copy' &&
+    transferForm.transfer_type !== 'move'
+  ) {
+    transferForm.transfer_type = 'copy'
+  }
 })
 
 // 历史记录入口和文件浏览器命中的成功历史都属于重新整理。

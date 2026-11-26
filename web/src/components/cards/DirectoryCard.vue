@@ -130,12 +130,13 @@ async function loadTransferTypeItems() {
     const library_storage_transtype = (library_storage_res as any).transtype
     // 为空终止
     if (!library_storage_transtype || !storage_transtype) return
-    // 取并集
+    // 取两端交集；跨存储传输只能复制或移动，不能创建文件系统链接
     const transtype: { [key: string]: string } = {}
+    const sameStorage = props.directory.storage === props.directory.library_storage
     Object.keys(storage_transtype).forEach(key => {
-      if (key in library_storage_transtype) {
-        transtype[key] = storage_transtype[key]
-      }
+      if (!(key in library_storage_transtype)) return
+      if (!sameStorage && key !== 'copy' && key !== 'move') return
+      transtype[key] = storage_transtype[key]
     })
     // 非空时设置整理方式下拉字典
     if (transtype && Object.keys(transtype).length > 0) {

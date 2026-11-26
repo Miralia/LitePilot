@@ -115,7 +115,7 @@ Do not call message channel modules directly from chain code. Use the event bus 
 
 ## Media Metadata API Conventions
 
-When calling TMDB, TheTVDB, Douban, or Bangumi via the module layer:
+When calling TMDB or Bangumi via the module layer:
 
 - Always check the module return for `None` before using the result — modules return `None` when the backend is not configured or the request fails.
 - Cache responses using `FileCache` / `AsyncFileCache` where the result is stable and repeated requests would be expensive.

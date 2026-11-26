@@ -16,7 +16,7 @@
 
 ## 保留能力（唯一清单）
 
-- 元数据识别与刮削：TMDB
+- 元数据识别与刮削：TMDB / Bangumi
 - 下载器：qBittorrent（列种子、查状态、取路径、删种）
 - 整理：目录监控（本地）、整理链（重命名 / 硬链接 / 分类）、手动整理、整理历史与下载历史
 - 媒体服务器：Emby（刷新、播放地址）
@@ -35,7 +35,7 @@
 | 搜索 / 订阅 | `app/chain/{search,subscribe,torrents,recommend}.py`、对应端点、订阅表与 Oper、`app/modules/filter/` |
 | 智能体 / 工作流 | `app/agent/`、`app/workflow/`、MCP / OpenAI / Anthropic / LLM 端点、`skills/` |
 | 插件体系 | `app/core/plugin.py`、`app/helper/plugin.py`、`app/api/endpoints/plugin.py`、`app/plugins/`、插件市场与 `plugindata` |
-| 多用户 / 鉴权 | MFA、passkey、邀请与 Token 管理；鉴权依赖函数改为单管理员直通 |
+| 多用户 / 鉴权 | passkey、邀请与 Token 管理；鉴权依赖函数改为单管理员直通（保留 OTP 二次验证） |
 | 下载器 | transmission、rtorrent 模块；下载任务操作界面 |
 | 元数据 / 媒体服务器 / 通知 | 豆瓣、TVDB、Fanart、Jellyfin、Plex、TrimMedia、Zspace、Ugreen、微信、飞书、Slack、Discord、VoceChat、QQBot、SynologyChat、WebPush、WeChatClawBot |
 | 存储 | 云盘类后端（115 / 阿里盘 / rclone / alist）与自定义存储类型 |

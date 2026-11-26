@@ -624,6 +624,9 @@ class TransHandler:
         ):
             return None, f"不支持 {fileitem.storage} 到 {target_storage} 的文件整理"
 
+        if fileitem.storage != target_storage and transfer_type not in ["copy", "move"]:
+            return None, f"跨存储整理仅支持复制或移动，不支持 {transfer_type}"
+
         if fileitem.storage == "local" and target_storage == "local":
             # 创建目录，由存储自身保证新建目录对媒体服务器可写
             target_oper.get_folder(target_file.parent)
@@ -692,15 +695,17 @@ class TransHandler:
                 return __get_targetitem(target_file), ""
             # 远程存储到本地
             if transfer_type in ["copy", "move"]:
-                # 下载
-                tmp_file = source_oper.download(
-                    fileitem=fileitem, path=target_file.parent
-                )
+                # 创建目录，由存储自身保证新建目录对媒体服务器可写
+                target_oper.get_folder(target_file.parent)
+                # 先下载到临时目录，避免未完成的文件直接出现在媒体库目标路径
+                tmp_file = source_oper.download(fileitem=fileitem)
                 if tmp_file:
-                    # 创建目录，由存储自身保证新建目录对媒体服务器可写
-                    target_oper.get_folder(target_file.parent)
                     # 将tmp_file移动后target_file
-                    SystemUtils.move(tmp_file, target_file)
+                    move_code, move_message = SystemUtils.move(tmp_file, target_file)
+                    if move_code != 0:
+                        tmp_file.unlink(missing_ok=True)
+                        target_file.unlink(missing_ok=True)
+                        return None, f"{fileitem.path} 移动到本地媒体库失败：{move_message}"
                     if transfer_type == "move":
                         # 删除源文件
                         source_oper.delete(fileitem)
