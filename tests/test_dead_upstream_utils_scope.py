@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import app.utils.gc as memory_utils
+
 from app.helper import message
 from app.utils import dom, http, ip, limit, media, security, system, timer, tokens, url
 
@@ -60,6 +62,15 @@ def test_dead_timer_token_media_and_message_helpers_are_removed():
     assert not hasattr(tokens.Tokens, "peek_at")
     assert not hasattr(media, "build_media_key")
     assert not hasattr(message.MessageQueueManager, "_time_to_minutes")
+
+
+def test_dead_memory_decorators_and_http_convenience_methods_are_removed():
+    """调度只读取内存指标，外部请求也不保留无消费者的 PUT/DELETE/JSON 便捷包装。"""
+    for name in ("memory_gc", "memory_monitor", "memory_cleanup", "auto_gc", "memory_watch"):
+        assert not hasattr(memory_utils, name)
+    for cls in (http.RequestUtils, http.AsyncRequestUtils):
+        for name in ("put_res", "delete_res", "get_json", "post_json"):
+            assert not hasattr(cls, name)
 
 
 def test_test_only_structures_utility_is_removed_with_its_tests():
