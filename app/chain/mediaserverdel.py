@@ -748,12 +748,18 @@ class MediaServerDelChain(ChainBase):
             return default_icon
         mtype = MediaType.MOVIE if media_type in ("Movie", "MOV") else MediaType.TV
         try:
+            season = int(season_num) if str(season_num or "").isdigit() else None
+            episode = int(episode_num) if str(episode_num or "").isdigit() else None
             image = self.obtain_specific_image(
                 mediaid=tmdb_id,
                 mtype=mtype,
-                image_type=MediaImageType.Backdrop,
-                season=int(season_num) if str(season_num or "").isdigit() else None,
-                episode=int(episode_num) if str(episode_num or "").isdigit() else None,
+                image_type=(
+                    MediaImageType.Poster
+                    if season is not None and episode is None
+                    else MediaImageType.Backdrop
+                ),
+                season=season,
+                episode=episode,
             )
             return image or default_icon
         except Exception as err:  # pylint: disable=broad-except
