@@ -391,18 +391,12 @@ export default {
   storage: {
     name: '名称',
     type: '类型',
-    customTypeHint: '用于用户自建挂载的存储类型',
     usedPercent: '已使用 {percent}%',
     noConfigNeeded: '此存储类型无需配置参数，请直接配置目录！',
     notConfigured: '未配置',
+    unsupportedType: '当前存储类型不再支持，请删除该配置或改用本地/SMB',
     local: '本地',
-    alipan: '阿里云盘',
-    u115: '115网盘',
-    rclone: 'RClone',
-    alist: 'OpenList',
-    alistgo: 'AList',
     smb: 'SMB网络共享',
-    custom: '自定义',
   },
   transferType: {
     copy: '复制',
@@ -880,7 +874,7 @@ export default {
     },
     directory: {
       storage: '存储',
-      storageDesc: '设置本地或网盘存储',
+      storageDesc: '设置本地或 SMB 网络存储',
       directory: '目录',
       directoryDesc: '设置媒体文件整理目录结构，按先后顺序依次匹配。',
       organizeAndScrap: '整理 & 刮削',
@@ -979,9 +973,6 @@ export default {
   dialog: {
     progress: {
       processing: '处理中',
-    },
-    rcloneConfig: {
-      defaultContent: '# 请在此处填写rclone配置文件内容 \n# 请参考 https://rclone.org/docs/ \n# 存储节点名必须为：MP',
     },
     smbConfig: {
       title: 'SMB网络共享配置',
@@ -1166,8 +1157,6 @@ export default {
       move: '移动',
       link: '硬链接',
       softlink: '软链接',
-      rclone_copy: 'Rclone复制',
-      rclone_move: 'Rclone移动',
     },
     status: {
       success: '成功',

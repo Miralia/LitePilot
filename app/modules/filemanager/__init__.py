@@ -187,36 +187,6 @@ class FileManagerModule(_ModuleBase):
             return
         storage_oper.reset_config()
 
-    def generate_qrcode(self, storage: str) -> Optional[Tuple[dict, str]]:
-        """
-        生成二维码
-        """
-        storage_oper = self.__get_storage_oper(storage, "generate_qrcode")
-        if not storage_oper:
-            logger.error(f"不支持 {storage} 的二维码生成")
-            return None
-        return storage_oper.generate_qrcode()
-
-    def generate_auth_url(self, storage: str) -> Optional[Tuple[dict, str]]:
-        """
-        生成 OAuth2 授权 URL
-        """
-        storage_oper = self.__get_storage_oper(storage, "generate_auth_url")
-        if not storage_oper:
-            logger.error(f"不支持 {storage} 的 OAuth2 授权")
-            return {}, f"不支持 {storage} 的 OAuth2 授权"
-        return storage_oper.generate_auth_url()
-
-    def check_login(self, storage: str, **kwargs) -> Optional[Dict[str, str]]:
-        """
-        登录确认
-        """
-        storage_oper = self.__get_storage_oper(storage, "check_login")
-        if not storage_oper:
-            logger.error(f"不支持 {storage} 的登录确认")
-            return None
-        return storage_oper.check_login(**kwargs)
-
     def list_files(self, fileitem: FileItem, recursion: Optional[bool] = False) -> Optional[List[FileItem]]:
         """
         浏览文件
@@ -603,7 +573,7 @@ class FileManagerModule(_ModuleBase):
 
     def media_exists(self, mediainfo: MediaInfo, **kwargs) -> Optional[ExistMediaInfo]:
         """
-        判断媒体文件是否存在于文件系统（网盘或本地文件），只支持标准媒体库结构
+        判断媒体文件是否存在于本地或远程存储文件系统，只支持标准媒体库结构
         :param mediainfo:  识别的媒体信息
         :param server:  指定媒体服务器名称时跳过本地文件系统检查
         :return: 如不存在返回None，存在时返回信息，包括每季已存在所有集{type: movie/tv, seasons: {season: [episodes]}}

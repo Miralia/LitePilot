@@ -69,9 +69,6 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 2
     },
-    "sonarjs/super-linear-regex": {
-      "count": 1
-    },
     "vue/no-mutating-props": {
       "count": 21
     }
@@ -375,9 +372,6 @@
       "count": 8
     },
     "no-prototype-builtins": {
-      "count": 1
-    },
-    "sonarjs/super-linear-regex": {
       "count": 1
     }
   },

@@ -64,7 +64,7 @@ function mountToolbar(
       sort,
       storages: [
         { icon: 'mdi-harddisk', title: '本地', value: 'local' },
-        { icon: 'mdi-cloud', title: '网盘', value: 'rclone' },
+        { icon: 'mdi-folder-network-outline', title: 'SMB', value: 'smb' },
       ],
     },
     global: {
@@ -196,7 +196,7 @@ describe('FileToolbar navigation and sorting', () => {
     await wrapper.findAll('.storage-item')[0].trigger('click')
     await wrapper.findAll('.storage-item')[1].trigger('click')
 
-    expect(wrapper.emitted('storagechanged')).toEqual([['rclone']])
+    expect(wrapper.emitted('storagechanged')).toEqual([['smb']])
   })
 
   it('navigates to the parent breadcrumb from the up action', async () => {

@@ -240,8 +240,6 @@ class StorageSchema(Enum):
     # 存储类型
     Local = "local"
     SMB = "smb"
-    # 自定义（WebDAV 等由用户自建挂载，目录层面统一按本地处理）
-    Custom = "custom"
 
 
 # 模块类型

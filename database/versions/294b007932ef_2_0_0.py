@@ -23,6 +23,17 @@ branch_labels = None
 depends_on = None
 
 
+def initial_storage_configs() -> list[dict]:
+    """返回全新安装初始化的活动存储配置。"""
+    return [
+        {
+            "type": "local",
+            "name": "本地",
+            "config": {},
+        }
+    ]
+
+
 def upgrade() -> None:
     """
     v2.0.0 数据库初始化
@@ -49,28 +60,7 @@ def upgrade() -> None:
         # 初始化本地存储
         _systemconfig = SystemConfigOper()
         if not _systemconfig.get(SystemConfigKey.Storages):
-            _systemconfig.set(SystemConfigKey.Storages, [
-                {
-                    "type": "local",
-                    "name": "本地",
-                    "config": {}
-                },
-                {
-                    "type": "alipan",
-                    "name": "阿里云盘",
-                    "config": {}
-                },
-                {
-                    "type": "u115",
-                    "name": "115网盘",
-                    "config": {}
-                },
-                {
-                    "type": "rclone",
-                    "name": "RClone",
-                    "config": {}
-                }
-            ])
+            _systemconfig.set(SystemConfigKey.Storages, initial_storage_configs())
 
 
 def downgrade() -> None:

@@ -48,7 +48,7 @@ def test_poll_merges_incremental_into_baseline(monkeypatch):
     store.load_checked.return_value = (dict(BASELINE), True)
     _mock_storage_chain(monkeypatch, [{'/mon/b.mkv': {'size': 2, 'modify_time': 200}}])
 
-    file_count = poller.poll("u115", [Path("/mon")])
+    file_count = poller.poll("smb", [Path("/mon")])
 
     assert file_count == 2
     saved_snapshot = store.save.call_args.args[1]
@@ -65,7 +65,7 @@ def test_poll_detects_modified_files(monkeypatch):
     store.load_checked.return_value = (dict(BASELINE), True)
     _mock_storage_chain(monkeypatch, [{'/mon/a.mkv': {'size': 5, 'modify_time': 300}}])
 
-    file_count = poller.poll("u115", [Path("/mon")])
+    file_count = poller.poll("smb", [Path("/mon")])
 
     assert file_count == 1
     saved_snapshot = store.save.call_args.args[1]
@@ -82,7 +82,7 @@ def test_poll_partial_failure_merges_success_and_keeps_baseline(monkeypatch):
     store.load_checked.return_value = (dict(BASELINE), True)
     _mock_storage_chain(monkeypatch, [None, {'/mon2/b.mkv': {'size': 2, 'modify_time': 200}}])
 
-    file_count = poller.poll("u115", [Path("/mon"), Path("/mon2")])
+    file_count = poller.poll("smb", [Path("/mon"), Path("/mon2")])
 
     assert file_count == 2
     saved_snapshot = store.save.call_args.args[1]
@@ -99,7 +99,7 @@ def test_poll_all_paths_failed_skips_save(monkeypatch):
     store.load_checked.return_value = (dict(BASELINE), True)
     _mock_storage_chain(monkeypatch, [None])
 
-    assert poller.poll("u115", [Path("/mon")]) is None
+    assert poller.poll("smb", [Path("/mon")]) is None
     store.save.assert_not_called()
     dispatcher.handle_file.assert_not_called()
 
@@ -112,7 +112,7 @@ def test_poll_first_snapshot_failure_builds_no_empty_baseline(monkeypatch):
     store.load_checked.return_value = (None, True)
     _mock_storage_chain(monkeypatch, [None])
 
-    assert poller.poll("u115", [Path("/mon")]) is None
+    assert poller.poll("smb", [Path("/mon")]) is None
     store.save.assert_not_called()
 
 
@@ -124,7 +124,7 @@ def test_poll_first_snapshot_success_saves_baseline_without_dispatch(monkeypatch
     store.load_checked.return_value = (None, True)
     _mock_storage_chain(monkeypatch, [{'/mon/a.mkv': {'size': 1, 'modify_time': 100}}])
 
-    assert poller.poll("u115", [Path("/mon")]) == 1
+    assert poller.poll("smb", [Path("/mon")]) == 1
     store.save.assert_called_once()
     dispatcher.handle_file.assert_not_called()
 
@@ -137,7 +137,7 @@ def test_poll_load_error_skips_round(monkeypatch):
     store.load_checked.return_value = (None, False)
     chain = _mock_storage_chain(monkeypatch, [{'/mon/a.mkv': {'size': 1, 'modify_time': 100}}])
 
-    assert poller.poll("u115", [Path("/mon")]) is None
+    assert poller.poll("smb", [Path("/mon")]) is None
     chain.snapshot_storage.assert_not_called()
     store.save.assert_not_called()
 
@@ -155,10 +155,10 @@ def test_poll_failure_alert_threshold_and_recovery(monkeypatch):
     )
 
     for _ in range(RemotePoller.FAILURE_ALERT_THRESHOLD):
-        poller.poll("u115", [Path("/mon")])
+        poller.poll("smb", [Path("/mon")])
     assert alert_cb.call_count == 1
 
-    poller.poll("u115", [Path("/mon")])
+    poller.poll("smb", [Path("/mon")])
     assert alert_cb.call_count == 2
     assert "已恢复" in alert_cb.call_args.args[1]
 

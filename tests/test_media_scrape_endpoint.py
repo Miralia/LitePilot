@@ -11,7 +11,7 @@ from app.schemas import FileItem, MediaType
 
 def test_scrape_uses_explicit_media_source_and_id() -> None:
     """手动刮削应使用请求指定的数据源原生ID，并传给后续刮削流程。"""
-    fileitem = FileItem(storage="alist", path="/movies/Test Movie (2026).mkv", type="file")
+    fileitem = FileItem(storage="smb", path="/movies/Test Movie (2026).mkv", type="file")
     media_info = MediaInfo(title="测试电影", type=MediaType.MOVIE)
     chain = Mock()
     chain.recognize_media.return_value = media_info
@@ -19,7 +19,7 @@ def test_scrape_uses_explicit_media_source_and_id() -> None:
     with patch("app.api.endpoints.media.MediaChain", return_value=chain):
         result = scrape(
             fileitem=fileitem,
-            storage="alist",
+            storage="smb",
             media_source="bangumi",
             media_id="123456",
             type_name=MediaType.MOVIE,
@@ -42,7 +42,7 @@ def test_scrape_uses_explicit_media_source_and_id() -> None:
 
 def test_scrape_keeps_automatic_recognition_compatible() -> None:
     """未指定媒体ID时应继续按路径识别，并允许仅限定请求级数据源。"""
-    fileitem = FileItem(storage="alist", path="/tv/Test Show S01E01.mkv", type="file")
+    fileitem = FileItem(storage="smb", path="/tv/Test Show S01E01.mkv", type="file")
     meta_info = MetaBase("Test Show S01E01")
     media_info = MediaInfo(title="测试剧集", type=MediaType.TV)
     chain = Mock()
@@ -51,7 +51,7 @@ def test_scrape_keeps_automatic_recognition_compatible() -> None:
     with patch("app.api.endpoints.media.MediaChain", return_value=chain):
         result = scrape(
             fileitem=fileitem,
-            storage="alist",
+            storage="smb",
             media_source="bangumi",
             _=Mock(),
         )
@@ -75,8 +75,8 @@ def test_scrape_keeps_automatic_recognition_compatible() -> None:
 def test_scrape_rejects_media_id_without_source() -> None:
     """原生媒体ID缺少所属数据源时应直接返回明确错误。"""
     result = scrape(
-        fileitem=FileItem(storage="alist", path="/movies/Test.mkv", type="file"),
-        storage="alist",
+        fileitem=FileItem(storage="smb", path="/movies/Test.mkv", type="file"),
+        storage="smb",
         media_id="123456",
         _=Mock(),
     )
@@ -89,8 +89,8 @@ def test_scrape_rejects_unsupported_media_source() -> None:
     """手动刮削不能接受已经移除集成模块的数据源。"""
     with pytest.raises(HTTPException) as exc_info:
         scrape(
-            fileitem=FileItem(storage="alist", path="/movies/Test.mkv", type="file"),
-            storage="alist",
+            fileitem=FileItem(storage="smb", path="/movies/Test.mkv", type="file"),
+            storage="smb",
             media_source="douban",
             media_id="123456",
             _=Mock(),

@@ -50,6 +50,7 @@ async function mountView() {
 describe('FileBrowserView initialization', () => {
   beforeEach(() => {
     mocks.apiGet.mockReset()
+    localStorage.clear()
   })
 
   it('falls back to the storage root when Directories is null', async () => {
@@ -88,15 +89,15 @@ describe('FileBrowserView initialization', () => {
   })
 
   it('uses the cached available storage and the common configured path', async () => {
-    localStorage.setItem('fileBrowserView.activeStorage', 'rclone')
+    localStorage.setItem('fileBrowserView.activeStorage', 'smb')
     mockSettings(
       [
         { name: '本地', type: 'local' },
-        { name: '网盘', type: 'rclone' },
+        { name: 'SMB共享', type: 'smb' },
       ],
       [
-        { download_path: '/media/movies', storage: 'rclone' },
-        { download_path: '/media/tv', storage: 'rclone' },
+        { download_path: '/media/movies', storage: 'smb' },
+        { download_path: '/media/tv', storage: 'smb' },
         { download_path: '/downloads', storage: 'local' },
       ],
     )
@@ -106,7 +107,7 @@ describe('FileBrowserView initialization', () => {
     expect(browser.props('item')).toMatchObject({
       name: 'media',
       path: '/media/',
-      storage: 'rclone',
+      storage: 'smb',
     })
     expect(browser.props('itemstack')).toHaveLength(2)
   })
@@ -115,14 +116,14 @@ describe('FileBrowserView initialization', () => {
     mockSettings(
       [
         { name: '本地', type: 'local' },
-        { name: '115', type: 'u115' },
+        { name: 'SMB共享', type: 'smb' },
       ],
       [
         { download_path: '/ignored', storage: 'missing' },
         { download_path: '/one', storage: 'local' },
-        { download_path: '/shows/a', storage: 'u115' },
-        { download_path: '/shows/b', storage: 'u115' },
-        { storage: 'u115' },
+        { download_path: '/shows/a', storage: 'smb' },
+        { download_path: '/shows/b', storage: 'smb' },
+        { storage: 'smb' },
       ],
     )
 
@@ -131,7 +132,25 @@ describe('FileBrowserView initialization', () => {
     expect(browser.props('item')).toMatchObject({
       name: 'shows',
       path: '/shows/',
-      storage: 'u115',
+      storage: 'smb',
+    })
+  })
+
+  it('hides removed storage types even when they remain in saved settings', async () => {
+    mockSettings(
+      [
+        { name: '本地', type: 'local' },
+        { name: '云盘', type: 'rclone' },
+      ],
+      [{ download_path: '/cloud/media', storage: 'rclone' }],
+    )
+
+    const browser = (await mountView()).getComponent(FileBrowserStub)
+
+    expect(browser.props('storages')).toEqual([{ name: '本地', type: 'local' }])
+    expect(browser.props('item')).toMatchObject({
+      path: '/',
+      storage: 'local',
     })
   })
 
@@ -139,7 +158,7 @@ describe('FileBrowserView initialization', () => {
     mockSettings(
       [
         { name: '本地', type: 'local' },
-        { name: '网盘', type: 'rclone' },
+        { name: 'SMB共享', type: 'smb' },
       ],
       [{ download_path: '/downloads/tv', storage: 'local' }],
     )
@@ -149,19 +168,19 @@ describe('FileBrowserView initialization', () => {
       fileid: 'remote-root',
       name: '/',
       path: '/',
-      storage: 'rclone',
+      storage: 'smb',
       type: 'dir',
     })
     await flushPromises()
 
-    expect(localStorage.getItem('fileBrowserView.activeStorage')).toBe('rclone')
-    expect(browser.props('item')).toMatchObject({ path: '/', storage: 'rclone' })
+    expect(localStorage.getItem('fileBrowserView.activeStorage')).toBe('smb')
+    expect(browser.props('item')).toMatchObject({ path: '/', storage: 'smb' })
     expect(browser.props('itemstack')).toEqual([
       {
         fileid: 'remote-root',
         name: '/',
         path: '/',
-        storage: 'rclone',
+        storage: 'smb',
         type: 'dir',
       },
     ])

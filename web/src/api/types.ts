@@ -24,7 +24,7 @@ export interface TransferHistory {
   src?: string
   // 目的目录
   dest?: string
-  // 转移模式link/copy/move/softlink/rclone_copy/rclone_move
+  // 转移模式link/copy/move/softlink
   mode?: string
   // 类型：电影、电视剧
   type?: string
@@ -678,10 +678,6 @@ export interface FileItem {
   parent_fileid?: string
   // 缩略图
   thumbnail?: string
-  // pickcode
-  pickcode?: string
-  // drive_id
-  drive_id?: string
 }
 
 // 媒体服务器播放条目
@@ -822,7 +818,7 @@ export interface NotificationSwitchConf {
 export interface StorageConf {
   // 名称
   name: string
-  // 类型 local/alipan/u115/rclone
+  // 类型 local/smb
   type: string
   // 配置
   config?: { [key: string]: any }

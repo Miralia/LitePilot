@@ -21,7 +21,7 @@
 - 整理：目录监控（本地）、整理链（重命名 / 硬链接 / 分类）、手动整理、整理历史与下载历史
 - 媒体服务器：Emby（刷新、播放地址）
 - 通知：Telegram
-- 存储：local + 文件管理
+- 存储：local + SMB + 文件管理
 - 诊断：`moviepilot doctor`
 - 用户：仅用户名密码登录，账号由 swizzin 同步（已移除 PassKey）
 - 内置能力：下载文件同步、媒体同步删除、媒体库封面生成
@@ -38,7 +38,7 @@
 | 多用户 / 鉴权 | MFA、passkey、邀请与 Token 管理；鉴权依赖函数改为单管理员直通 |
 | 下载器 | transmission、rtorrent 模块；下载任务操作界面 |
 | 元数据 / 媒体服务器 / 通知 | 豆瓣、TVDB、Fanart、Jellyfin、Plex、TrimMedia、Zspace、Ugreen、微信、飞书、Slack、Discord、VoceChat、QQBot、SynologyChat、WebPush、WeChatClawBot |
-| 存储 | 云盘类后端（115 / 阿里盘 / rclone / alist） |
+| 存储 | 云盘类后端（115 / 阿里盘 / rclone / alist）与自定义存储类型 |
 | 部署 | Docker 相关全部移除，改为 systemd + nginx 原生部署 |
 
 站点能力在上游本就是**仓外私有动态资源**（`.gitignore` 排除 `app/helper/sites.py`，线上为 `sites.cpython-*.so` 与 `user.sites.v2.bin`，由 `app/helper/resource.py` 拉取）。本仓整体删除站点能力后，先在仓内提供过一版只读桩，后续审计确认所有引用点都已消失，**桩本身也已删除**。

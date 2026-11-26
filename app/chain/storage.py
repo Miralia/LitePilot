@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict
+from typing import Optional, List, Dict
 
 from app import schemas
 from app.chain import ChainBase
@@ -24,24 +24,6 @@ class StorageChain(ChainBase):
         重置存储配置
         """
         self.run_module("reset_config", storage=storage)
-
-    def generate_qrcode(self, storage: str) -> Optional[Tuple[dict, str]]:
-        """
-        生成二维码
-        """
-        return self.run_module("generate_qrcode", storage=storage)
-
-    def generate_auth_url(self, storage: str) -> Optional[Tuple[dict, str]]:
-        """
-        生成 OAuth2 授权 URL
-        """
-        return self.run_module("generate_auth_url", storage=storage)
-
-    def check_login(self, storage: str, **kwargs) -> Optional[Tuple[dict, str]]:
-        """
-        登录确认
-        """
-        return self.run_module("check_login", storage=storage, **kwargs)
 
     def list_files(self, fileitem: schemas.FileItem, recursion: bool = False) -> Optional[List[schemas.FileItem]]:
         """

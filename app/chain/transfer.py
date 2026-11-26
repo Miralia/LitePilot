@@ -1415,7 +1415,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             self, transferinfo: Optional[TransferInfo]
     ) -> Optional[str]:
         """
-        获取整理目标目录路径，兼容 OpenList 等成功后目录项短时间不可见的存储。
+        获取整理目标目录路径，兼容远程存储成功后目录项短时间不可见的情况。
         """
         if not transferinfo:
             return None

@@ -264,17 +264,17 @@ describe('FileList list state', () => {
       .mockResolvedValueOnce([createItem({ name: 'first-drive.mkv' })])
       .mockResolvedValueOnce([createItem({ name: 'second-drive.mkv' })])
     const { axios, rerender } = await renderList(request, {
-      item: createItem({ drive_id: 'drive-a', fileid: 'folder-a', name: 'media', path: '/media/', type: 'dir' }),
+      item: createItem({ fileid: 'folder-a', name: 'media', path: '/media/', type: 'dir' }),
     })
     await screen.findByText('first-drive.mkv')
 
     await rerender({
-      item: createItem({ drive_id: 'drive-b', fileid: 'folder-b', name: 'media', path: '/media/', type: 'dir' }),
+      item: createItem({ fileid: 'folder-b', name: 'media', path: '/media/', type: 'dir' }),
     })
     await screen.findByText('second-drive.mkv')
 
     expect(axios.request).toHaveBeenCalledTimes(2)
-    expect(getRequestConfig(axios, 1).data).toMatchObject({ drive_id: 'drive-b', fileid: 'folder-b' })
+    expect(getRequestConfig(axios, 1).data).toMatchObject({ fileid: 'folder-b' })
   })
 
   it('isolates consecutive refreshes even when path and sort stay unchanged', async () => {
@@ -600,18 +600,18 @@ describe('FileList dialogs, download and lifecycle', () => {
         : Promise.resolve([config.data as FileItem]),
     )
     const { rerender } = await renderList(request, {
-      item: createItem({ drive_id: 'drive-a', fileid: 'image-a', name: 'poster.jpg', path: '/media/poster.jpg' }),
+      item: createItem({ fileid: 'image-a', name: 'poster.jpg', path: '/media/poster.jpg' }),
     })
     await waitFor(() => expect(document.querySelector('img')).toHaveAttribute('src', 'blob:first-drive'))
 
     await rerender({
-      item: createItem({ drive_id: 'drive-b', fileid: 'image-b', name: 'poster.jpg', path: '/media/poster.jpg' }),
+      item: createItem({ fileid: 'image-b', name: 'poster.jpg', path: '/media/poster.jpg' }),
     })
     await waitFor(() => expect(document.querySelector('img')).toHaveAttribute('src', 'blob:second-drive'))
 
     const imageRequests = request.mock.calls.filter(([config]) => config.url === '/storage/image')
     expect(imageRequests).toHaveLength(2)
-    expect(imageRequests[1]?.[0].data).toMatchObject({ drive_id: 'drive-b', fileid: 'image-b' })
+    expect(imageRequests[1]?.[0].data).toMatchObject({ fileid: 'image-b' })
   })
 
   it('drops an image response that arrives after unmount without creating an object URL', async () => {

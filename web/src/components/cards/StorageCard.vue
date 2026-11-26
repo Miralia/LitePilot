@@ -2,7 +2,6 @@
 import type { StorageConf } from '@/api/types'
 import { formatBytes } from '@core/utils/formatters'
 import storage_png from '@images/misc/storage.png'
-import custom_png from '@images/misc/database.png'
 import smb_png from '@images/misc/smb.png'
 import api from '@/api'
 import { useToast } from 'vue-toastification'
@@ -10,9 +9,9 @@ import { isNullOrEmptyObject } from '@/@core/utils'
 import { useI18n } from 'vue-i18n'
 import { openSharedDialog } from '@/composables/useSharedDialog'
 import { useCardAccentColor } from '@/composables/useCardAccentColor'
+import { storageAttributes } from '@/api/constants'
 
 const SmbConfigDialog = defineAsyncComponent(() => import('../dialog/SmbConfigDialog.vue'))
-const StorageCustomConfigDialog = defineAsyncComponent(() => import('../dialog/StorageCustomConfigDialog.vue'))
 
 // 国际化
 const { t } = useI18n()
@@ -31,6 +30,8 @@ const emit = defineEmits(['done', 'close'])
 
 // 提示信息
 const $toast = useToast()
+const supportedStorageTypes = new Set(storageAttributes.map(item => item.type))
+const isSupportedStorage = computed(() => supportedStorageTypes.has(props.storage.type))
 
 // 存储总空间
 const total = ref(0)
@@ -54,12 +55,16 @@ function openStorageDialog() {
     return
   }
 
-  const dialog = dialogMap[props.storage.type] || StorageCustomConfigDialog
-  const dialogProps = dialog === StorageCustomConfigDialog ? { storage: props.storage } : { conf: props.storage.config || {} }
+  const dialog = dialogMap[props.storage.type]
+
+  if (!dialog) {
+    $toast.error(t('storage.unsupportedType'))
+    return
+  }
 
   openSharedDialog(
     dialog,
-    dialogProps,
+    { conf: props.storage.config || {} },
     {
       done: handleDone,
     },
@@ -75,7 +80,7 @@ const getIcon = computed(() => {
     case 'smb':
       return smb_png
     default:
-      return custom_png
+      return storage_png
   }
 })
 
@@ -112,7 +117,7 @@ function handleDone(storage?: StorageConf) {
 }
 
 onMounted(() => {
-  queryStorage()
+  if (isSupportedStorage.value) queryStorage()
 })
 
 /** 关闭存储卡片。 */
@@ -133,6 +138,7 @@ function onClose() {
       <div class="align-self-start flex-1">
         <h5 class="text-h6 mb-1">{{ storage.name }}</h5>
         <div class="mb-3 text-sm" v-if="total">{{ formatBytes(used, 1) }} / {{ formatBytes(total, 1) }}</div>
+        <div v-else-if="!isSupportedStorage" class="text-sm text-error">{{ t('storage.unsupportedType') }}</div>
         <div v-else-if="isNullOrEmptyObject(storage.config)">{{ t('storage.notConfigured') }}</div>
       </div>
       <VImg

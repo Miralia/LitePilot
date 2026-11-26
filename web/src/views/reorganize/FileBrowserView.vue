@@ -2,6 +2,7 @@
 import api from '@/api'
 import { ApiResponse, FileItem, StorageConf, TransferDirectoryConf } from '@/api/types'
 import FileBrowser from '@/components/filebrowser/FileBrowser.vue'
+import { storageAttributes } from '@/api/constants'
 
 const endpoints = {
   list: {
@@ -32,6 +33,7 @@ const endpoints = {
 
 // 所有存储
 const storages = ref<StorageConf[]>([])
+const supportedStorageTypes = new Set(storageAttributes.map(item => item.type))
 const storageTypes = computed(() => storages.value.map(s => s.type))
 
 // 当前文件项
@@ -135,7 +137,8 @@ async function loadDownloadDirectories() {
     const storageResult = await api.get<unknown, ApiResponse<{ value?: StorageConf[] | null }>>(
       'system/setting/public/Storages',
     )
-    storages.value = storageResult.data?.value ?? []
+    const configuredStorages = storageResult.data?.value ?? []
+    storages.value = configuredStorages.filter(storage => supportedStorageTypes.has(storage.type))
 
     const result = await api.get<unknown, ApiResponse<{ value?: TransferDirectoryConf[] | null }>>(
       'system/setting/public/Directories',

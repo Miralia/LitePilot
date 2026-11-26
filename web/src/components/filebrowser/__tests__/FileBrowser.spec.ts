@@ -46,7 +46,7 @@ const FileToolbarStub = defineComponent({
     return () =>
       h('div', [
         h('button', { class: 'emit-sort', onClick: () => emit('sortchanged', 'time') }),
-        h('button', { class: 'emit-storage', onClick: () => emit('storagechanged', 'rclone') }),
+        h('button', { class: 'emit-storage', onClick: () => emit('storagechanged', 'smb') }),
         h('button', {
           class: 'emit-path',
           onClick: () =>
@@ -248,7 +248,7 @@ describe('FileBrowser state and child contracts', () => {
     await wrapper.get('.emit-path').trigger('click')
 
     expect(wrapper.emitted('pathchanged')).toEqual([
-      [{ fileid: 'root', path: '/', storage: 'rclone' }],
+      [{ fileid: 'root', path: '/', storage: 'smb' }],
       [{ name: 'movies', path: '/movies/', storage: 'local', type: 'dir' }],
     ])
   })

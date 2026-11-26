@@ -204,23 +204,9 @@ function removeDirectory(directory: TransferDirectoryConf) {
 }
 
 // 添加存储
-function addStorage(storageType = 'custom') {
-  let name: string
-  let type: string
-
-  if (storageType === 'custom') {
-    // 自定义存储需要数字序号
-    name = `${t(`storage.${storageType}`)} ${storages.value.length + 1}`
-    while (storages.value.some(item => item.name === name)) {
-      const num = parseInt(name.match(/\d+$/)?.[0] || '1') + 1
-      name = `${t(`storage.${storageType}`)} ${num}`
-    }
-    type = `custom${storages.value.length + 1}`
-  } else {
-    // 预定义存储类型直接使用类型名称
-    name = t(`storage.${storageType}`)
-    type = storageType
-  }
+function addStorage(storageType: string) {
+  const type = storageType
+  const name = t(`storage.${type}`)
 
   storages.value.push({
     name: name,
@@ -306,9 +292,6 @@ useSilentSettingRefresh(loadPageData, {
                   <VList>
                     <VListItem v-for="item in storageOptions" :key="item.value" @click="addStorage(item.value)">
                       <VListItemTitle>{{ item.title }}</VListItemTitle>
-                    </VListItem>
-                    <VListItem @click="addStorage('custom')">
-                      <VListItemTitle>{{ t('storage.custom') }}</VListItemTitle>
                     </VListItem>
                   </VList>
                 </VMenu>

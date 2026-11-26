@@ -27,7 +27,7 @@ class FileURI(BaseModel):
         """
         解析文件 URI 为存储类型和路径
 
-        :param uri: 文件 URI，如 /media/movie、u115:/media/movie 或 Windows 盘符路径 Z:/media
+        :param uri: 文件 URI，如 /media/movie、smb:/media/movie 或 Windows 盘符路径 Z:/media
         :return: FileURI 对象
         """
         storage, path = 'local', uri
@@ -65,12 +65,6 @@ class FileItem(FileURI):
     parent_fileid: Optional[str] = None
     # 缩略图
     thumbnail: Optional[str] = None
-    # 115 pickcode
-    pickcode: Optional[str] = None
-    # drive_id
-    drive_id: Optional[str] = None
-    # url
-    url: Optional[str] = None
 
 
 class StorageUsage(BaseModel):

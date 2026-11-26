@@ -354,8 +354,6 @@ const TransferDict: { [key: string]: string } = {
   move: t('transferHistory.transferMode.move'),
   link: t('transferHistory.transferMode.link'),
   softlink: t('transferHistory.transferMode.softlink'),
-  rclone_copy: t('transferHistory.transferMode.rclone_copy'),
-  rclone_move: t('transferHistory.transferMode.rclone_move'),
 }
 
 // 分页提示

@@ -159,10 +159,10 @@ def migrate_to_media_job(jobview: JobManager, task: TransferTask):
 class TransferJobManagerTest(unittest.TestCase):
     def test_same_storage_success_uses_target_path_when_metadata_is_delayed(self):
         """
-        网盘操作已成功但目标元数据暂不可见时，整理结果应按成功路径落库。
+        远程存储操作已成功但目标元数据暂不可见时，整理结果应按成功路径落库。
         """
         source_item = FileItem(
-            storage="alist",
+            storage="smb",
             path="/downloads/Test.Show.S01E01.mkv",
             type="file",
             name="Test.Show.S01E01.mkv",
@@ -175,7 +175,7 @@ class TransferJobManagerTest(unittest.TestCase):
             "/library/Test Show (2026)/Season 1/Test.Show.S01E01.mkv"
         )
         target_folder = FileItem(
-            storage="alist",
+            storage="smb",
             path=f"{target_path.parent.as_posix()}/",
             type="dir",
             name=target_path.parent.name,
@@ -193,7 +193,7 @@ class TransferJobManagerTest(unittest.TestCase):
 
         new_item, errmsg = TransHandler._TransHandler__transfer_command(
             fileitem=source_item,
-            target_storage="alist",
+            target_storage="smb",
             source_oper=source_oper,
             target_oper=target_oper,
             target_file=target_path,
@@ -203,7 +203,7 @@ class TransferJobManagerTest(unittest.TestCase):
         self.assertEqual("", errmsg)
         self.assertIsNotNone(new_item)
         self.assertEqual(target_path.as_posix(), new_item.path)
-        self.assertEqual("alist", new_item.storage)
+        self.assertEqual("smb", new_item.storage)
         self.assertEqual("file", new_item.type)
         self.assertEqual(1024, new_item.size)
 
@@ -213,7 +213,7 @@ class TransferJobManagerTest(unittest.TestCase):
         """
         handler = TransHandler()
         source_item = FileItem(
-            storage="alist",
+            storage="smb",
             path="/downloads/Test.Show.S01E01.mkv",
             type="file",
             name="Test.Show.S01E01.mkv",
@@ -227,14 +227,14 @@ class TransferJobManagerTest(unittest.TestCase):
             "/library/Test.Show.S01E01.mkv"
         )
         target_folder = FileItem(
-            storage="alist",
+            storage="smb",
             type="dir",
             path="/library/",
             name="library",
             basename="library",
         )
         target_item = FileItem(
-            storage="alist",
+            storage="smb",
             path=target_file.as_posix(),
             type="file",
             name=target_file.name,
@@ -266,7 +266,7 @@ class TransferJobManagerTest(unittest.TestCase):
                 fileitem=source_item,
                 in_meta=MetaVideo("Test.Show.S01E01"),
                 mediainfo=make_media_info(),
-                target_storage="alist",
+                target_storage="smb",
                 target_path=target_path,
                 transfer_type="move",
                 source_oper=source_oper,
@@ -294,13 +294,13 @@ class TransferJobManagerTest(unittest.TestCase):
         self.assertTrue(chain._TransferChain__put_to_jobview(task))
 
         target_diritem = FileItem(
-            storage="alist",
+            storage="smb",
             path="/library/Test Show (2026)/Season 1/",
             type="dir",
             name="Season 1",
         )
         target_item = FileItem(
-            storage="alist",
+            storage="smb",
             path="/library/Test Show (2026)/Season 1/Test.Show.S01E01.mkv",
             type="file",
             name="Test.Show.S01E01.mkv",

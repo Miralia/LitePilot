@@ -49,9 +49,9 @@ def _build_meta(
     return meta
 
 
-def test_cloud_storage_preview_only_calculates_target_path():
+def test_remote_storage_preview_only_calculates_target_path():
     fileitem = FileItem(
-        storage="alist",
+        storage="smb",
         path="/downloads/Test.Show.S01E01.mkv",
         type="file",
         name="Test.Show.S01E01.mkv",
@@ -67,11 +67,11 @@ def test_cloud_storage_preview_only_calculates_target_path():
         tmdb_id=12345,
     )
     target_directory = TransferDirectoryConf(
-        name="cloud-library",
+        name="remote-library",
         transfer_type="copy",
         overwrite_mode="latest",
         library_path="/library",
-        library_storage="alist",
+        library_storage="smb",
         renaming=True,
         scraping=True,
         notify=True,
@@ -91,7 +91,7 @@ def test_cloud_storage_preview_only_calculates_target_path():
     assert transferinfo.success is True
     assert transferinfo.need_notify is False
     assert transferinfo.need_scrape is True
-    assert transferinfo.target_item.storage == "alist"
+    assert transferinfo.target_item.storage == "smb"
     assert transferinfo.target_item.path.endswith(".mkv")
     assert transferinfo.target_diritem.path.startswith("/library/")
     assert transferinfo.file_list == [fileitem.path]
@@ -158,7 +158,7 @@ def _build_bluray_dir_preview(
     part: str = None,
 ):
     fileitem = FileItem(
-        storage="alist",
+        storage="smb",
         path=f"/downloads/{source_name}",
         type="dir",
         name=source_name,
@@ -178,11 +178,11 @@ def _build_bluray_dir_preview(
         tmdb_id=1396,
     )
     target_directory = TransferDirectoryConf(
-        name="cloud-library",
+        name="remote-library",
         transfer_type="copy",
         overwrite_mode="never",
         library_path="/library",
-        library_storage="alist",
+        library_storage="smb",
         renaming=True,
         scraping=True,
         notify=True,

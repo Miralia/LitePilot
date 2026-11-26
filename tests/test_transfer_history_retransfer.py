@@ -350,7 +350,7 @@ def test_match_manual_transfer_target_path_returns_directory_match(monkeypatch):
         def get_dir(self, **kwargs):
             captured.update(kwargs)
             return TransferDirectoryConf(
-                library_storage="rclone",
+                library_storage="smb",
                 library_path="/library/tv",
                 transfer_type="copy",
                 scraping=True,
@@ -377,7 +377,7 @@ def test_match_manual_transfer_target_path_returns_directory_match(monkeypatch):
     assert captured["src_path"].as_posix() == "/downloads/Test Show/Test.Show.S01E01.mkv"
     assert captured["target_storage"] is None
     assert resp.data == {
-        "target_storage": "rclone",
+        "target_storage": "smb",
         "target_path": "/library/tv",
         "transfer_type": "copy",
         "scrape": True,

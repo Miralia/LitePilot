@@ -636,7 +636,7 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
     const bodies: unknown[] = []
     const directory: TransferDirectoryConf = {
       library_path: '/library/tv',
-      library_storage: 'rclone',
+      library_storage: 'smb',
       library_type_folder: true,
       name: '电视剧目录',
       priority: 1,
@@ -653,7 +653,7 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
     const user = userEvent.setup()
     await renderDialog({
       directories: [directory],
-      storages: [{ name: '远程存储', type: 'rclone' }],
+      storages: [{ name: '远程存储', type: 'smb' }],
     })
 
     expect(screen.getByRole('option', { name: '远程存储' })).toBeInTheDocument()
@@ -666,7 +666,7 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
         library_type_folder: true,
         scrape: true,
         target_path: '/library/tv',
-        target_storage: 'rclone',
+        target_storage: 'smb',
         transfer_type: 'copy',
       }),
     )

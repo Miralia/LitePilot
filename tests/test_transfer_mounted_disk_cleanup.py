@@ -94,7 +94,7 @@ def test_disabled_cleanup_does_not_change_remote_storage_cleanup():
     ) as is_network_filesystem:
         should_delete = (
             TransferChain._TransferChain__should_delete_empty_source_directories(
-                _make_task(storage="alist", download_path="/downloads"),
+                _make_task(storage="smb", download_path="/downloads"),
                 False,
                 {},
             )

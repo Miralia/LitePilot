@@ -591,7 +591,7 @@ class TransHandler:
 
         def __build_remote_targetitem(_source_item: FileItem, _path: Path) -> FileItem:
             """
-            根据已确认的目标路径构造网盘文件信息，用于兼容元数据延迟可见的存储。
+            根据已确认的目标路径构造远程存储文件信息，用于兼容元数据延迟可见的存储。
             """
             return FileItem(
                 storage=target_storage,
@@ -607,7 +607,7 @@ class TransHandler:
 
         def __get_remote_targetitem(_source_item: FileItem, _path: Path) -> FileItem:
             """
-            获取网盘目标文件信息，目标存储索引未刷新时使用目标路径兜底。
+            获取远程存储目标文件信息，目标存储索引未刷新时使用目标路径兜底。
             """
             target_item = target_oper.get_item(_path)
             if target_item:
@@ -643,7 +643,7 @@ class TransHandler:
             else:
                 return None, f"{fileitem.path} {transfer_type} 失败"
         elif fileitem.storage == "local" and target_storage != "local":
-            # 本地到网盘
+            # 本地到远程存储
             filepath = Path(fileitem.path)
             if not filepath.exists():
                 return None, f"文件 {filepath} 不存在"
@@ -686,11 +686,11 @@ class TransHandler:
                         f"【{target_storage}】{target_file.parent} 目录获取失败",
                     )
         elif fileitem.storage != "local" and target_storage == "local":
-            # 网盘到本地
+            # 远程存储到本地
             if target_file.exists():
                 logger.warn(f"文件已存在：{target_file}")
                 return __get_targetitem(target_file), ""
-            # 网盘到本地
+            # 远程存储到本地
             if transfer_type in ["copy", "move"]:
                 # 下载
                 tmp_file = source_oper.download(
@@ -708,7 +708,7 @@ class TransHandler:
                 else:
                     return None, f"{fileitem.path} {fileitem.storage} 下载失败"
         elif fileitem.storage == target_storage:
-            # 同一网盘
+            # 同一远程存储
             if not source_oper.is_support_transtype(transfer_type):
                 return None, f"存储 {fileitem.storage} 不支持 {transfer_type} 整理方式"
 

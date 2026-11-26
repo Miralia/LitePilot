@@ -3,16 +3,12 @@ import type { StorageConf, TransferDirectoryConf } from '@/api/types'
 import api from '@/api'
 import { nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { storageRemoteDict } from '@/api/constants'
+import { storageAttributes, storageRemoteDict } from '@/api/constants'
 
+const DEFAULT_DIRECTORY_ACCENT_COLOR = '#8D51F9'
 const DEFAULT_DIRECTORY_ACCENT_RGB = '141, 81, 249'
 const STORAGE_ACCENT_COLOR_MAP = {
   local: '#FFB400',
-  alipan: '#00A7F2',
-  u115: '#17B26A',
-  rclone: '#6675FF',
-  alist: '#12B8D7',
-  alistgo: '#1BA0D8',
   smb: '#3B82F6',
 }
 
@@ -46,9 +42,12 @@ const typeItems = computed(() => [
   { title: t('mediaType.tv'), value: '电视剧' },
 ])
 
+const supportedStorageTypes = new Set(storageAttributes.map(item => item.type))
+const supportedStorages = computed(() => props.storages.filter(storage => supportedStorageTypes.has(storage.type)))
+
 // 计算资源存储字典（整理方式为下载器时不能为远程存储）
 const resourceStorageOptions = computed(() => {
-  return props.storages
+  return supportedStorages.value
     .filter(item => !storageRemoteDict[item.type] || props.directory.monitor_type !== 'downloader')
     .map(item => ({
       title: item.name,
@@ -58,7 +57,7 @@ const resourceStorageOptions = computed(() => {
 
 // 存储字典
 const libraryStorageOptions = computed(() => {
-  return props.storages.map(item => ({
+  return supportedStorages.value.map(item => ({
     title: item.name,
     value: item.type,
   }))
@@ -87,20 +86,11 @@ function hexToRgbString(hexColor: string) {
   return `${(colorValue >> 16) & 255}, ${(colorValue >> 8) & 255}, ${colorValue & 255}`
 }
 
-/** 根据自定义存储序号选取离散的强调色。 */
-function getCustomStoragePaletteColor(storageType?: string) {
-  const customStorageIndex = Math.max(Number(storageType?.match(/\d+$/)?.[0] ?? 1) - 1, 0)
-  const customStorageColors = ['#F97316', '#8B5CF6', '#06B6D4', '#84CC16', '#EC4899', '#14B8A6']
-
-  return customStorageColors[customStorageIndex % customStorageColors.length]
-}
-
 /** 获取指定存储类型在目录卡片中使用的强调色。 */
 function getStorageAccentColor(storageType?: string) {
   if (hasKnownStorageType(storageType)) return STORAGE_ACCENT_COLOR_MAP[storageType]
 
-  // 自定义存储没有固定品牌图标，使用离散调色板，保证连续 custom1/custom2 也能明显区分。
-  return getCustomStoragePaletteColor(storageType)
+  return DEFAULT_DIRECTORY_ACCENT_COLOR
 }
 
 // 目录卡片用下载存储和媒体库存储两端的图标主色生成轻渐变，体现整理链路的两个存储端点。

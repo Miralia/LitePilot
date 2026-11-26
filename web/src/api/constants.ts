@@ -7,46 +7,27 @@ export const storageAttributes = [
     remote: false,
   },
   {
-    type: 'alipan',
-    icon: 'mdi-cloud-outline',
-    remote: true,
-  },
-  {
-    type: 'u115',
-    icon: 'mdi-cloud-outline',
-    remote: true,
-  },
-  {
-    type: 'rclone',
-    icon: 'mdi-server-network-outline',
-    remote: true,
-  },
-  {
-    type: 'alist',
-    icon: 'mdi-server-network-outline',
-    remote: true,
-  },
-  {
-    type: 'alistgo',
-    icon: 'mdi-server-network-outline',
-    remote: true,
-  },
-  {
     type: 'smb',
     icon: 'mdi-folder-network-outline',
     remote: true,
   },
 ]
 
-export const storageIconDict = storageAttributes.reduce((dict, item) => {
-  dict[item.type] = item.icon
-  return dict
-}, {} as Record<string, string>)
+export const storageIconDict = storageAttributes.reduce(
+  (dict, item) => {
+    dict[item.type] = item.icon
+    return dict
+  },
+  {} as Record<string, string>,
+)
 
-export const storageRemoteDict = storageAttributes.reduce((dict, item) => {
-  dict[item.type] = item.remote
-  return dict
-}, {} as Record<string, boolean>)
+export const storageRemoteDict = storageAttributes.reduce(
+  (dict, item) => {
+    dict[item.type] = item.remote
+    return dict
+  },
+  {} as Record<string, boolean>,
+)
 
 export const downloaderOptions = [
   {
@@ -55,10 +36,13 @@ export const downloaderOptions = [
   },
 ]
 
-export const downloaderDict = downloaderOptions.reduce((dict, item) => {
-  dict[item.value] = item.title
-  return dict
-}, {} as Record<string, string>)
+export const downloaderDict = downloaderOptions.reduce(
+  (dict, item) => {
+    dict[item.value] = item.title
+    return dict
+  },
+  {} as Record<string, string>,
+)
 
 export const mediaServerOptions = [
   {
@@ -67,10 +51,13 @@ export const mediaServerOptions = [
   },
 ]
 
-export const mediaServerDict = mediaServerOptions.reduce((dict, item) => {
-  dict[item.value] = item.title
-  return dict
-}, {} as Record<string, string>)
+export const mediaServerDict = mediaServerOptions.reduce(
+  (dict, item) => {
+    dict[item.value] = item.title
+    return dict
+  },
+  {} as Record<string, string>,
+)
 
 export const transferTypeOptions = [
   { title: i18n.global.t('transferType.copy'), value: 'copy' },
@@ -107,10 +94,13 @@ export const notificationSwitchOptions = [
 ]
 
 // 通知开关字典
-export const notificationSwitchDict = notificationSwitchOptions.reduce((dict, item) => {
-  dict[item.value] = item.title
-  return dict
-}, {} as Record<string, string>)
+export const notificationSwitchDict = notificationSwitchOptions.reduce(
+  (dict, item) => {
+    dict[item.value] = item.title
+    return dict
+  },
+  {} as Record<string, string>,
+)
 
 // 操作步骤选项
 // 操作步骤字典
