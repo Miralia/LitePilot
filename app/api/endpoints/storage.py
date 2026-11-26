@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from starlette.responses import FileResponse, Response
+from starlette.responses import FileResponse
 
 from app import schemas
 from app.chain.media import MediaChain
@@ -134,7 +134,7 @@ def image(
     tmp_file = StorageChain().download_file(fileitem)
     if not tmp_file:
         raise HTTPException(status_code=500, detail="图片读取出错")
-    return Response(content=tmp_file.read_bytes(), media_type="image/jpeg")
+    return FileResponse(path=tmp_file)
 
 
 @router.post("/rename", summary="重命名文件或目录", response_model=schemas.Response)
