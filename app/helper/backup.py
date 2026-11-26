@@ -8,9 +8,13 @@
 """
 
 import json
+import os
 import shutil
+import sqlite3
 import tarfile
 import tempfile
+import uuid
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +29,17 @@ MANIFEST_NAME = "moviepilot-backup.json"
 BACKUP_FORMAT_VERSION = 1
 # 备份时排除的目录：均为可重建的缓存与运行期临时数据
 EXCLUDE_DIRS = {"temp", "cache", ".cache", "logs"}
+# 备份包与敏感配置文件只允许所有者读写，避免数据库/env 凭据被本机其它账户读取
+SENSITIVE_FILE_MODE = 0o600
+SENSITIVE_CONFIG_FILES = (
+    "app.env",
+    "user.db",
+    "user.db-wal",
+    "user.db-shm",
+    "user.db-journal",
+)
+# 运行中的 SQLite 主库与侧车文件不能按普通文件直接复制，统一改用在线备份快照
+SQLITE_BACKUP_FILES = {"user.db", "user.db-wal", "user.db-shm", "user.db-journal"}
 
 
 @dataclass
@@ -48,6 +63,26 @@ class RestoreResult:
     backup_time: Optional[str] = None
 
 
+def _secure_sensitive_config_permissions(config_dir: Path) -> None:
+    """恢复后收紧数据库与 env 文件权限，避免继承旧备份中的宽松 mode。"""
+    if os.name == "nt":
+        return
+    for name in SENSITIVE_CONFIG_FILES:
+        try:
+            (config_dir / name).chmod(SENSITIVE_FILE_MODE)
+        except FileNotFoundError:
+            continue
+
+
+def _create_sqlite_snapshot(source: Path, snapshot: Path) -> None:
+    """用 SQLite 在线备份 API 创建一致性数据库快照。"""
+    with closing(sqlite3.connect(source)) as source_connection:
+        with closing(sqlite3.connect(snapshot)) as snapshot_connection:
+            source_connection.backup(snapshot_connection)
+    if os.name != "nt":
+        snapshot.chmod(SENSITIVE_FILE_MODE)
+
+
 def _iter_backup_files(config_dir: Path) -> List[Path]:
     """
     列出需要备份的文件，跳过可重建的缓存目录。
@@ -62,8 +97,39 @@ def _iter_backup_files(config_dir: Path) -> List[Path]:
         relative = path.relative_to(config_dir)
         if relative.parts and relative.parts[0] in EXCLUDE_DIRS:
             continue
+        if len(relative.parts) == 1 and relative.name in SQLITE_BACKUP_FILES:
+            continue
         files.append(path)
     return files
+
+
+def _replace_config_directory(staging: Path, target: Path) -> None:
+    """用同文件系统目录替换配置目录，替换失败时恢复原目录。"""
+    previous = Path(
+        tempfile.mkdtemp(prefix=f".{target.name}.previous-", dir=target.parent)
+    )
+    previous.rmdir()
+    moved_previous = False
+    try:
+        if target.exists():
+            target.rename(previous)
+            moved_previous = True
+        try:
+            staging.rename(target)
+        except Exception:
+            if moved_previous and not target.exists():
+                try:
+                    previous.rename(target)
+                except OSError as rollback_error:
+                    logger.error(f"配置恢复回滚失败，旧配置保留在 {previous}：{rollback_error}")
+            raise
+    except Exception:
+        if not moved_previous and previous.exists():
+            previous.rmdir()
+        raise
+
+    if moved_previous:
+        shutil.rmtree(previous)
 
 
 def create_backup(
@@ -89,32 +155,55 @@ def create_backup(
     archive.parent.mkdir(parents=True, exist_ok=True)
 
     files = _iter_backup_files(source)
+    file_count = len(files) + (1 if (source / "user.db").exists() else 0)
     manifest = {
         "format_version": BACKUP_FORMAT_VERSION,
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "source_config_dir": str(source),
-        "file_count": len(files),
+        "file_count": file_count,
     }
     manifest_path = Path(tempfile.mkdtemp(prefix="mp-backup-")) / MANIFEST_NAME
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
+    snapshot_path = None
+    source_db = source / "user.db"
+    if source_db.exists():
+        snapshot_path = manifest_path.parent / "user.db"
+        _create_sqlite_snapshot(source_db, snapshot_path)
+
     total_bytes = 0
+    temporary_archive = archive.with_name(f".{archive.name}.{uuid.uuid4().hex}.tmp")
     try:
-        with tarfile.open(archive, "w:gz") as tar:
-            tar.add(manifest_path, arcname=MANIFEST_NAME)
-            for path in files:
-                tar.add(path, arcname=str(path.relative_to(source)))
-                total_bytes += path.stat().st_size
+        # 先以私有权限写入同目录临时归档，成功后原子发布，避免半截备份被误用。
+        descriptor = os.open(
+            temporary_archive,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            SENSITIVE_FILE_MODE,
+        )
+        with os.fdopen(descriptor, "wb") as archive_file:
+            if os.name != "nt":
+                os.fchmod(archive_file.fileno(), SENSITIVE_FILE_MODE)
+            with tarfile.open(fileobj=archive_file, mode="w:gz") as tar:
+                tar.add(manifest_path, arcname=MANIFEST_NAME)
+                for path in files:
+                    tar.add(path, arcname=str(path.relative_to(source)))
+                    total_bytes += path.stat().st_size
+                if snapshot_path is not None:
+                    tar.add(snapshot_path, arcname="user.db")
+                    total_bytes += snapshot_path.stat().st_size
+        os.replace(temporary_archive, archive)
     finally:
+        if temporary_archive.exists():
+            temporary_archive.unlink()
         shutil.rmtree(manifest_path.parent, ignore_errors=True)
 
-    logger.info(f"配置备份完成：{archive}（{len(files)} 个文件）")
+    logger.info(f"配置备份完成：{archive}（{file_count} 个文件）")
     return BackupResult(
         archive=archive,
         config_dir=source,
-        file_count=len(files),
+        file_count=file_count,
         total_bytes=total_bytes,
         excluded=sorted(EXCLUDE_DIRS),
     )
@@ -167,7 +256,10 @@ def restore_backup(
         )
 
     manifest = read_manifest(archive) or {}
-    staging = Path(tempfile.mkdtemp(prefix="mp-restore-"))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(
+        tempfile.mkdtemp(prefix=f".{target.name}.restore-", dir=target.parent)
+    )
     try:
         with tarfile.open(archive, "r:gz") as tar:
             # 只解出普通文件与目录，避免备份包内的链接写到目标目录之外
@@ -188,13 +280,11 @@ def restore_backup(
                 filter="data",
             )
 
-        if target.exists():
-            shutil.rmtree(target)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(staging), str(target))
+        _replace_config_directory(staging, target)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
 
+    _secure_sensitive_config_permissions(target)
     file_count = sum(1 for path in target.rglob("*") if path.is_file())
     logger.info(f"配置恢复完成：{target}（{file_count} 个文件）")
     return RestoreResult(

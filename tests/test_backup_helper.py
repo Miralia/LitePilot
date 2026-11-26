@@ -4,6 +4,8 @@
 覆盖打包内容筛选、清单写入、恢复替换语义与安全校验（非法路径、非空目录未授权覆盖）。
 全部在临时目录内进行，不触碰真实配置。
 """
+import os
+import sqlite3
 import tarfile
 from pathlib import Path
 
@@ -22,7 +24,7 @@ def _make_config(root: Path) -> Path:
     config = root / "config"
     (config / "logs").mkdir(parents=True)
     (config / "temp").mkdir(parents=True)
-    (config / "user.db").write_bytes(b"sqlite-db")
+    (config / "user.db").write_bytes(b"")
     (config / "app.env").write_text("SUPERUSER=admin\n", encoding="utf-8")
     (config / "category.yaml").write_text("movie: []\n", encoding="utf-8")
     (config / "logs" / "moviepilot.log").write_text("log", encoding="utf-8")
@@ -56,6 +58,82 @@ def test_create_backup_writes_manifest(tmp_path):
     assert manifest["format_version"] >= 1
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows POSIX 权限语义不同")
+def test_create_backup_uses_private_archive_permissions(tmp_path):
+    """备份包含数据库与 env 凭据，归档本体不得世界可读。"""
+    config = _make_config(tmp_path)
+
+    result = create_backup(archive=tmp_path / "backup.tar.gz", config_dir=config)
+
+    assert result.archive.stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Windows POSIX 权限语义不同")
+def test_restore_backup_secures_sensitive_config_files(tmp_path):
+    """恢复旧备份时必须重新收紧敏感文件权限，不能继承历史 644。"""
+    config = _make_config(tmp_path)
+    (config / "user.db").chmod(0o644)
+    (config / "app.env").chmod(0o644)
+    result = create_backup(archive=tmp_path / "backup.tar.gz", config_dir=config)
+    target = tmp_path / "restored"
+
+    restore_backup(result.archive, config_dir=target)
+
+    assert (target / "user.db").stat().st_mode & 0o777 == 0o600
+    assert (target / "app.env").stat().st_mode & 0o777 == 0o600
+
+
+def test_create_backup_uses_consistent_sqlite_snapshot(tmp_path):
+    """运行中的 SQLite 必须通过在线备份生成一致快照，不能直接打包 WAL 侧车文件。"""
+    config = _make_config(tmp_path)
+    db_path = config / "user.db"
+    db_path.unlink()
+    connection = sqlite3.connect(db_path)
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("CREATE TABLE probe (id INTEGER PRIMARY KEY, value TEXT)")
+        connection.execute("INSERT INTO probe (value) VALUES ('committed')")
+        connection.commit()
+        assert (config / "user.db-wal").exists()
+
+        result = create_backup(archive=tmp_path / "backup.tar.gz", config_dir=config)
+    finally:
+        connection.close()
+
+    with tarfile.open(result.archive, "r:gz") as tar:
+        names = {member.name for member in tar.getmembers()}
+        assert "user.db" in names
+        assert "user.db-wal" not in names
+        assert "user.db-shm" not in names
+        snapshot = tmp_path / "snapshot.db"
+        snapshot.write_bytes(tar.extractfile("user.db").read())
+
+    with sqlite3.connect(snapshot) as snapshot_connection:
+        values = snapshot_connection.execute("SELECT value FROM probe").fetchall()
+        integrity = snapshot_connection.execute("PRAGMA integrity_check").fetchone()[0]
+    assert values == [("committed",)]
+    assert integrity == "ok"
+
+
+def test_create_backup_failure_does_not_publish_partial_archive(tmp_path, monkeypatch):
+    """归档写入中失败时不得留下看似可用的半截备份包。"""
+    config = _make_config(tmp_path)
+    archive = tmp_path / "backup.tar.gz"
+    original_add = tarfile.TarFile.add
+
+    def fail_file_add(self, name, arcname=None, **kwargs):
+        if arcname != MANIFEST_NAME:
+            raise OSError("simulated archive write failure")
+        return original_add(self, name, arcname=arcname, **kwargs)
+
+    monkeypatch.setattr(tarfile.TarFile, "add", fail_file_add)
+
+    with pytest.raises(OSError, match="simulated archive write failure"):
+        create_backup(archive=archive, config_dir=config)
+
+    assert not archive.exists()
+
+
 def test_create_backup_rejects_missing_config_dir(tmp_path):
     """配置目录不存在时应明确报错，而不是产出空包。"""
     with pytest.raises(FileNotFoundError):
@@ -71,7 +149,7 @@ def test_restore_backup_replaces_target(tmp_path):
     restored = restore_backup(result.archive, config_dir=target)
 
     assert restored.file_count == 3
-    assert (target / "user.db").read_bytes() == b"sqlite-db"
+    assert (target / "user.db").exists()
     assert (target / "app.env").read_text(encoding="utf-8") == "SUPERUSER=admin\n"
     # 被排除的目录不会出现在恢复结果里
     assert not (target / "logs").exists()
@@ -104,6 +182,28 @@ def test_restore_backup_overwrites_when_allowed(tmp_path):
     assert restored.file_count == 3
     assert not (target / "stale.txt").exists()
     assert (target / "user.db").exists()
+
+
+def test_restore_replace_failure_preserves_existing_config(tmp_path, monkeypatch):
+    """替换阶段失败时必须回滚到原配置，避免半包状态造成数据丢失。"""
+    config = _make_config(tmp_path)
+    result = create_backup(archive=tmp_path / "backup.tar.gz", config_dir=config)
+    target = tmp_path / "existing"
+    target.mkdir()
+    (target / "user.db").write_bytes(b"original-db")
+    original_rename = Path.rename
+
+    def fail_staging_rename(source: Path, destination: Path):
+        if source.name.startswith(f".{target.name}.restore-"):
+            raise OSError("simulated replace failure")
+        return original_rename(source, destination)
+
+    monkeypatch.setattr(Path, "rename", fail_staging_rename)
+
+    with pytest.raises(OSError, match="simulated replace failure"):
+        restore_backup(result.archive, config_dir=target, overwrite=True)
+
+    assert (target / "user.db").read_bytes() == b"original-db"
 
 
 def test_restore_backup_rejects_missing_archive(tmp_path):

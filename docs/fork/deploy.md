@@ -96,8 +96,9 @@ CONFIG_DIR=/var/lib/moviepilot ./moviepilot backup --output /root/mp-backup.tar.
 ./moviepilot start
 ```
 
-备份包内含 `moviepilot-backup.json` 清单（格式版本、创建时间、文件数、来源目录）；
-恢复时会校验清单与包内路径，出现越界路径直接拒绝，避免半包状态破坏现有数据。
+备份包内含 `moviepilot-backup.json` 清单（格式版本、创建时间、文件数、来源目录），
+并按私有权限 `0600` 创建；SQLite 通过在线备份 API 生成一致性快照，因此备份本身不要求停机。
+恢复时会校验清单与包内路径，出现越界路径直接拒绝；最终替换失败会回滚原配置，避免半包状态破坏现有数据。
 
 ## 从 Docker 迁移
 
