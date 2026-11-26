@@ -246,3 +246,17 @@ def test_backup_archive_defaults_to_config_parent(tmp_path):
     assert result.archive.parent == config.resolve().parent
     assert result.archive.name.startswith("moviepilot-backup-")
     assert result.archive.exists()
+
+def test_create_backup_inside_config_excludes_existing_archive(tmp_path):
+    """备份输出允许放在配置目录内，但重复备份不得把旧归档递归打入新归档。"""
+    config = _make_config(tmp_path)
+    archive = config / "backup.tar.gz"
+
+    first = create_backup(archive=archive, config_dir=config)
+    assert first.archive.exists()
+    second = create_backup(archive=archive, config_dir=config)
+
+    assert second.file_count == first.file_count
+    with tarfile.open(second.archive, "r:gz") as tar:
+        names = {member.name for member in tar.getmembers()}
+    assert "backup.tar.gz" not in names

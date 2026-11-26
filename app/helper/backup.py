@@ -83,18 +83,28 @@ def _create_sqlite_snapshot(source: Path, snapshot: Path) -> None:
         snapshot.chmod(SENSITIVE_FILE_MODE)
 
 
-def _iter_backup_files(config_dir: Path) -> List[Path]:
+def _iter_backup_files(config_dir: Path, archive: Optional[Path] = None) -> List[Path]:
     """
-    列出需要备份的文件，跳过可重建的缓存目录。
+    列出需要备份的文件，跳过可重建的缓存目录与目标归档自身。
 
     :param config_dir: 配置目录
+    :param archive: 目标备份包路径
     :return: 文件路径列表
     """
+    archive_relative = None
+    if archive is not None:
+        try:
+            archive_relative = archive.relative_to(config_dir)
+        except ValueError:
+            archive_relative = None
+
     files: List[Path] = []
     for path in sorted(config_dir.rglob("*")):
         if not path.is_file():
             continue
         relative = path.relative_to(config_dir)
+        if archive_relative is not None and relative == archive_relative:
+            continue
         if relative.parts and relative.parts[0] in EXCLUDE_DIRS:
             continue
         if len(relative.parts) == 1 and relative.name in SQLITE_BACKUP_FILES:
@@ -154,7 +164,7 @@ def create_backup(
     archive = archive.expanduser().resolve()
     archive.parent.mkdir(parents=True, exist_ok=True)
 
-    files = _iter_backup_files(source)
+    files = _iter_backup_files(source, archive=archive)
     file_count = len(files) + (1 if (source / "user.db").exists() else 0)
     manifest = {
         "format_version": BACKUP_FORMAT_VERSION,
