@@ -14,10 +14,8 @@ from app.db.models import User
 from app.db.user_oper import get_current_active_user, get_current_active_superuser
 from app.schemas import MediaType
 from app.utils.media import (
-    MEDIA_SOURCE_ID_FIELDS,
     is_supported_media_source,
     normalize_media_source,
-    parse_media_key,
 )
 
 router = APIRouter()
@@ -224,47 +222,3 @@ async def groups(tmdbid: int, _: schemas.TokenPayload = Depends(verify_token)) -
     if not mediainfo:
         return []
     return mediainfo.episode_groups
-
-
-@router.get("/{mediaid}", summary="查询媒体详情", response_model=schemas.MediaInfo)
-async def detail(
-    mediaid: str,
-    type_name: str,
-    title: Optional[str] = None,
-    year: str = None,
-    _: schemas.TokenPayload = Depends(verify_token),
-) -> Any:
-    """
-    根据带来源前缀的媒体ID查询媒体信息，type_name: 电影/电视剧
-    """
-    mtype = MediaType(type_name)
-    mediainfo = None
-    mediachain = MediaChain()
-    media_source, source_media_id = parse_media_key(mediaid)
-    media_source = _validate_active_media_source(media_source)
-    if media_source and source_media_id:
-        mediainfo = await mediachain.async_recognize_media(
-            source=media_source,
-            mediaid=source_media_id,
-            mtype=mtype,
-        )
-    if not mediainfo and (
-        not media_source or media_source not in MEDIA_SOURCE_ID_FIELDS
-    ):
-        if title:
-            # 使用名称识别兜底
-            meta = MetaInfo(title)
-            if year:
-                meta.year = year
-            if mtype:
-                meta.type = mtype
-            mediainfo = await mediachain.async_recognize_by_meta(
-                meta,
-                obtain_images=False,
-            )
-    # 识别
-    if mediainfo:
-        await mediachain.async_obtain_images(mediainfo)
-        return mediainfo.to_dict()
-
-    return schemas.MediaInfo()

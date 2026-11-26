@@ -26,3 +26,10 @@ def test_empty_legacy_media_category_surface_is_removed():
     assert not hasattr(media_endpoint, "category")
     assert not hasattr(ChainBase, "media_category")
     assert not hasattr(TheMovieDbModule, "media_category")
+
+
+def test_unreferenced_media_detail_endpoint_is_removed():
+    """当前没有媒体详情页或调用方，不保留上游媒体详情查询端点。"""
+    routes = {route.path for route in media_endpoint.router.routes}
+    assert "/{mediaid}" not in routes
+    assert not hasattr(media_endpoint, "detail")
