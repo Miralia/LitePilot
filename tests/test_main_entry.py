@@ -1,5 +1,6 @@
 """后端服务主入口的启动参数边界测试。"""
 
+import builtins
 import runpy
 import sys
 
@@ -11,6 +12,15 @@ def test_main_entry_rejects_unexpected_arguments_before_startup(monkeypatch):
     """误把 CLI 子命令传给服务入口时必须 fail-fast，不能启动第二个后端实例。"""
     server_starts = []
     db_starts = []
+    factory_imports = []
+    real_import = builtins.__import__
+
+    def record_factory_import(name, *args, **kwargs):
+        if name == "app.factory":
+            factory_imports.append(name)
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", record_factory_import)
     monkeypatch.setattr(uvicorn.Server, "run", lambda _self: server_starts.append(True))
     monkeypatch.setattr("app.db.init.init_db", lambda: db_starts.append("init"))
     monkeypatch.setattr("app.db.init.update_db", lambda: db_starts.append("update"))
@@ -23,3 +33,4 @@ def test_main_entry_rejects_unexpected_arguments_before_startup(monkeypatch):
     assert exc_info.value.code == 2
     assert server_starts == []
     assert db_starts == []
+    assert factory_imports == []

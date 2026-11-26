@@ -7,6 +7,22 @@ from pathlib import Path
 import uvicorn as uvicorn
 from uvicorn import Config
 
+
+def _validate_launch_arguments(arguments: list[str]) -> None:
+    """拒绝被误传到服务入口的 CLI 参数，避免静默启动第二个后端实例。"""
+    if not arguments:
+        return
+    print(
+        "app.main 是后端服务入口，不接受命令行参数；管理命令请使用 moviepilot CLI。",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+
+
+# 必须在导入应用工厂前验证，避免误参进程初始化数据库或后台状态。
+if __name__ == '__main__':
+    _validate_launch_arguments(sys.argv[1:])
+
 from app.utils.stdio import configure_rotating_stdio
 
 # 禁用输出
@@ -24,6 +40,7 @@ if stdio_log_file:
 
 from app.factory import app
 from app.core.config import global_vars, settings
+from app.utils.access_log import build_uvicorn_log_config
 from app.db.init import init_db, update_db
 
 # 设置进程名
@@ -46,6 +63,7 @@ Server = LitePilotServer(
         port=settings.PORT,
         reload=settings.DEV,
         timeout_graceful_shutdown=60,
+        log_config=build_uvicorn_log_config(),
     )
 )
 
@@ -54,17 +72,6 @@ def request_shutdown() -> None:
     """发布协作停止标志并请求 Uvicorn 退出"""
     global_vars.stop_system()
     Server.should_exit = True
-
-
-def _validate_launch_arguments(arguments: list[str]) -> None:
-    """拒绝被误传到服务入口的 CLI 参数，避免静默启动第二个后端实例。"""
-    if not arguments:
-        return
-    print(
-        "app.main 是后端服务入口，不接受命令行参数；管理命令请使用 moviepilot CLI。",
-        file=sys.stderr,
-    )
-    raise SystemExit(2)
 
 
 def signal_handler(signum, frame):
@@ -90,5 +97,4 @@ def run_application() -> None:
 
 
 if __name__ == '__main__':
-    _validate_launch_arguments(sys.argv[1:])
     run_application()
