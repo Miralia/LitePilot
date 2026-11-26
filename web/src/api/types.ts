@@ -66,63 +66,6 @@ export interface TransferHistory {
   src_fileitem?: FileItem
 }
 
-// 下载历史记录
-export interface DownloadHistory {
-  // ID
-  id: number
-  // 保存路径
-  path?: string
-  // 类型：电影、电视剧
-  type?: string
-  // 标题
-  title?: string
-  // 年份
-  year?: string
-  // TMDB ID
-  tmdbid?: number
-  // IMDB ID
-  imdbid?: string
-  // TVDB ID
-  tvdbid?: number
-  // 豆瓣 ID
-  doubanid?: string
-  // Bangumi ID
-  bangumiid?: number
-  // 媒体数据源
-  media_source?: MediaDataSource
-  // 数据源原生 ID
-  media_id?: string
-  // 季 Sxx
-  seasons?: string
-  // 集 Exx
-  episodes?: string
-  // 背景图
-  image?: string
-  // 海报
-  poster?: string
-  // 下载器 Hash
-  download_hash?: string
-  // 种子名称
-  torrent_name?: string
-  // 种子描述
-  torrent_description?: string
-  // 站点
-  torrent_site?: string
-  // 下载用户 ID
-  userid?: string
-  // 下载用户名
-  username?: string
-  // 下载渠道
-  channel?: string
-  // 创建时间
-  date?: string
-  // 附加信息
-  note?: unknown
-  // 自定义媒体类别
-  // 自定义剧集组
-  episode_group?: string
-}
-
 // 媒体信息
 // TMDB季信息
 export interface TmdbSeason {
@@ -140,30 +83,6 @@ export interface TmdbSeason {
   season_number?: number
   // 评分
   vote_average?: number
-}
-
-// TMDB集信息
-export interface TmdbEpisode {
-  // 上映日期
-  air_date?: string
-  // 集号
-  episode_number?: number
-  // 剧集名称
-  name?: string
-  // 描述
-  overview?: string
-  // 时长
-  runtime?: number
-  // 季号
-  season_number?: number
-  // 海报
-  still_path?: string
-  // 评分
-  vote_average?: number
-  // 演职人员
-  crew: Object[]
-  // 嘉宾
-  guest_stars: Object[]
 }
 
 // 发行信息
@@ -998,19 +917,4 @@ export interface SystemSettingResponse<T> {
   data?: {
     value?: T
   }
-}
-
-// 分类配置
-// 分类规则
-export interface CategoryRule {
-  genre_ids?: string
-  original_language?: string
-  production_countries?: string
-  origin_country?: string
-  release_year?: string
-}
-
-export interface CategoryConfig {
-  movie?: { [key: string]: CategoryRule }
-  tv?: { [key: string]: CategoryRule }
 }

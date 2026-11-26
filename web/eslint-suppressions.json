@@ -60,9 +60,6 @@
   "src/api/types.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 23
-    },
-    "@typescript-eslint/no-wrapper-object-types": {
-      "count": 2
     }
   },
   "src/components/cards/DirectoryCard.vue": {
