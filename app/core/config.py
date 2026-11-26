@@ -326,8 +326,6 @@ class ConfigModel(BaseModel):
     # ==================== 性能配置 ====================
     # 大内存模式
     BIG_MEMORY_MODE: bool = False
-    # 是否启用编码探测的性能模式
-    ENCODING_DETECTION_PERFORMANCE_MODE: bool = True
     # 主动内存回收时间间隔（分钟），0为不启用
     MEMORY_GC_INTERVAL: int = 30
 
