@@ -1075,13 +1075,6 @@ class ChainBase(metaclass=ABCMeta):
             "metadata_img", mediainfo=mediainfo, season=season, episode=episode
         )
 
-    def media_category(self) -> Optional[Dict[str, list]]:
-        """
-        获取媒体分类
-        :return: 获取二级分类配置字典项，需包括电影、电视剧
-        """
-        return self.run_module("media_category")
-
     def register_commands(self, commands: Dict[str, dict]) -> None:
         """
         注册菜单命令

@@ -64,7 +64,6 @@ function mockSettings(settingValue: boolean | null) {
   mocks.apiGet.mockImplementation((endpoint: string) => {
     if (endpoint === 'system/setting/public/Directories') return { data: { value: [] } }
     if (endpoint === 'system/setting/public/Storages') return { data: { value: [] } }
-    if (endpoint === 'media/category') return {}
     if (endpoint === 'system/env') return { data: {}, success: true }
     if (endpoint === 'system/setting/MountedLocalDiskDeleteEmptyDirs') {
       return { data: { value: settingValue }, success: true }

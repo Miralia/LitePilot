@@ -213,17 +213,6 @@ def scrape(
     return schemas.Response(success=True, message=f"{fileitem.path} 刮削完成")
 
 
-@router.get("/category", summary="查询自动分类配置", response_model=dict)
-async def category(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
-    """
-    查询自动分类配置。
-
-    二级分类已取消，恒返回空的电影与剧集分类列表，保留端点是为了
-    避免既有调用方（前端缓存、外部脚本）因 404 而报错。
-    """
-    return MediaChain().media_category() or {}
-
-
 @router.get("/groups/{tmdbid}", summary="查询媒体剧集组", response_model=List[dict])
 async def groups(tmdbid: int, _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """

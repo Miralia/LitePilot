@@ -707,20 +707,6 @@ class TheMovieDbModule(_ModuleBase):
         """
         return self.update_recognize_cache(meta=meta, mediainfo=mediainfo)
 
-    def media_category(self) -> Optional[Dict[str, list]]:
-        """
-        获取媒体分类。
-
-        二级分类已取消，媒体只按电影 / 剧集 / 动漫一级归档，
-        因此恒返回空分类，供调用方统一处理。
-
-        :return: 空的分类字典
-        """
-        return {
-            MediaType.MOVIE.value: [],
-            MediaType.TV.value: [],
-        }
-
     def search_medias(
         self, meta: MetaBase, source: Optional[str] = None
     ) -> Optional[List[MediaInfo]]:
