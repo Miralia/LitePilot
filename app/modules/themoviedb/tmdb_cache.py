@@ -174,7 +174,7 @@ class TmdbCache(metaclass=WeakSingleton):
                     "tmdb_id": value.get("id") or 0,
                     "title": value.get("title") or "",
                     "year": value.get("year") or "",
-                    "media_type": media_type.to_agent() if media_type else "unknown",
+                    "media_type": media_type.to_api_value() if media_type else "unknown",
                     "poster_path": value.get("poster_path") or "",
                     "backdrop_path": value.get("backdrop_path") or "",
                 })
