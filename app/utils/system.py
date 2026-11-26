@@ -427,9 +427,9 @@ class SystemUtils:
 
         items = []
 
-        # 遍历目录
+        # 遍历目录。损坏软链接的 is_file 为 False，但它仍占用目录项，不能从文件管理中消失。
         for path in directory.iterdir():
-            if path.is_file():
+            if path.is_file() or (path.is_symlink() and not path.is_dir()):
                 items.append(path)
 
         return items

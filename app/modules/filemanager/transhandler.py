@@ -451,7 +451,9 @@ class TransHandler:
                         target_file = new_file
                         if target_storage == "local" and new_file.is_symlink():
                             target_file = new_file.readlink()
-                            if not target_file.exists():
+                            if not target_file.is_absolute():
+                                target_file = new_file.parent / target_file
+                            if not new_file.exists():
                                 overflag = True
                         if not overflag:
                             # 目标文件已存在
@@ -954,7 +956,7 @@ class TransHandler:
         :param target_storage: 目标存储
         :param target_file: 新文件
         :param transfer_type: 整理方式
-        :param over_flag: 是否覆盖，为True时会先删除再整理
+        :param over_flag: 是否覆盖，为True时会先备份原路径再整理
         :param source_oper: 源存储操作对象
         :param target_oper: 目标存储操作对象
         """

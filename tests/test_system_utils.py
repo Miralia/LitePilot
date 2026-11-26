@@ -535,3 +535,11 @@ def test_dashboard_downloader_forwards_btrfs_fsid_setting():
         [Path("/downloads")],
         btrfs_fsid_dedup=True,
     )
+
+
+def test_list_sub_file_includes_broken_symlink(tmp_path):
+    """损坏软链接仍占用目录项，文件管理器不应把它隐藏。"""
+    broken = tmp_path / "broken.mkv"
+    broken.symlink_to(tmp_path / "missing-target.mkv")
+
+    assert broken in SystemUtils.list_sub_file(tmp_path)

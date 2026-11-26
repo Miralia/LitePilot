@@ -47,10 +47,24 @@ class LocalStorage(StorageBase):
         """
         return True
 
+    @staticmethod
+    def __lexists(path: Path) -> bool:
+        """
+        判断路径自身是否存在，损坏软链接也占用文件名。
+        """
+        return path.exists() or path.is_symlink()
+
     def __get_fileitem(self, path: Path) -> schemas.FileItem:
         """
         获取文件项
         """
+        try:
+            file_stat = path.stat()
+        except OSError:
+            if not path.is_symlink():
+                raise
+            # 覆盖或清理软链接时操作的是链接本体，目标缺失不应导致链接从文件系统中消失。
+            file_stat = path.lstat()
         return schemas.FileItem(
             storage=self.schema.value,
             type="file",
@@ -58,8 +72,8 @@ class LocalStorage(StorageBase):
             name=path.name,
             basename=path.stem,
             extension=path.suffix[1:],
-            size=path.stat().st_size,
-            modify_time=path.stat().st_mtime,
+            size=file_stat.st_size,
+            modify_time=file_stat.st_mtime,
         )
 
     def __get_diritem(self, path: Path) -> schemas.FileItem:
@@ -104,12 +118,12 @@ class LocalStorage(StorageBase):
 
         # 遍历目录
         path_obj = Path(path)
-        if not path_obj.exists():
+        if not self.__lexists(path_obj):
             logger.warning(f"【本地】目录不存在：{path}")
             return []
 
-        # 如果是文件
-        if path_obj.is_file():
+        # 如果是文件，损坏软链接也按链接本体展示
+        if path_obj.is_file() or (path_obj.is_symlink() and not path_obj.is_dir()):
             ret_items.append(self.__get_fileitem(path_obj))
             return ret_items
 
@@ -173,9 +187,9 @@ class LocalStorage(StorageBase):
         """
         获取文件或目录，不存在返回None
         """
-        if not path.exists():
+        if not self.__lexists(path):
             return None
-        if path.is_file():
+        if path.is_file() or (path.is_symlink() and not path.is_dir()):
             return self.__get_fileitem(path)
         return self.__get_diritem(path)
 
@@ -183,10 +197,10 @@ class LocalStorage(StorageBase):
         """
         获取文件或目录，无法确认状态时抛出 StorageQueryError。
         Path.exists() 会把部分 errno（如 EBADF/ELOOP）归入「不存在」，
-        网络/FUSE 挂载抖动时会误判，这里用 stat 显式区分。
+        网络/FUSE 挂载抖动时会误判，这里用 lstat 显式区分路径本体是否存在。
         """
         try:
-            path.stat()
+            path.lstat()
         except (FileNotFoundError, NotADirectoryError):
             return None
         except OSError as e:
@@ -201,7 +215,7 @@ class LocalStorage(StorageBase):
         获取文件详情
         """
         path_obj = Path(fileitem.path)
-        if not path_obj.exists():
+        if not self.__lexists(path_obj):
             return None
         return self.__get_fileitem(path_obj)
 
@@ -212,10 +226,10 @@ class LocalStorage(StorageBase):
         if not fileitem.path:
             return False
         path_obj = Path(fileitem.path)
-        if not path_obj.exists():
+        if not self.__lexists(path_obj):
             return True
         try:
-            if path_obj.is_file():
+            if path_obj.is_file() or path_obj.is_symlink():
                 path_obj.unlink()
             else:
                 shutil.rmtree(path_obj, ignore_errors=True)
@@ -229,7 +243,7 @@ class LocalStorage(StorageBase):
         重命名文件
         """
         path_obj = Path(fileitem.path)
-        if not path_obj.exists():
+        if not self.__lexists(path_obj):
             return False
         try:
             path_obj.rename(path_obj.parent / name)

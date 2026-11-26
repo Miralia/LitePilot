@@ -41,19 +41,23 @@ def test_local_strict_existing_file_returns_item(tmp_path):
     assert item.path == target.as_posix()
 
 
-def test_local_strict_broken_symlink_returns_none(tmp_path):
+def test_local_strict_broken_symlink_returns_file_item(tmp_path):
     """
-    失效软链接视为目标不存在，不应阻断整理。
+    失效软链接仍是目标路径上的现有文件项，覆盖流程不能把它误判为不存在。
     """
     target = tmp_path / "movie.mkv"
     target.symlink_to(tmp_path / "gone.mkv")
 
-    assert _local().get_item_strict(target) is None
+    item = _local().get_item_strict(target)
+
+    assert item is not None
+    assert item.path == target.as_posix()
+    assert item.type == "file"
 
 
 def test_local_strict_raises_on_stat_error(tmp_path, monkeypatch):
     """
-    FUSE 挂载抖动导致 stat 失败时应抛出 StorageQueryError，拒绝覆盖。
+    FUSE 挂载抖动导致 lstat 失败时应抛出 StorageQueryError，拒绝覆盖。
     """
     target = tmp_path / "movie.mkv"
 
@@ -63,7 +67,7 @@ def test_local_strict_raises_on_stat_error(tmp_path, monkeypatch):
         """
         raise OSError(131, "State not recoverable")
 
-    monkeypatch.setattr(Path, "stat", raise_stat_error)
+    monkeypatch.setattr(Path, "lstat", raise_stat_error)
 
     with pytest.raises(StorageQueryError):
         _local().get_item_strict(target)

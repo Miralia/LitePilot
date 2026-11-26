@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from app.core.context import MediaInfo
+from app.modules.filemanager.storages.local import LocalStorage
 from app.modules.filemanager.transhandler import TransHandler
 from app.schemas import FileItem, TransferInfo
 from app.schemas.types import MediaType
@@ -96,5 +97,39 @@ def test_successful_overwrite_removes_backup_and_uses_new_target(monkeypatch, tm
 
     assert new_item is not None
     assert errmsg == ""
+    assert target.read_bytes() == b"new target"
+    assert not list(tmp_path.glob(f".{target.name}.overwrite-*"))
+
+
+def test_broken_symlink_overwrite_is_replaced_after_successful_transfer(monkeypatch, tmp_path) -> None:
+    """失效软链仍占用目标文件名，覆盖成功后必须替换为新媒体文件。"""
+    source = tmp_path / "source.mkv"
+    source.write_bytes(b"new source")
+    target = tmp_path / "target.mkv"
+    target.symlink_to(tmp_path / "missing-target.mkv")
+    storage = object.__new__(LocalStorage)
+
+    def successful_transfer(self, **kwargs):
+        kwargs["target_file"].write_bytes(b"new target")
+        return _file_item(kwargs["target_file"]), ""
+
+    monkeypatch.setattr(TransHandler, "_TransHandler__transfer_command", successful_transfer)
+
+    new_item, errmsg = TransHandler()._TransHandler__transfer_file(  # pylint: disable=protected-access
+        fileitem=_file_item(source),
+        meta=None,
+        mediainfo=MediaInfo(type=MediaType.MOVIE, title="Test", year="2026", tmdb_id=1),
+        source_oper=SimpleNamespace(),
+        target_oper=storage,
+        target_storage="local",
+        target_file=target,
+        transfer_type="copy",
+        result=TransferInfo(),
+        over_flag=True,
+    )
+
+    assert new_item is not None
+    assert errmsg == ""
+    assert not target.is_symlink()
     assert target.read_bytes() == b"new target"
     assert not list(tmp_path.glob(f".{target.name}.overwrite-*"))
