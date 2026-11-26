@@ -138,6 +138,162 @@ def test_telegram_parser_preserves_callback_context():
     assert message.chat_id == "10001"
 
 
+def _parse_callback(module, config, client, user_id=10001):
+    """构造并解析一条整理重试按钮回调。"""
+    payload = {
+        "callback_query": {
+            "id": "callback-1",
+            "from": {"id": user_id, "username": "tester"},
+            "message": {"message_id": 88, "chat": {"id": 10001}},
+            "data": "transfer_retry_12",
+        },
+    }
+    client_config = SimpleNamespace(name="telegram-test", config=config)
+    with patch.object(module, "get_config", return_value=client_config), patch.object(
+        module, "get_instance", return_value=client
+    ):
+        return module.message_parser(
+            source="telegram-test",
+            body=json.dumps(payload),
+            form=None,
+            args={},
+        )
+
+
+def test_telegram_callback_rejects_user_outside_whitelist():
+    """用户白名单外的群成员不得通过按钮回调操作机器人。"""
+    module = TelegramModule()
+    client = MagicMock()
+    client.bot_username = "mp_bot"
+
+    message = _parse_callback(
+        module,
+        {"TELEGRAM_USERS": "10001"},
+        client,
+        user_id=20002,
+    )
+
+    assert message is None
+    client.answer_callback_query.assert_called_once_with(
+        callback_query_id="callback-1",
+        text="你不在用户白名单中，无法使用此机器人",
+        show_alert=True,
+    )
+
+
+def test_telegram_transfer_callback_requires_configured_admin():
+    """配置管理员后，整理重试按钮只允许管理员触发。"""
+    module = TelegramModule()
+    client = MagicMock()
+    client.bot_username = "mp_bot"
+
+    message = _parse_callback(
+        module,
+        {"TELEGRAM_ADMINS": "10001"},
+        client,
+        user_id=20002,
+    )
+
+    assert message is None
+    client.answer_callback_query.assert_called_once_with(
+        callback_query_id="callback-1",
+        text="只有管理员才有权限执行此操作",
+        show_alert=True,
+    )
+
+
+def test_telegram_transfer_callback_accepts_configured_admin():
+    """管理员仍可正常触发整理重试按钮。"""
+    module = TelegramModule()
+    client = MagicMock()
+    client.bot_username = "mp_bot"
+
+    message = _parse_callback(
+        module,
+        {"TELEGRAM_ADMINS": "10001"},
+        client,
+        user_id=10001,
+    )
+
+    assert message is not None
+    assert message.text == "CALLBACK:transfer_retry_12"
+    client.answer_callback_query.assert_not_called()
+
+
+def _parse_text_message(module, config, client, user_id=10001, text="/redo 1"):
+    """构造并解析一条 Telegram 文本消息。"""
+    payload = {
+        "message": {
+            "message_id": 101,
+            "from": {"id": user_id, "username": "tester"},
+            "chat": {"id": user_id, "type": "private"},
+            "text": text,
+        },
+    }
+    client_config = SimpleNamespace(name="telegram-test", config=config)
+    with patch.object(module, "get_config", return_value=client_config), patch.object(
+        module, "get_instance", return_value=client
+    ):
+        return module.message_parser(
+            source="telegram-test",
+            body=json.dumps(payload),
+            form=None,
+            args={},
+        )
+
+
+def test_telegram_command_rejects_user_outside_whitelist():
+    """用户白名单外的用户不得通过斜杠命令绕过授权。"""
+    module = TelegramModule()
+    client = MagicMock()
+    client.bot_username = "mp_bot"
+
+    message = _parse_text_message(
+        module,
+        {"TELEGRAM_USERS": "10001"},
+        client,
+        user_id=20002,
+    )
+
+    assert message is None
+    client.send_msg.assert_called_once_with(
+        title="你不在用户白名单中，无法使用此机器人",
+        userid=20002,
+    )
+
+
+def test_telegram_command_accepts_whitelisted_user_without_admin_config():
+    """未配置管理员白名单时，普通白名单用户仍可使用命令。"""
+    module = TelegramModule()
+    client = MagicMock()
+    client.bot_username = "mp_bot"
+
+    message = _parse_text_message(
+        module,
+        {"TELEGRAM_USERS": "10001"},
+        client,
+        user_id=10001,
+    )
+
+    assert message is not None
+    assert message.text == "/redo 1"
+    client.send_msg.assert_not_called()
+
+
+def test_telegram_unauthorized_message_is_safe_without_client_instance():
+    """模块重载窗口中没有客户端实例时，拒绝逻辑也不应抛错。"""
+    module = TelegramModule()
+
+    message = _parse_text_message(
+        module,
+        {"TELEGRAM_USERS": "10001"},
+        None,
+        user_id=20002,
+    )
+
+    assert message is None
+
+
 def test_should_process_message_skips_media_without_text(telegram):
     """纯媒体消息不应再转发到只处理文本命令的后端消息链。"""
     message = SimpleNamespace(

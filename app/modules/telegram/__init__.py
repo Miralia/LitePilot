@@ -112,6 +112,32 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
         ]
         return not any(candidate in admins for candidate in candidates)
 
+    @staticmethod
+    def _get_users(config: Optional[dict]) -> List[str]:
+        """
+        解析 Telegram 用户白名单，兼容逗号分隔和首尾空白。
+        """
+        return [
+            user.strip()
+            for user in str((config or {}).get("TELEGRAM_USERS") or "").split(",")
+            if user.strip()
+        ]
+
+    @classmethod
+    def _is_allowed_user(
+            cls,
+            config: Optional[dict],
+            user_id: Optional[Union[str, int]],
+    ) -> bool:
+        """
+        判断用户是否可使用机器人；管理员不受普通用户白名单遗漏影响。
+        """
+        users = cls._get_users(config)
+        if not users:
+            return True
+        candidate = str(user_id).strip() if user_id is not None else ""
+        return candidate in users or candidate in cls._get_admins(config)
+
     def message_parser(
         self, source: str, body: Any, form: Any, args: Any
     ) -> Optional[CommingMessage]:
@@ -204,13 +230,22 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
         user_name = user_info.get("username")
 
         if callback_data and user_id:
-            if str(callback_data).strip().startswith("/") and self._should_reject_admin_command(
+            if not self._is_allowed_user(client_config.config, user_id):
+                if client:
+                    client.answer_callback_query(
+                        callback_query_id=callback_query.get("id"),
+                        text="你不在用户白名单中，无法使用此机器人",
+                        show_alert=True,
+                    )
+                return None
+
+            if self._should_reject_admin_command(
                     client_config.config, user_id, user_name
             ):
                 if client:
                     client.answer_callback_query(
                         callback_query_id=callback_query.get("id"),
-                        text="只有管理员才有权限执行此命令",
+                        text="只有管理员才有权限执行此操作",
                         show_alert=True,
                     )
                 return None
@@ -272,20 +307,20 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
                 text, client.bot_username if client else None
             )
 
-            user_list = client_config.config.get("TELEGRAM_USERS")
-
-            if cleaned_text and cleaned_text.startswith("/"):
-                if self._should_reject_admin_command(client_config.config, user_id, user_name):
-                    client.send_msg(
-                        title="只有管理员才有权限执行此命令", userid=user_id
-                    )
-                    return None
-            else:
-                if user_list and str(user_id) not in user_list.split(","):
-                    logger.info(f"用户{user_id}不在用户白名单中，无法使用此机器人")
+            if not self._is_allowed_user(client_config.config, user_id):
+                logger.info(f"用户{user_id}不在用户白名单中，无法使用此机器人")
+                if client:
                     client.send_msg(
                         title="你不在用户白名单中，无法使用此机器人", userid=user_id
                     )
+                return None
+
+            if cleaned_text and cleaned_text.startswith("/"):
+                if self._should_reject_admin_command(client_config.config, user_id, user_name):
+                    if client:
+                        client.send_msg(
+                            title="只有管理员才有权限执行此命令", userid=user_id
+                        )
                     return None
 
             return CommingMessage(
