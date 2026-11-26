@@ -67,11 +67,6 @@ export class AppActivityLifecycle {
     return this.state
   }
 
-  /** 获取最近一次有效前台交互时间。 */
-  getLastActivityAt() {
-    return this.lastActivityAt
-  }
-
   /** 订阅状态变化；订阅时立即回放当前状态。 */
   subscribe(listener: AppActivityStateListener) {
     this.listeners.add(listener)
@@ -98,11 +93,6 @@ export class AppActivityLifecycle {
       this.acquireCount = Math.max(0, this.acquireCount - 1)
       if (this.acquireCount === 0) this.stop()
     }
-  }
-
-  /** 供路由或测试路径显式登记一次有效前台活动。 */
-  markActivity() {
-    this.handleActivity()
   }
 
   private start() {

@@ -4,14 +4,13 @@ import { appActivityLifecycle, type AppActivityState } from '@/utils/appActivity
  * 后台管理器
  * 统一管理定时器和后台活动，减少iOS系统杀掉应用的概率
  */
-export class BackgroundManager {
+class BackgroundManager {
   private timers: Map<
     string,
     {
       callback: () => void
       interval: number
       timer: ReturnType<typeof setInterval> | null
-      pausedAt?: number
       runInBackground?: boolean
     }
   > = new Map()
@@ -131,7 +130,6 @@ export class BackgroundManager {
       if (timerConfig.timer && !timerConfig.runInBackground) {
         clearInterval(timerConfig.timer)
         timerConfig.timer = null
-        timerConfig.pausedAt = Date.now()
       }
     })
   }
@@ -155,70 +153,8 @@ export class BackgroundManager {
         }
 
         timerConfig.timer = setInterval(wrappedCallback, timerConfig.interval)
-        delete timerConfig.pausedAt
       }
     })
-  }
-
-  /**
-   * 获取定时器状态
-   */
-  getTimerStatus(id: string): 'running' | 'paused' | 'not-found' {
-    const timerConfig = this.timers.get(id)
-    if (!timerConfig) return 'not-found'
-    return timerConfig.timer ? 'running' : 'paused'
-  }
-
-  /**
-   * 获取所有定时器信息
-   */
-  getTimersInfo(): Array<{
-    id: string
-    interval: number
-    status: 'running' | 'paused'
-    runInBackground: boolean
-    pausedAt?: number
-  }> {
-    return Array.from(this.timers.entries()).map(([id, config]) => ({
-      id,
-      interval: config.interval,
-      status: config.timer ? 'running' : 'paused',
-      runInBackground: config.runInBackground || false,
-      pausedAt: config.pausedAt,
-    }))
-  }
-
-  /**
-   * 检查用户是否活跃
-   */
-  isUserActive(maxInactiveTime = 5 * 60 * 1000): boolean {
-    return Date.now() - appActivityLifecycle.getLastActivityAt() < maxInactiveTime
-  }
-
-  /**
-   * 获取最后活动时间
-   */
-  getLastActivityTime(): number {
-    return appActivityLifecycle.getLastActivityAt()
-  }
-
-  /**
-   * 获取当前状态
-   */
-  getStatus(): {
-    isBackground: boolean
-    isDestroyed: boolean
-    timerCount: number
-    lastActivityTime: number
-    isUserActive: boolean
-  } {
-    return {
-      isBackground: this.isBackground,
-      isDestroyed: this.isDestroyed,
-      timerCount: this.timers.size,
-      lastActivityTime: appActivityLifecycle.getLastActivityAt(),
-      isUserActive: this.isUserActive(),
-    }
   }
 
   /**
@@ -243,7 +179,7 @@ export class BackgroundManager {
 /**
  * 全局后台管理器实例
  */
-export const backgroundManager = new BackgroundManager()
+const backgroundManager = new BackgroundManager()
 
 /**
  * 便捷的定时器管理函数
@@ -262,8 +198,4 @@ export function addBackgroundTimer(
 
 export function removeBackgroundTimer(id: string) {
   backgroundManager.removeTimer(id)
-}
-
-export function getBackgroundTimerStatus(id: string) {
-  return backgroundManager.getTimerStatus(id)
 }
