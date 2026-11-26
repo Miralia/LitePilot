@@ -69,3 +69,12 @@ def test_synchronous_transfer_trigger_route_is_removed():
     """手动整理由调度器统一触发，不保留绕过调度边界的同步 API_TOKEN 路由。"""
     transfer_routes = {route.path for route in transfer_endpoint.router.routes}
     assert "/now" not in transfer_routes
+
+
+def test_manual_transfer_target_path_preview_api_is_removed():
+    """手动整理目标路径由正式整理请求自动匹配，不保留无入口的预填接口。"""
+    routes = {route.path for route in transfer_endpoint.router.routes}
+    assert "/manual/target-path" not in routes
+    assert not hasattr(transfer_endpoint, "match_manual_transfer_target_path")
+    assert not hasattr(transfer_endpoint, "_build_manual_transfer_target_path")
+    assert not hasattr(transfer_endpoint, "_get_manual_transfer_target_key")
