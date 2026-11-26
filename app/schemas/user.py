@@ -25,19 +25,6 @@ class UserBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Properties to receive via API on creation
-
-
-# Properties to receive via API on update
-class UserUpdate(UserBase):
-    id: int
-    name: str
-    email: Optional[str] = None
-    password: Optional[str] = None
-    settings: Optional[dict] = Field(default_factory=dict)
-    permissions: Optional[dict] = Field(default_factory=dict)
-
-
 class UserInDBBase(UserBase):
     id: Optional[int] = None
 
@@ -48,6 +35,3 @@ class UserInDBBase(UserBase):
 class User(UserInDBBase):
     name: str
     email: Optional[str] = None
-
-
-# Additional properties stored in DB
