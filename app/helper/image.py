@@ -76,7 +76,7 @@ class WallpaperHelper(metaclass=Singleton):
                     for image in result.get('images') or []:
                         return f"https://cn.bing.com{image.get('url')}" if 'url' in image else ''
             except Exception as err:
-                print(str(err))
+                logger.warning(f"解析Bing每日壁纸响应失败：{err}")
         return None
 
     @cached(maxsize=1, ttl=3600, skip_empty=True)
@@ -92,7 +92,7 @@ class WallpaperHelper(metaclass=Singleton):
                 if isinstance(result, dict):
                     return [f"https://cn.bing.com{image.get('url')}" for image in result.get('images') or []]
             except Exception as err:
-                print(str(err))
+                logger.warning(f"解析Bing壁纸列表响应失败：{err}")
         return []
 
     @cached(maxsize=1, ttl=3600)
@@ -164,7 +164,7 @@ class WallpaperHelper(metaclass=Singleton):
                         if isinstance(result, list) or isinstance(result, dict) or isinstance(result, str):
                             wallpaper_list = find_files_with_suffixes(result, settings.SECURITY_IMAGE_SUFFIXES)
                     except Exception as err:
-                        print(str(err))
+                        logger.warning(f"解析自定义壁纸接口响应失败：{err}")
             return wallpaper_list
         else:
             return []

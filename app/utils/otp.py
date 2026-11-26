@@ -11,8 +11,7 @@ class OtpUtils:
             uri = pyotp.totp.TOTP(secret).provisioning_uri(name='LitePilot',
                                                            issuer_name='LitePilot(' + username + ')')
             return secret, uri
-        except Exception as err:
-            print(str(err))
+        except Exception:
             return "", ""
 
     @staticmethod
@@ -22,8 +21,7 @@ class OtpUtils:
         """
         try:
             return pyotp.TOTP(pyotp.parse_uri(otp_uri).secret).verify(password)
-        except Exception as err:
-            print(str(err))
+        except Exception:
             return False
 
     @staticmethod
@@ -34,8 +32,7 @@ class OtpUtils:
         try:
             totp = pyotp.TOTP(secret)
             return totp.verify(password)
-        except Exception as err:
-            print(str(err))
+        except Exception:
             return False
 
     @staticmethod
@@ -45,6 +42,5 @@ class OtpUtils:
         """
         try:
             return pyotp.parse_uri(otp_uri).secret
-        except Exception as err:
-            print(str(err))
+        except Exception:
             return ""

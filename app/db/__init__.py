@@ -125,7 +125,7 @@ def _get_sqlite_engine(is_async: bool = False):
         _journal_mode = "WAL" if settings.DB_WAL_ENABLE else "DELETE"
         with engine.connect() as connection:
             current_mode = connection.execute(text(f"PRAGMA journal_mode={_journal_mode};")).scalar()
-            print(f"SQLite database journal mode set to: {current_mode}")
+            logger.info(f"SQLite database journal mode set to: {current_mode}")
 
         return engine
     else:
@@ -152,12 +152,12 @@ def _get_sqlite_engine(is_async: bool = False):
             async with async_engine.connect() as _connection:
                 result = await _connection.execute(text(f"PRAGMA journal_mode={_journal_mode};"))
                 _current_mode = result.scalar()
-                print(f"Async SQLite database journal mode set to: {_current_mode}")
+                logger.info(f"Async SQLite database journal mode set to: {_current_mode}")
 
         try:
             asyncio.run(set_async_wal_mode())
         except Exception as e:
-            print(f"Failed to set async SQLite WAL mode: {e}")
+            logger.warning(f"Failed to set async SQLite WAL mode: {e}")
 
         return async_engine
 
@@ -197,7 +197,7 @@ def _get_postgresql_engine(is_async: bool = False):
         # 创建数据库引擎
         engine = create_engine(**_db_kwargs)
         _register_database_error_logging(engine)
-        print(f"PostgreSQL database connected to {settings.DB_POSTGRESQL_TARGET}/{settings.DB_POSTGRESQL_DATABASE}")
+        logger.info(f"PostgreSQL database connected to {settings.DB_POSTGRESQL_TARGET}/{settings.DB_POSTGRESQL_DATABASE}")
 
         return engine
     else:
@@ -215,7 +215,7 @@ def _get_postgresql_engine(is_async: bool = False):
         # 创建异步数据库引擎
         async_engine = create_async_engine(**_db_kwargs)
         _register_database_error_logging(async_engine.sync_engine)
-        print(f"Async PostgreSQL database connected to {settings.DB_POSTGRESQL_TARGET}/{settings.DB_POSTGRESQL_DATABASE}")
+        logger.info(f"Async PostgreSQL database connected to {settings.DB_POSTGRESQL_TARGET}/{settings.DB_POSTGRESQL_DATABASE}")
 
         return async_engine
 
@@ -272,7 +272,7 @@ async def close_database():
         # 释放异步连接池
         await AsyncEngine.dispose()
     except Exception as err:
-        print(f"Error while disposing database connections: {err}")
+        logger.warning(f"Error while disposing database connections: {err}")
 
 
 def _get_args_db(args: tuple, kwargs: dict) -> Optional[Session]:
