@@ -17,6 +17,7 @@ import Toast from 'vue-toastification'
 import ConfirmDialog from '@/composables/useConfirm'
 import { configureApexChartsTheme } from '@/utils/apexCharts'
 import { initializeServiceWorker } from '@/composables/useVersionChecker'
+import { installPreloadErrorRecovery } from '@/utils/preloadErrorRecovery'
 
 // 5. 注册自定义组件
 import DialogCloseBtn from '@/@core/components/DialogCloseBtn.vue'
@@ -78,7 +79,8 @@ app.use(pinia)
 // 2. 注册 UI 框架
 app.use(vuetify)
 
-// 3. 注册路由
+// 3. 注册路由前先恢复版本切换后的懒加载失败，避免旧入口引用已替换的哈希 chunk。
+installPreloadErrorRecovery()
 app.use(router)
 
 // 4. 注册状态恢复插件
