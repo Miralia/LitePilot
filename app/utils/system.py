@@ -152,13 +152,6 @@ class SystemUtils:
         return os.name == "nt"
 
     @staticmethod
-    def is_frozen() -> bool:
-        """
-        判断是否为冻结的二进制文件
-        """
-        return getattr(sys, 'frozen', False)
-
-    @staticmethod
     def is_macos() -> bool:
         """
         判断是否为MacOS系统
@@ -869,10 +862,7 @@ class SystemUtils:
             config_dir = os.getenv("CONFIG_DIR")
         if config_dir:
             return Path(config_dir)
-        if SystemUtils.is_frozen():
-            return Path(sys.executable).parent / "config"
-        else:
-            return Path(__file__).parents[2] / "config"
+        return Path(__file__).parents[2] / "config"
 
     @staticmethod
     def get_env_path() -> Path:

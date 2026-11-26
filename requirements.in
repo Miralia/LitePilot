@@ -36,7 +36,6 @@ watchfiles~=1.2.0
 click~=8.4.1
 pywin32==312; platform_system == "Windows"
 cachetools~=7.1.4
-pystray~=0.19.5
 pyotp~=2.9.0
 Pinyin2Hanzi~=0.1.1
 aiosqlite~=0.22.1

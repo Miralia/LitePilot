@@ -5,7 +5,6 @@ import os
 import platform
 import re
 import secrets
-import sys
 import threading
 from asyncio import AbstractEventLoop
 from pathlib import Path
@@ -365,11 +364,6 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
         for path in [self.CONFIG_PATH, self.TEMP_PATH, self.LOG_PATH, self.COOKIE_PATH]:
             if not path.exists():
                 path.mkdir(parents=True, exist_ok=True)
-        # 如果是二进制程序，确保配置文件存在
-        if SystemUtils.is_frozen():
-            app_env_path = self.CONFIG_PATH / "app.env"
-            if not app_env_path.exists():
-                SystemUtils.copy(self.INNER_CONFIG_PATH / "app.env", app_env_path)
 
     @staticmethod
     def validate_api_token(value: Any, original_value: Any) -> Tuple[Any, bool]:
@@ -670,15 +664,9 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
         return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 
     @property
-    def INNER_CONFIG_PATH(self):
-        return self.ROOT_PATH / "config"
-
-    @property
     def CONFIG_PATH(self):
         if self.CONFIG_DIR:
             return Path(self.CONFIG_DIR)
-        elif SystemUtils.is_frozen():
-            return Path(sys.executable).parent / "config"
         return self.ROOT_PATH / "config"
 
     @property

@@ -124,7 +124,6 @@ def test_application_preserves_stop_requested_before_startup(monkeypatch):
         "signal",
         lambda *_args: calls.append("signal"),
     )
-    monkeypatch.setattr(main, "start_tray", lambda: calls.append("tray"))
     monkeypatch.setattr(main, "init_db", lambda: calls.append("init_db"))
     monkeypatch.setattr(main, "update_db", lambda: calls.append("update_db"))
     monkeypatch.setattr(main.Server, "run", lambda: calls.append("server"))
@@ -135,7 +134,6 @@ def test_application_preserves_stop_requested_before_startup(monkeypatch):
     assert calls == [
         "signal",
         "signal",
-        "tray",
         "init_db",
         "update_db",
         "server",
@@ -260,7 +258,7 @@ def _patch_module_shutdown_dependencies(monkeypatch) -> dict:
         key = name.removesuffix("Helper").removesuffix("Manager").lower()
         dependencies[key] = getattr(instance, method_name)
 
-    for name in ("stop_message", "stop_frontend", "clear_temp"):
+    for name in ("stop_message", "clear_temp"):
         dependency = MagicMock()
         monkeypatch.setattr(modules_initializer, name, dependency)
         dependencies[name] = dependency

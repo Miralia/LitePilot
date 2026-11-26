@@ -140,7 +140,6 @@ def test_init_modules_does_not_clear_package_tool_cache(monkeypatch):
     monkeypatch.setattr(modules_initializer, "clear_package_tool_cache", fail_if_called)
     monkeypatch.setattr(modules_initializer, "ModuleManager", lambda: None)
     monkeypatch.setattr(modules_initializer.EventManager, "start", lambda self: None)
-    monkeypatch.setattr(modules_initializer, "start_frontend", lambda: None)
 
     modules_initializer.init_modules()
 

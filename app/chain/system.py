@@ -10,7 +10,6 @@ from app.helper.system import SystemHelper
 from app.log import logger
 from app.schemas import Notification, MessageChannel
 from app.utils.http import RequestUtils
-from app.utils.system import SystemUtils
 from version import APP_VERSION
 
 
@@ -122,10 +121,7 @@ class SystemChain(ChainBase):
         """
         获取前端版本
         """
-        if SystemUtils.is_frozen() and SystemUtils.is_windows():
-            version_file = settings.CONFIG_PATH.parent / "nginx" / "html" / "version.txt"
-        else:
-            version_file = Path(settings.FRONTEND_PATH) / "version.txt"
+        version_file = Path(settings.FRONTEND_PATH) / "version.txt"
         if version_file.exists():
             try:
                 with open(version_file, 'r', encoding='utf-8', errors='replace') as f:
