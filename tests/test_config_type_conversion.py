@@ -110,3 +110,15 @@ def test_media_source_setting_accepts_supported_sources() -> None:
 
     assert converted == "themoviedb,bangumi"
     assert needs_update is False
+
+
+def test_security_image_domains_follow_active_media_sources() -> None:
+    """图片代理默认白名单不应保留已移除上游数据源的域名。"""
+    field = type(settings).model_fields["SECURITY_IMAGE_DOMAINS"]
+    assert field.default == [
+        "image.tmdb.org",
+        "images.tmdb.org",
+        "bing.com",
+        "doubanio.com",
+        "lain.bgm.tv",
+    ]

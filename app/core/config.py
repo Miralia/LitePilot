@@ -356,19 +356,9 @@ class ConfigModel(BaseModel):
         default=[
             "image.tmdb.org",
             "images.tmdb.org",
-            "static-mdb.v.geilijiasu.com",
             "bing.com",
             "doubanio.com",
             "lain.bgm.tv",
-            "raw.githubusercontent.com",
-            "github.com",
-            "thetvdb.com",
-            "cctvpic.com",
-            "iqiyipic.com",
-            "hdslb.com",
-            "cmvideo.cn",
-            "ykimg.com",
-            "qpic.cn",
         ]
     )
     # 图片代理允许访问的非公网 IP/CIDR，默认不放行任何非公网解析结果
