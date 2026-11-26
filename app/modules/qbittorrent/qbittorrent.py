@@ -1,3 +1,4 @@
+import threading
 import time
 import traceback
 from typing import Any, Optional, Union, Tuple, List
@@ -23,19 +24,48 @@ class Qbittorrent:
         """
         若不设置参数，则创建配置文件设置的下载器
         """
-        self.qbc = None
+        self._client_lock = threading.RLock()
+        self._client_ready = threading.Event()
+        self._client_thread: Optional[threading.Thread] = None
+        self._qbc: Optional[Client] = None
         if host and port:
             self._host, self._port = host, port
         elif host:
             self._host, self._port = StringUtils.get_domain_address(address=host, prefix=True)
         else:
             logger.error("Qbittorrent配置不完整！")
+            self._client_ready.set()
             return
         self._username = username
         self._password = password
         self._apikey = str(apikey or "").strip() or None
         self._incomplete_files_ext = incomplete_files_ext
-        self.qbc = self.__login_qbittorrent()
+        self._client_thread = threading.Thread(target=self._bootstrap_client, daemon=True)
+        self._client_thread.start()
+
+    @property
+    def qbc(self) -> Optional[Client]:
+        """
+        qbittorrent 客户端
+        """
+        self._client_ready.wait()
+        return self._qbc
+
+    @qbc.setter
+    def qbc(self, value: Optional[Client]):
+        self._qbc = value
+
+    def _bootstrap_client(self):
+        """
+        后台初始化下载器连接，避免外部服务缓慢时阻塞应用启动
+        """
+        with self._client_lock:
+            try:
+                self._qbc = self.__login_qbittorrent()
+            except Exception as err:
+                logger.error(f"初始化 qbittorrent 连接出错：{err}")
+            finally:
+                self._client_ready.set()
 
     def __use_api_key_auth(self) -> bool:
         return bool(self._apikey)
@@ -67,7 +97,12 @@ class Qbittorrent:
         """
         重连
         """
-        self.qbc = self.__login_qbittorrent()
+        with self._client_lock:
+            self._client_ready.clear()
+            try:
+                self._qbc = self.__login_qbittorrent()
+            finally:
+                self._client_ready.set()
 
     def __login_qbittorrent(self) -> Optional[Client]:
         """

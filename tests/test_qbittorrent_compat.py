@@ -1,5 +1,7 @@
 import importlib.util
 import sys
+import threading
+import time
 import types
 from enum import Enum
 from pathlib import Path
@@ -194,6 +196,60 @@ def _load_qbittorrent_modules():
 qbittorrent_module, qbittorrent_package_module = _load_qbittorrent_modules()
 Qbittorrent = qbittorrent_module.Qbittorrent
 QbittorrentModule = qbittorrent_package_module.QbittorrentModule
+
+
+def test_init_does_not_block_on_qbittorrent_login():
+    """qBittorrent 首次连接缓慢时，模块构造不得阻塞应用启动。"""
+    login_started = threading.Event()
+    release_login = threading.Event()
+    fake_client = MagicMock()
+
+    def slow_login(*_args, **_kwargs):
+        login_started.set()
+        release_login.wait(1)
+        return fake_client
+
+    with patch.object(Qbittorrent, "_Qbittorrent__login_qbittorrent", side_effect=slow_login):
+        started_at = time.monotonic()
+        downloader = Qbittorrent(host="http://127.0.0.1", port=8080, username="admin", password="adminadmin")
+        elapsed = time.monotonic() - started_at
+
+        assert elapsed < 0.5
+        assert login_started.wait(0.5)
+        release_login.set()
+        assert downloader.qbc is fake_client
+
+
+def test_reconnect_waits_for_initial_qbittorrent_login():
+    """启动中的首次登录与定时重连必须串行完成，不能相互覆盖或死锁。"""
+    login_started = threading.Event()
+    release_login = threading.Event()
+    first_client = MagicMock(name="first-client")
+    reconnected_client = MagicMock(name="reconnected-client")
+    login_count = 0
+    login_count_lock = threading.Lock()
+
+    def slow_first_login(*_args, **_kwargs):
+        nonlocal login_count
+        with login_count_lock:
+            login_count += 1
+            is_first_login = login_count == 1
+        if is_first_login:
+            login_started.set()
+            release_login.wait(1)
+            return first_client
+        return reconnected_client
+
+    with patch.object(Qbittorrent, "_Qbittorrent__login_qbittorrent", side_effect=slow_first_login):
+        downloader = Qbittorrent(host="http://127.0.0.1", port=8080, username="admin", password="adminadmin")
+        assert login_started.wait(1)
+        reconnect_thread = threading.Thread(target=downloader.reconnect, daemon=True)
+        reconnect_thread.start()
+        release_login.set()
+        reconnect_thread.join(2)
+
+        assert not reconnect_thread.is_alive()
+        assert downloader.qbc is reconnected_client
 
 
 def test_login_uses_api_key_header_without_auth_login():
