@@ -12,8 +12,10 @@ describe('frontend dead export scope', () => {
     const coreIndex = readFileSync('src/@core/utils/index.ts', 'utf-8')
     const coreDom = readFileSync('src/@core/utils/dom.ts', 'utf-8')
     const coreNavigator = readFileSync('src/@core/utils/navigator.ts', 'utf-8')
+    const layoutsUtils = readFileSync('src/@layouts/utils.ts', 'utf-8')
 
     expect(mediaIdentity).not.toContain('export function getMediaId(')
+    expect(layoutsUtils).not.toContain('getComputedNavLinkToProp')
     expect(wallpaperTone).not.toContain('export async function loadGlassWallpaperToneProfile(')
     for (const name of ['reloadWithTimestamp', 'clearCachesAndServiceWorker', 'clearCacheAndReload']) {
       expect(versionChecker).not.toContain(name)

@@ -1,4 +1,3 @@
-import { getColor as extractColorThiefColor } from 'colorthief'
 export { preloadCorsImage } from './corsImage'
 
 const DEFAULT_DOMINANT_COLOR = '#28A9E1'
@@ -56,6 +55,7 @@ export async function extractDominantColor(
 
   const colorPromise = Promise.resolve()
     .then(async () => {
+      const { getColor: extractColorThiefColor } = await import('colorthief')
       const dominantColor = await extractColorThiefColor(image, { quality: options.quality ?? 20 })
       if (!dominantColor) throw new Error('No dominant color extracted')
 

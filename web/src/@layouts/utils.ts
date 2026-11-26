@@ -1,31 +1,10 @@
-import type { NavLink, NavLinkProps } from '@layouts/types'
-
-/**
- * Return nav link props to use
- * @param {Object, String} item navigation routeName or route Object provided in navigation data
- */
-export const getComputedNavLinkToProp = computed(() => (link: NavLink) => {
-  const props: NavLinkProps = {
-    target: link.target,
-    rel: link.rel,
-  }
-
-  // If route is string => it assumes string is route name => Create route object from route name
-  // If route is not string => It assumes it's route object => returns passed route object
-  if (link.to)
-    props.to = typeof link.to === 'string' ? { name: link.to } : link.to
-  else props.href = link.href
-
-  return props
-})
-
 /**
  * Convert Hex color to rgb
  * @param hex
  */
 
 export function hexToRgb(hex: string) {
-// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+  // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
   const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i
 
   hex = hex.replace(shorthandRegex, (m: string, r: string, g: string, b: string) => {

@@ -10,7 +10,6 @@ import i18n from '@/plugins/i18n'
 
 // 3. 全局组件
 import App from '@/App.vue'
-import { PerfectScrollbarPlugin } from 'vue3-perfect-scrollbar'
 
 // 4. 其他插件和功能模块
 import Toast from 'vue-toastification'
@@ -99,7 +98,6 @@ app
 
 // 6. 注册其他插件
 app
-  .use(PerfectScrollbarPlugin)
   .use(Toast, {
     position: 'bottom-right',
     hideProgressBar: true,

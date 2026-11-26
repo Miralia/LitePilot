@@ -5099,11 +5099,6 @@ perfect-debounce@^1.0.0:
   resolved "https://registry.yarnpkg.com/perfect-debounce/-/perfect-debounce-1.0.0.tgz#9c2e8bc30b169cc984a58b7d5b28049839591d2a"
   integrity sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==
 
-perfect-scrollbar@^1.5.5:
-  version "1.5.6"
-  resolved "https://registry.yarnpkg.com/perfect-scrollbar/-/perfect-scrollbar-1.5.6.tgz#f1aead2588ba896435ee41b246812b2080573b7c"
-  integrity sha512-rixgxw3SxyJbCaSpo1n35A/fwI1r2rdwMKOTCg/AcG+xOEyZcE8UHVjpZMFCVImzsFoCZeJTT+M/rdEIQYO2nw==
-
 picocolors@^1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/picocolors/-/picocolors-1.1.1.tgz#3d321af3eab939b083c8f929a1d12cda81c26b6b"
@@ -6665,13 +6660,6 @@ vue3-apexcharts@1.10.0:
   version "1.10.0"
   resolved "https://registry.yarnpkg.com/vue3-apexcharts/-/vue3-apexcharts-1.10.0.tgz#3142e79c8fcac9896501562ee186ffa1fb47da59"
   integrity sha512-sBma2In4rU5n/JBrv8KVb8if+IoY019Dse2yRDD/eRU1WGZHK07zuy9erefKzbJ7T3wP9+Jsy9bH6Vdjy85HZg==
-
-vue3-perfect-scrollbar@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/vue3-perfect-scrollbar/-/vue3-perfect-scrollbar-2.0.0.tgz#51cedf1090d731ec7cc8163067e348867de0aa69"
-  integrity sha512-nSWVcRyViCgt0Pe3RhU3w/BllLcFSrEzYOGlRBjSyhVmiZlERHHziffW+9P8L0IMEWouC5t+uYrgNJGSAElqMA==
-  dependencies:
-    perfect-scrollbar "^1.5.5"
 
 vue@3.5.45, vue@^3.5.13:
   version "3.5.45"

@@ -60,14 +60,9 @@ function handleNavScroll(evt: Event) {
       </slot>
     </div>
     <slot name="nav-items" :update-is-vertical-nav-scrolled="updateIsVerticalNavScrolled">
-      <PerfectScrollbar
-        tag="ul"
-        class="nav-items"
-        :options="{ wheelPropagation: false }"
-        @ps-scroll-y="handleNavScroll"
-      >
+      <ul class="nav-items" @scroll.passive="handleNavScroll">
         <slot />
-      </PerfectScrollbar>
+      </ul>
     </slot>
 
     <slot name="after-nav-items" />
@@ -118,12 +113,9 @@ function handleNavScroll(evt: Event) {
 
   .nav-items {
     block-size: 100%;
-
-    // ℹ️ We no loner needs this overflow styles as perfect scrollbar applies it
-    // overflow-x: hidden;
-
-    // // ℹ️ We used `overflow-y` instead of `overflow` to mitigate overflow x. Revert back if any issue found.
-    // overflow-y: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .nav-item-title {

@@ -20,7 +20,6 @@
 - ✅ 主入口文件引用更新
 - ✅ mixins文件合并
 - ✅ placeholders目录下文件转移
-- ✅ perfect-scrollbar文件整合
 - ✅ vuetify相关文件整合
 - ✅ default-layout-w-vertical-nav文件整合
 - ✅ 移除了template/index.scss中对base目录组件的依赖
