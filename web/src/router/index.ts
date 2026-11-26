@@ -1,5 +1,4 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { configureNProgress } from '@/api/nprogress'
 import { useAuthStore, useUserStore } from '@/stores'
 import { setNavigatingState as setRequestNavigatingState } from '@/utils/requestOptimizer'
 import {
@@ -9,9 +8,6 @@ import {
   type PermissionProtectedItem,
   type UserPermissionKey,
 } from '@/utils/permission'
-
-// Nprogress
-configureNProgress()
 
 // Router
 const router = createRouter({

@@ -182,20 +182,6 @@ html[data-theme-radius='extra'] {
   }
 }
 
-// 进度条样式
-#nprogress .bar {
-  background: rgb(var(--v-theme-primary)) !important;
-  inset-block-start: env(safe-area-inset-top) !important;
-}
-
-#nprogress .peg {
-  box-shadow:
-    0 0 10px rgb(var(--v-theme-primary)),
-    0 0 5px rgb(var(--v-theme-primary)) !important;
-  inline-size: 5px;
-  transform: rotate(0deg) translate(0, 0);
-}
-
 // 卡片高度匹配
 .match-height.v-row {
   .v-card {
