@@ -1031,6 +1031,9 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         停止文件整理进程
         """
         self._queue_active = False
+        # 空闲 worker 可能正阻塞在完整轮询间隔内，送入空任务后立即退出
+        for _ in self._threads:
+            self._queue.put(None)
         for thread in self._threads:
             thread.join()
         self._threads = []
@@ -1801,6 +1804,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                     block=True, timeout=self._transfer_interval
                 )
                 if not item:
+                    self._queue.task_done()
                     continue
 
                 task = item.task
