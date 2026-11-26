@@ -1,52 +1,12 @@
 import ace from 'ace-builds'
 
-import modeJsonUrl from 'ace-builds/src-noconflict/mode-json?url'
-
-import modeJavascriptUrl from 'ace-builds/src-noconflict/mode-javascript?url'
-
-import modeHtmlUrl from 'ace-builds/src-noconflict/mode-html?url'
-
-import modeYamlUrl from 'ace-builds/src-noconflict/mode-yaml?url'
-
 import modeCssUrl from 'ace-builds/src-noconflict/mode-css?url'
-
-import modeIniUrl from 'ace-builds/src-noconflict/mode-ini?url'
-
-import themeGithubUrl from 'ace-builds/src-noconflict/theme-github?url'
 
 import themeGithubDarkUrl from 'ace-builds/src-noconflict/theme-github_dark?url'
 
 import themeGithubLightDefaultUrl from 'ace-builds/src-noconflict/theme-github_light_default?url'
 
-import themeChromeUrl from 'ace-builds/src-noconflict/theme-chrome?url'
-
-import themeMonokaiUrl from 'ace-builds/src-noconflict/theme-monokai?url'
-
-import workerBaseUrl from 'ace-builds/src-noconflict/worker-base?url'
-
-import workerJsonUrl from 'ace-builds/src-noconflict/worker-json?url'
-
-import workerJavascriptUrl from 'ace-builds/src-noconflict/worker-javascript?url'
-
-import workerHtmlUrl from 'ace-builds/src-noconflict/worker-html?url'
-
-import workerYamlUrl from 'ace-builds/src-noconflict/worker-yaml?url'
-
 import workerCssUrl from 'ace-builds/src-noconflict/worker-css?url'
-
-import snippetsHtmlUrl from 'ace-builds/src-noconflict/snippets/html?url'
-
-import snippetsJsUrl from 'ace-builds/src-noconflict/snippets/javascript?url'
-
-import snippetsYamlUrl from 'ace-builds/src-noconflict/snippets/yaml?url'
-
-import snippetsJsonUrl from 'ace-builds/src-noconflict/snippets/json?url'
-
-import snippertsCssUrl from 'ace-builds/src-noconflict/snippets/css?url'
-
-import snippertsIniUrl from 'ace-builds/src-noconflict/snippets/ini?url'
-
-import 'ace-builds/src-noconflict/ext-language_tools'
 
 const aceModule = ace as typeof ace & {
   define?: (moduleName: string, deps: string[], payload: (...args: any[]) => void) => void
@@ -256,14 +216,6 @@ function registerJinja2Mode() {
       exports.Mode = Mode
     },
   )
-
-  aceModule.define?.('ace/snippets/jinja2', ['require', 'exports', 'module'], (_require: any, exports: any) => {
-    exports.snippetText =
-      'snippet if\n\t{% if ${1:condition} %}\n\t\t${0}\n\t{% endif %}\n' +
-      'snippet for\n\t{% for ${1:item} in ${2:items} %}\n\t\t${0}\n\t{% endfor %}\n' +
-      'snippet var\n\t{{ ${1:name} }}\n'
-    exports.scope = 'jinja2'
-  })
 
   aceModule.define?.(
     'ace/mode/jinja2_json_highlight_rules',
@@ -801,30 +753,10 @@ function registerWordListMode() {
   )
 }
 
-ace.config.setModuleUrl('ace/mode/json', modeJsonUrl)
-ace.config.setModuleUrl('ace/mode/javascript', modeJavascriptUrl)
-ace.config.setModuleUrl('ace/mode/html', modeHtmlUrl)
-ace.config.setModuleUrl('ace/mode/yaml', modeYamlUrl)
 ace.config.setModuleUrl('ace/mode/css', modeCssUrl)
-ace.config.setModuleUrl('ace/mode/ini', modeIniUrl)
-ace.config.setModuleUrl('ace/theme/github', themeGithubUrl)
 ace.config.setModuleUrl('ace/theme/github_dark', themeGithubDarkUrl)
 ace.config.setModuleUrl('ace/theme/github_light_default', themeGithubLightDefaultUrl)
-ace.config.setModuleUrl('ace/theme/chrome', themeChromeUrl)
-ace.config.setModuleUrl('ace/theme/monokai', themeMonokaiUrl)
-ace.config.setModuleUrl('ace/mode/base', workerBaseUrl)
-ace.config.setModuleUrl('ace/mode/json_worker', workerJsonUrl)
-ace.config.setModuleUrl('ace/mode/javascript_worker', workerJavascriptUrl)
-ace.config.setModuleUrl('ace/mode/html_worker', workerHtmlUrl)
-ace.config.setModuleUrl('ace/mode/yaml_worker', workerYamlUrl)
 ace.config.setModuleUrl('ace/mode/css_worker', workerCssUrl)
-ace.config.setModuleUrl('ace/snippets/html', snippetsHtmlUrl)
-ace.config.setModuleUrl('ace/snippets/javascript', snippetsJsUrl)
-ace.config.setModuleUrl('ace/snippets/yaml', snippetsYamlUrl)
-ace.config.setModuleUrl('ace/snippets/json', snippetsJsonUrl)
-ace.config.setModuleUrl('ace/snippets/css', snippertsCssUrl)
-ace.config.setModuleUrl('ace/snippets/ini', snippertsIniUrl)
 
 registerJinja2Mode()
 registerWordListMode()
-ace.require('ace/ext/language_tools')

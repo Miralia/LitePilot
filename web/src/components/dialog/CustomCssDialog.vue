@@ -18,7 +18,7 @@ const props = withDefaults(
   }>(),
   {
     css: '',
-    editorTheme: 'monokai',
+    editorTheme: 'github_light_default',
     modelValue: true,
   },
 )

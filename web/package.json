@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "bin": "dist/service.js",
   "scripts": {
     "dev": "vite --host",
     "dev:pwa": "vite --host --port 5174",
@@ -24,13 +23,7 @@
     "format:all:check": "prettier . --check",
     "test:format-config": "vitest run tests/config/format-changed.spec.ts tests/config/frontend-workflow.spec.ts",
     "build:icons": "tsc -b src/@iconify && node src/@iconify/build-icons.js",
-    "postinstall": "npm run build:icons",
-    "pkg": "pkg . -t node18-win-x64 -o LitePilot-Frontend.exe"
-  },
-  "pkg": {
-    "assets": [
-      "dist/**/*"
-    ]
+    "postinstall": "npm run build:icons"
   },
   "resolutions": {
     "vitest/**/vite": "6.4.6",

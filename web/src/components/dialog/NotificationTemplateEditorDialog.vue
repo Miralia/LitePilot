@@ -16,7 +16,7 @@ const props = withDefaults(
   }>(),
   {
     content: '{}',
-    editorTheme: 'monokai',
+    editorTheme: 'github_light_default',
     modelValue: true,
     subtitle: '',
     templateType: '',

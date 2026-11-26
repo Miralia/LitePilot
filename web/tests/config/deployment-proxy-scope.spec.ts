@@ -12,5 +12,8 @@ describe('deployment proxy scope', () => {
     expect(existsSync('public/service.js')).toBe(false)
     expect(packageJson.dependencies).not.toHaveProperty('express')
     expect(packageJson.dependencies).not.toHaveProperty('express-http-proxy')
+    expect(packageJson).not.toHaveProperty('bin')
+    expect(packageJson).not.toHaveProperty('pkg')
+    expect(packageJson.scripts).not.toHaveProperty('pkg')
   })
 })
