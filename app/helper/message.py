@@ -473,32 +473,6 @@ class TemplateHelper(metaclass=SingletonClass):
 
     def __init__(self):
         self.builder = TemplateContextBuilder()
-        self.cache = TTLCache(region="notification", maxsize=100, ttl=600)
-
-    @staticmethod
-    def _generate_cache_key(cuntent: Union[str, dict]) -> str:
-        """
-        生成缓存键
-        """
-        if isinstance(cuntent, dict):
-            base_str = cuntent.get("title", '') + cuntent.get("text", '')
-            return StringUtils.md5_hash(json.dumps(base_str, sort_keys=True, ensure_ascii=False))
-
-        return StringUtils.md5_hash(cuntent)
-
-    def get_cache_context(self, cuntent: Union[str, dict]) -> Optional[dict]:
-        """
-        获取缓存上下文
-        """
-        cache_key = self._generate_cache_key(cuntent)
-        return self.cache.get(cache_key)
-
-    def set_cache_context(self, cuntent: Union[str, dict], context: dict) -> None:
-        """
-        设置缓存上下文
-        """
-        cache_key = self._generate_cache_key(cuntent)
-        self.cache[cache_key] = context
 
     def render(self,
                template_content: str,
@@ -527,8 +501,6 @@ class TemplateHelper(metaclass=SingletonClass):
                 raise ValueError("模板渲染失败")
 
             if rendered := rendered if template_type == 'string' else self.__process_formatted_string(rendered):
-                # 缓存上下文
-                self.set_cache_context(rendered, context)
                 # 返回渲染结果
                 return rendered
             return None
@@ -636,12 +608,6 @@ class TemplateHelper(metaclass=SingletonClass):
         except json.JSONDecodeError:
             return rendered
 
-    def close(self):
-        """
-        清理资源
-        """
-        if self.cache:
-            self.cache.close()
 
 
 class MessageTemplateHelper:
@@ -972,5 +938,3 @@ def stop_message():
     # 只关闭已启动的服务，避免清理路径反向创建后台线程和缓存
     if queue_manager := MessageQueueManager.get_existing_instance():
         queue_manager.stop()
-    if template_helper := TemplateHelper.get_existing_instance():
-        template_helper.close()

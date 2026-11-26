@@ -4,18 +4,19 @@ import hashlib
 import hmac
 import json
 import os
+import threading
 import traceback
 from datetime import timedelta
 from typing import Any, Union, Annotated, Optional
 
 import bcrypt
 import jwt
+from cachetools import TTLCache
 from cryptography.fernet import Fernet
 from fastapi import HTTPException, status, Security, Request, Response
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader, APIKeyQuery, APIKeyCookie
 
 from app import schemas
-from app.core.cache import cached
 from app.core.config import settings
 from app.log import logger
 
@@ -66,30 +67,39 @@ def __get_api_key(
     return key_header or key_query # 首选请求头
 
 
-@cached(maxsize=1, ttl=600)
+_superuser_payload_cache = TTLCache(maxsize=1, ttl=600)
+_superuser_payload_lock = threading.RLock()
+
+
 def __create_superuser_token_payload() -> schemas.TokenPayload:
     """
     创建管理员用户的TokenPayload
 
     :return: 管理员TokenPayload
     """
-    # 延迟导入
-    # pylint: disable=import-outside-toplevel
-    # pylint: disable=no-name-in-module
-    from app.db.user_oper import UserOper
+    with _superuser_payload_lock:
+        if payload := _superuser_payload_cache.get("payload"):
+            return payload
 
-    user = UserOper().get_by_name(settings.SUPERUSER)
-    if not user or not user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户权限不足",
+        # 延迟导入
+        # pylint: disable=import-outside-toplevel
+        # pylint: disable=no-name-in-module
+        from app.db.user_oper import UserOper
+
+        user = UserOper().get_by_name(settings.SUPERUSER)
+        if not user or not user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="用户权限不足",
+            )
+        payload = schemas.TokenPayload(
+            sub=user.id,
+            username=user.name,
+            super_user=user.is_superuser,
+            purpose="authentication",
         )
-    return schemas.TokenPayload(
-        sub=user.id,
-        username=user.name,
-        super_user=user.is_superuser,
-        purpose="authentication",
-    )
+        _superuser_payload_cache["payload"] = payload
+        return payload
 
 
 def create_access_token(

@@ -139,7 +139,7 @@ class TmdbCache(metaclass=WeakSingleton):
 
     def _set(self, key: str, value: dict) -> None:
         """写入单条 TMDB 识别缓存并记录其独立过期时间。"""
-        self._cache.set(key, value)
+        self._cache.set(key, _json_cache_value(value))
         if not self._cache.is_redis():
             self._expires_at[key] = time() + self.ttl
             self._dirty = True
@@ -197,7 +197,7 @@ class TmdbCache(metaclass=WeakSingleton):
             cache_data = self._cache.get(key)
             if not cache_data and self._expires_at.pop(key, None) is not None:
                 self._dirty = True
-            return cache_data or {}
+            return _runtime_cache_value(cache_data) if cache_data else {}
 
     def delete(self, key: str) -> dict:
         """
@@ -212,21 +212,6 @@ class TmdbCache(metaclass=WeakSingleton):
                 self._expires_at.pop(key, None)
                 self._dirty = True
                 self.save(force=True)
-                return redis_data
-            return {}
-
-    def modify(self, key: str, title: str) -> dict:
-        """
-        修改缓存信息
-        @param key: 缓存key
-        @param title: 标题
-        @return: 被修改后缓存内容
-        """
-        with lock:
-            redis_data = self._cache.get(key)
-            if redis_data:
-                redis_data['title'] = title
-                self._set(key, redis_data)
                 return redis_data
             return {}
 

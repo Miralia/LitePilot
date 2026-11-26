@@ -359,6 +359,33 @@ def test_tmdb_cache_legacy_pickle_migration_cannot_execute_payload(monkeypatch, 
     assert runtime_cache.data == {}
 
 
+def test_tmdb_cache_stores_json_compatible_type_and_returns_enum(monkeypatch):
+    """Redis/JSON 缓存层只保存枚举值，读取边界仍恢复 MediaType。"""
+    from types import SimpleNamespace
+
+    file_cache = _FileCacheStub()
+    runtime_cache = _TTLCacheStub()
+    cache = _build_initialized_tmdb_cache(
+        monkeypatch=monkeypatch,
+        file_cache=file_cache,
+        runtime_cache=runtime_cache,
+    )
+    meta = SimpleNamespace(
+        type=MediaType.MOVIE,
+        tmdbid=1,
+        name="Movie",
+        year="2024",
+        begin_season=None,
+    )
+
+    cache._set("cache-key", {"id": 1, "type": MediaType.MOVIE})
+    runtime_cache.data["cache-key"] = runtime_cache.data["cache-key"]
+    monkeypatch.setattr(cache, "_TmdbCache__get_key", lambda meta: "cache-key", raising=False)
+
+    assert runtime_cache.data["cache-key"]["type"] == MediaType.MOVIE.value
+    assert cache.get(meta)["type"] is MediaType.MOVIE
+
+
 def test_tmdb_cache_endpoint_returns_management_statistics(monkeypatch):
     """查询接口应返回识别成功和失败条目的统计。"""
     cache = _build_tmdb_cache({

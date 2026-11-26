@@ -1,6 +1,5 @@
 import asyncio
 import json
-import pickle
 import threading
 from typing import Any, Optional, Generator, Tuple, AsyncGenerator, Union
 from urllib.parse import quote, unquote
@@ -14,10 +13,6 @@ from app.log import logger
 from app.utils.mixins import ConfigReloadMixin
 from app.utils.singleton import Singleton
 
-# 类型缓存集合，针对非容器简单类型
-_complex_serializable_types = set()
-_simple_serializable_types = set()
-
 # 默认连接参数
 _socket_timeout = 30
 _socket_connect_timeout = 5
@@ -25,54 +20,30 @@ _health_check_interval = 60
 
 
 def serialize(value: Any) -> bytes:
-    """
-    将值序列化为二进制数据，根据序列化方式标识格式
-    """
-
-    def _is_container_type(t):
-        """
-        判断是否为容器类型
-        """
-        return t in (list, dict, tuple, set)
-
-    vt = type(value)
-    # 针对非容器类型使用缓存策略
-    if not _is_container_type(vt):
-        # 如果已知需要复杂序列化
-        if vt in _complex_serializable_types:
-            return b"PICKLE" + b"\x00" + pickle.dumps(value)
-        # 如果已知可以简单序列化
-        if vt in _simple_serializable_types:
-            json_data = json.dumps(value).encode("utf-8")
-            return b"JSON" + b"\x00" + json_data
-        # 对于未知的非容器类型，尝试简单序列化，如抛出异常，再使用复杂序列化
-        try:
-            json_data = json.dumps(value).encode("utf-8")
-            _simple_serializable_types.add(vt)
-            return b"JSON" + b"\x00" + json_data
-        except TypeError:
-            _complex_serializable_types.add(vt)
-            return b"PICKLE" + b"\x00" + pickle.dumps(value)
-    else:
-        # 针对容器类型，每次尝试简单序列化，不使用缓存
-        try:
-            json_data = json.dumps(value).encode("utf-8")
-            return b"JSON" + b"\x00" + json_data
-        except TypeError:
-            return b"PICKLE" + b"\x00" + pickle.dumps(value)
+    """将 JSON 兼容值或 bytes 序列化为带格式标记的二进制数据。"""
+    if isinstance(value, bytes):
+        return b"BYTES" + b"\x00" + value
+    try:
+        json_data = json.dumps(
+            value,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except TypeError as err:
+        raise TypeError("Redis 缓存值必须是 JSON 可序列化数据或 bytes") from err
+    return b"JSON" + b"\x00" + json_data
 
 
 def deserialize(value: bytes) -> Any:
-    """
-    将二进制数据反序列化为原始值，根据格式标识区分序列化方式
-    """
+    """按格式标记反序列化 JSON/bytes；旧 pickle 缓存只按过期数据拒绝。"""
     format_marker, data = value.split(b"\x00", 1)
     if format_marker == b"JSON":
         return json.loads(data.decode("utf-8"))
-    elif format_marker == b"PICKLE":
-        return pickle.loads(data)
-    else:
-        raise ValueError("Unknown serialization format")
+    if format_marker == b"BYTES":
+        return data
+    if format_marker == b"PICKLE":
+        raise ValueError("旧 pickle 缓存已不再支持反序列化")
+    raise ValueError("Unknown serialization format")
 
 
 class RedisHelper(ConfigReloadMixin, metaclass=Singleton):
