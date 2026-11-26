@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import CryptoJS from 'crypto-js'
 import { useDisplay } from 'vuetify'
 import { useI18n } from 'vue-i18n'
@@ -26,7 +26,7 @@ interface MediaTaskGroup {
 
 // 多语言支持
 const { t } = useI18n()
-const { useProgressSSE } = useBackground()
+const { useDataRefresh, useProgressSSE } = useBackground()
 const toast = useToast()
 
 // 显示器宽度
@@ -53,18 +53,11 @@ const progressActive = ref(false)
 // 活动媒体
 const activeTab = ref('')
 
-// 定时器引用
-const queueTimer = ref<NodeJS.Timeout | null>(null)
-
 // 文件进度SSE连接映射
 const fileProgressSSEMap = ref<Map<string, FileProgressSSE>>(new Map())
 
-// 请求只能覆盖更早提交的快照，较新的未完成请求不阻塞当前可用结果。
-let nextQueueRequestId = 0
-let latestCommittedQueueRequestId = 0
-
 // 异步操作完成后只有仍挂载的弹窗可以继续刷新队列或提示错误。
-let isMounted = false
+let isMounted = true
 
 // 状态标签
 const stateDict = computed<Record<string, string>>(() => ({
@@ -211,13 +204,10 @@ function getTaskProgress(task: TransferTask) {
 
 // 调用API获取队列信息。
 async function get_transfer_queue() {
-  const requestId = ++nextQueueRequestId
-
   try {
-    const queue = (await api.get('transfer/queue')) as TransferQueue[]
-    if (!isMounted || requestId < latestCommittedQueueRequestId) return
+    const queue = (await api.get('transfer/queue', { timeout: 10_000 })) as TransferQueue[]
+    if (!isMounted) return
 
-    latestCommittedQueueRequestId = requestId
     queueLoadFailed.value = false
     dataList.value = queue
     if (dataList.value.length > 0) {
@@ -228,13 +218,14 @@ async function get_transfer_queue() {
       stopLoadingProgress()
     }
   } catch (error) {
-    if (!isMounted || requestId < latestCommittedQueueRequestId) return
+    if (!isMounted) return
 
-    latestCommittedQueueRequestId = requestId
     queueLoadFailed.value = true
     console.error(error)
   }
 }
+
+const { refresh: refreshTransferQueue } = useDataRefresh('transfer-queue-dialog', get_transfer_queue, 3000, true)
 
 // 移除队列任务。
 async function remove_queue_task(fileitem: FileItem) {
@@ -242,7 +233,7 @@ async function remove_queue_task(fileitem: FileItem) {
     await api.delete('transfer/queue', { data: fileitem })
     if (!isMounted) return
 
-    void get_transfer_queue()
+    void refreshTransferQueue()
   } catch (error) {
     if (!isMounted) return
 
@@ -334,30 +325,8 @@ function stopLoadingProgress() {
   if (dataList.value.length === 0) stopAllFileProgress()
 }
 
-// 启动定时获取队列。
-function startQueueTimer() {
-  if (queueTimer.value) clearInterval(queueTimer.value)
-
-  get_transfer_queue()
-  queueTimer.value = setInterval(() => get_transfer_queue(), 3000)
-}
-
-// 停止定时获取队列。
-function stopQueueTimer() {
-  if (queueTimer.value) {
-    clearInterval(queueTimer.value)
-    queueTimer.value = null
-  }
-}
-
-onMounted(() => {
-  isMounted = true
-  startQueueTimer()
-})
-
 onUnmounted(() => {
   isMounted = false
-  stopQueueTimer()
   progressActive.value = false
   stopAllFileProgress()
 })
@@ -389,7 +358,7 @@ onUnmounted(() => {
         <div class="transfer-queue-empty__headline">
           {{ t('common.serverConnectionFailed') }}
         </div>
-        <VBtn color="primary" variant="tonal" @click="get_transfer_queue">
+        <VBtn color="primary" variant="tonal" @click="refreshTransferQueue">
           {{ t('common.retry') }}
         </VBtn>
       </VCardText>

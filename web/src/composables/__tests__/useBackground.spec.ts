@@ -60,4 +60,34 @@ describe('useBackground', () => {
     wrapper.unmount()
     expect(removeBackgroundTimer).toHaveBeenCalledWith('test-data-refresh-ready')
   })
+  it('does not overlap refresh calls while the previous load is still pending', async () => {
+    let finishFirstLoad!: () => void
+    const firstLoad = new Promise<void>(resolve => {
+      finishFirstLoad = resolve
+    })
+    const loadData = vi.fn().mockReturnValueOnce(firstLoad).mockResolvedValue(undefined)
+    let refresh!: () => Promise<void>
+    const TestComponent = defineComponent({
+      setup() {
+        const dataRefresh = useBackground().useDataRefresh('test-data-refresh-overlap', loadData, 1000, true)
+        refresh = dataRefresh.refresh
+        return {}
+      },
+      template: '<div />',
+    })
+
+    const wrapper = mount(TestComponent)
+    expect(loadData).toHaveBeenCalledTimes(1)
+
+    void refresh()
+    void refresh()
+    expect(loadData).toHaveBeenCalledTimes(1)
+
+    finishFirstLoad()
+    await flushPromises()
+    await refresh()
+    expect(loadData).toHaveBeenCalledTimes(2)
+
+    wrapper.unmount()
+  })
 })

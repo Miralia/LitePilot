@@ -4,6 +4,7 @@ import { screen, waitFor, within } from '@testing-library/vue'
 import { renderWithProviders } from '@tests/support/render'
 import { flushPromises } from '@vue/test-utils'
 import userEvent from '@testing-library/user-event'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     stop: ReturnType<typeof vi.fn>
   }>,
   toastError: vi.fn(),
+  useDataRefresh: vi.fn(),
   useProgressSSE: vi.fn(),
 }))
 
@@ -27,6 +29,7 @@ vi.mock('@/api', () => ({
 
 vi.mock('@/composables/useBackground', () => ({
   useBackground: () => ({
+    useDataRefresh: mocks.useDataRefresh,
     useProgressSSE: mocks.useProgressSSE,
   }),
 }))
@@ -139,6 +142,44 @@ describe('TransferQueueDialog', () => {
     vi.clearAllMocks()
     mocks.progressControllers.length = 0
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.useDataRefresh.mockImplementation(
+      (_id: string, loadData: () => Promise<void> | void, interval: number, immediate: boolean) => {
+        const loading = ref(false)
+        let timer: ReturnType<typeof setInterval> | null = null
+        let active = false
+
+        const refresh = async () => {
+          if (loading.value) return
+
+          loading.value = true
+          try {
+            await loadData()
+          } catch {
+            // 与真实 useDataRefresh 一致，轮询错误由加载函数自身处理。
+          } finally {
+            loading.value = false
+          }
+        }
+
+        onMounted(() => {
+          active = true
+          void (async () => {
+            if (immediate) await refresh()
+            if (active) timer = setInterval(() => void refresh(), interval)
+          })()
+        })
+        onUnmounted(() => {
+          active = false
+          if (timer) clearInterval(timer)
+        })
+
+        return {
+          loading,
+          refresh,
+          stop: vi.fn(),
+        }
+      },
+    )
     mocks.useProgressSSE.mockImplementation((_url: string, handler: (event: MessageEvent) => void) => {
       const controller = {
         handler,
@@ -399,44 +440,38 @@ describe('TransferQueueDialog', () => {
     expect(mocks.progressControllers[0].stop).toHaveBeenCalledOnce()
   })
 
-  it('keeps the latest queue snapshot when an earlier polling response resolves later', async () => {
-    vi.useFakeTimers()
-    const older = createDeferred<TransferQueue[]>()
-    const newer = createDeferred<TransferQueue[]>()
-    mocks.apiGet.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
-
-    await renderDialog()
-    await vi.advanceTimersByTimeAsync(3000)
-    expect(mocks.apiGet).toHaveBeenCalledTimes(2)
-
-    newer.resolve(createQueue('较新快照', '/downloads/newer.mkv'))
-    await flushPromises()
-    await vi.waitFor(() => expect(screen.getAllByText('较新快照 (2026)')).toHaveLength(2))
-
-    older.resolve(createQueue('较旧快照', '/downloads/older.mkv'))
-    await flushPromises()
-    await vi.waitFor(() => expect(screen.queryAllByText('较旧快照 (2026)')).toHaveLength(0))
-    expect(screen.getAllByText('较新快照 (2026)')).toHaveLength(2)
-  })
-
-  it('commits an older response while the next slow poll is still pending', async () => {
+  it('does not start overlapping polls while a queue request is still pending', async () => {
     vi.useFakeTimers()
     const first = createDeferred<TransferQueue[]>()
-    const second = createDeferred<TransferQueue[]>()
-    mocks.apiGet.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    mocks.apiGet.mockReturnValueOnce(first.promise).mockResolvedValue([])
 
     await renderDialog()
+    await vi.advanceTimersByTimeAsync(9000)
+    expect(mocks.apiGet).toHaveBeenCalledOnce()
+
+    first.resolve(createQueue('慢请求快照', '/downloads/slow-poll.mkv'))
+    await flushPromises()
+    expect(screen.getAllByText('慢请求快照 (2026)')).toHaveLength(2)
+
     await vi.advanceTimersByTimeAsync(3000)
     expect(mocks.apiGet).toHaveBeenCalledTimes(2)
+  })
 
-    first.resolve(createQueue('首个可用快照', '/downloads/first-available.mkv'))
-    await flushPromises()
-    expect(screen.getAllByText('首个可用快照 (2026)')).toHaveLength(2)
+  it('bounds queue polling requests with an explicit timeout', async () => {
+    mocks.apiGet.mockResolvedValue([])
 
-    second.resolve(createQueue('后续快照', '/downloads/follow-up.mkv'))
+    await renderDialog()
     await flushPromises()
-    expect(screen.queryAllByText('首个可用快照 (2026)')).toHaveLength(0)
-    expect(screen.getAllByText('后续快照 (2026)')).toHaveLength(2)
+
+    expect(mocks.apiGet).toHaveBeenCalledWith('transfer/queue', { timeout: 10_000 })
+  })
+
+  it('registers queue polling through managed data refresh', async () => {
+    mocks.apiGet.mockResolvedValue([])
+
+    await renderDialog()
+
+    expect(mocks.useDataRefresh).toHaveBeenCalledWith('transfer-queue-dialog', expect.any(Function), 3000, true)
   })
 
   it('ignores a pending queue response after the dialog unmounts', async () => {
