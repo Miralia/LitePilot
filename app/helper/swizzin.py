@@ -30,7 +30,11 @@ class SwizzinUserSync(metaclass=Singleton):
         """
         判断当前宿主机是否可读取 swizzin 用户清单。
         """
-        return (_SWIZZIN_ROOT / ".master.info").is_file()
+        try:
+            return (_SWIZZIN_ROOT / ".master.info").is_file()
+        except OSError as err:
+            logger.debug(f"swizzin 用户清单不可读取：{err}")
+            return False
 
     @staticmethod
     def _read_username(info_file: Path) -> Optional[str]:
