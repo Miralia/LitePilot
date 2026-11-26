@@ -83,6 +83,22 @@ def _create_sqlite_snapshot(source: Path, snapshot: Path) -> None:
         snapshot.chmod(SENSITIVE_FILE_MODE)
 
 
+def _is_litepilot_backup_archive(path: Path) -> bool:
+    """识别 LitePilot 备份产物，避免历史归档被递归打进新备份。"""
+    is_tar_gzip = path.suffixes[-2:] == [".tar", ".gz"] or path.suffix == ".tgz"
+    if not is_tar_gzip:
+        return False
+    try:
+        with tarfile.open(path, "r:*") as tar:
+            # 清单始终由本工具第一个写入；只读取首个成员，避免为识别而解压大文件内容。
+            member = tar.next()
+            if member and member.name == MANIFEST_NAME:
+                return True
+    except (OSError, EOFError, tarfile.TarError):
+        return False
+    return False
+
+
 def _iter_backup_files(config_dir: Path, archive: Optional[Path] = None) -> List[Path]:
     """
     列出需要备份的文件，跳过可重建的缓存目录与目标归档自身。
@@ -108,6 +124,8 @@ def _iter_backup_files(config_dir: Path, archive: Optional[Path] = None) -> List
         if relative.parts and relative.parts[0] in EXCLUDE_DIRS:
             continue
         if len(relative.parts) == 1 and relative.name in SQLITE_BACKUP_FILES:
+            continue
+        if _is_litepilot_backup_archive(path):
             continue
         files.append(path)
     return files

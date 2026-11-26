@@ -260,3 +260,23 @@ def test_create_backup_inside_config_excludes_existing_archive(tmp_path):
     with tarfile.open(second.archive, "r:gz") as tar:
         names = {member.name for member in tar.getmembers()}
     assert "backup.tar.gz" not in names
+
+
+def test_create_backup_excludes_previous_backup_artifacts_but_keeps_user_archives(tmp_path):
+    """历史备份是衍生文件，不应递归膨胀；无备份清单的普通 tar.gz 仍按配置内容保留。"""
+    config = _make_config(tmp_path)
+    with tarfile.open(config / "custom.tar.gz", "w:gz") as tar:
+        tar.add(config / "category.yaml", arcname="category.yaml")
+
+    first = create_backup(
+        archive=config / "moviepilot-backup-previous.tar.gz",
+        config_dir=config,
+    )
+    second = create_backup(archive=config / "backup-next.tar.gz", config_dir=config)
+
+    assert second.file_count == first.file_count
+    with tarfile.open(second.archive, "r:gz") as tar:
+        names = {member.name for member in tar.getmembers()}
+    assert "custom.tar.gz" in names
+    assert "moviepilot-backup-previous.tar.gz" not in names
+    assert "backup-next.tar.gz" not in names
