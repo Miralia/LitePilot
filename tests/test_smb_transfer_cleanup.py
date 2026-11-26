@@ -44,7 +44,7 @@ def test_cancelled_download_removes_partial_local_file(tmp_path, monkeypatch):
     result = storage.download(fileitem, tmp_path)
 
     assert result is None
-    assert not (tmp_path / "example.mkv").exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_cancelled_upload_removes_partial_remote_file(tmp_path, monkeypatch):

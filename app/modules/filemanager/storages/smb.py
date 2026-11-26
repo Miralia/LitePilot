@@ -519,6 +519,17 @@ class SMB(StorageBase, metaclass=WeakSingleton):
             logger.error(f"【SMB】重命名失败: {e}")
             return False
 
+    @staticmethod
+    def _discard_partial_download(local_path: Path) -> None:
+        """
+        删除未完成下载及其为本次下载创建的空隔离目录。
+        """
+        local_path.unlink(missing_ok=True)
+        try:
+            local_path.parent.rmdir()
+        except OSError:
+            pass
+
     def download(self, fileitem: schemas.FileItem, path: Path = None) -> Optional[Path]:
         """
         带实时进度显示的下载
@@ -561,8 +572,7 @@ class SMB(StorageBase, metaclass=WeakSingleton):
                             progress_callback(progress)
 
             if cancelled:
-                if local_path.exists():
-                    local_path.unlink()
+                self._discard_partial_download(local_path)
                 return None
 
             # 完成下载
@@ -573,8 +583,7 @@ class SMB(StorageBase, metaclass=WeakSingleton):
         except Exception as e:
             logger.error(f"【SMB】下载失败: {fileitem.name} - {e}")
             # 删除可能部分下载的文件
-            if local_path.exists():
-                local_path.unlink()
+            self._discard_partial_download(local_path)
             return None
 
     def upload(

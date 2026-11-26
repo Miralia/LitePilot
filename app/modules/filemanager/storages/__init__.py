@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Optional, List, Dict, Callable, Union
 
@@ -110,7 +111,9 @@ class StorageBase(metaclass=ABCMeta):
             logger.error(f"【存储】下载文件名无效：{fileitem.name}")
             return None
 
-        local_path = path / safe_name
+        path.mkdir(parents=True, exist_ok=True)
+        download_dir = Path(tempfile.mkdtemp(prefix="download-", dir=path))
+        local_path = download_dir / safe_name
         try:
             local_path.resolve().relative_to(path.resolve())
         except ValueError:

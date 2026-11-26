@@ -26,8 +26,9 @@ def test_build_download_path_strips_remote_directory_segments(
 
     local_path = storage._build_download_path(fileitem, tmp_path)
 
-    assert local_path == tmp_path / expected
-    assert local_path.resolve().relative_to(tmp_path.resolve()) == Path(expected)
+    assert local_path is not None
+    assert local_path.name == expected
+    assert local_path.is_relative_to(tmp_path)
 
 
 @pytest.mark.parametrize("name", ["", ".", "..", "subdir/.."])
@@ -42,3 +43,19 @@ def test_build_download_path_rejects_unsafe_filename(
 
 
 
+
+
+def test_build_download_path_uses_unique_locations_for_same_name(tmp_path):
+    """同名远程文件的并发下载不能共用临时路径，否则响应流会互相覆盖。"""
+    storage = object.__new__(LocalStorage)
+    fileitem = schemas.FileItem(path="/remote/poster.jpg", name="poster.jpg")
+
+    first = storage._build_download_path(fileitem, tmp_path)
+    second = storage._build_download_path(fileitem, tmp_path)
+
+    assert first is not None
+    assert second is not None
+    assert first != second
+    assert first.name == second.name == "poster.jpg"
+    assert first.is_relative_to(tmp_path)
+    assert second.is_relative_to(tmp_path)
