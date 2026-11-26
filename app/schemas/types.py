@@ -48,6 +48,8 @@ class EventType(Enum):
     DownloadFileDeleted = "downloadfile.deleted"
     # 收到Webhook消息
     WebhookMessage = "webhook.message"
+    # 收到渠道用户消息
+    ChannelMessageReceived = "channel.message.received"
     # 刮削元数据
     MetadataScrape = "metadata.scrape"
     # 模块需要重载
@@ -61,6 +63,7 @@ EVENT_TYPE_NAMES = {
     EventType.CommandExcute: "执行命令",
     EventType.DownloadFileDeleted: "删除下载源文件",
     EventType.WebhookMessage: "收到Webhook消息",
+    EventType.ChannelMessageReceived: "收到渠道用户消息",
     EventType.MetadataScrape: "刮削元数据",
     EventType.ModuleReload: "模块重载",
     EventType.ConfigChanged: "配置项更新",

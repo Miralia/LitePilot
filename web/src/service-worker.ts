@@ -160,7 +160,7 @@ registerRoute(
     !url.pathname.includes('/api/v1/system/message') && // SSE实时消息流
     !url.pathname.includes('/api/v1/system/progress/') && // SSE实时进度流
     !url.pathname.includes('/api/v1/system/logging') && // SSE实时日志流
-    !url.pathname.includes('/api/v1/message/') && // 用户消息接口
+    !url.pathname.includes('/api/v1/message/') && // 通知中心接口
     !url.pathname.includes('/api/v1/system/global') && // 系统配置接口
     !url.pathname.includes('/api/v1/auth/') && // 登录认证入口与票据交换
     !url.pathname.includes('/api/v1/login/') && // 登录与登出接口，命中缓存会返回过期 token

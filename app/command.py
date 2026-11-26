@@ -5,7 +5,6 @@ from typing import Any, Union, Dict, Optional
 
 from app.chain import ChainBase
 from app.chain.download import DownloadChain
-from app.chain.message import MessageChain
 from app.chain.system import SystemChain
 from app.chain.transfer import TransferChain
 from app.core.event import Event as ManagerEvent, eventmanager

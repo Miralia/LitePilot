@@ -41,9 +41,23 @@ def telegram():
             return decorator
 
         bot_instance.callback_query_handler.side_effect = capture_callback_query_handler
+
+        def capture_message_handler(*args, **kwargs):
+            """捕获 TeleBot 注册的普通文本处理函数。"""
+            def decorator(func):
+                if kwargs.get("content_types"):
+                    bot_instance.registered_text_message_handler = func
+                return func
+            return decorator
+
+        bot_instance.message_handler.side_effect = capture_message_handler
         mock_telebot_cls.return_value = bot_instance
         mock_image_cls.return_value.fetch_image.return_value = b"fake-image-bytes"
-        telegram = Telegram(TELEGRAM_TOKEN="fake_token", TELEGRAM_CHAT_ID="fake_chat_id")
+        telegram = Telegram(
+            TELEGRAM_TOKEN="fake_token",
+            TELEGRAM_CHAT_ID="fake_chat_id",
+            name="telegram-test",
+        )
         yield telegram
         telegram.stop()
 
@@ -369,6 +383,38 @@ def test_should_process_message_accepts_group_command_when_bot_username_unknown(
     assert telegram._should_process_message(message) is True
 
 
+def test_text_message_forwarding_publishes_channel_event(telegram):
+    """普通文本消息应保持 Telegram Update 结构并携带配置来源。"""
+    payload = {
+        "update_id": 1,
+        "message": {
+            "message_id": 101,
+            "from": {"id": 10001, "username": "tester"},
+            "chat": {"id": 10001, "type": "private"},
+            "text": "/redo 1",
+        },
+    }
+    message = SimpleNamespace(
+        chat=SimpleNamespace(id=10001, type="private"),
+        from_user=SimpleNamespace(id=10001),
+        text="/redo 1",
+        caption=None,
+        entities=[],
+        caption_entities=[],
+        to_dict=lambda: payload,
+    )
+
+    with patch("app.modules.telegram.telegram.eventmanager.send_event") as send_event:
+        telegram.bot.registered_text_message_handler(message)
+
+    send_event.assert_called_once()
+    event_type, event_data = send_event.call_args.args[:2]
+    assert event_type.value == "channel.message.received"
+    assert event_data["form"] is None
+    assert event_data["args"] == {"source": "telegram-test"}
+    assert json.loads(event_data["body"]) == payload
+
+
 def test_callback_forwarding_waits_for_authorization_before_answer(telegram):
     """低层回调转发不得提前空应答，否则授权告警会被 Telegram 忽略。"""
     call = SimpleNamespace(
@@ -384,14 +430,25 @@ def test_callback_forwarding_waits_for_authorization_before_answer(telegram):
         ),
     )
 
-    with patch("app.modules.telegram.telegram.RequestUtils") as request_utils:
-        request_utils.return_value.post_res.return_value = SimpleNamespace(
-            status_code=200
-        )
+    with patch("app.modules.telegram.telegram.eventmanager.send_event") as send_event:
         telegram.bot.registered_callback_query_handler(call)
 
     telegram.bot.answer_callback_query.assert_not_called()
-    request_utils.return_value.post_res.assert_called_once()
+    send_event.assert_called_once()
+    event_type, event_data = send_event.call_args.args[:2]
+    assert event_type.value == "channel.message.received"
+    assert event_data["args"] == {"source": "telegram-test"}
+    assert json.loads(event_data["body"]) == {
+        "callback_query": {
+            "id": "callback-1",
+            "from": {"id": 10001, "username": "tester"},
+            "message": {
+                "message_id": 88,
+                "chat": {"id": 10001},
+            },
+            "data": "transfer_retry_12",
+        }
+    }
 
 
 def test_user_chat_mapping_ignores_group_chat(telegram):

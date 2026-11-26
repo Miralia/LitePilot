@@ -4,7 +4,7 @@ import re
 import threading
 import time
 from typing import Any, Dict, List, Optional, Union
-from urllib.parse import urljoin, quote
+from urllib.parse import urljoin
 
 from app.modules.telegram.compat import ensure_urllib3_header_param_compat
 
@@ -28,11 +28,12 @@ except ImportError:
     from telegramify_markdown.type import ContentTypes, File, Photo, Text  # noqa: E402
 
 from app.core.config import settings  # noqa: E402
+from app.core.event import eventmanager  # noqa: E402
 from app.helper.image import ImageHelper  # noqa: E402
 from app.helper.thread import ThreadHelper  # noqa: E402
 from app.log import logger  # noqa: E402
+from app.schemas.types import EventType  # noqa: E402
 from app.utils.common import retry  # noqa: E402
-from app.utils.http import RequestUtils  # noqa: E402
 
 
 TELEGRAM_PARSE_MODE_MARKDOWN = "MarkdownV2"
@@ -51,9 +52,6 @@ class Telegram:
     Telegram 消息客户端，负责发送、接收和转发 Telegram 消息。
     """
 
-    _ds_url = (
-        f"http://127.0.0.1:{settings.PORT}/api/v1/message?token={settings.API_TOKEN}"
-    )
     _bot: TeleBot
     _user_chat_mapping: Dict[str, str]
     _bot_username: Optional[str]
@@ -84,6 +82,7 @@ class Telegram:
         self._typing_tasks = {}
         self._typing_stop_flags = {}
         self._typing_lock = threading.RLock()
+        self._service_config_name = kwargs.get("name")
         if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
             logger.error("Telegram配置不完整！")
             return
@@ -116,12 +115,6 @@ class Telegram:
                 logger.error(f"获取bot信息失败: {e}")
                 self._bot_username = None
 
-            # 标记渠道来源
-            if kwargs.get("name"):
-                # URL encode the source name to handle special characters
-                encoded_name = quote(kwargs.get("name"), safe="")
-                self._ds_url = f"{self._ds_url}&source={encoded_name}"
-
             @_bot.message_handler(commands=["start", "help"])
             def send_welcome(message):
                 _bot.reply_to(
@@ -147,11 +140,7 @@ class Telegram:
                     if not payload:
                         logger.warning("Telegram消息序列化失败，跳过转发")
                         return
-                    response = RequestUtils(timeout=15).post_res(
-                        self._ds_url, json=payload
-                    )
-                    if not response or response.status_code >= 400:
-                        logger.warning("Telegram消息转发失败")
+                    self._dispatch_channel_message(payload)
 
             @_bot.callback_query_handler(func=lambda call: True)
             def callback_query(call):
@@ -190,11 +179,7 @@ class Telegram:
                     }
 
                     # 发送给主程序处理；授权结果确定后由消息模块确认回调
-                    response = RequestUtils(timeout=15).post_res(
-                        self._ds_url, json=callback_json
-                    )
-                    if not response or response.status_code >= 400:
-                        logger.warning("Telegram按钮回调转发失败")
+                    self._dispatch_channel_message(callback_json)
 
                 except Exception as err:
                     logger.error(f"处理按钮回调失败：{str(err)}")
@@ -302,10 +287,21 @@ class Telegram:
             return None
         return standardize(text)
 
+    def _dispatch_channel_message(self, payload: dict) -> None:
+        """将序列化后的 Telegram 报文投递到同进程消息事件总线。"""
+        eventmanager.send_event(
+            EventType.ChannelMessageReceived,
+            {
+                "body": json.dumps(payload, ensure_ascii=False),
+                "form": None,
+                "args": {"source": self._service_config_name},
+            },
+        )
+
     @staticmethod
     def _serialize_update_payload(message: Any) -> Optional[dict]:
         """
-        将 Telegram Message 对象稳定序列化为 dict，避免 requests 的 json 参数再次包一层字符串。
+        将 Telegram Message 对象稳定序列化为 dict，供消息链 parser 按既有 Update 结构解析。
         """
         try:
             if hasattr(message, "to_dict"):

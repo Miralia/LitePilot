@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Union
 from app.chain import ChainBase
 from app.chain.transfer import TransferChain
 from app.core.config import settings
+from app.core.event import Event as ManagerEvent, eventmanager
 from app.log import logger
 from app.schemas import Notification
 from app.schemas.types import EventType, MessageChannel
@@ -38,6 +39,16 @@ class MessageChain(ChainBase):
                 "chat_id": self.chat_id,
                 "metadata": self.metadata or {},
             }
+
+    @eventmanager.register(EventType.ChannelMessageReceived)
+    def channel_message_event(self, event: ManagerEvent) -> None:
+        """消费渠道消息事件，并复用现有消息识别与命令处理链路。"""
+        data = event.event_data or {}
+        self.process(
+            body=data.get("body"),
+            form=data.get("form"),
+            args=data.get("args") or {},
+        )
 
     def process(self, body: Any, form: Any, args: Any) -> None:
         """

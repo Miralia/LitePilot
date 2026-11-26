@@ -1,16 +1,14 @@
 import time
 from typing import Any, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import schemas
-from app.chain.message import MessageChain
-from app.core.security import verify_token, verify_apitoken
+from app.core.security import verify_token
 from app.db import get_async_db
 from app.db.message_oper import MessageOper
 from app.db.systemconfig_oper import SystemConfigOper
-from app.log import logger
 from app.schemas.types import SystemConfigKey
 
 router = APIRouter()
@@ -51,53 +49,6 @@ def _format_notification_clear_time(value: int) -> Optional[str]:
         return None
     timestamp = value / 1000 if value > 10000000000 else value
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
-
-
-def start_message_chain(body: Any, form: Any, args: Any):
-    """
-    启动链式任务
-    """
-    MessageChain().process(body=body, form=form, args=args)
-
-
-@router.post("/", summary="接收用户消息", response_model=schemas.Response)
-async def user_message(
-    background_tasks: BackgroundTasks,
-    request: Request,
-    _: schemas.TokenPayload = Depends(verify_apitoken),
-):
-    """
-    用户消息响应，配置请求中需要添加参数：token=API_TOKEN&source=消息配置名
-    """
-    body = await request.body()
-    form = await request.form()
-    args = request.query_params
-    source = args.get("source")
-    content_type = request.headers.get("content-type", "")
-    body_text = body.decode("utf-8", errors="replace")
-    image_markers = [
-        marker
-        for marker in (
-            '"photo"',
-            '"document"',
-            '"files"',
-            '"attachments"',
-            '"url_private"',
-            '"image/"',
-            '"image_url"',
-        )
-        if marker in body_text
-    ]
-    logger.info(
-        "消息入口收到请求: source=%s, content_type=%s, body_bytes=%s, form_keys=%s, image_markers=%s",
-        source,
-        content_type,
-        len(body),
-        list(form.keys()) if form else [],
-        image_markers,
-    )
-    background_tasks.add_task(start_message_chain, body, form, args)
-    return schemas.Response(success=True)
 
 
 @router.get("/notification", summary="获取通知消息", response_model=List[schemas.NotificationHistoryItem])

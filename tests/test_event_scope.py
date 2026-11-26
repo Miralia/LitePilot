@@ -9,6 +9,7 @@ def test_event_types_are_limited_to_active_internal_consumers() -> None:
         "CommandExcute",
         "DownloadFileDeleted",
         "WebhookMessage",
+        "ChannelMessageReceived",
         "MetadataScrape",
         "ModuleReload",
         "ConfigChanged",

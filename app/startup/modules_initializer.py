@@ -71,6 +71,7 @@ def _load_event_chain_modules():
     """
     for module_name in (
         "app.chain.mediaserverdel",
+        "app.chain.message",
     ):
         try:
             importlib.import_module(module_name)
