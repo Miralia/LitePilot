@@ -279,12 +279,30 @@ class RedisHelper(ConfigReloadMixin, metaclass=Singleton):
                 for key in self.client.scan_iter(redis_key):
                     value = self.client.get(key)
                     if value is not None:
-                        yield self.__get_original_key(key), deserialize(value)
+                        try:
+                            decoded_value = deserialize(value)
+                        except ValueError as err:
+                            logger.warning(f"跳过不兼容的 Redis 缓存键：{err}")
+                            try:
+                                self.client.delete(key)
+                            except Exception as delete_err:
+                                logger.warning(f"清理不兼容的 Redis 缓存键失败：{delete_err}")
+                            continue
+                        yield self.__get_original_key(key), decoded_value
             else:
                 for key in self.client.scan_iter("*"):
                     value = self.client.get(key)
                     if value is not None:
-                        yield self.__get_original_key(key), deserialize(value)
+                        try:
+                            decoded_value = deserialize(value)
+                        except ValueError as err:
+                            logger.warning(f"跳过不兼容的 Redis 缓存键：{err}")
+                            try:
+                                self.client.delete(key)
+                            except Exception as delete_err:
+                                logger.warning(f"清理不兼容的 Redis 缓存键失败：{delete_err}")
+                            continue
+                        yield self.__get_original_key(key), decoded_value
         except Exception as e:
             logger.error(f"Failed to get items from Redis, region: {region}, error: {e}")
 
@@ -560,12 +578,30 @@ class AsyncRedisHelper(ConfigReloadMixin, metaclass=Singleton):
                 async for key in self.client.scan_iter(redis_key):
                     value = await self.client.get(key)
                     if value is not None:
-                        yield self.__get_original_key(key), deserialize(value)
+                        try:
+                            decoded_value = deserialize(value)
+                        except ValueError as err:
+                            logger.warning(f"跳过不兼容的 Redis 缓存键：{err}")
+                            try:
+                                await self.client.delete(key)
+                            except Exception as delete_err:
+                                logger.warning(f"清理不兼容的 Redis 缓存键失败：{delete_err}")
+                            continue
+                        yield self.__get_original_key(key), decoded_value
             else:
                 async for key in self.client.scan_iter("*"):
                     value = await self.client.get(key)
                     if value is not None:
-                        yield self.__get_original_key(key), deserialize(value)
+                        try:
+                            decoded_value = deserialize(value)
+                        except ValueError as err:
+                            logger.warning(f"跳过不兼容的 Redis 缓存键：{err}")
+                            try:
+                                await self.client.delete(key)
+                            except Exception as delete_err:
+                                logger.warning(f"清理不兼容的 Redis 缓存键失败：{delete_err}")
+                            continue
+                        yield self.__get_original_key(key), decoded_value
         except Exception as e:
             logger.error(f"Failed to get items from Redis, region: {region}, error: {e}")
 

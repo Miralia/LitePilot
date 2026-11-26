@@ -1,10 +1,11 @@
+import asyncio
 import pickle
 
 import pytest
 
 import app.core.security as security
 from app.helper.message import TemplateHelper
-from app.helper.redis import deserialize, serialize
+from app.helper.redis import AsyncRedisHelper, RedisHelper, deserialize, serialize
 
 
 def test_redis_serializer_roundtrips_bytes_without_pickle():
@@ -59,3 +60,75 @@ def test_template_helper_dead_context_cache_removed():
     """没有消费者的模板上下文缓存不得继续把原始业务对象写入 Redis。"""
     assert not hasattr(TemplateHelper, "get_cache_context")
     assert not hasattr(TemplateHelper, "set_cache_context")
+
+
+def test_redis_items_skip_and_delete_legacy_pickle_entry():
+    """同步 Redis 遍历应隔离旧 pickle 键，不能中断后续有效缓存。"""
+    legacy_key = b"region:test:key:legacy"
+    valid_key = b"region:test:key:valid"
+    values = {
+        legacy_key: b"PICKLE\x00" + pickle.dumps({"legacy": True}),
+        valid_key: serialize({"valid": True}),
+    }
+    deleted = []
+
+    class FakeClient:
+        """提供两个 Redis 键的最小同步替身。"""
+
+        def scan_iter(self, pattern):
+            assert pattern == "region:test:key:*"
+            return iter([legacy_key, valid_key])
+
+        def get(self, key):
+            return values[key]
+
+        def delete(self, key):
+            deleted.append(key)
+
+    helper = RedisHelper()
+    helper.client = FakeClient()
+    try:
+        items = list(helper.items(region="test"))
+    finally:
+        helper.client = None
+
+    assert items == [("valid", {"valid": True})]
+    assert deleted == [legacy_key]
+
+
+def test_async_redis_items_skip_and_delete_legacy_pickle_entry():
+    """异步 Redis 遍历应与同步路径一样隔离旧 pickle 键。"""
+    legacy_key = b"region:test:key:legacy"
+    valid_key = b"region:test:key:valid"
+    values = {
+        legacy_key: b"PICKLE\x00" + pickle.dumps({"legacy": True}),
+        valid_key: serialize({"valid": True}),
+    }
+    deleted = []
+
+    class FakeAsyncClient:
+        """提供两个 Redis 键的最小异步替身。"""
+
+        async def scan_iter(self, pattern):
+            assert pattern == "region:test:key:*"
+            for key in (legacy_key, valid_key):
+                yield key
+
+        async def get(self, key):
+            return values[key]
+
+        async def delete(self, key):
+            deleted.append(key)
+
+    async def collect():
+        helper = AsyncRedisHelper()
+        helper.client = FakeAsyncClient()
+        helper._loop = asyncio.get_running_loop()
+        try:
+            return [item async for item in helper.items(region="test")]
+        finally:
+            helper.client = None
+            helper._loop = None
+
+    assert asyncio.run(collect()) == [("valid", {"valid": True})]
+    assert deleted == [legacy_key]
