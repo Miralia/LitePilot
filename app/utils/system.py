@@ -7,6 +7,7 @@ import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 import urllib.parse
 from pathlib import Path
@@ -27,6 +28,13 @@ _BTRFS_IOC_FS_INFO = 0x8400941F
 _BTRFS_FS_INFO_SIZE = 1024
 _BTRFS_FSID_OFFSET = 16
 _BTRFS_FSID_SIZE = 16
+
+# dashboard 每 2 秒轮询一次网络速率；1 秒内的重复请求复用最近结果，
+# 避免多标签页用极短采样窗口制造噪声，也避免每个请求固定占用 worker 1 秒。
+_NETWORK_USAGE_MIN_INTERVAL_SECONDS = 1.0
+_network_usage_lock = threading.Lock()
+_network_usage_previous: Optional[Tuple[float, int, int]] = None
+_network_usage_last_result: Optional[List[int]] = None
 
 class SystemUtils:
     """
@@ -660,18 +668,34 @@ class SystemUtils:
         """
         获取当前网络流量（上行和下行流量，单位：bytes/s）
         """
-        import time
-        # 获取初始网络统计
-        net_io_1 = psutil.net_io_counters()
-        time.sleep(1)  # 等待1秒
-        # 获取1秒后的网络统计
-        net_io_2 = psutil.net_io_counters()
+        global _network_usage_previous, _network_usage_last_result
 
-        # 计算1秒内的流量变化
-        upload_speed = net_io_2.bytes_sent - net_io_1.bytes_sent
-        download_speed = net_io_2.bytes_recv - net_io_1.bytes_recv
+        with _network_usage_lock:
+            counters = psutil.net_io_counters()
+            sampled_at = time.monotonic()
+            bytes_sent = int(counters.bytes_sent)
+            bytes_recv = int(counters.bytes_recv)
 
-        return [upload_speed, download_speed]
+            if _network_usage_previous is None:
+                # 速率必须有两个采样点才能计算；首次启动没有历史基线，
+                # 返回 0 比为唯一一次请求阻塞 worker 1 秒更合适。
+                _network_usage_previous = (sampled_at, bytes_sent, bytes_recv)
+                _network_usage_last_result = [0, 0]
+                return list(_network_usage_last_result)
+
+            previous_at, previous_sent, previous_recv = _network_usage_previous
+            elapsed = sampled_at - previous_at
+            if elapsed < _NETWORK_USAGE_MIN_INTERVAL_SECONDS and _network_usage_last_result is not None:
+                return list(_network_usage_last_result)
+            if elapsed <= 0:
+                return list(_network_usage_last_result or [0, 0])
+
+            upload_speed = max(0, int((bytes_sent - previous_sent) / elapsed))
+            download_speed = max(0, int((bytes_recv - previous_recv) / elapsed))
+            result = [upload_speed, download_speed]
+            _network_usage_previous = (sampled_at, bytes_sent, bytes_recv)
+            _network_usage_last_result = result
+            return list(result)
 
     @staticmethod
     def is_network_filesystem(
