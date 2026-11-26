@@ -56,7 +56,7 @@ export default defineConfig(({ command, mode, isPreview }) => ({
       dts: !isTestMode(mode),
     }),
     AutoImport({
-      imports: ['vue', 'vue-router', '@vueuse/core', '@vueuse/math', 'pinia', 'vue-i18n'],
+      imports: ['vue', 'vue-router', '@vueuse/core', 'pinia', 'vue-i18n'],
       vueTemplate: true,
       dts: !isTestMode(mode),
     }),
@@ -141,65 +141,22 @@ export default defineConfig(({ command, mode, isPreview }) => ({
           'id': 'litepilot-app',
           'shortcuts': [
             {
-              'name': '推荐',
-              'short_name': '推荐',
-              'description': '查看推荐内容',
-              'url': './recommend',
-              'icons': [
-                {
-                  'src': './sparkles-icon-192x192.png',
-                  'sizes': '192x192',
-                  'type': 'image/png',
-                },
-              ],
+              'name': '仪表盘',
+              'short_name': '仪表盘',
+              'description': '查看系统运行状态',
+              'url': './#/dashboard',
             },
             {
-              'name': '探索',
-              'short_name': '探索',
-              'description': '探索新内容',
-              'url': './discover',
-              'icons': [
-                {
-                  'src': './clock-icon-192x192.png',
-                  'sizes': '192x192',
-                  'type': 'image/png',
-                },
-              ],
+              'name': '整理记录',
+              'short_name': '整理记录',
+              'description': '查看媒体整理记录',
+              'url': './#/history',
             },
             {
-              'name': '更多',
-              'short_name': '更多',
-              'description': '更多功能',
-              'url': './apps',
-              'icons': [
-                {
-                  'src': './cog-icon-192x192.png',
-                  'sizes': '192x192',
-                  'type': 'image/png',
-                },
-              ],
-            },
-          ],
-          'screenshots': [
-            {
-              'src': './android-chrome-512x512.png',
-              'sizes': '512x512',
-              'type': 'image/png',
-              'form_factor': 'wide',
-              'label': 'LitePilot 主界面',
-            },
-            {
-              'src': './android-chrome-192x192.png',
-              'sizes': '192x192',
-              'type': 'image/png',
-              'form_factor': 'narrow',
-              'label': 'LitePilot 移动端',
-            },
-          ],
-          'protocol_handlers': [
-            {
-              'protocol': 'web+moviepilot',
-              'url': './?handler=%s',
+              'name': '文件管理',
+              'short_name': '文件管理',
+              'description': '浏览和管理媒体文件',
+              'url': './#/filemanager',
             },
           ],
           'prefer_related_applications': false,

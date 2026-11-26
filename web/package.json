@@ -52,7 +52,6 @@
     "@types/crypto-js": "^4.2.2",
     "@vue-js-cron/vuetify": "^5.0.9",
     "@vueuse/core": "^12.4.0",
-    "@vueuse/math": "^12.4.0",
     "ace-builds": "^1.37.4",
     "apexcharts": "^4.0.0",
     "axios": "^1.21.1",
