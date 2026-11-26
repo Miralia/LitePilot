@@ -2,7 +2,7 @@ from sqlalchemy import Boolean, Column, JSON, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.db import Base, db_query, db_update, async_db_query, async_db_update, get_id_column
+from app.db import Base, db_query, async_db_query, async_db_update, get_id_column
 
 
 class User(Base):
@@ -44,58 +44,6 @@ class User(Base):
             select(cls).filter(cls.name == name)
         )
         return result.scalars().first()
-
-    @classmethod
-    @db_query
-    def get_by_id(cls, db: Session, user_id: int):
-        return db.query(cls).filter(cls.id == user_id).first()
-
-    @classmethod
-    @async_db_query
-    async def async_get_by_id(cls, db: AsyncSession, user_id: int):
-        result = await db.execute(
-            select(cls).filter(cls.id == user_id)
-        )
-        return result.scalars().first()
-
-    @db_update
-    def delete_by_name(self, db: Session, name: str):
-        user = self.get_by_name(db, name)
-        if user:
-            user.delete(db, user.id)
-        return True
-
-    @async_db_update
-    async def async_delete_by_name(self, db: AsyncSession, name: str):
-        user = await self.async_get_by_name(db, name)
-        if user:
-            await user.async_delete(db, user.id)
-        return True
-
-    @db_update
-    def delete_by_id(self, db: Session, user_id: int):
-        user = self.get_by_id(db, user_id)
-        if user:
-            user.delete(db, user.id)
-        return True
-
-    @async_db_update
-    async def async_delete_by_id(self, db: AsyncSession, user_id: int):
-        user = await self.async_get_by_id(db, user_id)
-        if user:
-            await user.async_delete(db, user.id)
-        return True
-
-    @db_update
-    def update_otp_by_name(self, db: Session, name: str, otp: bool, secret: str):
-        user = self.get_by_name(db, name)
-        if user:
-            user.update(db, {
-                'is_otp': otp,
-                'otp_secret': secret
-            })
-            return True
-        return False
 
     @async_db_update
     async def async_update_otp_by_name(self, db: AsyncSession, name: str, otp: bool, secret: str):

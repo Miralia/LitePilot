@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -116,14 +116,8 @@ async def get_current_active_superuser_async(
 
 class UserOper(DbOper):
     """
-    用户管理
+    swizzin 用户查询与初始化
     """
-
-    def list(self) -> List[User]:
-        """
-        获取用户列表
-        """
-        return User.list(self._db)
 
     def add(self, **kwargs):
         """
@@ -138,27 +132,6 @@ class UserOper(DbOper):
         """
         return User.get_by_name(self._db, name)
 
-    async def async_get_by_name(self, name: str) -> User:
-        """
-        异步根据用户名获取用户。
-        """
-        return await User.async_get_by_name(self._db, name)
-
-    async def async_get_by_id(self, user_id: int) -> User:
-        """
-        异步根据用户 ID 获取用户。
-        """
-        return await User.async_get_by_id(self._db, user_id)
-
-    def get_permissions(self, name: str) -> dict:
-        """
-        获取用户权限
-        """
-        user = User.get_by_name(self._db, name)
-        if user:
-            return user.permissions or {}
-        return {}
-
     def get_settings(self, name: str) -> Optional[dict]:
         """
         获取用户个性化设置，返回None表示用户不存在
@@ -166,26 +139,4 @@ class UserOper(DbOper):
         user = User.get_by_name(self._db, name)
         if user:
             return user.settings or {}
-        return None
-
-    def get_setting(self, name: str, key: str) -> Optional[str]:
-        """
-        获取用户个性化设置
-        """
-        settings = self.get_settings(name)
-        if settings:
-            return settings.get(key)
-        return None
-
-    def get_name(self, **kwargs) -> Optional[str]:
-        """
-        根据绑定账号获取用户名称
-        """
-        users = self.list()
-        for user in users:
-            user_setting = user.settings
-            if user_setting:
-                for k, v in kwargs.items():
-                    if user_setting.get(k) == str(v):
-                        return user.name
         return None
