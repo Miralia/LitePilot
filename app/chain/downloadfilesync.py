@@ -19,6 +19,10 @@ class DownloadFileSyncChain(ChainBase):
     _index_built_at: float = 0.0
     # 索引有效期（秒）：目录监控是高频路径，过期后按需重建而非每次查询
     _INDEX_TTL: float = 300.0
+    # 新鲜索引未命中后的主动刷新节流（秒），避免手工文件批量事件反复全量查询
+    _MISS_REFRESH_TTL: float = 30.0
+    # 上次未命中触发索引刷新的时间
+    _miss_refresh_at: float = 0.0
     """
     下载文件同步链
 
@@ -198,8 +202,14 @@ class DownloadFileSyncChain(ChainBase):
         if stale:
             self._build_path_index()
         matched = self._match_index(target)
-        if not matched and not stale:
-            # 索引可能早于本种子建立，重建一次以覆盖新下载内容
+        if (
+                not matched
+                and not stale
+                and now - self._miss_refresh_at >= self._MISS_REFRESH_TTL
+        ):
+            # 索引可能早于本种子建立，刷新一次以覆盖新下载内容；
+            # 节流避免批量手工文件事件把该兜底变成持续全量扫描。
+            type(self)._miss_refresh_at = now
             self._build_path_index()
             matched = self._match_index(target)
         if not matched:

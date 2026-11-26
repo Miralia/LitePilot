@@ -317,6 +317,28 @@ def test_path_index_is_reused_within_ttl(monkeypatch):
     assert len(calls) == 1
 
 
+def test_path_index_miss_refresh_is_throttled(monkeypatch):
+    """索引新鲜但未命中时，不能因连续手工文件事件反复全量查询下载器。"""
+    from app.chain.downloadfilesync import DownloadFileSyncChain
+
+    chain = DownloadFileSyncChain()
+    calls = []
+
+    def fake_list_torrents(**kwargs):
+        calls.append(kwargs)
+        return []
+
+    monkeypatch.setattr(chain, "list_torrents", fake_list_torrents)
+    monkeypatch.setattr(type(chain), "_path_index", {})
+    monkeypatch.setattr(type(chain), "_index_built_at", 0.0)
+    monkeypatch.setattr(type(chain), "_miss_refresh_at", 0.0, raising=False)
+
+    assert chain.resolve_torrent_by_path("/manual/one.mkv") == (None, None)
+    assert chain.resolve_torrent_by_path("/manual/two.mkv") == (None, None)
+    assert chain.resolve_torrent_by_path("/manual/three.mkv") == (None, None)
+    assert len(calls) == 2
+
+
 def test_residual_source_kept_when_hardlinked(tmp_path):
     """源文件仍被其它硬链接引用时不得删除。"""
     from unittest.mock import MagicMock
