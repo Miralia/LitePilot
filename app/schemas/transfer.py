@@ -61,18 +61,6 @@ class TransferTask(BaseModel):
     background: Optional[bool] = True
     preview: Optional[bool] = False
 
-    def to_dict(self):
-        """
-        返回字典
-        """
-        dicts = vars(self).copy()
-        dicts["fileitem"] = self.fileitem.model_dump() if self.fileitem else None
-        dicts["meta"] = self.meta.model_dump() if self.meta else None
-        dicts["mediainfo"] = self.mediainfo.model_dump() if self.mediainfo else None
-        dicts["target_directory"] = self.target_directory.model_dump() if self.target_directory else None
-        return dicts
-
-
 class TransferJobTask(BaseModel):
     """
     文件整理作业任务
@@ -123,16 +111,6 @@ class TransferInfo(BaseModel):
     need_scrape: Optional[bool] = False
     # 是否需要通知
     need_notify: Optional[bool] = False
-
-    def to_dict(self):
-        """
-        返回字典
-        """
-        dicts = vars(self).copy()
-        dicts["fileitem"] = self.fileitem.model_dump() if self.fileitem else None
-        dicts["target_item"] = self.target_item.model_dump() if self.target_item else None
-        return dicts
-
 
 class TransferQueue(BaseModel):
     """

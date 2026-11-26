@@ -9,28 +9,6 @@ from typing import Any, Callable, get_type_hints
 class ObjectUtils:
 
     @staticmethod
-    def is_obj(obj: Any):
-        if isinstance(obj, list) \
-                or isinstance(obj, dict) \
-                or isinstance(obj, tuple):
-            return True
-        elif isinstance(obj, int) \
-                or isinstance(obj, float) \
-                or isinstance(obj, bool) \
-                or isinstance(obj, bytes) \
-                or isinstance(obj, str):
-            return False
-        return True
-
-    @staticmethod
-    def is_objstr(obj: Any):
-        if not isinstance(obj, str):
-            return False
-        return str(obj).startswith("{") \
-            or str(obj).startswith("[") \
-            or str(obj).startswith("(")
-
-    @staticmethod
     def arguments(func: Callable) -> int:
         """
         返回函数的参数个数
