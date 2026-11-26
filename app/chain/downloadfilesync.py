@@ -13,9 +13,7 @@ from app.schemas.types import SystemConfigKey
 class DownloadFileSyncChain(ChainBase):
     # 上次按需同步时间，用于节流：目录监控可能瞬时触发多次
     _last_trigger_at: float = 0.0
-    # 种子内容路径(精确) -> (种子Hash, 下载器)
-    _content_index: dict = {}
-    # 种子保存目录(兜底) -> (种子Hash, 下载器)
+    # 种子内容/保存路径 -> (种子Hash, 下载器)
     _path_index: dict = {}
     # 索引构建时间戳，用于过期重建
     _index_built_at: float = 0.0
@@ -196,10 +194,7 @@ class DownloadFileSyncChain(ChainBase):
             return None, None
         target = str(file_path).replace("\\", "/")
         now = time.monotonic()
-        stale = (
-                not self._content_index
-                or (now - self._index_built_at) > self._INDEX_TTL
-        )
+        stale = (now - self._index_built_at) > self._INDEX_TTL
         if stale:
             self._build_path_index()
         matched = self._match_index(target)
@@ -283,16 +278,13 @@ class DownloadFileSyncChain(ChainBase):
         :param target: 文件全路径
         :return: (种子Hash, 下载器)，未命中返回 None
         """
-        for index in (self._content_index, self._path_index):
-            best_key = ""
-            best_value = None
-            for key, value in index.items():
-                if target == key or target.startswith(f"{key}/"):
-                    if len(key) > len(best_key):
-                        best_key, best_value = key, value
-            if best_value:
-                return best_value
-        return None
+        best_key = ""
+        best_value = None
+        for key, value in self._path_index.items():
+            if target == key or target.startswith(f"{key}/"):
+                if len(key) > len(best_key):
+                    best_key, best_value = key, value
+        return best_value
 
     def trigger_sync(self, reason: str = "") -> None:
         """

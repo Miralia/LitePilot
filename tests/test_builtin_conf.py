@@ -275,8 +275,6 @@ def test_path_index_drops_ancestor_save_paths():
     ]
     with patch.object(chain, "list_torrents", return_value=torrents):
         chain._build_path_index()
-    # 文件级索引为空，避免干扰断言
-    type(chain)._content_index = {}
     type(chain)._index_built_at = None
 
     index = type(chain)._path_index
@@ -287,6 +285,36 @@ def test_path_index_drops_ancestor_save_paths():
     assert index["/dl/Anime/single.ep01.mkv"][0] == "ab" + "b" * 38
     # 无关文件不再被吞（未命中返回 None）
     assert chain._match_index("/dl/Anime/[Erai-raws] Ao no Hako/ep03.mkv") is None
+
+
+def test_path_index_is_reused_within_ttl(monkeypatch):
+    """路径索引在有效期内必须复用，不能因未使用的精确索引残留而每次全量重建。"""
+    from types import SimpleNamespace
+
+    from app.chain.downloadfilesync import DownloadFileSyncChain
+
+    chain = DownloadFileSyncChain()
+    torrent = SimpleNamespace(
+        hash="ab" + "b" * 38,
+        downloader="qBittorrent",
+        path="/dl/Anime/Show.S01",
+        save_path="/dl/Anime",
+        content_path="/dl/Anime/Show.S01",
+    )
+    calls = []
+
+    def fake_list_torrents(**kwargs):
+        calls.append(kwargs)
+        return [torrent]
+
+    monkeypatch.setattr(chain, "list_torrents", fake_list_torrents)
+    monkeypatch.setattr(type(chain), "_path_index", {})
+    monkeypatch.setattr(type(chain), "_index_built_at", 0.0)
+
+    expected = ("ab" + "b" * 38, "qBittorrent")
+    assert chain.resolve_torrent_by_path("/dl/Anime/Show.S01/ep01.mkv") == expected
+    assert chain.resolve_torrent_by_path("/dl/Anime/Show.S01/ep02.mkv") == expected
+    assert len(calls) == 1
 
 
 def test_residual_source_kept_when_hardlinked(tmp_path):
