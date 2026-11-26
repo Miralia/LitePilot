@@ -8,21 +8,23 @@ import traceback
 from datetime import timedelta
 from typing import Any, Union, Annotated, Optional
 
+import bcrypt
 import jwt
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 from cryptography.fernet import Fernet
 from fastapi import HTTPException, status, Security, Request, Response
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader, APIKeyQuery, APIKeyCookie
-from passlib.context import CryptContext
 
 from app import schemas
 from app.core.cache import cached
 from app.core.config import settings
 from app.log import logger
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
+
+# bcrypt 协议只使用密码 UTF-8 字节序列的前 72 字节；显式截断以兼容既有 passlib 行为。
+_BCRYPT_MAX_PASSWORD_BYTES = 72
 
 # OAuth2PasswordBearer 用于 JWT Token 认证
 oauth2_scheme_manual_error = OAuth2PasswordBearer(
@@ -340,12 +342,33 @@ def verify_apikey(apikey: Annotated[str | None, Security(__get_api_key)]) -> str
     return __verify_key(apikey, settings.API_TOKEN, "apikey")
 
 
+def __password_bytes(password: str) -> bytes:
+    return password.encode("utf-8")[:_BCRYPT_MAX_PASSWORD_BYTES]
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """
+    校验明文密码是否匹配 bcrypt 哈希。
+
+    数据库中的损坏哈希只视为认证失败，避免数据异常穿透到登录接口。
+    """
+    try:
+        return bcrypt.checkpw(
+            __password_bytes(plain_password),
+            hashed_password.encode("utf-8"),
+        )
+    except (TypeError, ValueError):
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    """
+    生成与既有 passlib bcrypt 哈希兼容的标准 bcrypt 密码哈希。
+    """
+    return bcrypt.hashpw(
+        __password_bytes(password),
+        bcrypt.gensalt(rounds=12),
+    ).decode("ascii")
 
 
 def decrypt(data: bytes, key: bytes) -> Optional[bytes]:
