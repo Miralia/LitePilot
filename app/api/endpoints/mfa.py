@@ -3,21 +3,16 @@ MFA (Multi-Factor Authentication) API 端点
 包含 OTP 相关功能
 """
 
-from datetime import timedelta
-from typing import Any, Annotated, Optional
+from typing import Any, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Body, Request, Response
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import schemas
 from app.core import security
-from app.core.config import settings
 from app.db import get_async_db
 from app.db.models.user import User
-from app.db.systemconfig_oper import SystemConfigOper
 from app.db.user_oper import get_current_active_user, get_current_active_user_async
-from app.log import logger
-from app.schemas.types import SystemConfigKey
 from app.utils.otp import OtpUtils
 
 router = APIRouter()
@@ -39,28 +34,6 @@ class OtpDisableRequest(schemas.BaseModel):
     """OTP禁用请求"""
 
     password: str
-
-
-# ==================== 通用 MFA 接口 ====================
-
-
-@router.get(
-    "/status/{username}",
-    summary="判断用户是否开启二次验证",
-    response_model=schemas.Response,
-)
-async def mfa_status(username: str, db: AsyncSession = Depends(get_async_db)) -> Any:
-    """
-    检查指定用户是否启用了二次验证
-    """
-    user: User = await User.async_get_by_name(db, username)
-    if not user:
-        return schemas.Response(success=False)
-
-    # 检查是否启用了OTP
-    has_otp = user.is_otp
-
-    return schemas.Response(success=has_otp)
 
 
 # ==================== OTP 相关接口 ====================
