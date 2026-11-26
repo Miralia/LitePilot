@@ -110,6 +110,11 @@ describe('OpticalLogoLab', () => {
     expect(source).toContain('.optical-logo-lab--loading .optical-logo-lab__fallback')
   })
 
+  it('does not repeat full-screen SMAA after MSAA supersampling', () => {
+    expect(source).not.toContain('SMAAPass')
+    expect(source).not.toContain('postprocessing/SMAAPass')
+  })
+
   it('does not load the WebGL runtime for a persisted prismatic logo', async () => {
     const frames = installAnimationFrameStub()
     const idleCallbacks = new Map<number, IdleRequestCallback>()

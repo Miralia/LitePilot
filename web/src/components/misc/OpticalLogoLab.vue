@@ -482,7 +482,6 @@ let RenderPassClass: typeof import('three/examples/jsm/postprocessing/RenderPass
 let ShaderPassClass: typeof import('three/examples/jsm/postprocessing/ShaderPass.js').ShaderPass | null = null
 let UnrealBloomPassClass: typeof import('three/examples/jsm/postprocessing/UnrealBloomPass.js').UnrealBloomPass | null =
   null
-let SMAAPassClass: typeof import('three/examples/jsm/postprocessing/SMAAPass.js').SMAAPass | null = null
 let OutputPassClass: typeof import('three/examples/jsm/postprocessing/OutputPass.js').OutputPass | null = null
 let RoomEnvironmentClass: typeof import('three/examples/jsm/environments/RoomEnvironment.js').RoomEnvironment | null =
   null
@@ -1434,8 +1433,7 @@ function createPostProcessing(width: number, height: number) {
     !EffectComposerClass ||
     !RenderPassClass ||
     !ShaderPassClass ||
-    !UnrealBloomPassClass ||
-    !SMAAPassClass
+    !UnrealBloomPassClass
   )
     return
   // 后处理绕过默认 framebuffer，必须在 composer 的渲染目标上单独启用 MSAA。
@@ -1465,7 +1463,6 @@ function createPostProcessing(width: number, height: number) {
   composer.addPass(renderPass)
   composer.addPass(pulsePass)
   composer.addPass(bloomPass)
-  composer.addPass(new SMAAPassClass())
   if (OutputPassClass) composer.addPass(new OutputPassClass())
 }
 
@@ -2540,7 +2537,6 @@ async function loadRuntime() {
     renderPassModule,
     shaderPassModule,
     bloomModule,
-    smaaModule,
     outputModule,
     roomModule,
   ] = await Promise.all([
@@ -2550,7 +2546,6 @@ async function loadRuntime() {
     import('three/examples/jsm/postprocessing/RenderPass.js'),
     import('three/examples/jsm/postprocessing/ShaderPass.js'),
     import('three/examples/jsm/postprocessing/UnrealBloomPass.js'),
-    import('three/examples/jsm/postprocessing/SMAAPass.js'),
     import('three/examples/jsm/postprocessing/OutputPass.js'),
     import('three/examples/jsm/environments/RoomEnvironment.js'),
   ])
@@ -2560,7 +2555,6 @@ async function loadRuntime() {
   RenderPassClass = renderPassModule.RenderPass
   ShaderPassClass = shaderPassModule.ShaderPass
   UnrealBloomPassClass = bloomModule.UnrealBloomPass
-  SMAAPassClass = smaaModule.SMAAPass
   OutputPassClass = outputModule.OutputPass
   RoomEnvironmentClass = roomModule.RoomEnvironment
 }
