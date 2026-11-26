@@ -221,8 +221,9 @@ class Telegram:
                     if self._stop_requested.is_set() or self._bot is not _bot:
                         return
                     polling_thread = threading.Thread(target=run_polling, daemon=True)
-                    self._polling_thread = polling_thread
                     polling_thread.start()
+                    # 只在 start 成功后发布线程对象，外部看到非空引用时 join 必然合法。
+                    self._polling_thread = polling_thread
                 logger.info("Telegram消息接收服务启动")
 
             # Telegram API 首次建连在生产环境可能接近 connect timeout；元数据探测和 polling
