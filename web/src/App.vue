@@ -4,7 +4,6 @@ import { useTheme } from 'vuetify'
 import { ensureRenderComplete, removeEl } from './@core/utils/dom'
 import api, { type ConnectionAwareRequestConfig } from '@/api'
 import { useAuthStore, useGlobalSettingsStore } from '@/stores'
-import { checkAndEmitUnreadMessages } from '@/utils/badge'
 import { preloadImage } from './@core/utils/image'
 import { globalLoadingStateManager } from '@/utils/loadingStateManager'
 import { addBackgroundTimer, removeBackgroundTimer } from '@/utils/backgroundManager'
@@ -975,11 +974,6 @@ async function removeLoadingWithStateCheck() {
 
     // 移除加载界面
     await animateAndRemoveLoader()
-
-    // 检查未读消息
-    if (isLogin.value) {
-      checkAndEmitUnreadMessages()
-    }
   } catch (error) {
     // 即使出错也要移除加载界面
     globalLoadingStateManager.reset()

@@ -49,14 +49,34 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     (async () => {
       await self.clients.claim()
-      // 清理旧版本的运行时缓存
-      await cleanupRuntimeCaches(true)
+      // 清理旧版本运行时缓存，并迁移删除已废弃的原生角标状态。
+      await Promise.all([cleanupRuntimeCaches(true), cleanupLegacyBadgeState()])
     })(),
   )
 })
 
-// 存储未读消息数量的键名
-const UNREAD_COUNT_KEY = 'mp_unread_count'
+// 开发环境使用轻量消息确认当前 Worker 身份；旧协议仅用于识别历史 Worker。
+const SW_IDENTITY_PING = 'LITEPILOT_SW_PING'
+const SW_IDENTITY_PONG = 'LITEPILOT_SW_PONG'
+const LEGACY_UNREAD_COUNT_PROBE = 'GET_UNREAD_COUNT'
+
+// 旧角标数据库和系统角标仅做尽力迁移清理，失败不能阻塞新版激活。
+async function cleanupLegacyBadgeState(): Promise<void> {
+  await new Promise<void>(resolve => {
+    try {
+      const request = indexedDB.deleteDatabase('mp_badge_db')
+      request.onsuccess = () => resolve()
+      request.onerror = () => resolve()
+      request.onblocked = () => resolve()
+    } catch {
+      resolve()
+    }
+  })
+
+  if ('clearAppBadge' in self.navigator) {
+    await self.navigator.clearAppBadge().catch(() => undefined)
+  }
+}
 
 // --- 缓存策略配置 ---
 
@@ -206,112 +226,6 @@ async function cleanupRuntimeCaches(onlyOld: boolean = false) {
   )
 }
 
-// 简单的 IndexedDB 包装器 (用于未读计数)
-async function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('mp_badge_db', 2)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
-    request.onupgradeneeded = event => {
-      const db = (event.target as IDBOpenDBRequest).result
-      if (!db.objectStoreNames.contains('badge')) {
-        db.createObjectStore('badge')
-      }
-    }
-  })
-}
-
-async function get(key: string, storeName: string = 'badge'): Promise<unknown> {
-  try {
-    const db = await openDB()
-    return new Promise((resolve, reject) => {
-      if (!db.objectStoreNames.contains(storeName)) {
-        resolve(null)
-        return
-      }
-      const tx = db.transaction([storeName], 'readonly')
-      const store = tx.objectStore(storeName)
-      const request = store.get(key)
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => resolve(request.result)
-    })
-  } catch {
-    return null
-  }
-}
-
-async function set(key: string, value: unknown, storeName: string = 'badge'): Promise<void> {
-  try {
-    const db = await openDB()
-    return new Promise((resolve, reject) => {
-      if (!db.objectStoreNames.contains(storeName)) {
-        console.warn(`Store ${storeName} not found`)
-        resolve()
-        return
-      }
-      const tx = db.transaction([storeName], 'readwrite')
-      const store = tx.objectStore(storeName)
-      store.put(value, key)
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
-  } catch (e) {
-    console.error(`[SW] Failed to set IndexedDB key "${key}" in store "${storeName}":`, e)
-  }
-}
-
-async function getStoredUnreadCount(): Promise<number> {
-  const count = await get(UNREAD_COUNT_KEY)
-  return typeof count === 'number' ? count : 0
-}
-
-async function setStoredUnreadCount(count: number): Promise<void> {
-  await set(UNREAD_COUNT_KEY, count)
-}
-
-// 通知已打开的页面同步未读计数，保证前台通知中心能感知 PWA badge 的变化。
-async function broadcastUnreadCount(count: number) {
-  const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' })
-  clients.forEach(client => {
-    client.postMessage({
-      type: 'UNREAD_COUNT_UPDATE',
-      count,
-    })
-  })
-}
-
-async function updateBadge(count: number) {
-  if ('setAppBadge' in self.navigator) {
-    try {
-      if (count > 0) {
-        await self.navigator.setAppBadge(count)
-      } else {
-        await self.navigator.clearAppBadge()
-      }
-    } catch (error) {
-      console.error('Failed to update app badge:', error)
-    }
-  }
-}
-
-// 清除桌面角标和本地未读计数，确保不支持 Badge API 时也能归零。
-async function clearBadge() {
-  if ('clearAppBadge' in self.navigator) {
-    try {
-      await self.navigator.clearAppBadge()
-    } catch (error) {
-      console.error('Failed to clear native app badge:', error)
-    }
-  }
-
-  try {
-    await setStoredUnreadCount(0)
-    await broadcastUnreadCount(0)
-  } catch (error) {
-    console.error('Failed to clear unread count:', error)
-  }
-}
-
 // 监控缓存大小
 async function monitorCacheSize() {
   const cacheSizes: Record<string, number> = {}
@@ -393,33 +307,11 @@ async function monitorCacheSize() {
 
 // 监听消息
 self.addEventListener('message', function (event) {
-  if (event.data && event.data.type === 'CLEAR_BADGE') {
-    clearBadge()
-      .then(() => {
-        event.ports[0]?.postMessage({ success: true })
-      })
-      .catch(error => {
-        event.ports[0]?.postMessage({ success: false, error: error instanceof Error ? error.message : String(error) })
-      })
-  } else if (event.data && event.data.type === 'UPDATE_BADGE') {
-    const count = event.data.count || 0
-    setStoredUnreadCount(count)
-      .then(() => updateBadge(count))
-      .then(() => broadcastUnreadCount(count))
-      .then(() => {
-        event.ports[0]?.postMessage({ success: true })
-      })
-      .catch(error => {
-        event.ports[0]?.postMessage({ success: false, error: error instanceof Error ? error.message : String(error) })
-      })
-  } else if (event.data && event.data.type === 'GET_UNREAD_COUNT') {
-    getStoredUnreadCount()
-      .then(count => {
-        event.ports[0]?.postMessage({ count })
-      })
-      .catch(() => {
-        event.ports[0]?.postMessage({ count: 0 })
-      })
+  if (event.data && event.data.type === SW_IDENTITY_PING) {
+    event.ports[0]?.postMessage({ type: SW_IDENTITY_PONG })
+  } else if (event.data && event.data.type === LEGACY_UNREAD_COUNT_PROBE) {
+    // 兼容只支持旧探测协议的历史 Worker 清理流程；未读角标状态已删除。
+    event.ports[0]?.postMessage({ count: 0 })
   } else if (event.data && event.data.type === 'CLEANUP_CACHES') {
     // 手动清理: 清理所有运行时缓存
     const performCleanup = async () => {

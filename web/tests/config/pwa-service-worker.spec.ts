@@ -27,11 +27,24 @@ describe('PWA service worker subpath assets', () => {
     expect(tmdbRouteIndex).toBeLessThan(imageRouteIndex)
   })
 
-  it('keeps the badge message channel without unreachable Web Push handlers', () => {
-    expect(source).toContain("event.data.type === 'UPDATE_BADGE'")
-    expect(source).toContain('mp_unread_count')
+  it('keeps only the worker identity probes without badge storage or Web Push handlers', () => {
+    expect(source).toContain('LITEPILOT_SW_PING')
+    expect(source).toContain('LITEPILOT_SW_PONG')
+    expect(source).toContain('GET_UNREAD_COUNT')
+    expect(source).not.toContain('CLEAR_BADGE')
+    expect(source).not.toContain('UPDATE_BADGE')
+    expect(source).not.toContain('mp_unread_count')
     expect(source).not.toContain("addEventListener('push'")
     expect(source).not.toContain("addEventListener('notificationclick'")
     expect(source).not.toContain('showNotification')
+  })
+
+  it('cleans legacy badge database and native badge state during activation', () => {
+    expect(source).toContain('cleanupLegacyBadgeState')
+    expect(source).toContain("indexedDB.deleteDatabase('mp_badge_db')")
+    expect(source).toContain('clearAppBadge')
+    expect(source.match(/mp_badge_db/g) ?? []).toHaveLength(1)
+    expect(source).not.toContain('objectStore')
+    expect(source).not.toContain('mp_unread_count')
   })
 })

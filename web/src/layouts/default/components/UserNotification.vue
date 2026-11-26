@@ -2,7 +2,6 @@
 import type { Ref } from 'vue'
 import type { SystemNotification } from '@/api/types'
 import api from '@/api'
-import { appUnreadMessageCount, clearUnreadMessages } from '@/utils/badge'
 import { formatDateDifference } from '@core/utils/formatters'
 import { useBackground } from '@/composables/useBackground'
 import { useToast } from 'vue-toastification'
@@ -34,8 +33,7 @@ const notificationKeys = new Set<string>()
 const expandedNotificationKeys = ref(new Set<string>())
 
 const hasUnreadNotifications = computed(() => notificationList.value.some(item => item.read === false))
-const hasBadgeUnreadMessages = computed(() => appUnreadMessageCount.value > 0)
-const canMarkAllAsRead = computed(() => hasUnreadNotifications.value || hasBadgeUnreadMessages.value)
+const canMarkAllAsRead = hasUnreadNotifications
 const hasUnreadMessageIndicator = computed(() => hasNewMessage.value || canMarkAllAsRead.value)
 const notificationDisplayList = computed(() => buildNotificationDisplayList(notificationList.value))
 
@@ -218,9 +216,8 @@ function rebuildExpandedNotificationKeys() {
   expandedNotificationKeys.value = new Set([...expandedNotificationKeys.value].filter(key => currentKeys.has(key)))
 }
 
-/** 列表内容变化后同步未读红点和应用角标状态。 */
+/** 列表内容变化后同步通知中心未读红点。 */
 function syncUnreadStateAfterListChange() {
-  // 只用当前列表更新通知中心红点，应用 badge 数量由 badge 工具维护。
   hasNewMessage.value = canMarkAllAsRead.value
 }
 
@@ -277,7 +274,7 @@ async function tryDeleteNotificationHistory(scope: NotificationClearScope) {
   return result?.success !== false
 }
 
-/** 确认并清空通知中心历史，同时同步清理未读角标。 */
+/** 确认并清空通知中心历史。 */
 async function clearNotifications(scope: NotificationClearScope) {
   if (clearing.value || notificationClearCounts.value[scope] === 0) return
 
@@ -299,7 +296,6 @@ async function clearNotifications(scope: NotificationClearScope) {
 
     removeNotificationsByScope(scope)
     if (scope === 'all') {
-      await clearUnreadMessages()
       appsMenu.value = false
     }
     $toast.success(getClearSuccessText(scope))
@@ -395,7 +391,7 @@ function handleMessage(event: MessageEvent) {
   }
 }
 
-/** 将通知列表标记为已读，并同步清理应用角标、未读红点和通知弹窗。 */
+/** 将通知列表标记为已读，并同步清理未读红点和通知弹窗。 */
 function markAllAsRead() {
   if (!canMarkAllAsRead.value) return
 
@@ -404,7 +400,6 @@ function markAllAsRead() {
     item.read = true
   })
   appsMenu.value = false
-  void clearUnreadMessages()
 }
 
 /** 根据通知分类和业务类型选择列表图标。 */

@@ -6,7 +6,10 @@ export const DEV_SW_CLEANUP_PATH = '/__moviepilot_dev_sw_cleanup__'
 const devEntryScriptTag = '<script type="module" src="/src/main.ts"></script>'
 const devEntryScriptUrl = '/src/main.ts'
 const moviePilotWorkerScripts = ['dev-sw.js?dev-sw', 'service-worker.js']
-const moviePilotIdentityMessage = 'GET_UNREAD_COUNT'
+const moviePilotIdentityMessage = 'LITEPILOT_SW_PING'
+const moviePilotLegacyIdentityMessage = 'GET_UNREAD_COUNT'
+const moviePilotIdentityMessages = [moviePilotIdentityMessage, moviePilotLegacyIdentityMessage]
+const moviePilotIdentityResponseType = 'LITEPILOT_SW_PONG'
 const moviePilotIdentityTimeoutMs = 1500
 const moviePilotIdentityAttempts = 2
 
@@ -44,11 +47,12 @@ export function isManagedServiceWorkerRegistration(
   )
 }
 
-/** 复用现有轻量消息协议确认 Worker 确由 MoviePilot 提供。 */
+/** 通过中性 pong 或旧版未读计数响应确认 Worker 确由 MoviePilot 提供。 */
 export function isMoviePilotServiceWorkerIdentityResponse(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false
 
-  return typeof (value as { count?: unknown }).count === 'number'
+  const response = value as { count?: unknown; type?: unknown }
+  return response.type === moviePilotIdentityResponseType || typeof response.count === 'number'
 }
 
 /** 身份探测允许有限次重试；持续失败时保持现有注册，避免误清理未知 Worker。 */
@@ -80,7 +84,9 @@ export function resolveDevCleanupReturnUrl(requested: string | null, origin: str
  */
 export function createDevServiceWorkerCleanupPlugin(): Plugin {
   const workerScripts = JSON.stringify(moviePilotWorkerScripts)
-  const identityMessage = JSON.stringify(moviePilotIdentityMessage)
+  const identityMessages = JSON.stringify(moviePilotIdentityMessages)
+  const legacyIdentityMessage = JSON.stringify(moviePilotLegacyIdentityMessage)
+  const identityResponseType = JSON.stringify(moviePilotIdentityResponseType)
   const identityTimeoutMs = JSON.stringify(moviePilotIdentityTimeoutMs)
   const identityAttempts = JSON.stringify(moviePilotIdentityAttempts)
   const retryIdentityVerification = retryMoviePilotIdentityVerification.toString()
@@ -108,7 +114,9 @@ export function createDevServiceWorkerCleanupPlugin(): Plugin {
   }
 
   const workerScripts = ${workerScripts}
-  const identityMessage = ${identityMessage}
+  const identityMessages = ${identityMessages}
+  const legacyIdentityMessage = ${legacyIdentityMessage}
+  const identityResponseType = ${identityResponseType}
   const identityTimeoutMs = ${identityTimeoutMs}
   const identityAttempts = ${identityAttempts}
   const retryIdentityVerification = ${retryIdentityVerification}
@@ -124,7 +132,10 @@ export function createDevServiceWorkerCleanupPlugin(): Plugin {
       return workerScripts.some(workerScript => scriptUrl === new URL(workerScript, appScope).href)
     }) || null
   }
+  let identityMessageIndex = 0
   const verifyMoviePilotWorkerOnce = worker => new Promise(resolve => {
+    const identityMessage = identityMessages[identityMessageIndex % identityMessages.length]
+    identityMessageIndex += 1
     const channel = new MessageChannel()
     const finish = result => {
       window.clearTimeout(timeout)
@@ -132,7 +143,11 @@ export function createDevServiceWorkerCleanupPlugin(): Plugin {
       resolve(result)
     }
     const timeout = window.setTimeout(() => finish(false), identityTimeoutMs)
-    channel.port1.onmessage = event => finish(typeof event.data?.count === 'number')
+    channel.port1.onmessage = event => {
+      const isLegacyResponse = identityMessage === legacyIdentityMessage && typeof event.data?.count === 'number'
+      const isPongResponse = identityMessage !== legacyIdentityMessage && event.data?.type === identityResponseType
+      finish(isLegacyResponse || isPongResponse)
+    }
     try {
       worker.postMessage({ type: identityMessage }, [channel.port2])
     } catch {
@@ -191,7 +206,9 @@ export function createDevServiceWorkerCleanupPlugin(): Plugin {
     <script>
       (() => {
         const workerScripts = ${workerScripts}
-        const identityMessage = ${identityMessage}
+        const identityMessages = ${identityMessages}
+        const legacyIdentityMessage = ${legacyIdentityMessage}
+        const identityResponseType = ${identityResponseType}
         const identityTimeoutMs = ${identityTimeoutMs}
         const identityAttempts = ${identityAttempts}
         const retryIdentityVerification = ${retryIdentityVerification}
@@ -213,7 +230,10 @@ export function createDevServiceWorkerCleanupPlugin(): Plugin {
             return workerScripts.some(workerScript => scriptUrl === new URL(workerScript, appScope).href)
           }) || null
         }
+        let identityMessageIndex = 0
         const verifyMoviePilotWorkerOnce = worker => new Promise(resolve => {
+          const identityMessage = identityMessages[identityMessageIndex % identityMessages.length]
+          identityMessageIndex += 1
           const channel = new MessageChannel()
           const finish = result => {
             window.clearTimeout(timeout)
@@ -221,7 +241,11 @@ export function createDevServiceWorkerCleanupPlugin(): Plugin {
             resolve(result)
           }
           const timeout = window.setTimeout(() => finish(false), identityTimeoutMs)
-          channel.port1.onmessage = event => finish(typeof event.data?.count === 'number')
+          channel.port1.onmessage = event => {
+            const isLegacyResponse = identityMessage === legacyIdentityMessage && typeof event.data?.count === 'number'
+            const isPongResponse = identityMessage !== legacyIdentityMessage && event.data?.type === identityResponseType
+            finish(isLegacyResponse || isPongResponse)
+          }
           try {
             worker.postMessage({ type: identityMessage }, [channel.port2])
           } catch {

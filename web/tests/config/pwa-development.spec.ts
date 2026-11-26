@@ -1,3 +1,4 @@
+import { DiagnosticCategory, ScriptTarget, transpileModule } from 'typescript'
 import type { IndexHtmlTransformContext, IndexHtmlTransformResult, ViteDevServer } from 'vite'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -51,7 +52,8 @@ describe('PWA 开发模式', () => {
     ).toBe(false)
   })
 
-  it('只有现有 MoviePilot 消息协议响应才能通过身份确认', () => {
+  it('只有新旧 MoviePilot 身份协议响应才能通过身份确认', () => {
+    expect(isMoviePilotServiceWorkerIdentityResponse({ type: 'LITEPILOT_SW_PONG' })).toBe(true)
     expect(isMoviePilotServiceWorkerIdentityResponse({ count: 0 })).toBe(true)
     expect(isMoviePilotServiceWorkerIdentityResponse({ count: 3 })).toBe(true)
     expect(isMoviePilotServiceWorkerIdentityResponse({ success: true })).toBe(false)
@@ -110,12 +112,15 @@ describe('PWA 开发模式', () => {
     if (typeof script.children !== 'string') throw new TypeError('Expected an inline cleanup script')
     const scriptContent = script.children
 
+    expectValidInlineScript(scriptContent)
     expect(scriptContent).toContain('cleanupPath.slice(1)')
     expect(scriptContent).not.toContain("replace(/^//, '')")
     expect(scriptContent).toContain('dev-sw.js?dev-sw')
     expect(scriptContent).toContain('service-worker.js')
     expect(scriptContent).toContain(DEV_SW_CLEANUP_PATH)
     expect(scriptContent).toContain('GET_UNREAD_COUNT')
+    expect(scriptContent).toContain('LITEPILOT_SW_PING')
+    expect(scriptContent).toContain('LITEPILOT_SW_PONG')
     expect(scriptContent).toContain('const identityTimeoutMs = 1500')
     expect(scriptContent).toContain('const identityAttempts = 2')
     expect(scriptContent).toContain('retryMoviePilotIdentityVerification')
@@ -180,6 +185,11 @@ describe('PWA 开发模式', () => {
 
     const cleanupDocument = vi.mocked(response.end).mock.calls[0]?.[0]
     if (typeof cleanupDocument !== 'string') throw new TypeError('Expected cleanup document')
+    const scriptStart = cleanupDocument.indexOf('<script>') + '<script>'.length
+    const scriptEnd = cleanupDocument.indexOf('</script>', scriptStart)
+    expect(scriptStart).toBeGreaterThan('<script>'.length - 1)
+    expect(scriptEnd).toBeGreaterThan(scriptStart)
+    expectValidInlineScript(cleanupDocument.slice(scriptStart, scriptEnd))
     expect(cleanupDocument.indexOf("sessionStorage.getItem(cleanupAttemptKey) !== 'pending'")).toBeLessThan(
       cleanupDocument.indexOf('deleteCurrentOriginCaches(caches)'),
     )
@@ -188,6 +198,16 @@ describe('PWA 开发模式', () => {
     )
   })
 })
+
+function expectValidInlineScript(source: string) {
+  const result = transpileModule(source, {
+    reportDiagnostics: true,
+    compilerOptions: { target: ScriptTarget.ES2022 },
+  })
+  const errors = (result.diagnostics ?? []).filter(diagnostic => diagnostic.category === DiagnosticCategory.Error)
+
+  expect(errors).toEqual([])
+}
 
 interface ResponseStub {
   statusCode: number
