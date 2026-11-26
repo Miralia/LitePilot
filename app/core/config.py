@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_origin, get_args
 from urllib.parse import quote, urlencode, urlparse
 
-from dotenv import set_key, unset_key
+from dotenv import dotenv_values, set_key, unset_key
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -78,9 +78,9 @@ class ConfigModel(BaseModel):
     ADVANCED_MODE: bool = True
 
     # ==================== 安全认证配置 ====================
-    # 密钥
+    # 认证密钥；未显式配置时自动生成并持久化到 app.env，确保重启后登录态不失效
     SECRET_KEY: str = secrets.token_urlsafe(32)
-    # RESOURCE密钥
+    # 资源签名密钥；未显式配置时自动生成并持久化到 app.env，确保资源 Cookie 与图片签名跨重启有效
     RESOURCE_SECRET_KEY: str = secrets.token_urlsafe(32)
     # 允许的跨源访问域名；包含 "*" 时为避免任意站点携带凭据读取接口，浏览器凭据会自动禁用
     ALLOWED_HOSTS: list = Field(default_factory=lambda: ["*"])
@@ -364,6 +364,34 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
         for path in [self.CONFIG_PATH, self.TEMP_PATH, self.LOG_PATH, self.COOKIE_PATH]:
             if not path.exists():
                 path.mkdir(parents=True, exist_ok=True)
+        self._persist_generated_secret_keys()
+
+    def _persist_generated_secret_keys(self) -> None:
+        """把进程随机生成的认证密钥写入私有 env，避免重启使令牌与资源签名失效。"""
+        env_path = SystemUtils.get_env_path()
+        try:
+            existing_values = dotenv_values(env_path) if env_path.exists() else {}
+            updated = False
+            for key in ("SECRET_KEY", "RESOURCE_SECRET_KEY"):
+                if (os.environ.get(key) or "").strip():
+                    continue
+                if str(existing_values.get(key) or "").strip():
+                    continue
+                value = str(getattr(self, key, "") or "").strip()
+                if not value:
+                    value = secrets.token_urlsafe(32)
+                    setattr(self, key, value)
+                set_key(
+                    dotenv_path=env_path,
+                    key_to_set=key,
+                    value_to_set=value,
+                    quote_mode="always",
+                )
+                updated = True
+            if updated and env_path.exists():
+                env_path.chmod(0o600)
+        except OSError as err:
+            logger.warning(f"认证密钥无法持久化到 'app.env'，重启后现有登录态与资源签名将失效：{err}")
 
     @staticmethod
     def validate_api_token(value: Any, original_value: Any) -> Tuple[Any, bool]:

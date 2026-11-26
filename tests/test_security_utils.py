@@ -66,8 +66,7 @@ def test_signed_url_is_deterministic_for_same_inputs():
 
 def test_signed_url_invalidated_after_secret_rotation():
     """
-    `RESOURCE_SECRET_KEY` 变更（进程重启或运维显式轮换）后旧签名必须作废，
-    作为签名长期有效模型的失效兜底。
+    `RESOURCE_SECRET_KEY` 显式轮换后旧签名必须作废，作为签名长期有效模型的失效兜底。
     """
     url = "http://192.168.1.50:8096/Items/abc/Images/Primary"
 
