@@ -132,7 +132,7 @@ Before marking any task as complete:
 - [ ] No new pylint error-level issues in `pylint app/`
 - [ ] If dependencies changed: the package is in the correct runtime or dev dependency entry, and `safety check` passes for the affected entry
 - [ ] If CLI behavior changed: `docs/cli.md` and related tests are updated
-- [ ] 若 REST API 行为变更：同步更新 `docs/mcp-api.md` 与相关测试
+- [ ] 若 REST API 行为变更：同步更新 `docs/rules/09-external-response.md` 与相关测试
 - [ ] If database schema changed: a new Alembic migration exists under `database/versions/`
 - [ ] No secrets are included in code, logs, or committed files
 - [ ] Public classes and methods have Chinese docstrings

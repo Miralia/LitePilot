@@ -87,7 +87,7 @@ LitePilot 是精简后的自建媒体自动化工具，只服务「识别 → �
 | 变更内容 | 必须同步更新 |
 |---|---|
 | CLI 行为 | `moviepilot` 入口、`docs/cli.md`、相关测试 |
-| REST API | `docs/mcp-api.md`、相关测试 |
+| REST API | `docs/rules/09-external-response.md`、相关测试 |
 | 开发流程、依赖管理 | `docs/development-setup.md` |
 | 数据库模型 | `database/versions/` 下新增迁移 |
 | 用户可见配置或初始化流程 | 相关文档、界面文案、测试 |
