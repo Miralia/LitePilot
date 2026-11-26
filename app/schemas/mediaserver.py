@@ -14,7 +14,7 @@ class ExistMediaInfo(BaseModel):
     type: Optional[MediaType] = None
     # 季
     seasons: Optional[Dict[int, list]] = Field(default_factory=dict)
-    # 媒体服务器类型：plex、jellyfin、emby、zspace、trimemedia、ugreen
+    # 媒体服务器类型：emby
     server_type: Optional[str] = None
     # 媒体服务器名称
     server: Optional[str] = None
@@ -34,8 +34,6 @@ class NotExistMediaInfo(BaseModel):
     total_episode: Optional[int] = 0
     # 开始集
     start_episode: Optional[int] = 0
-    # 候选资源须完整覆盖目标范围
-    require_complete_coverage: Optional[bool] = False
 
 
 class RefreshMediaItem(BaseModel):

@@ -25,7 +25,7 @@ class MediaServerHelper(ServiceBaseHelper[MediaServerConf]):
     ) -> bool:
         """
         通用的媒体服务器类型判断方法
-        :param service_type: 媒体服务器的类型名称（如 'plex', 'emby', 'jellyfin'）
+        :param service_type: 媒体服务器的类型名称（当前支持 emby）
         :param service: 要判断的服务信息
         :param name: 服务的名称
         :return: 如果服务类型或实例为指定类型，返回 True；否则返回 False
