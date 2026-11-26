@@ -206,14 +206,16 @@ class Telegram:
             def bootstrap_polling():
                 """先完成 bot 元数据探测，再按原生命周期启动长轮询。"""
                 try:
-                    bot_info = _bot.get_me()
+                    # 使用 SDK 的缓存属性而不是 get_me() 方法，polling 启动读取 bot.user 时
+                    # 不再为同一个元数据重复发起一次 Telegram API 请求。
+                    bot_info = _bot.user
                     self._bot_username = bot_info.username
                     logger.info(f"Telegram bot用户名: @{self._bot_username}")
                 except Exception as err:
                     logger.error(f"获取bot信息失败: {err}")
                     self._bot_username = None
 
-                # get_me 首次连接可能达到 SDK 的 15 秒 connect timeout。若在等待期间
+                # getMe 首次连接可能达到已收紧的 connect timeout。若在等待期间
                 # 服务已经停止或配置已重载，不能再为旧 generation 启动新的 polling。
                 with self._lifecycle_lock:
                     if self._stop_requested.is_set() or self._bot is not _bot:
