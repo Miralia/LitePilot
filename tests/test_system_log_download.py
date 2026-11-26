@@ -78,6 +78,54 @@ def test_logging_rejects_legacy_plugin_log_name(isolated_log_path):
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_logging_sse_drains_burst_lines(monkeypatch, isolated_log_path):
+    """实时日志 SSE 必须完整消费一次追加的多行内容，不能按轮询周期丢行。"""
+    log_file = isolated_log_path / "moviepilot.log"
+    log_file.write_text("seed\n", encoding="utf-8")
+    original_sleep = asyncio.sleep
+
+    async def fast_sleep(delay):
+        """压缩 endpoint 内部轮询等待，避免测试依赖真实秒级时钟。"""
+        await original_sleep(min(delay, 0.01))
+
+    async def is_disconnected():
+        """测试期间保持 SSE 客户端连接。"""
+        return False
+
+    monkeypatch.setattr(asyncio, "sleep", fast_sleep)
+    response = await system_endpoint.get_logging(
+        request=SimpleNamespace(is_disconnected=is_disconnected),
+        length=10,
+        logfile="moviepilot.log",
+        _=SimpleNamespace(id=1, name="admin", is_superuser=True),
+    )
+    stream = response.body_iterator
+
+    async def read_frame() -> str:
+        """有界读取下一帧，防止生成器静默停顿时测试挂死。"""
+        return await asyncio.wait_for(stream.__anext__(), 1)
+
+    def append_lines(text: str) -> None:
+        """模拟运行日志的一次连续追加写入。"""
+        with log_file.open("a", encoding="utf-8") as file:
+            file.write(text)
+
+    try:
+        assert await read_frame() == "data: seed\n\n"
+        await original_sleep(0.1)
+
+        append_lines("probe\n")
+        assert await read_frame() == "data: probe\n\n"
+
+        append_lines("burst-1\nburst-2\nburst-3\n")
+        assert await read_frame() == "data: burst-1\n\n"
+        assert await read_frame() == "data: burst-2\n\n"
+        assert await read_frame() == "data: burst-3\n\n"
+    finally:
+        await stream.aclose()
+
+
 def test_download_moviepilot_logs_packages_latest_ten_log_files(isolated_log_path):
     """传入 moviepilot 时下载主程序滚动日志，最多打包 10 个文件。"""
     for index in range(12):

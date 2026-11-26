@@ -752,7 +752,6 @@ async def get_logging(
             file_stat = await log_path.stat()
             file_size = file_stat.st_size
 
-            # 读取历史日志
             async with aiofiles.open(
                 log_path, mode="r", encoding="utf-8", errors="replace"
             ) as f:
@@ -777,34 +776,19 @@ async def get_logging(
                 for line in lines[-max(length, 50) :]:
                     lines_queue.append(line)
 
-            # 输出历史日志
-            for line in lines_queue:
-                yield f"data: {line}\n\n"
+                # 输出历史日志
+                for line in lines_queue:
+                    yield f"data: {line}\n\n"
 
-            # 实时监听新日志
-            async with aiofiles.open(
-                log_path, mode="r", encoding="utf-8", errors="replace"
-            ) as f:
-                # 移动文件指针到文件末尾，继续监听新增内容
-                await f.seek(0, 2)
-                # 记录初始文件大小
-                initial_stat = await log_path.stat()
-                initial_size = initial_stat.st_size
-                # 实时监听新日志，使用更短的轮询间隔
+                # 同一文件句柄继续跟随新增内容，避免重开文件时错过写入窗口。
                 while not global_vars.is_system_stopped:
                     if await request.is_disconnected():
                         break
-                    # 检查文件是否有新内容
-                    current_stat = await log_path.stat()
-                    current_size = current_stat.st_size
-                    if current_size > initial_size:
-                        # 文件有新内容，读取新行
-                        line = await f.readline()
+                    line = await f.readline()
+                    if line:
+                        line = line.strip()
                         if line:
-                            line = line.strip()
-                            if line:
-                                yield f"data: {line}\n\n"
-                        initial_size = current_size
+                            yield f"data: {line}\n\n"
                     else:
                         # 没有新内容，短暂等待
                         await asyncio.sleep(0.5)
