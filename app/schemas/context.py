@@ -210,16 +210,3 @@ class Context(BaseModel):
     meta_info: Optional[Union[MetaInfo, Any]] = None
     # 媒体信息
     media_info: Optional[Union[MediaInfo, Any]] = None
-
-
-class MediaSeason(BaseModel):
-    """
-    季信息
-    """
-    air_date: Optional[str] = None
-    episode_count: Optional[int] = None
-    name: Optional[str] = None
-    overview: Optional[str] = None
-    poster_path: Optional[str] = None
-    season_number: Optional[int] = None
-    vote_average: Optional[float] = None

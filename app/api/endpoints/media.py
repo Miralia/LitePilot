@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app import schemas
 from app.chain.media import MediaChain
-from app.chain.tmdb import TmdbChain
 from app.core.config import settings
 from app.core.context import Context
 from app.core.meta import MetaBase
@@ -57,49 +56,6 @@ def _build_recognize_metainfo(
         metainfo.title = title
         return metainfo
     return MetaInfo(title, subtitle, custom_words=custom_word_list)
-
-
-def _build_media_seasons(
-        mediainfo: Any, season: Optional[int] = None,
-) -> List[schemas.MediaSeason]:
-    """将任意数据源的统一媒体信息转换为季信息响应。"""
-    seasons_info = []
-    for item in mediainfo.season_info or []:
-        season_number = item.get("season_number")
-        if season is not None and season_number != season:
-            continue
-        seasons_info.append(schemas.MediaSeason(
-            air_date=item.get("air_date"),
-            episode_count=item.get("episode_count"),
-            name=item.get("name"),
-            overview=item.get("overview"),
-            poster_path=item.get("poster_path") or mediainfo.poster_path,
-            season_number=season_number,
-            vote_average=item.get("vote_average"),
-        ))
-    if seasons_info:
-        return seasons_info
-
-    season_numbers = sorted((mediainfo.seasons or {}).keys())
-    if season is not None:
-        season_numbers = [season]
-    elif not season_numbers:
-        season_numbers = [mediainfo.season or 1]
-    return [
-        schemas.MediaSeason(
-            season_number=season_number,
-            poster_path=mediainfo.poster_path,
-            name=f"第 {season_number} 季",
-            air_date=mediainfo.release_date,
-            overview=mediainfo.overview,
-            vote_average=mediainfo.vote_average,
-            episode_count=(
-                len((mediainfo.seasons or {}).get(season_number) or [])
-                or mediainfo.number_of_episodes
-            ),
-        )
-        for season_number in season_numbers
-    ]
 
 
 @router.get(
@@ -304,20 +260,6 @@ async def category(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
     return MediaChain().media_category() or {}
 
 
-@router.get(
-    "/group/seasons/{episode_group}",
-    summary="查询剧集组季信息",
-    response_model=List[schemas.MediaSeason],
-)
-async def group_seasons(
-    episode_group: str, _: schemas.TokenPayload = Depends(verify_token)
-) -> Any:
-    """
-    查询剧集组季信息（themoviedb）
-    """
-    return await TmdbChain().async_tmdb_group_seasons(group_id=episode_group)
-
-
 @router.get("/groups/{tmdbid}", summary="查询媒体剧集组", response_model=List[dict])
 async def groups(tmdbid: int, _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
@@ -329,65 +271,6 @@ async def groups(tmdbid: int, _: schemas.TokenPayload = Depends(verify_token)) -
     if not mediainfo:
         return []
     return mediainfo.episode_groups
-
-
-@router.get(
-    "/seasons", summary="查询媒体季信息", response_model=List[schemas.MediaSeason]
-)
-async def seasons(
-    mediaid: Optional[str] = None,
-    title: Optional[str] = None,
-    year: str = None,
-    season: int = None,
-    _: schemas.TokenPayload = Depends(verify_token),
-) -> Any:
-    """
-    查询媒体季信息
-    """
-    if mediaid:
-        media_source, source_media_id = parse_media_key(mediaid)
-        media_source = _validate_active_media_source(media_source)
-        if media_source == "themoviedb":
-            tmdbid = int(source_media_id)
-            seasons_info = await TmdbChain().async_tmdb_seasons(tmdbid=tmdbid)
-            if seasons_info:
-                if season is not None:
-                    return [sea for sea in seasons_info if sea.season_number == season]
-                return seasons_info
-        elif media_source and source_media_id:
-            mediainfo = await MediaChain().async_recognize_media(
-                source=media_source,
-                mediaid=source_media_id,
-                mtype=MediaType.TV,
-                cache=False,
-            )
-            if mediainfo:
-                return _build_media_seasons(mediainfo, season)
-        # 明确来源的查询不能按标题切换到默认识别源，避免辅助 TMDB 信息替换主身份。
-        if media_source and source_media_id:
-            return []
-    if title:
-        meta = MetaInfo(title)
-        if year:
-            meta.year = year
-        meta.type = MediaType.TV
-        mediainfo = await MediaChain().async_recognize_by_meta(
-            meta,
-            obtain_images=False,
-        )
-        if mediainfo:
-            if mediainfo.source == "themoviedb" and mediainfo.tmdb_id:
-                seasons_info = await TmdbChain().async_tmdb_seasons(
-                    tmdbid=mediainfo.tmdb_id
-                )
-                if seasons_info:
-                    if season is not None:
-                        return [
-                            sea for sea in seasons_info if sea.season_number == season
-                        ]
-                    return seasons_info
-            return _build_media_seasons(mediainfo, season)
-    return []
 
 
 @router.get("/{mediaid}", summary="查询媒体详情", response_model=schemas.MediaInfo)
