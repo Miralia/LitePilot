@@ -109,3 +109,50 @@ def test_invalid_api_token_fallback_returns_unauthorized(monkeypatch):
         )
 
     assert exc_info.value.status_code == 401
+
+
+def test_api_key_verification_uses_constant_time_compare(monkeypatch):
+    """API token 校验不得通过普通字符串相等暴露逐字符时序差异。"""
+    expected = schemas.TokenPayload(
+        sub=1,
+        username="admin",
+        super_user=True,
+        purpose="authentication",
+    )
+    comparisons: list[tuple[bytes, bytes]] = []
+    original_compare = security.hmac.compare_digest
+
+    def compare_spy(left, right):
+        comparisons.append((left, right))
+        return original_compare(left, right)
+
+    monkeypatch.setattr(security.hmac, "compare_digest", compare_spy)
+    monkeypatch.setattr(security.settings, "API_TOKEN", "test-api-token")
+    monkeypatch.setattr(security, "__create_superuser_token_payload", lambda: expected)
+
+    payload = verify_token(
+        request=_build_request(),
+        response=Response(),
+        jwt_token=None,
+        api_key="test-api-token",
+        api_token=None,
+    )
+
+    assert payload is expected
+    assert comparisons == [(b"test-api-token", b"test-api-token")]
+
+
+def test_non_ascii_wrong_api_key_returns_unauthorized(monkeypatch):
+    """恒定时间比较不得因非 ASCII 输入抛出类型错误并泄露 500。"""
+    monkeypatch.setattr(security.settings, "API_TOKEN", "test-api-token")
+
+    with pytest.raises(HTTPException) as exc_info:
+        verify_token(
+            request=_build_request(),
+            response=Response(),
+            jwt_token=None,
+            api_key="错误凭据",
+            api_token=None,
+        )
+
+    assert exc_info.value.status_code == 401

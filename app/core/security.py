@@ -318,7 +318,9 @@ def __verify_key(key: str | None, expected_key: str, key_type: str) -> str:
     :return: 返回校验通过的 API Key 或 Token
     :raises HTTPException: 如果校验不通过，抛出 401 错误
     """
-    if not key or key != expected_key:
+    if not key or not hmac.compare_digest(
+            key.encode("utf-8"), expected_key.encode("utf-8")
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"{key_type} 校验不通过"
