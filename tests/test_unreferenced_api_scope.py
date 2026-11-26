@@ -1,8 +1,12 @@
 """无入口 API 能力边界测试。"""
 
+from app.api.endpoints import dashboard as dashboard_endpoint
 from app.api.endpoints import history as history_endpoint
+from app.api.endpoints import media as media_endpoint
 from app.api.endpoints import mediaserver as mediaserver_endpoint
 from app.api.endpoints import message as message_endpoint
+from app.api.endpoints import system as system_endpoint
+from app.api.endpoints import transfer as transfer_endpoint
 from app.db import Base
 from app.db.message_oper import MessageOper
 from app.db.models.message import Message
@@ -36,3 +40,32 @@ def test_removed_web_chat_inbox_query_chain_is_not_retained():
 def test_unreferenced_async_truncate_helper_is_removed():
     """全量清空接口移除后，不保留无调用方的异步清表基础能力。"""
     assert not hasattr(Base, "async_truncate")
+
+
+def test_duplicate_api_token_route_suffixes_are_removed():
+    """API_TOKEN 已由 verify_token 统一支持，不保留上游 *2 重复路由。"""
+    dashboard_routes = {route.path for route in dashboard_endpoint.router.routes}
+    for path in (
+        "/statistic2",
+        "/storage2",
+        "/downloader2",
+        "/schedule2",
+        "/schedule2/{job_id}/progress",
+        "/cpu2",
+        "/memory2",
+        "/network2",
+    ):
+        assert path not in dashboard_routes
+
+    media_routes = {route.path for route in media_endpoint.router.routes}
+    assert "/recognize2" not in media_routes
+    assert "/recognize_file2" not in media_routes
+
+    system_routes = {route.path for route in system_endpoint.router.routes}
+    assert "/runscheduler2" not in system_routes
+
+
+def test_synchronous_transfer_trigger_route_is_removed():
+    """手动整理由调度器统一触发，不保留绕过调度边界的同步 API_TOKEN 路由。"""
+    transfer_routes = {route.path for route in transfer_endpoint.router.routes}
+    assert "/now" not in transfer_routes

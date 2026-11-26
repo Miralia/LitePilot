@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Optional, Annotated
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -8,7 +8,6 @@ from app import schemas
 from app.chain.dashboard import DashboardChain
 from app.chain.storage import StorageChain
 from app.core.config import settings
-from app.core.security import verify_apitoken
 from app.db import get_db
 from app.db.models.transferhistory import TransferHistory
 from app.db.user_oper import get_current_active_superuser
@@ -102,33 +101,10 @@ def statistic(
     return _build_statistic(db, name)
 
 
-@router.get(
-    "/statistic2", summary="媒体数量统计（API_TOKEN）", response_model=schemas.Statistic
-)
-def statistic2(
-    _: Annotated[str, Depends(verify_apitoken)],
-    db: Session = Depends(get_db),
-) -> Any:
-    """
-    查询媒体数量统计信息 API_TOKEN认证（?token=xxx）
-    """
-    return _build_statistic(db)
-
-
 @router.get("/storage", summary="本地存储空间", response_model=schemas.Storage)
 def storage(_: Any = Depends(get_current_active_superuser)) -> Any:
     """
     查询本地存储空间信息
-    """
-    return _build_storage()
-
-
-@router.get(
-    "/storage2", summary="本地存储空间（API_TOKEN）", response_model=schemas.Storage
-)
-def storage2(_: Annotated[str, Depends(verify_apitoken)]) -> Any:
-    """
-    查询本地存储空间信息 API_TOKEN认证（?token=xxx）
     """
     return _build_storage()
 
@@ -151,18 +127,6 @@ def downloader(
     return _build_downloader(name)
 
 
-@router.get(
-    "/downloader2",
-    summary="下载器信息（API_TOKEN）",
-    response_model=schemas.DownloaderInfo,
-)
-def downloader2(_: Annotated[str, Depends(verify_apitoken)]) -> Any:
-    """
-    查询下载器信息 API_TOKEN认证（?token=xxx）
-    """
-    return _build_downloader()
-
-
 @router.get("/schedule", summary="后台服务", response_model=List[schemas.ScheduleInfo])
 async def schedule(_: Any = Depends(get_current_active_superuser)) -> Any:
     """
@@ -181,35 +145,6 @@ async def schedule_progress(
 ) -> Any:
     """
     查询指定后台服务的执行进度。
-    """
-    progress = Scheduler().get_progress(job_id)
-    if not progress:
-        return schemas.Response(success=False, message="后台服务不存在")
-    return schemas.Response(success=True, data=progress.model_dump())
-
-
-@router.get(
-    "/schedule2",
-    summary="后台服务（API_TOKEN）",
-    response_model=List[schemas.ScheduleInfo],
-)
-async def schedule2(_: Annotated[str, Depends(verify_apitoken)]) -> Any:
-    """
-    查询下载器信息 API_TOKEN认证（?token=xxx）
-    """
-    return Scheduler().list()
-
-
-@router.get(
-    "/schedule2/{job_id}/progress",
-    summary="后台服务进度（API_TOKEN）",
-    response_model=schemas.Response,
-)
-async def schedule_progress2(
-    job_id: str, _: Annotated[str, Depends(verify_apitoken)]
-) -> Any:
-    """
-    查询指定后台服务的执行进度 API_TOKEN认证（?token=xxx）
     """
     progress = Scheduler().get_progress(job_id)
     if not progress:
@@ -238,14 +173,6 @@ def cpu(_: Any = Depends(get_current_active_superuser)) -> Any:
     return SystemUtils.cpu_usage()
 
 
-@router.get("/cpu2", summary="获取当前CPU使用率（API_TOKEN）", response_model=float)
-def cpu2(_: Annotated[str, Depends(verify_apitoken)]) -> Any:
-    """
-    获取当前CPU使用率 API_TOKEN认证（?token=xxx）
-    """
-    return SystemUtils.cpu_usage()
-
-
 @router.get(
     "/memory",
     summary="获取当前应用与系统内存信息",
@@ -258,31 +185,9 @@ def memory(_: Any = Depends(get_current_active_superuser)) -> Any:
     return SystemUtils.memory_usage()
 
 
-@router.get(
-    "/memory2",
-    summary="获取当前应用与系统内存信息（API_TOKEN）",
-    response_model=schemas.DashboardMemoryInfo,
-)
-def memory2(_: Annotated[str, Depends(verify_apitoken)]) -> Any:
-    """
-    获取当前应用与系统内存信息 API_TOKEN认证（?token=xxx）
-    """
-    return SystemUtils.memory_usage()
-
-
 @router.get("/network", summary="获取当前网络流量", response_model=List[int])
 def network(_: Any = Depends(get_current_active_superuser)) -> Any:
     """
     获取当前网络流量（上行和下行流量，单位：bytes/s）
-    """
-    return SystemUtils.network_usage()
-
-
-@router.get(
-    "/network2", summary="获取当前网络流量（API_TOKEN）", response_model=List[int]
-)
-def network2(_: Annotated[str, Depends(verify_apitoken)]) -> Any:
-    """
-    获取当前网络流量 API_TOKEN认证（?token=xxx）
     """
     return SystemUtils.network_usage()

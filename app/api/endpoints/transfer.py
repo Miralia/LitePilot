@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Annotated, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -8,7 +8,7 @@ from app import schemas
 from app.chain.media import MediaChain
 from app.chain.transfer import TransferChain
 from app.core.config import settings, global_vars
-from app.core.security import verify_token, verify_apitoken
+from app.core.security import verify_token
 from app.db import get_db
 from app.db.models import User
 from app.db.models.transferhistory import TransferHistory
@@ -608,12 +608,3 @@ def recommend_episode_format(
         f"推荐集数定位模板成功：{target_path} - 规则 {data.get('rule_name') if data else None}"
     )
     return schemas.Response(success=True, data=data)
-
-
-@router.get("/now", summary="立即执行下载器文件整理", response_model=schemas.Response)
-def now(_: Annotated[str, Depends(verify_apitoken)]) -> Any:
-    """
-    立即执行下载器文件整理 API_TOKEN认证（?token=xxx）
-    """
-    TransferChain().process()
-    return schemas.Response(success=True)

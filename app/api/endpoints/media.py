@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Any, List, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.context import Context
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfo, MetaInfoPath
-from app.core.security import verify_token, verify_apitoken
+from app.core.security import verify_token
 from app.db.models import User
 from app.db.user_oper import get_current_active_user, get_current_active_superuser
 from app.schemas import MediaType
@@ -89,25 +89,6 @@ async def recognize(
 
 
 @router.get(
-    "/recognize2",
-    summary="识别种子媒体信息（API_TOKEN）",
-    response_model=schemas.Context,
-)
-async def recognize2(
-    _: Annotated[str, Depends(verify_apitoken)],
-    title: str,
-    subtitle: Optional[str] = None,
-    custom_words: Optional[str] = None,
-    source: Optional[MediaSource] = None,
-) -> Any:
-    """
-    根据标题、副标题识别媒体信息 API_TOKEN认证（?token=xxx）
-    """
-    # 识别媒体信息
-    return await recognize(title, subtitle, custom_words, source)
-
-
-@router.get(
     "/recognize_file", summary="识别媒体信息（文件）", response_model=schemas.Context
 )
 async def recognize_file(
@@ -124,23 +105,6 @@ async def recognize_file(
     if context:
         return context.to_dict()
     return schemas.Context()
-
-
-@router.get(
-    "/recognize_file2",
-    summary="识别文件媒体信息（API_TOKEN）",
-    response_model=schemas.Context,
-)
-async def recognize_file2(
-    path: str,
-    _: Annotated[str, Depends(verify_apitoken)],
-    source: Optional[MediaSource] = None,
-) -> Any:
-    """
-    根据文件路径识别媒体信息 API_TOKEN认证（?token=xxx）
-    """
-    # 识别媒体信息
-    return await recognize_file(path, source)
 
 
 @router.get("/search", summary="搜索媒体信息", response_model=List[dict])
