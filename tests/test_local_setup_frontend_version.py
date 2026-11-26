@@ -241,6 +241,90 @@ def test_build_frontend_from_source_migrates_assets_without_generation_state(
     assert state == {"current": ["assets/chunk-new-newhash.js"]}
 
 
+def test_build_frontend_update_preserves_existing_runtime_files(
+    local_setup_module,
+    monkeypatch,
+    tmp_path,
+):
+    """前端更新不得在替换阶段删除独立 Node 服务文件或其它运行时文件。"""
+    web_dir = tmp_path / "web"
+    web_dir.mkdir()
+    public_dir = tmp_path / "public"
+    assets_dir = public_dir / "assets"
+    node_runtime = public_dir / "node_modules" / "express"
+    node_runtime.mkdir(parents=True)
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    (assets_dir / "chunk-old-hash.js").write_text("old", encoding="utf-8")
+    (public_dir / "service.js").write_text("runtime service", encoding="utf-8")
+    (node_runtime / "index.js").write_text("express runtime", encoding="utf-8")
+    node_bin = tmp_path / "node" / "bin" / "node"
+    corepack_bin = tmp_path / "node" / "bin" / "corepack"
+    node_bin.parent.mkdir(parents=True)
+    node_bin.write_text("", encoding="utf-8")
+    corepack_bin.write_text("", encoding="utf-8")
+
+    def fake_run(command, cwd=None, env=None, safe_command=None):
+        if "build" in command:
+            dist_assets = web_dir / "dist" / "assets"
+            dist_assets.mkdir(parents=True, exist_ok=True)
+            (web_dir / "dist" / "index.html").write_text("new index", encoding="utf-8")
+            (dist_assets / "chunk-new-hash.js").write_text("new", encoding="utf-8")
+
+    monkeypatch.setattr(local_setup_module, "WEB_DIR", web_dir)
+    monkeypatch.setattr(local_setup_module, "WEB_DIST_DIR", web_dir / "dist")
+    monkeypatch.setattr(local_setup_module, "PUBLIC_DIR", public_dir)
+    monkeypatch.setattr(local_setup_module, "get_node_bin", lambda: node_bin)
+    monkeypatch.setattr(local_setup_module, "get_corepack_bin", lambda: corepack_bin)
+    monkeypatch.setattr(local_setup_module, "run", fake_run)
+
+    local_setup_module.build_frontend_from_source()
+
+    assert (public_dir / "service.js").read_text(encoding="utf-8") == "runtime service"
+    assert (node_runtime / "index.js").read_text(encoding="utf-8") == "express runtime"
+
+
+def test_build_frontend_copies_assets_before_index(
+    local_setup_module,
+    monkeypatch,
+    tmp_path,
+):
+    """入口 HTML 必须最后更新，避免新入口引用尚未复制完成的懒加载 chunk。"""
+    web_dir = tmp_path / "web"
+    web_dir.mkdir()
+    public_dir = tmp_path / "public"
+    public_dir.mkdir()
+    node_bin = tmp_path / "node" / "bin" / "node"
+    corepack_bin = tmp_path / "node" / "bin" / "corepack"
+    node_bin.parent.mkdir(parents=True)
+    node_bin.write_text("", encoding="utf-8")
+    corepack_bin.write_text("", encoding="utf-8")
+    copied_files = []
+
+    def fake_run(command, cwd=None, env=None, safe_command=None):
+        if "build" in command:
+            dist_assets = web_dir / "dist" / "assets"
+            dist_assets.mkdir(parents=True, exist_ok=True)
+            (web_dir / "dist" / "index.html").write_text("new index", encoding="utf-8")
+            (web_dir / "dist" / "service-worker.js").write_text("sw", encoding="utf-8")
+            (dist_assets / "chunk-new-hash.js").write_text("new", encoding="utf-8")
+
+    def record_copy(source, target):
+        copied_files.append(target.relative_to(public_dir).as_posix())
+
+    monkeypatch.setattr(local_setup_module, "WEB_DIR", web_dir)
+    monkeypatch.setattr(local_setup_module, "WEB_DIST_DIR", web_dir / "dist")
+    monkeypatch.setattr(local_setup_module, "PUBLIC_DIR", public_dir)
+    monkeypatch.setattr(local_setup_module, "get_node_bin", lambda: node_bin)
+    monkeypatch.setattr(local_setup_module, "get_corepack_bin", lambda: corepack_bin)
+    monkeypatch.setattr(local_setup_module, "run", fake_run)
+    monkeypatch.setattr(local_setup_module, "_copy_frontend_file", record_copy, raising=False)
+
+    local_setup_module.build_frontend_from_source()
+
+    assert copied_files[-1] == "index.html"
+    assert copied_files.index("assets/chunk-new-hash.js") < copied_files.index("index.html")
+
+
 def test_install_frontend_writes_local_runtime_without_remote_download(
     local_setup_module,
     monkeypatch,

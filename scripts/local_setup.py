@@ -894,6 +894,53 @@ def _write_frontend_asset_generation(public_dir: Path, dist_dir: Path) -> None:
     )
 
 
+def _copy_frontend_file(source: Path, target: Path) -> None:
+    """用同目录临时文件原子替换目标文件，避免静态服务读到半截内容。"""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        shutil.copy2(source, temporary)
+        os.replace(temporary, target)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _copy_frontend_dist_files(dist_dir: Path, public_dir: Path) -> None:
+    """按 assets、其它文件、入口 HTML 的顺序复制构建产物。"""
+    files = [item for item in dist_dir.rglob("*") if item.is_file()]
+
+    def copy_order(item: Path) -> tuple[int, str]:
+        relative = item.relative_to(dist_dir).as_posix()
+        if relative.startswith("assets/"):
+            return 0, relative
+        if relative == "index.html":
+            return 2, relative
+        return 1, relative
+
+    for source in sorted(files, key=copy_order):
+        relative_path = source.relative_to(dist_dir)
+        _copy_frontend_file(source, public_dir / relative_path)
+
+
+def _prune_frontend_assets(public_dir: Path, keep_paths: list[str]) -> None:
+    """清理不再属于当前或上一代构建的 hash assets，并移除空目录。"""
+    assets_root = public_dir / "assets"
+    if not assets_root.is_dir():
+        return
+    keep = set(keep_paths)
+    for item in sorted(assets_root.rglob("*"), key=lambda path: len(path.parts), reverse=True):
+        if item.is_file() or item.is_symlink():
+            relative_path = item.relative_to(public_dir).as_posix()
+            if relative_path not in keep:
+                item.unlink()
+    for item in sorted((path for path in assets_root.rglob("*") if path.is_dir()), key=lambda path: len(path.parts), reverse=True):
+        try:
+            item.rmdir()
+        except OSError:
+            pass
+
+
 def build_frontend_from_source() -> None:
     """构建仓内前端源码，并把产物同步到本地运行时目录。"""
     if not WEB_DIR.is_dir():
@@ -920,32 +967,12 @@ def build_frontend_from_source() -> None:
     if not (WEB_DIST_DIR / "index.html").exists():
         raise RuntimeError("前端构建产物缺少 dist/index.html")
 
-    # 已打开页面可能尚未加载全部懒加载 chunk。hash 资产只保留上一个代际，
-    # 避免更新后立即 404，同时不会让历史构建产物无界累积。
+    # 已打开页面可能尚未加载全部懒加载 chunk。更新过程不删除 public 目录：
+    # 先复制新 assets，再替换入口 HTML，旧入口在整个复制期间仍能加载旧 assets。
     previous_asset_paths = _current_frontend_asset_paths(PUBLIC_DIR)
-    with TemporaryDirectory() as retained_dir:
-        retained_root = Path(retained_dir)
-        for relative_path in previous_asset_paths:
-            source = PUBLIC_DIR / relative_path
-            if not source.is_file():
-                continue
-            retained_target = retained_root / relative_path
-            retained_target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, retained_target)
-
-        _remove_path(PUBLIC_DIR)
-        shutil.copytree(WEB_DIST_DIR, PUBLIC_DIR)
-
-        for retained_source in retained_root.rglob("*"):
-            if not retained_source.is_file():
-                continue
-            relative_path = retained_source.relative_to(retained_root)
-            target = PUBLIC_DIR / relative_path
-            if target.exists():
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(retained_source, target)
-
+    _copy_frontend_dist_files(WEB_DIST_DIR, PUBLIC_DIR)
+    current_asset_paths = _scan_frontend_asset_paths(WEB_DIST_DIR)
+    _prune_frontend_assets(PUBLIC_DIR, current_asset_paths + previous_asset_paths)
     _write_frontend_asset_generation(PUBLIC_DIR, WEB_DIST_DIR)
 
 
