@@ -7,7 +7,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.api.endpoints import login as login_endpoint
-from app.chain.user import MfaRequired, UserChain
+from app.chain.user import AuthCredentials, MfaRequired, PASSWORD_INVALID_CREDENTIALS_MESSAGE, UserChain
 
 
 @pytest.fixture(autouse=True)
@@ -205,3 +205,41 @@ def test_login_throttles_source_ip_across_rotated_usernames(monkeypatch):
 
     assert exc_info.value.status_code == 429
     assert calls == 30
+
+
+def test_missing_user_still_pays_password_verification_cost(monkeypatch):
+    """查无用户时也要执行一次 bcrypt 校验，避免用响应时间枚举有效账号。"""
+    calls: list[tuple[str, str]] = []
+
+    class MissingUserSync:
+        """模拟非 swizzin 环境，避免触碰宿主机账号。"""
+
+        def available(self):
+            """返回当前环境不由 swizzin 托管。"""
+            return False
+
+    class MissingUserOper:
+        """模拟用户不存在。"""
+
+        def get_by_name(self, name):
+            """返回查无用户。"""
+            return None
+
+    def fake_verify_password(password, hashed_password):
+        """记录执行的恒定时间密码校验。"""
+        calls.append((password, hashed_password))
+        return False
+
+    monkeypatch.setattr("app.chain.user.SwizzinUserSync", MissingUserSync)
+    monkeypatch.setattr("app.chain.user.UserOper", MissingUserOper)
+    monkeypatch.setattr("app.chain.user.verify_password", fake_verify_password)
+
+    success, message = UserChain.password_authenticate(
+        AuthCredentials(username="missing-user", password="wrong")
+    )
+
+    assert success is False
+    assert message == PASSWORD_INVALID_CREDENTIALS_MESSAGE
+    assert len(calls) == 1
+    assert calls[0][0] == "wrong"
+    assert calls[0][1].startswith("$2")

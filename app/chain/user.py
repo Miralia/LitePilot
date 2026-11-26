@@ -10,6 +10,8 @@ from app.log import logger
 from app.utils.otp import OtpUtils
 
 PASSWORD_INVALID_CREDENTIALS_MESSAGE = "用户名、密码或验证码错误"
+# 非真实口令哈希，仅用于让不存在/停用账号也支付相同的 bcrypt 校验成本，避免时间侧信道枚举账号。
+_MISSING_USER_PASSWORD_HASH = "$2b$12$QriK43kV05Sf06ahYDekYulnFYKvLvk2YeD1aSMlDu1mitPfs.Xcm"
 
 
 MfaMethod = Literal["otp"]
@@ -107,10 +109,12 @@ class UserChain(ChainBase):
 
         user = UserOper().get_by_name(name=credentials.username)
         if not user:
+            verify_password(credentials.password or "", _MISSING_USER_PASSWORD_HASH)
             logger.info(f"密码认证失败，用户 {credentials.username} 不存在")
             return False, PASSWORD_INVALID_CREDENTIALS_MESSAGE
 
         if not user.is_active:
+            verify_password(credentials.password or "", _MISSING_USER_PASSWORD_HASH)
             logger.info(f"密码认证失败，用户 {credentials.username} 已被禁用")
             return False, PASSWORD_INVALID_CREDENTIALS_MESSAGE
 
