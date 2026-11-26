@@ -58,6 +58,21 @@ def test_local_node_runtime_satisfies_frontend_build_requirement(local_setup_mod
     assert (major, minor) >= (20, 19)
 
 
+def test_linux_node_archive_uses_gzip_when_python_lacks_lzma(
+    local_setup_module,
+    monkeypatch,
+):
+    """精简编译的 Python 缺少 lzma 时，Linux Node 包应回退到 gzip 格式。"""
+    monkeypatch.setattr(local_setup_module.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(local_setup_module.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(local_setup_module, "_lzma_available", lambda: False, raising=False)
+
+    assert local_setup_module._node_platform() == ("linux-x64", "tar.gz")
+
+    monkeypatch.setattr(local_setup_module, "_lzma_available", lambda: True)
+    assert local_setup_module._node_platform() == ("linux-x64", "tar.xz")
+
+
 def test_installer_rejects_node_versions_below_frontend_requirement(
     local_setup_module,
 ):

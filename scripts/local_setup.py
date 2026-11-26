@@ -728,6 +728,15 @@ def _write_local_frontend_service_script(target_dir: Path) -> None:
     )
 
 
+def _lzma_available() -> bool:
+    """检测当前 Python 是否具备解压 xz 归档所需的 lzma 支持。"""
+    try:
+        import lzma  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 def _node_platform() -> tuple[str, str]:
     system_name = platform.system().lower()
     machine = platform.machine().lower()
@@ -738,10 +747,13 @@ def _node_platform() -> tuple[str, str]:
         if machine in {"x86_64", "amd64"}:
             return "darwin-x64", "tar.gz"
     elif system_name == "linux":
+        # 一些精简编译的 Python 缺少可选 lzma 模块；gzip 包体积更大，
+        # 但能避免安装器在这类系统上完全无法解压 Node 运行时。
+        archive_ext = "tar.xz" if _lzma_available() else "tar.gz"
         if machine in {"aarch64", "arm64"}:
-            return "linux-arm64", "tar.xz"
+            return "linux-arm64", archive_ext
         if machine in {"x86_64", "amd64"}:
-            return "linux-x64", "tar.xz"
+            return "linux-x64", archive_ext
 
     raise RuntimeError(
         f"当前系统暂不支持自动安装本地 Node 运行时：{platform.system()} / {platform.machine()}"
