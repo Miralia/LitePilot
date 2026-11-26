@@ -1,14 +1,7 @@
+import type { Component } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { createVuetify } from 'vuetify'
-import { VAutocomplete } from 'vuetify/components/VAutocomplete'
 import { VBtn } from 'vuetify/components/VBtn'
-import { VCheckbox } from 'vuetify/components/VCheckbox'
-import { VCombobox } from 'vuetify/components/VCombobox'
-import { VRadioGroup } from 'vuetify/components/VRadioGroup'
-import { VSelect } from 'vuetify/components/VSelect'
-import { VSlider } from 'vuetify/components/VSlider'
-import { VSwitch } from 'vuetify/components/VSwitch'
-import { VTextarea } from 'vuetify/components/VTextarea'
-import { VTextField } from 'vuetify/components/VTextField'
 import AppDialog from './AppDialog'
 import { createResponsiveInputAdapter } from './AppInput'
 import defaults from './defaults'
@@ -16,17 +9,53 @@ import { icons } from './icons'
 import type { ResponsiveInputComponentName } from './responsiveInputNames'
 import theme from './theme'
 
+type ResponsiveInputLoader = () => Promise<Component>
+type ResponsiveInputOptions = Parameters<typeof createResponsiveInputAdapter>[1]
+
+const responsiveInputLoaders = {
+  VAutocomplete: async () => (await import('vuetify/components/VAutocomplete')).VAutocomplete,
+  VCheckbox: async () => (await import('vuetify/components/VCheckbox')).VCheckbox,
+  VCombobox: async () => (await import('vuetify/components/VCombobox')).VCombobox,
+  VRadioGroup: async () => (await import('vuetify/components/VRadioGroup')).VRadioGroup,
+  VSelect: async () => (await import('vuetify/components/VSelect')).VSelect,
+  VSlider: async () => (await import('vuetify/components/VSlider')).VSlider,
+  VSwitch: async () => (await import('vuetify/components/VSwitch')).VSwitch,
+  VTextarea: async () => (await import('vuetify/components/VTextarea')).VTextarea,
+  VTextField: async () => (await import('vuetify/components/VTextField')).VTextField,
+} satisfies Record<ResponsiveInputComponentName, ResponsiveInputLoader>
+
+const responsiveInputOptions = {
+  VAutocomplete: { name: 'Autocomplete', kind: 'field' },
+  VCheckbox: { name: 'Checkbox', kind: 'choice' },
+  VCombobox: { name: 'Combobox', kind: 'field' },
+  VRadioGroup: { name: 'RadioGroup', kind: 'group' },
+  VSelect: { name: 'Select', kind: 'field' },
+  VSlider: { name: 'Slider', kind: 'range' },
+  VSwitch: { name: 'Switch', kind: 'choice' },
+  VTextarea: { name: 'Textarea', kind: 'multiline' },
+  VTextField: { name: 'TextField', kind: 'field' },
+} satisfies Record<ResponsiveInputComponentName, ResponsiveInputOptions>
+
+function createAsyncResponsiveInput(loader: ResponsiveInputLoader, options: ResponsiveInputOptions) {
+  return defineAsyncComponent(async () => createResponsiveInputAdapter(await loader(), options))
+}
+
 const responsiveInputComponents = {
-  VAutocomplete: createResponsiveInputAdapter(VAutocomplete, { name: 'Autocomplete', kind: 'field' }),
-  VCheckbox: createResponsiveInputAdapter(VCheckbox, { name: 'Checkbox', kind: 'choice' }),
-  VCombobox: createResponsiveInputAdapter(VCombobox, { name: 'Combobox', kind: 'field' }),
-  VRadioGroup: createResponsiveInputAdapter(VRadioGroup, { name: 'RadioGroup', kind: 'group' }),
-  VSelect: createResponsiveInputAdapter(VSelect, { name: 'Select', kind: 'field' }),
-  VSlider: createResponsiveInputAdapter(VSlider, { name: 'Slider', kind: 'range' }),
-  VSwitch: createResponsiveInputAdapter(VSwitch, { name: 'Switch', kind: 'choice' }),
-  VTextarea: createResponsiveInputAdapter(VTextarea, { name: 'Textarea', kind: 'multiline' }),
-  VTextField: createResponsiveInputAdapter(VTextField, { name: 'TextField', kind: 'field' }),
-} satisfies Record<ResponsiveInputComponentName, ReturnType<typeof createResponsiveInputAdapter>>
+  VAutocomplete: createAsyncResponsiveInput(responsiveInputLoaders.VAutocomplete, responsiveInputOptions.VAutocomplete),
+  VCheckbox: createAsyncResponsiveInput(responsiveInputLoaders.VCheckbox, responsiveInputOptions.VCheckbox),
+  VCombobox: createAsyncResponsiveInput(responsiveInputLoaders.VCombobox, responsiveInputOptions.VCombobox),
+  VRadioGroup: createAsyncResponsiveInput(responsiveInputLoaders.VRadioGroup, responsiveInputOptions.VRadioGroup),
+  VSelect: createAsyncResponsiveInput(responsiveInputLoaders.VSelect, responsiveInputOptions.VSelect),
+  VSlider: createAsyncResponsiveInput(responsiveInputLoaders.VSlider, responsiveInputOptions.VSlider),
+  VSwitch: createAsyncResponsiveInput(responsiveInputLoaders.VSwitch, responsiveInputOptions.VSwitch),
+  VTextarea: createAsyncResponsiveInput(responsiveInputLoaders.VTextarea, responsiveInputOptions.VTextarea),
+  VTextField: createAsyncResponsiveInput(responsiveInputLoaders.VTextField, responsiveInputOptions.VTextField),
+} satisfies Record<ResponsiveInputComponentName, Component>
+
+/** 预载全局录入控件模块，降低首次进入设置页时的异步渲染延迟。 */
+export async function preloadResponsiveInputComponents() {
+  await Promise.all(Object.values(responsiveInputLoaders).map(loader => loader()))
+}
 
 export default createVuetify({
   aliases: {

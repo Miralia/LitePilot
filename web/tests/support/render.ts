@@ -1,5 +1,5 @@
 import i18n from '@/plugins/i18n'
-import vuetify from '@/plugins/vuetify'
+import vuetify, { preloadResponsiveInputComponents } from '@/plugins/vuetify'
 import { createTestingPinia } from '@pinia/testing'
 import { render } from '@testing-library/vue'
 import { setActivePinia } from 'pinia'
@@ -46,6 +46,8 @@ export async function renderWithProviders(component: Component, options: RenderW
   })
   setActivePinia(pinia)
 
+  await preloadResponsiveInputComponents()
+
   const result = render(component, {
     ...renderOptions,
     global: {
@@ -54,6 +56,10 @@ export async function renderWithProviders(component: Component, options: RenderW
     },
   })
   await router.isReady()
+  // 动态控件在模块预热后仍会经过多层 Promise 链；用纯 microtask 冲刷，避免受 fake timers 影响。
+  for (let index = 0; index < 50; index += 1) {
+    await Promise.resolve()
+  }
 
   return { ...result, pinia, router }
 }

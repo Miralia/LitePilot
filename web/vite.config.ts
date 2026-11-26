@@ -83,8 +83,8 @@ export default defineConfig(({ command, mode, isPreview }) => ({
             'logo.svg',
             'logo.png',
             'apple-touch-icon*.png',
-            'assets/index-*.js',
-            'assets/index-*.css',
+            'assets/entry-*.js',
+            'assets/entry-*.css',
           ],
         },
         devOptions: {
@@ -195,6 +195,22 @@ export default defineConfig(({ command, mode, isPreview }) => ({
     // 页面级样式随路由懒加载，避免单文件累积到近 1MB
     // 注意：不要为 vue / vuetify 设置 manualChunks，避免破坏框架模块初始化顺序。
     cssCodeSplit: true,
+    // 入口与动态 chunk 使用不同文件名前缀，Service Worker 才能只预缓存首屏入口。
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/entry-[hash].js',
+        chunkFileNames: 'assets/chunk-[name]-[hash].js',
+        assetFileNames(assetInfo) {
+          if (
+            assetInfo.originalFileNames.includes('index.html') &&
+            assetInfo.names.some(name => name.endsWith('.css'))
+          ) {
+            return 'assets/entry-[hash][extname]'
+          }
+          return 'assets/[name]-[hash][extname]'
+        },
+      },
+    },
   },
   optimizeDeps: {
     exclude: ['vuetify'],

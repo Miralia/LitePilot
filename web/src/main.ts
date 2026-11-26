@@ -4,7 +4,7 @@ import '@/plugins/webfontloader'
 
 // 2. 核心插件和 UI 框架
 import { createApp, defineAsyncComponent } from 'vue'
-import vuetify from '@/plugins/vuetify'
+import vuetify, { preloadResponsiveInputComponents } from '@/plugins/vuetify'
 import router from '@/router'
 import pinia from '@/stores/index'
 import i18n from '@/plugins/i18n'
@@ -45,8 +45,6 @@ function loadIconBundle() {
     console.error('Failed to load icon bundle', error)
   })
 }
-
-
 
 const AsyncAceEditor = defineAsyncComponent(async () => {
   await import('./ace-config')
@@ -113,5 +111,10 @@ void initializeServiceWorker()
 
 app.mount('#app')
 
-// 图标全集很大，延后到首屏挂载后的空闲时间加载，避免阻塞登录页首次渲染。
-runWhenBrowserIdle(loadIconBundle)
+// 图标全集与表单录入控件延后到挂载后的空闲时间加载，避免阻塞登录页首次渲染。
+runWhenBrowserIdle(() => {
+  preloadResponsiveInputComponents().catch(error => {
+    console.error('Failed to preload responsive input components', error)
+  })
+  loadIconBundle()
+})
