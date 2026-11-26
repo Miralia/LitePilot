@@ -91,17 +91,19 @@ class Emby:
         try:
             res = RequestUtils().get_res(url, params)
             if res:
-                library_items = res.json().get("Items")
+                library_items = res.json().get("Items") or []
                 librarys = []
                 for library_item in library_items:
                     library_id = library_item.get('ItemId')
                     library_name = library_item.get('Name')
-                    pathInfos = library_item.get('LibraryOptions', {}).get('PathInfos')
+                    pathInfos = library_item.get('LibraryOptions', {}).get('PathInfos') or []
                     library_paths = []
                     for path in pathInfos:
+                        if not isinstance(path, dict):
+                            continue
                         if path.get('NetworkPath'):
                             library_paths.append(path.get('NetworkPath'))
-                        else:
+                        elif path.get('Path'):
                             library_paths.append(path.get('Path'))
 
                     if library_name and library_paths:
@@ -1276,7 +1278,8 @@ class Emby:
                         continue
                     item_path = item.get("Path")
                     if item_path and library_folders and not any(
-                            str(item_path).startswith(folder) for folder in library_folders):
+                            self._is_path_in_library(str(item_path), folder)
+                            for folder in library_folders):
                         continue
                     item_type = MediaType.MOVIE.value if item.get("Type") == "Movie" else MediaType.TV.value
                     server_id = item.get("ServerId") or self.serverid
@@ -1351,7 +1354,8 @@ class Emby:
                         continue
                     item_path = item.get("Path")
                     if item_path and library_folders and not any(
-                            str(item_path).startswith(folder) for folder in library_folders):
+                            self._is_path_in_library(str(item_path), folder)
+                            for folder in library_folders):
                         continue
                     item_type = MediaType.MOVIE.value if item.get("Type") == "Movie" else MediaType.TV.value
                     server_id = item.get("ServerId") or self.serverid
@@ -1376,6 +1380,21 @@ class Emby:
             logger.error(f"连接Users/Items/Latest出错：" + str(e))
         return None
 
+    @staticmethod
+    def _is_path_in_library(item_path: str, library_folder: str) -> bool:
+        """
+        按路径边界判断条目是否属于媒体库，避免兄弟目录前缀误匹配。
+        """
+        folder = str(library_folder or "").rstrip("/\\")
+        path = str(item_path or "")
+        if not folder or not path:
+            return False
+        return (
+            path == folder
+            or path.startswith(f"{folder}/")
+            or path.startswith(f"{folder}\\")
+        )
+
     def get_user_library_folders(self):
         """
         获取Emby媒体库文件夹列表（排除黑名单）
@@ -1384,7 +1403,9 @@ class Emby:
             return []
         library_folders = []
         for library in self.get_emby_virtual_folders() or []:
-            if self._sync_libraries and library.get("Id") not in self._sync_libraries:
+            if self._sync_libraries \
+                    and "all" not in self._sync_libraries \
+                    and library.get("Id") not in self._sync_libraries:
                 continue
             library_folders += [folder for folder in library.get("Path")]
         return library_folders
