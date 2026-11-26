@@ -203,14 +203,6 @@ class Notification(BaseModel):
     text: Optional[str] = None
     # 图片
     image: Optional[str] = None
-    # 语音文件路径
-    voice_path: Optional[str] = None
-    # 本地文件路径
-    file_path: Optional[str] = None
-    # 发送时展示的文件名
-    file_name: Optional[str] = None
-    # 语音消息附带说明文字
-    voice_caption: Optional[str] = None
     # 链接
     link: Optional[str] = None
     # 用户ID
@@ -225,16 +217,6 @@ class Notification(BaseModel):
     targets: Optional[dict] = None
     # 按钮列表，格式：[[{"text": "按钮文本", "callback_data": "回调数据", "url": "链接"}]]
     buttons: Optional[List[List[dict]]] = None
-    # Telegram ForceReply 回复标记
-    force_reply: bool = False
-    # 原消息ID，用于编辑消息
-    original_message_id: Optional[Union[str, int]] = None
-    # 原消息的聊天ID，用于编辑消息
-    original_chat_id: Optional[str] = None
-    # 是否禁用链接预览（仅Telegram支持）
-    disable_web_page_preview: Optional[bool] = None
-    # Telegram 消息格式类型，默认 MarkdownV2，可传 HTML
-    parse_mode: Optional[str] = None
     # 是否写入消息历史
     save_history: bool = True
 

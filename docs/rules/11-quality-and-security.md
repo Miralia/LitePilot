@@ -112,7 +112,7 @@ The `API_TOKEN` value in `settings` is the source of truth. It is set at initial
 ## XSS and Injection in Notifications
 
 - When constructing notification messages that include user-provided data (media titles, filenames, usernames), treat those values as untrusted strings.
-- Do not render user data in HTML contexts without escaping. Notification channels that render HTML (e.g., Telegram with `parse_mode=HTML`) must escape user-controlled strings.
+- Do not render user data in markup contexts without escaping. Notification channels that render markup must escape user-controlled strings.
 
 ---
 

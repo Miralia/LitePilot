@@ -494,44 +494,14 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
                     return
             client: Telegram = self.get_instance(conf.name)
             if client:
-                if message.file_path:
-                    client.send_file(
-                        file_path=message.file_path,
-                        file_name=message.file_name,
-                        title=message.title,
-                        text=message.text,
-                        userid=userid,
-                        original_chat_id=message.original_chat_id,
-                        parse_mode=message.parse_mode,
-                    )
-                elif message.voice_path:
-                    client.send_voice(
-                        voice_path=message.voice_path,
-                        userid=userid,
-                        caption=message.voice_caption,
-                        original_chat_id=message.original_chat_id,
-                        parse_mode=message.parse_mode,
-                    )
-                else:
-                    # Telegram 的 reply_markup 不能同时承载 InlineKeyboard 和 ForceReply。
-                    # 普通通知只清空可编辑消息 ID，仍保留原会话作为新消息目标。
-                    has_interaction_context = bool(message.buttons or message.force_reply)
-                    original_message_id = (
-                        message.original_message_id if has_interaction_context else None
-                    )
-                    client.send_msg(
-                        title=message.title,
-                        text=message.text,
-                        image=message.image,
-                        userid=userid,
-                        link=message.link,
-                        buttons=message.buttons,
-                        force_reply=message.force_reply,
-                        original_message_id=original_message_id,
-                        original_chat_id=message.original_chat_id,
-                        disable_web_page_preview=message.disable_web_page_preview,
-                        parse_mode=message.parse_mode,
-                    )
+                client.send_msg(
+                    title=message.title,
+                    text=message.text,
+                    image=message.image,
+                    userid=userid,
+                    link=message.link,
+                    buttons=message.buttons,
+                )
 
     def mark_message_processing_started(
             self,

@@ -1,10 +1,8 @@
 import asyncio
-import html as html_utils
 import json
 import re
 import threading
 import time
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 from urllib.parse import urljoin, quote
 
@@ -18,12 +16,7 @@ from telebot.types import (  # noqa: E402
     BotCommand,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
-    InputMediaPhoto,
 )
-try:
-    from telebot.types import ForceReply  # noqa: E402
-except ImportError:
-    ForceReply = None
 from telegramify_markdown import standardize, telegramify  # noqa: E402
 try:
     from telegramify_markdown import entities_to_markdownv2  # noqa: E402
@@ -45,12 +38,6 @@ from app.utils.string import StringUtils  # noqa: E402
 
 
 TELEGRAM_PARSE_MODE_MARKDOWN = "MarkdownV2"
-TELEGRAM_PARSE_MODE_HTML = "HTML"
-TELEGRAM_PARSE_MODE_ALIASES = {
-    "markdownv2": TELEGRAM_PARSE_MODE_MARKDOWN,
-    "mdv2": TELEGRAM_PARSE_MODE_MARKDOWN,
-    "html": TELEGRAM_PARSE_MODE_HTML,
-}
 
 
 class RetryException(Exception):
@@ -63,7 +50,7 @@ class RetryException(Exception):
 
 class Telegram:
     """
-    Telegram 消息客户端，负责发送、编辑、接收和转发 Telegram 消息。
+    Telegram 消息客户端，负责发送、接收和转发 Telegram 消息。
     """
 
     _ds_url = (
@@ -292,51 +279,25 @@ class Telegram:
         return standardize(item.caption_text)
 
     @staticmethod
-    def _normalize_parse_mode(parse_mode: Optional[str] = None) -> str:
-        """规范化 Telegram 消息格式类型。"""
-        if not parse_mode:
-            return TELEGRAM_PARSE_MODE_MARKDOWN
-        return TELEGRAM_PARSE_MODE_ALIASES.get(
-            str(parse_mode).strip().lower(), TELEGRAM_PARSE_MODE_MARKDOWN
-        )
-
-    @staticmethod
-    def _is_html_parse_mode(parse_mode: Optional[str] = None) -> bool:
-        """判断本次发送是否使用 Telegram HTML 格式。"""
-        return Telegram._normalize_parse_mode(parse_mode) == TELEGRAM_PARSE_MODE_HTML
-
-    @staticmethod
-    def _format_title(title: Optional[str], parse_mode: Optional[str] = None) -> Optional[str]:
-        """按 parse_mode 生成 Telegram 标题文本。"""
+    def _format_title(title: Optional[str]) -> Optional[str]:
+        """生成 Telegram MarkdownV2 标题文本。"""
         if not title:
             return None
-        if Telegram._is_html_parse_mode(parse_mode):
-            return f"<b>{html_utils.escape(title).removesuffix(chr(10))}</b>"
         return f"**{standardize(title).removesuffix(chr(10))}**"
 
     @staticmethod
-    def _format_text(text: Optional[str], parse_mode: Optional[str] = None) -> Optional[str]:
+    def _format_text(text: Optional[str]) -> Optional[str]:
         """
-        按 parse_mode 转义正文。
+        转义 Telegram MarkdownV2 正文。
 
         MarkdownV2 把 ``. - ( ) ! # + = | { }`` 等视为保留字符，正文里
         未经转义的文本会破坏格式甚至导致消息被拒。三反引号代码块是例外：
         其内容按原样展示，只需保证围栏本身合法，因此先切出代码块再分别
         处理其余片段。
-
-        :param text: 原始正文
-        :param parse_mode: 目标格式
-        :return: 可直接发送的正文
         """
         if not text:
             return text
-        if Telegram._is_html_parse_mode(parse_mode):
-            # HTML 模式下正文已是调用方给出的 HTML（含 <b> 等标签），
-            # 再次转义会让标签变成字面量，因此原样返回
-            return text
 
-        # MarkdownV2：拆出代码块，逐段转义。代码块用反引号围栏，
-        # 其内容按原样展示不转义；其余文本必须转义保留字符。
         parts: List[str] = []
         buffer: List[str] = []
         in_code = False
@@ -362,55 +323,16 @@ class Telegram:
         return "".join(parts)
 
     @staticmethod
-    def _format_link(label: str, link: str, parse_mode: Optional[str] = None) -> str:
-        """按 parse_mode 生成 Telegram 链接文本。"""
-        if Telegram._is_html_parse_mode(parse_mode):
-            return (
-                f'<a href="{html_utils.escape(link, quote=True)}">'
-                f"{html_utils.escape(label)}</a>"
-            )
-        return f"[{label}]({link})"
+    def _format_detail_link(link: str) -> str:
+        """生成 Telegram MarkdownV2 查看详情链接。"""
+        return f"[查看详情]({link})"
 
     @staticmethod
-    def _format_italic(text: str, parse_mode: Optional[str] = None) -> str:
-        """按 parse_mode 生成 Telegram 斜体文本。"""
-        if Telegram._is_html_parse_mode(parse_mode):
-            return f"<i>{html_utils.escape(text)}</i>"
-        return f"_{text}_"
-
-    @staticmethod
-    def _format_detail_link(link: str, parse_mode: Optional[str] = None) -> str:
-        """按 parse_mode 生成查看详情链接。"""
-        return Telegram._format_link("查看详情", link, parse_mode)
-
-    @staticmethod
-    def _prepare_text(text: Optional[str], parse_mode: Optional[str] = None) -> Optional[str]:
-        """按 parse_mode 生成 Telegram 可发送文本。"""
+    def _prepare_text(text: Optional[str]) -> Optional[str]:
+        """生成 Telegram MarkdownV2 可发送文本。"""
         if not text:
             return None
-        if Telegram._is_html_parse_mode(parse_mode):
-            return text
         return standardize(text)
-
-    @staticmethod
-    def _split_plain_text(text: str, limit: int) -> List[str]:
-        """按 Telegram 长度限制拆分普通文本。"""
-        if not text:
-            return []
-        if limit <= 0:
-            return [text]
-        chunks = []
-        remaining = text
-        while remaining:
-            if len(remaining) <= limit:
-                chunks.append(remaining)
-                break
-            split_at = remaining.rfind("\n", 0, limit)
-            if split_at <= 0:
-                split_at = limit
-            chunks.append(remaining[:split_at])
-            remaining = remaining[split_at:].lstrip("\n")
-        return chunks
 
     @staticmethod
     def _serialize_update_payload(message: Any) -> Optional[dict]:
@@ -577,16 +499,6 @@ class Telegram:
         if task and task.is_alive() and task is not threading.current_thread():
             task.join(timeout=1)
 
-    def _stop_typing_if_needed(
-            self, chat_id: Union[str, int], stop_typing: bool
-    ) -> None:
-        """
-        按调用方要求停止 typing。
-        typing 由消息处理状态统一收口，兼容显式要求立即停止的调用。
-        """
-        if stop_typing:
-            self._stop_typing_task(chat_id)
-
     def start_typing(
             self,
             chat_id: Optional[Union[str, int]] = None,
@@ -635,12 +547,6 @@ class Telegram:
             userid: Optional[str] = None,
             link: Optional[str] = None,
             buttons: Optional[List[List[dict]]] = None,
-            force_reply: bool = False,
-            original_message_id: Optional[int] = None,
-            original_chat_id: Optional[str] = None,
-            disable_web_page_preview: Optional[bool] = None,
-            stop_typing: bool = False,
-            parse_mode: Optional[str] = None,
     ) -> Optional[dict]:
         """
         发送Telegram消息
@@ -650,31 +556,22 @@ class Telegram:
         :param userid: 用户ID，如有则只发消息给该用户
         :param link: 跳转链接
         :param buttons: 按钮列表，格式：[[{"text": "按钮文本", "callback_data": "回调数据"}]]
-        :param force_reply: 是否请求 Telegram 客户端强制回复
-        :param original_message_id: 原消息ID，如果提供则编辑原消息
-        :param original_chat_id: 原消息的聊天ID，编辑消息时需要
-        :param disable_web_page_preview: 是否禁用链接预览
-        :param stop_typing: 发送完成后是否立即停止 typing
-        :param parse_mode: Telegram 消息格式类型，默认 MarkdownV2，可传 HTML
         :return: 包含 message_id, chat_id, success 的字典
         """
         if not self._telegram_token or not self._telegram_chat_id:
             return None
 
-        parse_mode = self._normalize_parse_mode(parse_mode)
-        # Determine target chat_id with improved logic using user mapping
-        chat_id = self._determine_target_chat_id(userid, original_chat_id)
+        chat_id = self._determine_target_chat_id(userid)
         if not title and not text:
             logger.warning("标题和内容不能同时为空")
-            self._stop_typing_if_needed(chat_id, stop_typing)
             return {"success": False}
 
         try:
-            bold_title = self._format_title(title, parse_mode)
+            bold_title = self._format_title(title)
             # 正文同样需要转义：MarkdownV2 把 . - ( ) 等视为保留字符，
             # 未转义会导致整条消息被 Telegram 拒收或格式错乱；
             # text 里预设的 ``` 代码块需要保留，由 _format_text 处理
-            formatted_text = self._format_text(text, parse_mode)
+            formatted_text = self._format_text(text)
             if bold_title and formatted_text:
                 caption = f"{bold_title}\n{formatted_text}"
             elif bold_title:
@@ -685,228 +582,41 @@ class Telegram:
                 caption = ""
 
             if link:
-                caption = f"{caption}\n{self._format_detail_link(link, parse_mode)}"
+                caption = f"{caption}\n{self._format_detail_link(link)}"
 
-            # 创建按钮键盘
-            reply_markup = None
-            if buttons:
-                reply_markup = self._create_inline_keyboard(buttons)
-            elif force_reply and ForceReply:
-                reply_markup = self._create_force_reply_markup()
-
-            # 判断是编辑消息还是发送新消息
-            if original_message_id and original_chat_id:
-                if force_reply and reply_markup and not buttons:
-                    sent = self.__send_request(
-                        userid=original_chat_id,
-                        image=image,
-                        caption=caption,
-                        reply_markup=reply_markup,
-                        disable_web_page_preview=disable_web_page_preview,
-                        parse_mode=parse_mode,
-                        reply_to_message_id=original_message_id,
-                    )
-                    self._stop_typing_if_needed(chat_id, stop_typing)
-                    if sent and hasattr(sent, "message_id"):
-                        return {
-                            "success": True,
-                            "message_id": sent.message_id,
-                            "chat_id": sent.chat.id if hasattr(sent, "chat") else chat_id,
-                        }
-                    elif sent:
-                        return {"success": True}
-                    return {"success": False}
-                # 编辑消息
-                result = self.__edit_message(
-                    original_chat_id,
-                    original_message_id,
-                    caption,
-                    buttons,
-                    image,
-                    disable_web_page_preview=disable_web_page_preview,
-                    parse_mode=parse_mode,
-                )
-                self._stop_typing_if_needed(chat_id, stop_typing)
+            reply_markup = self._create_inline_keyboard(buttons) if buttons else None
+            sent = self.__send_request(
+                userid=chat_id,
+                image=image,
+                caption=caption,
+                reply_markup=reply_markup,
+            )
+            if sent and hasattr(sent, "message_id"):
                 return {
-                    "success": bool(result),
-                    "message_id": original_message_id,
-                    "chat_id": original_chat_id,
+                    "success": True,
+                    "message_id": sent.message_id,
+                    "chat_id": sent.chat.id if hasattr(sent, "chat") else chat_id,
                 }
-            else:
-                # 发送新消息
-                sent = self.__send_request(
-                    userid=chat_id,
-                    image=image,
-                    caption=caption,
-                    reply_markup=reply_markup,
-                    disable_web_page_preview=disable_web_page_preview,
-                    parse_mode=parse_mode,
-                )
-                self._stop_typing_if_needed(chat_id, stop_typing)
-                if sent and hasattr(sent, "message_id"):
-                    return {
-                        "success": True,
-                        "message_id": sent.message_id,
-                        "chat_id": sent.chat.id if hasattr(sent, "chat") else chat_id,
-                    }
-                elif sent:
-                    return {"success": True}
-                return {"success": False}
+            if sent:
+                return {"success": True}
+            return {"success": False}
 
         except Exception as msg_e:
             logger.error(f"发送消息失败：{msg_e}")
-            self._stop_typing_if_needed(chat_id, stop_typing)
             return {"success": False}
 
-    @staticmethod
-    def _create_force_reply_markup():
-        if not ForceReply:
-            return None
-        try:
-            return ForceReply(selective=True, input_field_placeholder="请输入内容")
-        except TypeError:
-            try:
-                return ForceReply(selective=True)
-            except TypeError:
-                return ForceReply()
-
-    def send_voice(
-            self,
-            voice_path: str,
-            userid: Optional[str] = None,
-            caption: Optional[str] = None,
-            original_chat_id: Optional[str] = None,
-            stop_typing: bool = False,
-            parse_mode: Optional[str] = None,
-    ) -> Optional[dict]:
-        """
-        发送Telegram语音消息。
-        """
-        if not self._bot or not voice_path:
-            return None
-
-        chat_id = self._determine_target_chat_id(userid, original_chat_id)
-        parse_mode = self._normalize_parse_mode(parse_mode)
-        voice_file = Path(voice_path)
-        if not voice_file.exists():
-            logger.error(f"语音文件不存在: {voice_file}")
-            self._stop_typing_if_needed(chat_id, stop_typing)
-            return {"success": False}
-
-        try:
-            with voice_file.open("rb") as fp:
-                sent = self._bot.send_voice(
-                    chat_id=chat_id,
-                    voice=fp,
-                    caption=self._prepare_text(caption, parse_mode),
-                    parse_mode=parse_mode if caption else None,
-                )
-            self._stop_typing_if_needed(chat_id, stop_typing)
-            if sent and hasattr(sent, "message_id"):
-                return {
-                    "success": True,
-                    "message_id": sent.message_id,
-                    "chat_id": sent.chat.id if hasattr(sent, "chat") else chat_id,
-                }
-            return {"success": bool(sent)}
-        except Exception as err:
-            logger.error(f"发送语音消息失败：{err}")
-            self._stop_typing_if_needed(chat_id, stop_typing)
-            return {"success": False}
-        finally:
-            try:
-                voice_file.unlink(missing_ok=True)
-            except Exception as cleanup_err:
-                logger.debug(f"清理语音临时文件失败: {cleanup_err}")
-
-    def send_file(
-            self,
-            file_path: str,
-            userid: Optional[str] = None,
-            title: Optional[str] = None,
-            text: Optional[str] = None,
-            file_name: Optional[str] = None,
-            original_chat_id: Optional[str] = None,
-            stop_typing: bool = False,
-            parse_mode: Optional[str] = None,
-    ) -> Optional[dict]:
-        """
-        发送本地图片或文件给 Telegram 用户。
-        """
-        if not self._bot or not file_path:
-            return None
-
-        chat_id = self._determine_target_chat_id(userid, original_chat_id)
-        parse_mode = self._normalize_parse_mode(parse_mode)
-        local_file = Path(file_path)
-        if not local_file.exists() or not local_file.is_file():
-            logger.error(f"附件文件不存在: {local_file}")
-            self._stop_typing_if_needed(chat_id, stop_typing)
-            return {"success": False}
-
-        send_name = file_name or local_file.name
-        suffix = local_file.suffix.lower()
-        is_image = suffix in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
-
-        try:
-            bold_title = self._format_title(title, parse_mode)
-            if bold_title and text:
-                caption = f"{bold_title}\n{text}"
-            elif bold_title:
-                caption = bold_title
-            else:
-                caption = text or ""
-
-            with local_file.open("rb") as fp:
-                if is_image:
-                    sent = self._bot.send_photo(
-                        chat_id=chat_id,
-                        photo=fp,
-                        caption=self._prepare_text(caption, parse_mode),
-                        parse_mode=parse_mode if caption else None,
-                    )
-                else:
-                    sent = self._bot.send_document(
-                        chat_id=chat_id,
-                        document=(send_name, fp),
-                        caption=self._prepare_text(caption, parse_mode),
-                        parse_mode=parse_mode if caption else None,
-                    )
-            self._stop_typing_if_needed(chat_id, stop_typing)
-            if sent and hasattr(sent, "message_id"):
-                return {
-                    "success": True,
-                    "message_id": sent.message_id,
-                    "chat_id": sent.chat.id if hasattr(sent, "chat") else chat_id,
-                }
-            return {"success": bool(sent)}
-        except Exception as err:
-            logger.error(f"发送本地附件失败: {err}")
-            self._stop_typing_if_needed(chat_id, stop_typing)
-            return {"success": False}
-
-    def _determine_target_chat_id(
-            self, userid: Optional[str] = None, original_chat_id: Optional[str] = None
-    ) -> str:
+    def _determine_target_chat_id(self, userid: Optional[str] = None) -> str:
         """
         确定目标聊天ID，使用用户映射确保回复到正确的聊天
         :param userid: 用户ID
-        :param original_chat_id: 原消息的聊天ID
         :return: 目标聊天ID
         """
-        # 1. 优先使用原消息的聊天ID (编辑消息场景)
-        if original_chat_id:
-            return original_chat_id
-
-        # 2. 如果有userid，尝试从映射中获取用户的聊天ID
         if userid:
             mapped_chat_id = self._get_user_chat_id(userid)
             if mapped_chat_id:
                 return mapped_chat_id
             # 如果映射中没有，回退到使用userid作为聊天ID (私聊场景)
             return userid
-
-        # 3. 最后使用默认聊天ID
         return self._telegram_chat_id
 
     @staticmethod
@@ -953,204 +663,32 @@ class Telegram:
             logger.error(f"回应回调查询失败：{str(e)}")
             return False
 
-    @staticmethod
-    def __is_no_text_edit_error(err: Exception) -> bool:
-        """
-        判断 Telegram 是否因为原消息没有 text 字段而拒绝文本编辑。
-        """
-        return "there is no text in the message to edit" in str(err).lower()
-
-    @staticmethod
-    def __is_message_not_modified_error(err: Exception) -> bool:
-        """
-        判断 Telegram 是否因为消息内容未变化而拒绝编辑。
-        """
-        return "message is not modified" in str(err).lower()
-
-    @staticmethod
-    def __is_http_url_content_error(err: Exception) -> bool:
-        """
-        判断 Telegram 是否因为无法获取远端图片 URL 而拒绝编辑。
-        """
-        return "failed to get http url content" in str(err).lower()
-
-    def __edit_message_text_or_caption(
-            self,
-            chat_id: str,
-            message_id: int,
-            text: str,
-            reply_markup: Optional[InlineKeyboardMarkup] = None,
-            disable_web_page_preview: Optional[bool] = None,
-            parse_mode: Optional[str] = None,
-    ) -> bool:
-        """
-        编辑 Telegram 文本消息，原消息无文本时回退为 caption 编辑。
-        """
-        prepared_text = self._prepare_text(text, parse_mode)
-        edit_text_kwargs: Dict[str, Any] = {
-            "chat_id": chat_id,
-            "message_id": message_id,
-            "text": prepared_text,
-            "parse_mode": parse_mode,
-            "reply_markup": reply_markup,
-        }
-        if disable_web_page_preview is not None:
-            edit_text_kwargs["disable_web_page_preview"] = (
-                disable_web_page_preview
-            )
-        try:
-            self._bot.edit_message_text(**edit_text_kwargs)
-        except Exception as err:
-            if self.__is_message_not_modified_error(err):
-                logger.debug(f"Telegram消息内容未变化，跳过编辑：{str(err)}")
-                return True
-            if not self.__is_no_text_edit_error(err):
-                raise
-            try:
-                self._bot.edit_message_caption(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    caption=prepared_text,
-                    parse_mode=parse_mode,
-                    reply_markup=reply_markup,
-                )
-            except Exception as caption_err:
-                if self.__is_message_not_modified_error(caption_err):
-                    logger.debug(
-                        f"Telegram消息内容未变化，跳过编辑：{str(caption_err)}"
-                    )
-                    return True
-                raise
-        return True
-
-    def __edit_message(
-            self,
-            chat_id: str,
-            message_id: int,
-            text: str,
-            buttons: Optional[List[List[dict]]] = None,
-            image: Optional[str] = None,
-            disable_web_page_preview: Optional[bool] = None,
-            parse_mode: Optional[str] = None,
-    ) -> Optional[bool]:
-        """
-        编辑已发送的消息
-        :param chat_id: 聊天ID
-        :param message_id: 消息ID
-        :param text: 新的消息内容
-        :param buttons: 按钮列表
-        :param image: 图片URL或路径
-        :param disable_web_page_preview: 是否禁用链接预览（仅纯文本编辑时生效）
-        :param parse_mode: Telegram 消息格式类型，默认 MarkdownV2，可传 HTML
-        :return: 编辑是否成功
-        """
-        if not self._bot:
-            return None
-
-        parse_mode = self._normalize_parse_mode(parse_mode)
-        try:
-            # 创建按钮键盘
-            reply_markup = None
-            if buttons:
-                reply_markup = self._create_inline_keyboard(buttons)
-
-            if image:
-                # 如果有图片，使用edit_message_media
-                media = InputMediaPhoto(
-                    media=image,
-                    caption=self._prepare_text(text, parse_mode),
-                    parse_mode=parse_mode,
-                )
-                self._bot.edit_message_media(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    media=media,
-                    reply_markup=reply_markup,
-                )
-            else:
-                # 如果没有图片，使用edit_message_text
-                return self.__edit_message_text_or_caption(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    text=text,
-                    reply_markup=reply_markup,
-                    disable_web_page_preview=disable_web_page_preview,
-                    parse_mode=parse_mode,
-                )
-            return True
-        except Exception as e:
-            if self.__is_message_not_modified_error(e):
-                logger.debug(f"Telegram消息内容未变化，跳过编辑：{str(e)}")
-                return True
-            if image and self.__is_http_url_content_error(e):
-                logger.warning(
-                    f"Telegram图片编辑失败，降级为文本编辑：{str(e)}"
-                )
-                try:
-                    return self.__edit_message_text_or_caption(
-                        chat_id=chat_id,
-                        message_id=message_id,
-                        text=text,
-                        reply_markup=reply_markup,
-                        disable_web_page_preview=disable_web_page_preview,
-                        parse_mode=parse_mode,
-                    )
-                except Exception as fallback_err:
-                    e = fallback_err
-            logger.error(f"编辑消息失败：{str(e)}")
-            return False
-
     def __send_request(
             self,
             userid: Optional[str] = None,
             image="",
             caption="",
             reply_markup: Optional[InlineKeyboardMarkup] = None,
-            disable_web_page_preview: Optional[bool] = None,
-            parse_mode: Optional[str] = None,
-            reply_to_message_id: Optional[int] = None,
     ):
         """
         向Telegram发送报文，返回发送的消息对象
         :param reply_markup: 内联键盘
-        :param disable_web_page_preview: 是否禁用链接预览
-        :param parse_mode: Telegram 消息格式类型，默认 MarkdownV2，可传 HTML
-        :param reply_to_message_id: 回复的原消息ID
         :return: 发送成功返回消息对象，失败返回None
         """
-        parse_mode = self._normalize_parse_mode(parse_mode)
         kwargs = {
             "chat_id": userid or self._telegram_chat_id,
-            "parse_mode": parse_mode,
+            "parse_mode": TELEGRAM_PARSE_MODE_MARKDOWN,
             "reply_markup": reply_markup,
         }
-        if reply_to_message_id:
-            kwargs["reply_to_message_id"] = reply_to_message_id
-        # 处理图片
         image = self.__process_image(image)
 
         try:
             # 图片消息的标题长度限制为1024，文本消息为4096
             caption_limit = 1024 if image else 4096
             if len(caption) < caption_limit:
-                ret = self.__send_short_message(image, caption,
-                                                disable_web_page_preview=disable_web_page_preview,
-                                                **kwargs)
-            elif self._is_html_parse_mode(parse_mode):
-                ret = self.__send_long_plain_message(
-                    image,
-                    caption,
-                    caption_limit,
-                    disable_web_page_preview=disable_web_page_preview,
-                    **kwargs,
-                )
-            else:
-                sent_idx = set()
-                ret = self.__send_long_message(image, caption, sent_idx,
-                                               disable_web_page_preview=disable_web_page_preview,
-                                               **kwargs)
-
-            return ret
+                return self.__send_short_message(image, caption, **kwargs)
+            sent_idx = set()
+            return self.__send_long_message(image, caption, sent_idx, **kwargs)
         except Exception as e:
             logger.error(f"发送Telegram消息失败: {e}")
             return None
@@ -1168,70 +706,27 @@ class Telegram:
         return image
 
     @retry(RetryException, logger=logger)
-    def __send_short_message(self, image: Optional[bytes], caption: str,
-                             disable_web_page_preview: Optional[bool] = None, **kwargs):
+    def __send_short_message(self, image: Optional[bytes], caption: str, **kwargs):
         """
         发送短消息
         """
-        parse_mode = kwargs.get("parse_mode")
         try:
             if image:
                 return self._bot.send_photo(
                     photo=image,
-                    caption=self._prepare_text(caption, parse_mode),
+                    caption=self._prepare_text(caption),
                     **kwargs,
                 )
-            else:
-                return self._bot.send_message(
-                    text=self._prepare_text(caption, parse_mode),
-                    disable_web_page_preview=disable_web_page_preview,
-                    **kwargs
-                )
+            return self._bot.send_message(
+                text=self._prepare_text(caption),
+                **kwargs
+            )
         except Exception:
             raise RetryException(f"发送{'图片' if image else '文本'}消息失败")
 
     @retry(RetryException, logger=logger)
-    def __send_long_plain_message(
-            self,
-            image: Optional[bytes],
-            caption: str,
-            caption_limit: int,
-            disable_web_page_preview: Optional[bool] = None,
-            **kwargs,
-    ):
-        """
-        按 Telegram 长度限制发送长文本。
-        """
-        reply_markup = kwargs.pop("reply_markup", None)
-        chunks = self._split_plain_text(caption, caption_limit)
-        ret = None
-        try:
-            for index, chunk in enumerate(chunks):
-                current_reply_markup = reply_markup if index == 0 else None
-                if image and index == 0:
-                    ret = self._bot.send_photo(
-                        **kwargs,
-                        photo=image,
-                        caption=chunk,
-                        reply_markup=current_reply_markup,
-                    )
-                    continue
-                msg_kwargs = dict(**kwargs)
-                if disable_web_page_preview is not None:
-                    msg_kwargs["disable_web_page_preview"] = disable_web_page_preview
-                ret = self._bot.send_message(
-                    **msg_kwargs,
-                    text=chunk,
-                    reply_markup=current_reply_markup,
-                )
-            return ret
-        except Exception as err:
-            raise RetryException("长消息发送失败") from err
-
-    @retry(RetryException, logger=logger)
     def __send_long_message(
-            self, image: Optional[bytes], caption: str, sent_idx: set,
-            disable_web_page_preview: Optional[bool] = None, **kwargs
+            self, image: Optional[bytes], caption: str, sent_idx: set, **kwargs
     ):
         """
         发送长消息
@@ -1255,11 +750,8 @@ class Telegram:
                 current_reply_markup = reply_markup if i == 0 else None
 
                 if item.content_type == ContentTypes.TEXT and (i != 0 or not image):
-                    msg_kwargs = dict(**kwargs)
-                    if disable_web_page_preview is not None:
-                        msg_kwargs["disable_web_page_preview"] = disable_web_page_preview
                     ret = self._bot.send_message(
-                        **msg_kwargs,
+                        **kwargs,
                         text=self._telegramify_item_text(item),
                         reply_markup=current_reply_markup,
                     )
