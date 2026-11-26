@@ -409,7 +409,7 @@ class SMB(StorageBase, metaclass=WeakSingleton):
 
             # 先检查路径是否存在
             if not smbclient.path.exists(smb_path):
-                logger.warn(f"【SMB】路径不存在，跳过删除: {fileitem.path}")
+                logger.warning(f"【SMB】路径不存在，跳过删除: {fileitem.path}")
                 return True
 
             if fileitem.type == "dir":
@@ -475,7 +475,7 @@ class SMB(StorageBase, metaclass=WeakSingleton):
 
                 except SMBResponseException as e:
                     # 如果目录不为空，尝试强制删除
-                    logger.warn(f"【SMB】目录不为空，尝试强制删除: {smb_path} - {e}")
+                    logger.warning(f"【SMB】目录不为空，尝试强制删除: {smb_path} - {e}")
                     # 使用remove方法尝试删除（某些SMB服务器支持）
                     try:
                         smbclient.remove(smb_path)
@@ -675,7 +675,7 @@ class SMB(StorageBase, metaclass=WeakSingleton):
 
             # 再删除原文件
             if not self.delete(fileitem):
-                logger.warn(f"【SMB】删除原文件失败: {fileitem.path}")
+                logger.warning(f"【SMB】删除原文件失败: {fileitem.path}")
                 return False
 
             return True

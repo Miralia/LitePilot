@@ -503,12 +503,6 @@ class LoggerManager:
         """
         self.logger("warning", msg, *args, **kwargs)
 
-    def warn(self, msg: str, *args, **kwargs):
-        """
-        输出警告级别日志（兼容）
-        """
-        self.warning(msg, *args, **kwargs)
-
     def error(self, msg: str, *args, **kwargs):
         """
         输出错误级别日志

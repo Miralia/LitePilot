@@ -602,7 +602,7 @@ def recommend_episode_format(
         fileitems=recommend_item.fileitems,
     )
     if not state:
-        logger.warn(f"推荐集数定位模板失败：{target_path} - {errmsg}")
+        logger.warning(f"推荐集数定位模板失败：{target_path} - {errmsg}")
         return schemas.Response(success=False, message=errmsg)
     logger.info(
         f"推荐集数定位模板成功：{target_path} - 规则 {data.get('rule_name') if data else None}"

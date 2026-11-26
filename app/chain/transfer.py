@@ -1171,7 +1171,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
 
         # 转移失败
         if not transferinfo.success:
-            logger.warn(f"{task.fileitem.name} 入库失败：{transferinfo.message}")
+            logger.warning(f"{task.fileitem.name} 入库失败：{transferinfo.message}")
 
             # 新增转移失败历史记录
             history = transferhis.add_fail(
@@ -2139,7 +2139,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         根据目录样本推荐集数定位模板
         """
         if not fileitem and not fileitems:
-            logger.warn("推荐集数定位模板失败：缺少目录参数")
+            logger.warning("推荐集数定位模板失败：缺少目录参数")
             return False, "缺少目录参数", None
 
         rules = self.__get_episode_format_rules()
@@ -2148,16 +2148,16 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 fileitems
             )
             if not state:
-                logger.warn(f"推荐集数定位模板失败：{errmsg}")
+                logger.warning(f"推荐集数定位模板失败：{errmsg}")
                 return False, errmsg, None
             target_path = sample_files[0].path if sample_files else None
         else:
             if not fileitem or not fileitem.path:
-                logger.warn("推荐集数定位模板失败：缺少目录参数")
+                logger.warning("推荐集数定位模板失败：缺少目录参数")
                 return False, "缺少目录参数", None
             directory = self.__resolve_episode_format_directory(fileitem)
             if not directory or directory.type != "dir":
-                logger.warn(f"推荐集数定位模板失败：目录不存在 - {fileitem.path}")
+                logger.warning(f"推荐集数定位模板失败：目录不存在 - {fileitem.path}")
                 return False, "目录不存在", None
             sample_files = self.__get_episode_format_sample_files(directory)
             target_path = directory.path
@@ -2169,7 +2169,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             sample_files=sample_files,
         )
         if not state:
-            logger.warn(f"集数定位模板推荐失败：{target_path} - {errmsg}")
+            logger.warning(f"集数定位模板推荐失败：{target_path} - {errmsg}")
             return state, errmsg, data
         logger.info(
             f"集数定位模板推荐成功：{target_path} - 规则 {data.get('rule_name') if data else None}"
@@ -2189,7 +2189,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             try:
                 rule = schemas.EpisodeFormatRule(**item)
             except Exception as err:
-                logger.warn(f"忽略无效的集数定位规则：{err}")
+                logger.warning(f"忽略无效的集数定位规则：{err}")
                 continue
             if rule.enabled:
                 rules.append(rule)
@@ -2359,7 +2359,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                     # 文件路径
                     file_path = torrent.path
                     if not file_path.exists():
-                        logger.warn(f"文件不存在：{file_path}")
+                        logger.warning(f"文件不存在：{file_path}")
                         continue
 
                     # 检查是否为下载器监控目录中的文件
@@ -2490,7 +2490,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         if verify_file_exists:
             latest_fileitem = storagechain.get_item(fileitem)
             if not latest_fileitem:
-                logger.warn(f"目录或文件不存在：{fileitem.path}")
+                logger.warning(f"目录或文件不存在：{fileitem.path}")
                 return []
             # 确保从历史记录重新整理时 能获得最新的源文件大小、修改日期等
             fileitem = latest_fileitem
@@ -3456,7 +3456,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                         "message": "",
                     }
                 return True, ""
-            logger.warn(f"{fileitem.path} 没有找到可整理的媒体文件")
+            logger.warning(f"{fileitem.path} 没有找到可整理的媒体文件")
             return False, f"{fileitem.name} 没有找到可整理的媒体文件"
 
         file_items, inherited_meta_map = _plan_file_items(file_items)
@@ -3693,7 +3693,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                         self.__finish_job_execution(transfer_task)
                     if not state:
                         all_success = False
-                        logger.warn(f"{transfer_task.fileitem.name} {err_msg}")
+                        logger.warning(f"{transfer_task.fileitem.name} {err_msg}")
                         err_msgs.append(f"{transfer_task.fileitem.name} {err_msg}")
                         if preview:
                             # 预览模式不走默认回调，这里需要手动收敛任务状态，避免残留 running
@@ -4241,7 +4241,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
 
         for keyword in exclude_words:
             if keyword and re.search(r"%s" % keyword, file_path, re.IGNORECASE):
-                logger.warn(f"{file_path} 命中屏蔽词 {keyword}")
+                logger.warning(f"{file_path} 命中屏蔽词 {keyword}")
                 return True
         return False
 

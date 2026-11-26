@@ -157,27 +157,27 @@ class StorageChain(ChainBase):
         media_exts = settings.RMT_MEDIAEXT + settings.DOWNLOAD_TMPEXT + settings.RMT_SUBEXT + settings.RMT_AUDIOEXT
         fileitem_path = Path(fileitem.path) if fileitem.path else Path("")
         if len(fileitem_path.parts) <= 2:
-            logger.warn(f"【{fileitem.storage}】{fileitem.path} 根目录或一级目录不允许删除")
+            logger.warning(f"【{fileitem.storage}】{fileitem.path} 根目录或一级目录不允许删除")
             return False
         if fileitem.type == "dir":
             # 本身是目录
             if self.is_bluray_folder(fileitem):
-                logger.warn(f"正在删除蓝光原盘目录：【{fileitem.storage}】{fileitem.path}")
+                logger.warning(f"正在删除蓝光原盘目录：【{fileitem.storage}】{fileitem.path}")
                 if not self.delete_file(fileitem):
-                    logger.warn(f"【{fileitem.storage}】{fileitem.path} 删除失败")
+                    logger.warning(f"【{fileitem.storage}】{fileitem.path} 删除失败")
                     return False
 
         elif delete_self:
             # 本身是文件，需要删除文件
-            logger.warn(f"正在删除文件【{fileitem.storage}】{fileitem.path}")
+            logger.warning(f"正在删除文件【{fileitem.storage}】{fileitem.path}")
             if not self.delete_file(fileitem):
-                logger.warn(f"【{fileitem.storage}】{fileitem.path} 删除失败")
+                logger.warning(f"【{fileitem.storage}】{fileitem.path} 删除失败")
                 return False
 
         # 检查和删除上级空目录
         dir_item = fileitem if fileitem.type == "dir" else self.get_parent_item(fileitem)
         if not dir_item:
-            logger.warn(f"【{fileitem.storage}】{fileitem.path} 上级目录不存在")
+            logger.warning(f"【{fileitem.storage}】{fileitem.path} 上级目录不存在")
             return True
 
         # 查找操作文件项匹配的配置目录(资源目录、媒体库目录)
@@ -207,9 +207,9 @@ class StorageChain(ChainBase):
                 break
 
             # 删除空目录并继续处理父目录
-            logger.warn(f"【{dir_item.storage}】{dir_item.path} 不存在其它媒体文件，正在删除空目录")
+            logger.warning(f"【{dir_item.storage}】{dir_item.path} 不存在其它媒体文件，正在删除空目录")
             if not self.delete_file(dir_item):
-                logger.warn(f"【{dir_item.storage}】{dir_item.path} 删除失败")
+                logger.warning(f"【{dir_item.storage}】{dir_item.path} 删除失败")
                 return False
             dir_item = self.get_parent_item(dir_item)
 

@@ -90,7 +90,7 @@ class MediaCoverChain(ChainBase):
         """
         image_url = self._pick_library_image(server, library)
         if not image_url:
-            logger.warn(f"媒体库 {library.name} 没有可用于生成封面的素材")
+            logger.warning(f"媒体库 {library.name} 没有可用于生成封面的素材")
             return None
         try:
             response = RequestUtils(proxies=settings.PROXY, timeout=30).get_res(image_url)
@@ -175,7 +175,7 @@ class MediaCoverChain(ChainBase):
 
         services = MediaServerHelper().get_services(type_filter="emby")
         if not services:
-            logger.warn("未配置 Emby 媒体服务器，跳过封面生成")
+            logger.warning("未配置 Emby 媒体服务器，跳过封面生成")
             return
 
         font_path = self._ensure_font()

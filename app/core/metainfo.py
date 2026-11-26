@@ -222,7 +222,7 @@ def _build_meta_info(
         try:
             meta.tmdbid = int(metainfo['tmdbid'])
         except ValueError as _:
-            logger.warn("tmdbid 必须是数字")
+            logger.warning("tmdbid 必须是数字")
     if metainfo.get('doubanid'):
         meta.doubanid = metainfo['doubanid']
     if metainfo.get('media_source'):

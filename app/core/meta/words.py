@@ -126,7 +126,7 @@ class WordsMatcher(metaclass=Singleton):
                     appley_words.append(word)
 
             except Exception as err:
-                logger.warn(f"自定义识别词 {word} 预处理标题失败：{str(err)} - 标题：{title}")
+                logger.warning(f"自定义识别词 {word} 预处理标题失败：{str(err)} - 标题：{title}")
 
         return title, appley_words
 
@@ -162,7 +162,7 @@ class WordsMatcher(metaclass=Singleton):
             title, count = replaced_re.subn(r'%s' % replace, title)
             return title, "", count > 0
         except Exception as err:
-            logger.warn(f"自定义识别词正则替换失败：{str(err)} - 标题：{title}，被替换词：{replaced}，替换词：{replace}")
+            logger.warning(f"自定义识别词正则替换失败：{str(err)} - 标题：{title}，被替换词：{replaced}，替换词：{replace}")
             return title, str(err), False
 
     @staticmethod
@@ -210,5 +210,5 @@ class WordsMatcher(metaclass=Singleton):
                 title = episode_offset_re.sub(r'%s' % episode_num[1], title)
             return title, "", True
         except Exception as err:
-            logger.warn(f"自定义识别词集数偏移失败：{str(err)} - 标题：{title}，前定位词：{front}，后定位词：{back}，偏移量：{offset}")
+            logger.warning(f"自定义识别词集数偏移失败：{str(err)} - 标题：{title}，前定位词：{front}，后定位词：{back}，偏移量：{offset}")
             return title, str(err), False

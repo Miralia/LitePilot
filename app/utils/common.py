@@ -28,7 +28,7 @@ def retry(ExceptionToCheck: Any,
                 except ExceptionToCheck as e:
                     msg = f"{str(e)}, {mdelay} 秒后重试 ..."
                     if logger:
-                        logger.warn(msg)
+                        logger.warning(msg)
                     else:
                         print(msg)
                     time.sleep(mdelay)
@@ -46,7 +46,7 @@ def retry(ExceptionToCheck: Any,
                 except ExceptionToCheck as e:
                     msg = f"{str(e)}, {mdelay} 秒后重试 ..."
                     if logger:
-                        logger.warn(msg)
+                        logger.warning(msg)
                     else:
                         print(msg)
                     await asyncio.sleep(mdelay)

@@ -578,7 +578,7 @@ class MediaServerDelChain(ChainBase):
             return
         # 媒体服务器已删除，但文件仍在（如重新整理），不做处理
         if Path(media_path).exists():
-            logger.warn(f"路径 {media_path} 仍然存在，跳过同步删除")
+            logger.warning(f"路径 {media_path} 仍然存在，跳过同步删除")
             return
 
         msg, histories = self._query_history(
@@ -590,7 +590,7 @@ class MediaServerDelChain(ChainBase):
             episode_num=episode_num,
         )
         if not histories:
-            logger.warn(f"{msg} 未查询到可删除的整理记录，跳过同步删除")
+            logger.warning(f"{msg} 未查询到可删除的整理记录，跳过同步删除")
             return
 
         conf = sync_del_by_media_server_conf()

@@ -154,13 +154,13 @@ class Telegram:
                 if self._should_process_message(message):
                     payload = self._serialize_update_payload(message)
                     if not payload:
-                        logger.warn("Telegram消息序列化失败，跳过转发")
+                        logger.warning("Telegram消息序列化失败，跳过转发")
                         return
                     response = RequestUtils(timeout=15).post_res(
                         self._ds_url, json=payload
                     )
                     if not response or response.status_code >= 400:
-                        logger.warn("Telegram消息转发失败")
+                        logger.warning("Telegram消息转发失败")
 
             @_bot.callback_query_handler(func=lambda call: True)
             def callback_query(call):
@@ -204,7 +204,7 @@ class Telegram:
                         self._ds_url, json=callback_json
                     )
                     if not response or response.status_code >= 400:
-                        logger.warn("Telegram按钮回调转发失败")
+                        logger.warning("Telegram按钮回调转发失败")
 
                 except Exception as err:
                     logger.error(f"处理按钮回调失败：{str(err)}")
@@ -264,7 +264,7 @@ class Telegram:
                     len(resp.content),
                 )
                 return resp.content
-            logger.warn(
+            logger.warning(
                 "Telegram文件下载失败: file_id=%s, file_path=%s, file_url=%s, proxy_enabled=%s",
                 file_id,
                 getattr(file_info, "file_path", None),
@@ -665,7 +665,7 @@ class Telegram:
         # Determine target chat_id with improved logic using user mapping
         chat_id = self._determine_target_chat_id(userid, original_chat_id)
         if not title and not text:
-            logger.warn("标题和内容不能同时为空")
+            logger.warning("标题和内容不能同时为空")
             self._stop_typing_if_needed(chat_id, stop_typing)
             return {"success": False}
 
@@ -1249,7 +1249,7 @@ class Telegram:
             return None
         image = ImageHelper().fetch_image(image_url)
         if not image:
-            logger.warn(f"图片获取失败: {image_url}，仅发送文本消息")
+            logger.warning(f"图片获取失败: {image_url}，仅发送文本消息")
         return image
 
     @retry(RetryException, logger=logger)

@@ -185,7 +185,7 @@ class RedisHelper(ConfigReloadMixin, metaclass=Singleton):
             parts = redis_key.split(":key:")
             return unquote(parts[-1])
         except Exception as e:
-            logger.warn(f"Failed to parse redis key: {redis_key}, error: {e}")
+            logger.warning(f"Failed to parse redis key: {redis_key}, error: {e}")
             return redis_key
 
     def set(self, key: str, value: Any, ttl: Optional[int] = None,
@@ -478,7 +478,7 @@ class AsyncRedisHelper(ConfigReloadMixin, metaclass=Singleton):
             parts = redis_key.split(":key:")
             return unquote(parts[-1])
         except Exception as e:
-            logger.warn(f"Failed to parse redis key: {redis_key}, error: {e}")
+            logger.warning(f"Failed to parse redis key: {redis_key}, error: {e}")
             return redis_key
 
     async def set(self, key: str, value: Any, ttl: Optional[int] = None,

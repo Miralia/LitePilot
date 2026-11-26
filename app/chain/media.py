@@ -192,7 +192,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         try:
             path.unlink()
         except OSError as err:
-            logger.warn(f"临时文件清理失败：{path} - {err}")
+            logger.warning(f"临时文件清理失败：{path} - {err}")
 
     @staticmethod
     def _should_scrape(
@@ -265,7 +265,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             if item:
                 logger.info(f"已保存文件：{item.path}")
             else:
-                logger.warn(f"文件保存失败：{path}")
+                logger.warning(f"文件保存失败：{path}")
         finally:
             self._cleanup_temp_file(tmp_file_path)
 
@@ -309,7 +309,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                         if item:
                             logger.info(f"已保存图片：{item.path}")
                         else:
-                            logger.warn(f"图片保存失败：{path}")
+                            logger.warning(f"图片保存失败：{path}")
                     finally:
                         self._cleanup_temp_file(tmp_file_path)
                 else:
@@ -462,7 +462,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             current_fileitem
         )
         if not season_parent_item:
-            logger.warn(f"无法获取季目录 {current_fileitem.path} 的父目录项，跳过根目录季图片")
+            logger.warning(f"无法获取季目录 {current_fileitem.path} 的父目录项，跳过根目录季图片")
             return targets
 
         season_root_path = Path(current_fileitem.path).with_name(filename_hint)
@@ -592,7 +592,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             obtain_images=obtain_images,
         )
         if not mediainfo:
-            logger.warn(f"{metainfo.title} 未识别到媒体信息")
+            logger.warning(f"{metainfo.title} 未识别到媒体信息")
         return mediainfo
 
     @staticmethod
@@ -682,7 +682,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         tmdb_meta = self._build_tmdb_supplement_meta(mediainfo, metainfo)
         tmdb_module = self.modulemanager.get_running_module("TheMovieDbModule")
         if not tmdb_module:
-            logger.warn("TMDB 模块未启用，无法补充 TMDB 辅助信息")
+            logger.warning("TMDB 模块未启用，无法补充 TMDB 辅助信息")
             return mediainfo
         try:
             tmdb_media = tmdb_module.recognize_media(
@@ -695,10 +695,10 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 cache=True,
             )
         except Exception as err:
-            logger.warn(f"{mediainfo.title_year} 补充 TMDB 辅助信息失败：{err}")
+            logger.warning(f"{mediainfo.title_year} 补充 TMDB 辅助信息失败：{err}")
             return mediainfo
         if not tmdb_media:
-            logger.warn(f"{mediainfo.title_year} 未匹配到 TMDB 辅助信息")
+            logger.warning(f"{mediainfo.title_year} 未匹配到 TMDB 辅助信息")
             return mediainfo
         return self._merge_tmdb_auxiliary(mediainfo, tmdb_media)
 
@@ -784,7 +784,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             obtain_images=obtain_images,
         )
         if not mediainfo:
-            logger.warn(f"{path} 未识别到媒体信息")
+            logger.warning(f"{path} 未识别到媒体信息")
             return Context(meta_info=file_meta)
         # 返回上下文
         return Context(meta_info=file_meta, media_info=mediainfo)
@@ -820,7 +820,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         logger.info(f"开始搜索媒体信息：{meta.name}")
         medias: Optional[List[MediaInfo]] = self.search_medias(meta=meta, source=source)
         if not medias:
-            logger.warn(f"{meta.name} 没有找到对应的媒体信息！")
+            logger.warning(f"{meta.name} 没有找到对应的媒体信息！")
             return meta, []
         logger.info(f"{content} 搜索到 {len(medias)} 条相关媒体信息")
         # 识别的元数据，媒体信息列表
@@ -852,7 +852,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         with scraping_lock:
             # 检查文件项是否存在
             if not self.storagechain.get_item(fileitem):
-                logger.warn(f"文件项不存在：{fileitem.path}")
+                logger.warning(f"文件项不存在：{fileitem.path}")
                 return
             # 检查是否为目录
             if fileitem.type == "file":
@@ -907,7 +907,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                                 overwrite=overwrite,
                             )
                         else:
-                            logger.warn(f"无法获取目录项：{sub_dir}")
+                            logger.warning(f"无法获取目录项：{sub_dir}")
 
                     # 3. 刮削每个文件
                     logger.info(f"开始刮削 {len(file_list)} 个文件")
@@ -923,7 +923,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                                 overwrite=overwrite,
                             )
                         else:
-                            logger.warn(f"无法获取文件项：{sub_file_path}")
+                            logger.warning(f"无法获取文件项：{sub_file_path}")
                 else:
                     # 执行全量刮削
                     logger.info(f"开始刮削目录 {fileitem.path} ...")
@@ -987,7 +987,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             if nfo_content:
                 self._save_file(fileitem=base_item, path=nfo_path, content=nfo_content)
             else:
-                logger.warn(f"{nfo_path.name} NFO 文件生成失败！")
+                logger.warning(f"{nfo_path.name} NFO 文件生成失败！")
 
     def _scrape_images_generic(
             self,
@@ -1132,7 +1132,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         if not mediainfo:
             mediainfo = self.recognize_by_meta(meta)
         if not mediainfo:
-            logger.warn(f"{filepath} 无法识别文件媒体信息！")
+            logger.warning(f"{filepath} 无法识别文件媒体信息！")
             return
 
         logger.info(f"开始刮削：{filepath} ...")
@@ -1291,7 +1291,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         # 重新识别季集信息
         file_meta = MetaInfoPath(filepath)
         if not file_meta.begin_episode:
-            logger.warn(f"{filepath.name} 无法识别文件集数！")
+            logger.warning(f"{filepath.name} 无法识别文件集数！")
             return
 
         file_mediainfo = self.recognize_media(
@@ -1300,7 +1300,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             episode_group=mediainfo.episode_group,
         )
         if not file_mediainfo:
-            logger.warn(f"{filepath.name} 无法识别文件媒体信息！")
+            logger.warning(f"{filepath.name} 无法识别文件媒体信息！")
             return
 
         # 处理 NFO
@@ -1430,7 +1430,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 overwrite=overwrite,
             )
         else:
-            logger.warn("无法识别元数据，跳过")
+            logger.warning("无法识别元数据，跳过")
 
     @staticmethod
     async def async_select_recognize_source(
@@ -1472,7 +1472,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             obtain_images=obtain_images,
         )
         if not mediainfo:
-            logger.warn(f"{metainfo.title} 未识别到媒体信息")
+            logger.warning(f"{metainfo.title} 未识别到媒体信息")
         return mediainfo
 
     async def _async_recognize_with_fallback_by_meta(
@@ -1546,7 +1546,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             obtain_images=obtain_images,
         )
         if not mediainfo:
-            logger.warn(f"{path} 未识别到媒体信息")
+            logger.warning(f"{path} 未识别到媒体信息")
             return Context(meta_info=file_meta)
         # 返回上下文
         return Context(meta_info=file_meta, media_info=mediainfo)
@@ -1584,7 +1584,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             meta=meta, source=source
         )
         if not medias:
-            logger.warn(f"{meta.name} 没有找到对应的媒体信息！")
+            logger.warning(f"{meta.name} 没有找到对应的媒体信息！")
             return meta, []
         logger.info(f"{content} 搜索到 {len(medias)} 条相关媒体信息")
         # 识别的元数据，媒体信息列表

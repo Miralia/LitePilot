@@ -320,7 +320,7 @@ class TransHandler:
                             )
                             return result
 
-                        logger.warn(f"文件 {fileitem.path} 整理失败：未识别到文件集数")
+                        logger.warning(f"文件 {fileitem.path} 整理失败：未识别到文件集数")
                         self.__update_result(
                             result=result,
                             success=False,
@@ -432,7 +432,7 @@ class TransHandler:
                         target_item = target_oper.get_item_strict(new_file)
                     except StorageQueryError as query_err:
                         errmsg = f"无法确认目标文件状态，已跳过整理以避免误覆盖：{new_file} - {query_err}"
-                        logger.warn(errmsg)
+                        logger.warning(errmsg)
                         self.__update_result(
                             result=result,
                             success=False,
@@ -612,7 +612,7 @@ class TransHandler:
             target_item = target_oper.get_item(_path)
             if target_item:
                 return target_item
-            logger.warn(
+            logger.warning(
                 f"目标文件【{target_storage}】{_path} 元数据暂不可见，使用目标路径构造整理结果"
             )
             return __build_remote_targetitem(_source_item, _path)
@@ -691,7 +691,7 @@ class TransHandler:
         elif fileitem.storage != "local" and target_storage == "local":
             # 远程存储到本地
             if target_file.exists():
-                logger.warn(f"文件已存在：{target_file}")
+                logger.warning(f"文件已存在：{target_file}")
                 return __get_targetitem(target_file), ""
             # 远程存储到本地
             if transfer_type in ["copy", "move"]:
@@ -960,7 +960,7 @@ class TransHandler:
             target_file.exists() or target_file.is_symlink()
         ):
             if not over_flag:
-                logger.warn(f"文件已存在：{target_file}")
+                logger.warning(f"文件已存在：{target_file}")
                 return None, f"{target_file} 已存在"
             else:
                 logger.info(f"正在删除已存在的文件：{target_file}")
@@ -969,7 +969,7 @@ class TransHandler:
             exists_item = target_oper.get_item(target_file)
             if exists_item:
                 if not over_flag:
-                    logger.warn(f"文件已存在：【{target_storage}】{target_file}")
+                    logger.warning(f"文件已存在：【{target_storage}】{target_file}")
                     return None, f"【{target_storage}】{target_file} 已存在"
                 else:
                     logger.info(
@@ -1075,11 +1075,11 @@ class TransHandler:
         season = meta.season
         episode = meta.episode
         part = meta.part
-        logger.warn(f"正在删除目标目录中其它版本的文件：{path.parent}")
+        logger.warning(f"正在删除目标目录中其它版本的文件：{path.parent}")
         # 获取父目录
         parent_item = storage_oper.get_item(path.parent)
         if not parent_item:
-            logger.warn(f"目录 {path.parent} 不存在")
+            logger.warning(f"目录 {path.parent} 不存在")
             return False
         # 检索媒体文件
         media_files = storage_oper.list(parent_item)

@@ -50,7 +50,7 @@ class RemotePoller:
         """
         count = self._failure_counts.get(storage, 0) + 1
         self._failure_counts[storage] = count
-        logger.warn(f"远程目录监控异常（连续第 {count} 次）: {storage} - {reason}")
+        logger.warning(f"远程目录监控异常（连续第 {count} 次）: {storage} - {reason}")
         if count == self.FAILURE_ALERT_THRESHOLD and self._alert_cb:
             self._alert_cb(storage,
                            f"远程目录监控连续 {count} 次异常: {storage}\n原因: {reason}\n将继续按周期重试")
@@ -97,7 +97,7 @@ class RemotePoller:
 
                     if snapshot is None:
                         failed_paths.append(str(mon_path))
-                        logger.warn(f"获取 {storage}:{mon_path} 快照失败")
+                        logger.warning(f"获取 {storage}:{mon_path} 快照失败")
                         continue
                     new_snapshot.update(snapshot)
                     logger.info(f"{storage}:{mon_path} 快照完成，发现 {len(snapshot)} 个文件")
@@ -193,7 +193,7 @@ class RemotePoller:
             )
 
             if new_snapshot is None:
-                logger.warn(f"获取 {storage}:{mon_path} 快照失败")
+                logger.warning(f"获取 {storage}:{mon_path} 快照失败")
                 return False
 
             file_count = len(new_snapshot)

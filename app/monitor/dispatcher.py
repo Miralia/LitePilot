@@ -133,7 +133,7 @@ class TransferDispatcher:
                 "file_size": file_size,
                 "attempts": 1
             }
-        logger.warn(f"整理历史查询失败，已登记待重试: {key}")
+        logger.warning(f"整理历史查询失败，已登记待重试: {key}")
 
     def _discard_pending(self, storage: str, event_path: Path):
         """

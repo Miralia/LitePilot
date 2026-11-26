@@ -576,7 +576,7 @@ class TmdbApi:
             tmdb_info_movie = self.__get_movie_detail(tmdbid)
             if tmdb_info_tv and tmdb_info_movie:
                 tmdb_info = None
-                logger.warn(f"无法判断tmdb_id:{tmdbid} 是电影还是电视剧")
+                logger.warning(f"无法判断tmdb_id:{tmdbid} 是电影还是电视剧")
             elif tmdb_info_tv:
                 tmdb_info = tmdb_info_tv
                 tmdb_info['media_type'] = MediaType.TV
@@ -585,7 +585,7 @@ class TmdbApi:
                 tmdb_info['media_type'] = MediaType.MOVIE
             else:
                 tmdb_info = None
-                logger.warn(f"tmdb_id:{tmdbid} 未查询到媒体信息")
+                logger.warning(f"tmdb_id:{tmdbid} 未查询到媒体信息")
 
         if tmdb_info:
             # 转换genreid
@@ -1659,7 +1659,7 @@ class TmdbApi:
             tmdb_info_movie = await self.__async_get_movie_detail(tmdbid)
             if tmdb_info_tv and tmdb_info_movie:
                 tmdb_info = None
-                logger.warn(f"无法判断tmdb_id:{tmdbid} 是电影还是电视剧")
+                logger.warning(f"无法判断tmdb_id:{tmdbid} 是电影还是电视剧")
             elif tmdb_info_tv:
                 tmdb_info = tmdb_info_tv
                 tmdb_info['media_type'] = MediaType.TV
@@ -1668,7 +1668,7 @@ class TmdbApi:
                 tmdb_info['media_type'] = MediaType.MOVIE
             else:
                 tmdb_info = None
-                logger.warn(f"tmdb_id:{tmdbid} 未查询到媒体信息")
+                logger.warning(f"tmdb_id:{tmdbid} 未查询到媒体信息")
 
         if tmdb_info:
             # 转换genreid

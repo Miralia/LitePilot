@@ -120,7 +120,7 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
         valid_dirs = []
         for mon_dir in monitor_dirs:
             if not mon_dir.library_path:
-                logger.warn(f"跳过监控配置 {mon_dir.download_path}：未设置媒体库目录")
+                logger.warning(f"跳过监控配置 {mon_dir.download_path}：未设置媒体库目录")
                 continue
             if mon_dir.monitor_type != "monitor":
                 logger.debug(f"跳过监控配置 {mon_dir.download_path}：监控类型为 {mon_dir.monitor_type}")
@@ -131,7 +131,7 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
         for mon_dir in valid_dirs:
             key = f"{mon_dir.storage}_{mon_dir.download_path}"
             if key in deduped:
-                logger.warn(f"监控配置重复，忽略后一条: {mon_dir.download_path}"
+                logger.warning(f"监控配置重复，忽略后一条: {mon_dir.download_path}"
                             f"（媒体库 {mon_dir.library_path}）")
                 continue
             deduped[key] = mon_dir
@@ -150,7 +150,7 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
             mon_path = Path(mon_dir.download_path)
             target_path = Path(mon_dir.library_path)
             if target_path.is_relative_to(mon_path):
-                logger.warn(f"{target_path} 是监控目录 {mon_path} 的子目录，无法监控！")
+                logger.warning(f"{target_path} 是监控目录 {mon_path} 的子目录，无法监控！")
                 messagehelper.put(f"{target_path} 是监控目录 {mon_path} 的子目录，无法监控", title="目录监控")
                 continue
 
@@ -211,7 +211,7 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
             summary += f"、{local_failed} 个失败（将自动退避重试）"
         summary += f"，远程监控 {remote_count} 个"
         if local_failed:
-            logger.warn(summary)
+            logger.warning(summary)
         else:
             logger.info(summary)
 
@@ -237,7 +237,7 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
             if not use_polling and limits:
                 if limits['warnings']:
                     for warning in limits['warnings']:
-                        logger.warn(f"系统限制警告: {warning}")
+                        logger.warning(f"系统限制警告: {warning}")
                 if limits['max_user_watches'] > 0 and file_count is not None:
                     usage_percent = (file_count / limits['max_user_watches']) * 100
                     logger.info(
@@ -418,7 +418,7 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
         :param storage: 存储名称
         :param message: 告警内容
         """
-        logger.warn(f"[{storage}] {message}")
+        logger.warning(f"[{storage}] {message}")
         MessageHelper().put(message, title="目录监控")
 
     def __clear_alert(self, mon_path: Path, message: str):

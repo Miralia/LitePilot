@@ -108,7 +108,7 @@ class TheMovieDbModule(_ModuleBase):
             return False
 
         if meta and not meta.name and not tmdbid:
-            logger.warn("识别媒体信息时未提供元数据名称")
+            logger.warning("识别媒体信息时未提供元数据名称")
             return False
 
         return True
@@ -191,7 +191,7 @@ class TheMovieDbModule(_ModuleBase):
             result = self._disambiguate_by_meta(info_tv, info_movie, meta)
             if result:
                 return result
-            logger.warn(f"无法判断tmdb_id:{tmdbid} 是电影还是电视剧")
+            logger.warning(f"无法判断tmdb_id:{tmdbid} 是电影还是电视剧")
             return None
         return info_tv or info_movie or None
 
@@ -210,7 +210,7 @@ class TheMovieDbModule(_ModuleBase):
             result = self._disambiguate_by_meta(info_tv, info_movie, meta)
             if result:
                 return result
-            logger.warn(f"无法判断tmdb_id:{tmdbid} 是电影还是电视剧")
+            logger.warning(f"无法判断tmdb_id:{tmdbid} 是电影还是电视剧")
             return None
         return info_tv or info_movie or None
 
@@ -499,7 +499,7 @@ class TheMovieDbModule(_ModuleBase):
                                               tmdbid=info.get("id"))
             elif not info:
                 if tmdbid:
-                    logger.warn(f"tmdb_id:{tmdbid} 无法确定媒体类型，识别失败")
+                    logger.warning(f"tmdb_id:{tmdbid} 无法确定媒体类型，识别失败")
                 else:
                     logger.error("识别媒体信息时未提供元数据或唯一且有效的tmdbid")
                 return None
@@ -585,7 +585,7 @@ class TheMovieDbModule(_ModuleBase):
                                                           tmdbid=info.get("id"))
             elif not info:
                 if tmdbid:
-                    logger.warn(f"tmdb_id:{tmdbid} 无法确定媒体类型，识别失败")
+                    logger.warning(f"tmdb_id:{tmdbid} 无法确定媒体类型，识别失败")
                 else:
                     logger.error("识别媒体信息时未提供元数据或唯一且有效的tmdbid")
                 return None

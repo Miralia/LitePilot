@@ -167,7 +167,7 @@ class LocalDirectoryWatcher:
                 # 崩溃堆栈按 ERROR 级输出，生产环境 LOG_LEVEL=ERROR 时也能落盘
                 logger.error(f"本地目录监控异常堆栈: {self._watch_path}\n{traceback.format_exc()}")
                 if force_polling is not True:
-                    logger.warn(f"快速模式监控 {self._watch_path} 失败，将自动切换到兼容模式: {err}")
+                    logger.warning(f"快速模式监控 {self._watch_path} 失败，将自动切换到兼容模式: {err}")
                     force_polling = True
                     continue
                 if time.monotonic() - started_at >= self.HEALTHY_UPTIME:

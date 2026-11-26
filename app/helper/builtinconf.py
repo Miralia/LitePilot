@@ -50,9 +50,9 @@ def load_conf(
         try:
             return model(**raw)
         except ValidationError as err:
-            logger.warn(f"配置 {key.value} 校验失败，使用默认值：{err}")
+            logger.warning(f"配置 {key.value} 校验失败，使用默认值：{err}")
             return model()
-    logger.warn(f"配置 {key.value} 类型异常（{type(raw).__name__}），使用默认值")
+    logger.warning(f"配置 {key.value} 类型异常（{type(raw).__name__}），使用默认值")
     return model()
 
 

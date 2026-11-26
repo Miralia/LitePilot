@@ -297,7 +297,7 @@ class EpisodeFormatRuleHelper:
             if not episode_format:
                 continue
             if not self._validate_template(episode_format, matched_samples):
-                logger.warn(f"集数定位规则 {rule.name} 模板校验失败")
+                logger.warning(f"集数定位规则 {rule.name} 模板校验失败")
                 continue
             compatibility_samples = self._build_detected_samples(
                 self._filter_by_extension_and_size(sample_files),
@@ -306,7 +306,7 @@ class EpisodeFormatRuleHelper:
                 episode_format,
                 compatibility_samples,
             ):
-                logger.warn(f"集数定位规则 {rule.name} 附加文件兼容性校验失败")
+                logger.warning(f"集数定位规则 {rule.name} 附加文件兼容性校验失败")
                 continue
 
             logger.info(
@@ -372,7 +372,7 @@ class EpisodeFormatRuleHelper:
                 used_native_fallback or native_verified
             ):
                 native_conflict_count += 1
-                logger.warn(
+                logger.warning(
                     "自动推荐样本与原生集数识别冲突，跳过："
                     f"{file_name} - auto={normalized_episode}, native={native_episode}"
                 )
@@ -422,7 +422,7 @@ class EpisodeFormatRuleHelper:
                 and valid_media_count / candidate_media_count
                 < self._MIN_AUTO_VALID_MEDIA_COVERAGE
         ):
-            logger.warn(
+            logger.warning(
                 "有效正片样本覆盖率不足，放弃智能生成："
                 f"valid_media={valid_media_count}, candidate_media={candidate_media_count}"
             )
@@ -436,7 +436,7 @@ class EpisodeFormatRuleHelper:
             f"{[(sample.file_name, sample.expected_episode, sample.ep_span) for sample in majority_samples]}"
         )
         if len(valid_samples) > 1 and not clear_majority:
-            logger.warn("自动生成样本未形成明确多数派，放弃推荐")
+            logger.warning("自动生成样本未形成明确多数派，放弃推荐")
             return False, "样本命名差异过大，建议补充集数定位规则", None
 
         majority_names = [sample.file_name for sample in majority_samples]
@@ -463,7 +463,7 @@ class EpisodeFormatRuleHelper:
             ):
                 episode_format = diff_result
             else:
-                logger.warn("多文件对比未通过模板校验，自动生成失败")
+                logger.warning("多文件对比未通过模板校验，自动生成失败")
                 return False, "无匹配自定义定位规则，智能生成失败", None
 
         sample_file = majority_names[0]
@@ -757,7 +757,7 @@ class EpisodeFormatRuleHelper:
         try:
             meta = MetaInfoPath(Path(source_path))
         except Exception as err:
-            logger.warn(f"原生集数识别失败：{source_path} - {err}")
+            logger.warning(f"原生集数识别失败：{source_path} - {err}")
             return None
         if meta.begin_episode is None:
             return None
@@ -831,7 +831,7 @@ class EpisodeFormatRuleHelper:
             episode_number = result.get("episode_number")
             anitopy_episode = episode_number
         except Exception as err:
-            logger.warn(f"anitopy 解析失败：{file_name} - {err}")
+            logger.warning(f"anitopy 解析失败：{file_name} - {err}")
         fallback_episode = self._extract_episode_fallback(file_name)
         if not episode_number:
             episode_number = fallback_episode
@@ -1300,7 +1300,7 @@ class EpisodeFormatRuleHelper:
                 EpisodeFormatRuleHelper._normalize_pattern(rule.pattern)
             )
         except Exception as err:
-            logger.warn(f"集数定位规则 {rule.name} 编译失败：{err}")
+            logger.warning(f"集数定位规则 {rule.name} 编译失败：{err}")
             return []
 
         matched_samples: List[Tuple[FileItem, Match[str]]] = []
@@ -1398,7 +1398,7 @@ class EpisodeFormatRuleHelper:
         try:
             return FormatParser(eformat=episode_format)
         except Exception as err:
-            logger.warn(f"{context} 创建模板解析器失败：{episode_format} - {err}")
+            logger.warning(f"{context} 创建模板解析器失败：{episode_format} - {err}")
             return None
 
     @staticmethod
@@ -1410,7 +1410,7 @@ class EpisodeFormatRuleHelper:
         try:
             return parser.match(file_name)
         except Exception as err:
-            logger.warn(f"{context} 模板匹配失败：{file_name} - {err}")
+            logger.warning(f"{context} 模板匹配失败：{file_name} - {err}")
             return False
 
     @classmethod
@@ -1426,7 +1426,7 @@ class EpisodeFormatRuleHelper:
                 file_meta=cls._EMPTY_META,
             )
         except Exception as err:
-            logger.warn(f"{context} 集数拆分失败：{file_name} - {err}")
+            logger.warning(f"{context} 集数拆分失败：{file_name} - {err}")
             return None, None, None
 
     @staticmethod
@@ -1438,7 +1438,7 @@ class EpisodeFormatRuleHelper:
         try:
             return _match_template(template, file_name)
         except Exception as err:
-            logger.warn(f"{context} parse 模板解析失败：{template} <- {file_name} - {err}")
+            logger.warning(f"{context} parse 模板解析失败：{template} <- {file_name} - {err}")
             return None
 
     @classmethod

@@ -491,7 +491,7 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
             if not userid and targets is not None:
                 userid = targets.get("telegram_userid")
                 if not userid:
-                    logger.warn(f"用户没有指定 Telegram用户ID，消息无法发送")
+                    logger.warning(f"用户没有指定 Telegram用户ID，消息无法发送")
                     return
             client: Telegram = self.get_instance(conf.name)
             if client:
@@ -678,7 +678,7 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
             if not userid and targets is not None:
                 userid = targets.get("telegram_userid")
                 if not userid:
-                    logger.warn("用户没有指定 Telegram用户ID，消息无法发送")
+                    logger.warning("用户没有指定 Telegram用户ID，消息无法发送")
                     return None
             client: Telegram = self.get_instance(conf.name)
             if client:

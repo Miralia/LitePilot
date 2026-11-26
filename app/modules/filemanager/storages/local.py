@@ -105,7 +105,7 @@ class LocalStorage(StorageBase):
         # 遍历目录
         path_obj = Path(path)
         if not path_obj.exists():
-            logger.warn(f"【本地】目录不存在：{path}")
+            logger.warning(f"【本地】目录不存在：{path}")
             return []
 
         # 如果是文件
@@ -146,7 +146,7 @@ class LocalStorage(StorageBase):
             try:
                 created.chmod(CREATED_DIR_MODE)
             except OSError as err:
-                logger.warn(f"【本地】目录 {created} 权限修正失败：{err}")
+                logger.warning(f"【本地】目录 {created} 权限修正失败：{err}")
 
     def create_folder(self, fileitem: schemas.FileItem, name: str) -> Optional[schemas.FileItem]:
         """

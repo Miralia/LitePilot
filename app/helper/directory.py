@@ -193,7 +193,7 @@ class DirectoryHelper:
                 break
         else:
             # 假定第一层目录是媒体根目录
-            logger.warn(f"重命名格式 {rename_format} 缺少标题目录")
+            logger.warning(f"重命名格式 {rename_format} 缺少标题目录")
         if rename_format_level > len(rename_path.parents):
             # 通常因为路径以/结尾，被Path规范化删除了
             logger.error(f"路径 {rename_path} 不匹配重命名格式 {rename_format}")
@@ -291,7 +291,7 @@ def _normalize_download_root(dir_info: schemas.TransferDirectoryConf) -> Optiona
         path_style, root_path = _normalize_download_path(dir_info.download_path, storage)
         return storage, path_style, root_path
     except ValueError as err:
-        logger.warn(f"跳过无效下载目录配置：{str(err)}")
+        logger.warning(f"跳过无效下载目录配置：{str(err)}")
         return None
 
 

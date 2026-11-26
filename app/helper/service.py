@@ -31,7 +31,7 @@ class ServiceConfigHelper:
         configs = []
         for conf in config_data:
             if not isinstance(conf, dict):
-                logger.warn(f"{config_key.value} 配置格式不正确，已跳过：{conf}")
+                logger.warning(f"{config_key.value} 配置格式不正确，已跳过：{conf}")
                 continue
             try:
                 # 直接使用 conf_type 来实例化配置对象

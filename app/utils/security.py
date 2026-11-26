@@ -914,7 +914,7 @@ def _log_image_proxy_block_summary(summary: CoalesceSummary) -> None:
     host, reason = summary.key
     payload = summary.first_payload or {}
     sample_ips = ",".join(payload.get("ips") or [])
-    logger.warn(
+    logger.warning(
         "Blocked unsafe image URL (aggregated): "
         f"host={host or ''}, reason={reason}, "
         f"count={summary.count}, window={summary.window_seconds:g}s, "
@@ -962,7 +962,7 @@ async def _emit_image_proxy_block_warning(
     payload = {"url": url, "ips": list(diagnosis.ips)}
     decision = await _image_proxy_block_log_coalescer.record(key=key, payload=payload)
     if decision is CoalesceDecision.EMIT:
-        logger.warn(
+        logger.warning(
             _format_image_proxy_block_warning(
                 url=url,
                 reason=reason_label,
