@@ -449,6 +449,7 @@ def test_build_frontend_script_prefers_repository_node_runtime() -> None:
     ).read_text(encoding="utf-8")
 
     assert 'LOCAL_NODE_BIN_DIR="$PROJECT_ROOT/.runtime/node/bin"' in script
+    assert 'export PATH="$LOCAL_NODE_BIN_DIR:$PATH"' in script
     local_corepack_branch = 'if [[ -x "$LOCAL_NODE_BIN_DIR/node" && -x "$LOCAL_NODE_BIN_DIR/corepack" ]]; then'
     assert local_corepack_branch in script
     assert script.index(local_corepack_branch) < script.index('if command -v yarn')

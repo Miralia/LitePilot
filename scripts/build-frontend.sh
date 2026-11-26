@@ -13,6 +13,9 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WEB_DIR="$PROJECT_ROOT/web"
 DIST_DIR="$PROJECT_ROOT/public"
 LOCAL_NODE_BIN_DIR="$PROJECT_ROOT/.runtime/node/bin"
+if [[ -x "$LOCAL_NODE_BIN_DIR/node" ]]; then
+  export PATH="$LOCAL_NODE_BIN_DIR:$PATH"
+fi
 
 skip_install=0
 frozen=1
