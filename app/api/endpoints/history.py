@@ -1,7 +1,7 @@
 import asyncio
 import time
 from pathlib import Path
-from typing import List, Any, Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,7 @@ from app.core.event import eventmanager
 from app.core.security import verify_token
 from app.db import get_async_db, get_db
 from app.db.models import User
-from app.db.models.downloadhistory import DownloadHistory, DownloadFiles
+from app.db.models.downloadhistory import DownloadFiles
 from app.db.models.transferhistory import TransferHistory
 from app.db.user_oper import (
     get_current_active_manage_user,
@@ -34,40 +34,6 @@ def normalize_history_ids(history_ids: list[int]) -> list[int]:
         if history_id not in normalized_ids:
             normalized_ids.append(history_id)
     return normalized_ids
-
-
-
-
-
-
-@router.get(
-    "/download",
-    summary="查询下载历史记录",
-    response_model=List[schemas.DownloadHistory],
-)
-async def download_history(
-    page: Optional[int] = 1,
-    count: Optional[int] = 30,
-    db: AsyncSession = Depends(get_async_db),
-    _: schemas.TokenPayload = Depends(verify_token),
-) -> Any:
-    """
-    按下载时间倒序查询下载历史记录
-    """
-    return await DownloadHistory.async_list_by_page(db, page, count)
-
-
-@router.delete("/download", summary="删除下载历史记录", response_model=schemas.Response)
-async def delete_download_history(
-    history_in: schemas.DownloadHistory,
-    db: AsyncSession = Depends(get_async_db),
-    _: schemas.TokenPayload = Depends(verify_token),
-) -> Any:
-    """
-    删除下载历史记录
-    """
-    await DownloadHistory.async_delete(db, history_in.id)
-    return schemas.Response(success=True)
 
 
 def _glob_to_like(pattern: str) -> str:

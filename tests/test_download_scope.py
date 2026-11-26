@@ -59,3 +59,51 @@ def test_removed_downloading_page_enrichment_stays_removed():
     assert not hasattr(schemas, "DownloadingTorrent")
     for field in ("site_name", "media", "userid", "username"):
         assert field not in schemas.DownloaderTorrent.model_fields
+
+
+def test_download_history_management_surface_is_removed():
+    """下载历史只服务整理与删种联动，不保留无入口的管理 API 和列表搜索查询层。"""
+    from app import schemas
+    from app.api.endpoints import history as history_endpoint
+    from app.db.downloadhistory_oper import DownloadHistoryOper
+    from app.db.models.downloadhistory import DownloadHistory
+
+    routes = {(route.path, tuple(sorted(route.methods or ()))) for route in history_endpoint.router.routes}
+    assert ("/download", ("GET",)) not in routes
+    assert ("/download", ("DELETE",)) not in routes
+    assert not hasattr(history_endpoint, "download_history")
+    assert not hasattr(history_endpoint, "delete_download_history")
+    assert "download_history" in schemas.TransferTask.model_fields
+
+    for method in (
+        "get_by_hashes",
+        "get_by_mediaid",
+        "list_by_page",
+        "async_list_by_page",
+        "async_list_by_title",
+        "async_count",
+        "async_count_by_title",
+        "get_last_by",
+        "list_by_user_date",
+        "list_by_date",
+        "list_by_type",
+    ):
+        assert not hasattr(DownloadHistory, method)
+
+    for method in (
+        "get_by_hashes",
+        "get_by_mediaid",
+        "truncate_files",
+        "get_files_by_fullpath",
+        "get_hash_by_fullpath",
+        "list_by_page",
+        "async_delete_history",
+        "truncate",
+        "get_last_by",
+        "list_by_user_date",
+        "list_by_date",
+        "list_by_type",
+        "delete_history",
+        "delete_downloadfile",
+    ):
+        assert not hasattr(DownloadHistoryOper, method)
