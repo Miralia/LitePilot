@@ -202,11 +202,6 @@
       "count": 1
     }
   },
-  "src/composables/useStateRestore.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "src/layouts/default/components/Footer.vue": {
     "@typescript-eslint/no-explicit-any": {
       "count": 6
@@ -230,11 +225,6 @@
   },
   "src/pages/setting.vue": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/plugins/stateRestore.ts": {
-    "@typescript-eslint/no-explicit-any": {
       "count": 1
     }
   },
