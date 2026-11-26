@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import * as apiConstants from '@/api/constants'
 import { storageAttributes, storageRemoteDict } from '@/api/constants'
 
 describe('storage constants boundary', () => {
@@ -15,4 +16,8 @@ describe('storage constants boundary', () => {
       expect(storageAttributes.some(item => item.type === type)).toBe(false)
     }
   })
+})
+it('does not expose notification option internals as public API', () => {
+  expect('notificationSwitchOptions' in apiConstants).toBe(false)
+  expect(apiConstants.notificationSwitchDict['整理入库']).toBeTruthy()
 })

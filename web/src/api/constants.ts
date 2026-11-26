@@ -66,11 +66,8 @@ export const transferTypeOptions = [
   { title: i18n.global.t('transferType.softlink'), value: 'softlink' },
 ]
 
-// 分辨率选择框数据
-// 媒体类型选项
-// 媒体类型字典
 // 通知开关选项
-export const notificationSwitchOptions = [
+const notificationSwitchOptions = [
   {
     title: i18n.global.t('notificationSwitch.resourceDownload'),
     value: '资源下载',
@@ -101,6 +98,3 @@ export const notificationSwitchDict = notificationSwitchOptions.reduce(
   },
   {} as Record<string, string>,
 )
-
-// 操作步骤选项
-// 操作步骤字典
