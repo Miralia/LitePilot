@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -1132,13 +1133,19 @@ def deploy(service_dir: Path, nginx_dir: Path, prefix: str, user: str,
     unit_path.write_text(unit_text, encoding="utf-8")
     site_path.parent.mkdir(parents=True, exist_ok=True)
     site_path.write_text(nginx_text, encoding="utf-8")
+    install_env_path = root / ".moviepilot.env"
+    install_env_path.write_text(
+        f"CONFIG_DIR={shlex.quote(str(config_dir))}\n",
+        encoding="utf-8",
+    )
 
     click.echo(f"已写入 systemd unit：{unit_path}")
     click.echo(f"已写入 nginx 片段：{site_path}")
+    click.echo(f"已写入 CLI 配置目录标记：{install_env_path}")
     click.echo("")
     click.echo("启用步骤：")
     click.echo("  systemctl daemon-reload")
-    click.echo("  systemctl enable --now moviepilot")
+    click.echo("  systemctl enable --now litepilot")
     click.echo("  nginx -t && systemctl reload nginx")
 
 

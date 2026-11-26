@@ -47,7 +47,7 @@ LitePilot 是自建媒体自动化工具，由上游 MoviePilot 精简而来，�
 
 ## Deployment Model
 
-- 后端由 `moviepilot` CLI 管理，systemd 单元 `moviepilot.service` 常驻。
+- 后端由 `moviepilot` CLI 管理，systemd 单元 `litepilot.service` 常驻。
 - 前端构建产物由 nginx 托管，接口经 nginx 反代到后端端口。
 - 配置与数据目录固定在 `/var/lib/moviepilot`，代码目录固定在 `/opt/moviepilot`。
 

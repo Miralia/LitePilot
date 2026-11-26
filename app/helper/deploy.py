@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 # 服务名，同时作为 unit 文件名与日志标识
-SERVICE_NAME = "moviepilot"
+SERVICE_NAME = "litepilot"
 # 默认后端监听端口（与 ConfigModel.PORT 保持一致）
 DEFAULT_BACKEND_PORT = 3001
 

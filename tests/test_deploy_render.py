@@ -67,8 +67,8 @@ def test_render_nginx_site_subpath_prefix_normalizes_slash():
 
 def test_paths_follow_systemd_and_swizzin_layout():
     """落盘路径应遵循 systemd 与 swizzin 的约定位置。"""
-    assert systemd_unit_path() == Path("/etc/systemd/system/moviepilot.service")
-    assert nginx_site_path() == Path("/etc/nginx/apps/moviepilot.conf")
+    assert systemd_unit_path() == Path("/etc/systemd/system/litepilot.service")
+    assert nginx_site_path() == Path("/etc/nginx/apps/litepilot.conf")
     assert nginx_site_path(site_name="demo", apps_dir=Path("/tmp/nginx")) == Path(
         "/tmp/nginx/demo.conf"
     )
