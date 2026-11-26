@@ -82,7 +82,6 @@ export default defineConfig(({ command, mode, isPreview }) => ({
             'favicon.ico',
             'logo.svg',
             'logo.png',
-            'icon*.png',
             'apple-touch-icon*.png',
             'assets/index-*.js',
             'assets/index-*.css',
