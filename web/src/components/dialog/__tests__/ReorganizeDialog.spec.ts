@@ -611,7 +611,7 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
     await waitFor(() => expect(mocks.progressControllers).toHaveLength(1))
     mocks.progressControllers[0].handler(
       new MessageEvent('message', {
-        data: JSON.stringify({ text: 'fallback', text_i18n: '正在写入媒体库', value: 65 }),
+        data: JSON.stringify({ text: '正在写入媒体库', value: 65 }),
       }),
     )
     await waitFor(() => expect(screen.getByTestId('transfer-progress')).toHaveTextContent('正在写入媒体库:65'))

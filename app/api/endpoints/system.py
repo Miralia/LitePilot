@@ -973,7 +973,6 @@ def modulelist(_: schemas.TokenPayload = Depends(verify_token)):
             {
                 "id": module_id,
                 "name": name,
-                "name_key": f"system.modules.{module_id}.name",
             }
         )
     return schemas.Response(success=True, data={"modules": modules})

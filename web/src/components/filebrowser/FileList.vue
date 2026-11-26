@@ -778,7 +778,7 @@ function openScrapeDialog(itemsToScrape: FileItem[]) {
 function handleProgressMessage(event: MessageEvent) {
   const progress = JSON.parse(event.data)
   if (progress) {
-    progressText.value = progress.text_i18n || progress.text
+    progressText.value = progress.text
     progressValue.value = progress.value
     progressDialogController?.updateProps({ text: progressText.value, value: progressValue.value })
   }

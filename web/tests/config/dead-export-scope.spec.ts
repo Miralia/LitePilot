@@ -74,4 +74,17 @@ describe('frontend dead export scope', () => {
       expect(coreNavigator).not.toMatch(pattern)
     }
   })
+
+  it('does not keep unused locale transport shims for SSE or API requests', () => {
+    const api = readFileSync('src/api/index.ts', 'utf-8')
+    const background = readFileSync('src/composables/useBackground.ts', 'utf-8')
+
+    expect(api).not.toContain('X-LitePilot-Locale')
+    expect(api).not.toContain('normalizeLocalizedMessage')
+    expect(background).not.toContain('appendLocaleParam')
+    expect(background).not.toContain('getCurrentLocale')
+
+    const moduleTest = readFileSync('src/views/system/ModuleTestView.vue', 'utf-8')
+    expect(moduleTest).not.toContain('name_key')
+  })
 })

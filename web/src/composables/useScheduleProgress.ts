@@ -22,24 +22,24 @@ export function isScheduleWaiting(schedule: ScheduleInfo) {
   return !isScheduleRunning(schedule) && schedule.status === SCHEDULE_WAITING_STATUS
 }
 
-/** 获取定时服务展示名称，优先使用后端按当前语言生成的文本。 */
+/** 获取定时服务展示名称。 */
 export function getScheduleName(schedule: ScheduleInfo) {
-  return schedule.name_i18n || schedule.name || ''
+  return schedule.name || ''
 }
 
-/** 获取定时服务提供者展示名称，优先使用后端按当前语言生成的文本。 */
+/** 获取定时服务提供者展示名称。 */
 export function getScheduleProvider(schedule: ScheduleInfo) {
-  return schedule.provider_i18n || schedule.provider || ''
+  return schedule.provider || ''
 }
 
-/** 获取定时服务状态展示文本，优先使用后端按当前语言生成的文本。 */
+/** 获取定时服务状态展示文本。 */
 export function getScheduleStatusText(schedule: ScheduleInfo) {
-  return schedule.status_i18n || schedule.status || ''
+  return schedule.status || ''
 }
 
-/** 获取定时服务下次运行展示文本，优先使用后端按当前语言生成的文本。 */
+/** 获取定时服务下次运行展示文本。 */
 export function getScheduleNextRunText(schedule: ScheduleInfo) {
-  return schedule.next_run_i18n || schedule.next_run || ''
+  return schedule.next_run || ''
 }
 
 /** 为定时服务列表提供仅针对运行中任务的实时进度轮询。 */
@@ -93,7 +93,7 @@ export function useScheduleProgress(schedules: Ref<ScheduleInfo[]>, refreshId: s
   function getScheduleProgressText(schedule: ScheduleInfo) {
     const progress = progressById.value[schedule.id]
 
-    return progress?.text_i18n || progress?.text || schedule.progress_text_i18n || schedule.progress_text || ''
+    return progress?.text || schedule.progress_text || ''
   }
 
   useDataRefresh(refreshId, refreshRunningProgress, SCHEDULE_PROGRESS_REFRESH_INTERVAL, true)

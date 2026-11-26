@@ -12,14 +12,11 @@ const theme = useTheme()
 interface ModuleListItem {
   id: string
   name: string
-  name_i18n?: string
-  name_key?: string
 }
 
 interface ModuleTestResponse {
   success: boolean
   message?: string
-  message_i18n?: string
 }
 
 // 定义所有的模块ID、名称列表
@@ -53,7 +50,7 @@ async function getModules() {
         // 初始化模块列表
         modules.value = moduleList.map((module: ModuleListItem, index: number) => ({
           id: module.id,
-          name: module.name_i18n || module.name,
+          name: module.name,
           state: undefined,
           errmsg: '',
           loading: false,
@@ -116,7 +113,7 @@ async function moduleTest(index: number) {
     } else {
       target.state = 'error'
       target.name = `${target.name} - ${t('moduleTest.error')}！`
-      target.errmsg = result.message_i18n || result.message || ''
+      target.errmsg = result.message || ''
     }
   } catch (error) {
     console.error(error)

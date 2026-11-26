@@ -123,8 +123,6 @@ class V2ResponseMiddleware(BaseHTTPMiddleware):
                 "message": _get_error_message(payload),
                 "data": {},
             }
-            if isinstance(payload, dict) and isinstance(payload.get("detail_i18n"), str):
-                content["message_i18n"] = payload["detail_i18n"]
         else:
             content = {
                 "success": True,

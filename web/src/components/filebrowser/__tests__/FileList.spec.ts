@@ -657,7 +657,7 @@ describe('FileList dialogs, download and lifecycle', () => {
       expect.objectContaining({ url: '/storage/rename?name=renamed.mkv&recursive=true' }),
     )
     expect(mocks.progressStart).toHaveBeenCalledOnce()
-    mocks.progressHandler?.(new MessageEvent('message', { data: JSON.stringify({ text_i18n: '重命名中', value: 50 }) }))
+    mocks.progressHandler?.(new MessageEvent('message', { data: JSON.stringify({ text: '重命名中', value: 50 }) }))
     expect(controller.updateProps).toHaveBeenCalledWith(expect.objectContaining({ text: '重命名中', value: 50 }))
     renameResult.resolve({ success: true })
     await renamePromise

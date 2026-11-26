@@ -65,6 +65,27 @@ def test_duplicate_api_token_route_suffixes_are_removed():
     assert "/runscheduler2" not in system_routes
 
 
+def test_modulelist_does_not_emit_unwired_localization_keys(monkeypatch):
+    """模块列表只返回前端消费的稳定字段，不保留未接线翻译键。"""
+    class Module:
+        """提供模块列表测试所需的最小名称接口。"""
+
+        @staticmethod
+        def get_name():
+            """返回测试模块名称。"""
+            return "测试模块"
+
+    monkeypatch.setattr(
+        system_endpoint.ModuleManager,
+        "get_modules",
+        lambda self: {"test_module": Module()},
+    )
+
+    response = system_endpoint.modulelist(None)
+
+    assert response.data == {"modules": [{"id": "test_module", "name": "测试模块"}]}
+
+
 def test_synchronous_transfer_trigger_route_is_removed():
     """手动整理由调度器统一触发，不保留绕过调度边界的同步 API_TOKEN 路由。"""
     transfer_routes = {route.path for route in transfer_endpoint.router.routes}

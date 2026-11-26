@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.api.apiv2_utils import (
     OPENAPI_V2_PATH,
@@ -47,6 +47,14 @@ def api_app() -> FastAPI:
     async def get_error() -> None:
         """返回供 v2 适配器转换的 HTTP 错误。"""
         raise HTTPException(status_code=400, detail="请求参数错误")
+
+    @app.get("/api/v2/localized-error")
+    async def get_localized_error() -> JSONResponse:
+        """返回携带历史本地化字段的 HTTP 错误。"""
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "请求参数错误", "detail_i18n": "localized"},
+        )
 
     @app.get("/api/v2/validated/{item_id}")
     async def get_validated_item(item_id: int) -> dict:
@@ -116,6 +124,16 @@ async def test_v2_moves_http_error_detail_to_message(api_app: FastAPI):
         "message": "请求参数错误",
         "data": {},
     }
+
+async def test_v2_does_not_carry_unproduced_i18n_error_fields(api_app: FastAPI):
+    """后端没有 `_i18n` 生产者时，v2 不应保留这套兼容字段。"""
+    async with make_client(api_app) as client:
+        response = await client.get("/api/v2/localized-error")
+
+    payload = response.json()
+    assert response.status_code == 400
+    assert payload["success"] is False
+    assert "message_i18n" not in payload
 
 
 async def test_v2_moves_validation_error_to_message(api_app: FastAPI):

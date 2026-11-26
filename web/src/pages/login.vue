@@ -93,7 +93,6 @@ const loading = ref(false)
 
 interface ApiErrorPayload {
   message?: unknown
-  message_i18n?: unknown
   detail?: unknown
   mfa_methods?: unknown
 }

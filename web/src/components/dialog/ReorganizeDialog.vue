@@ -1129,11 +1129,11 @@ function mergePreviewData(target: ManualTransferPreviewData, incoming?: ManualTr
   }
 }
 
-// 从标准响应中提取可展示的整理预览数据，优先保留顶层本地化消息。
+// 从标准响应中提取可展示的整理预览数据。
 function resolvePreviewResponseData(result: ApiResponse<ManualTransferPreviewData>) {
   if (!result.data) return result.data
 
-  const message = result.message_i18n || result.message || result.data.message
+  const message = result.message || result.data.message
   if (!message || message === result.data.message) return result.data
 
   return {
@@ -1337,7 +1337,7 @@ async function handleTransferLog(logid: number, background: boolean = false) {
 function handleProgressMessage(event: MessageEvent) {
   const progress = JSON.parse(event.data)
   if (progress) {
-    progressText.value = progress.text_i18n || progress.text
+    progressText.value = progress.text
     progressValue.value = progress.value
   }
 }
