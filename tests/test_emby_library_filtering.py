@@ -1,4 +1,5 @@
 """Emby 媒体库路径过滤的离线边界测试。"""
+import threading
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -12,6 +13,8 @@ def _emby_client() -> Emby:
     client._playhost = "http://emby.local/"
     client._apikey = "api-key"
     client._sync_libraries = []
+    client._metadata_ready = threading.Event()
+    client._metadata_ready.set()
     client.user = "user-id"
     client.serverid = "server-id"
     return client

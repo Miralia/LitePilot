@@ -1,3 +1,4 @@
+import threading
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -23,6 +24,8 @@ def _build_client() -> Emby:
     client._playhost = None
     client._apikey = "api-key"
     client._sync_libraries = []
+    client._metadata_ready = threading.Event()
+    client._metadata_ready.set()
     client.user = "user-id"
     client.serverid = "server-id"
     return client

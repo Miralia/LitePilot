@@ -1,5 +1,6 @@
 import json
 import re
+import threading
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -21,13 +22,20 @@ class Emby:
     _playhost: Optional[str] = None
     _apikey: Optional[str] = None
     _sync_libraries: List[str] = []
-    user: Optional[Union[str, int]] = None
     _username: Optional[str] = None
 
     def __init__(self, host: Optional[str] = None, apikey: Optional[str] = None, play_host: Optional[str] = None,
                  username: Optional[str] = None, sync_libraries: list = None, **kwargs):
+        self._metadata_lock = threading.RLock()
+        self._metadata_ready = threading.Event()
+        self._metadata_thread: Optional[threading.Thread] = None
+        self._user: Optional[Union[str, int]] = None
+        self._folders: List[dict] = []
+        self._serverid: Optional[str] = None
+        self._default_user_name = username or settings.SUPERUSER
         if not host or not apikey:
             logger.error("Emby服务器配置不完整！")
+            self._metadata_ready.set()
             return
         self._host = host
         if self._host:
@@ -37,10 +45,65 @@ class Emby:
             self._playhost = UrlUtils.standardize_base_url(self._playhost)
         self._apikey = apikey
         self._username = username
-        self.user = self.get_user(username or settings.SUPERUSER)
-        self.folders = self.get_emby_folders()
-        self.serverid = self.get_server_id()
         self._sync_libraries = sync_libraries or []
+        self._metadata_thread = threading.Thread(target=self._bootstrap_metadata, daemon=True)
+        self._metadata_thread.start()
+
+    @property
+    def user(self) -> Optional[Union[str, int]]:
+        """
+        Emby 用户ID
+        """
+        self._metadata_ready.wait()
+        return self._user
+
+    @user.setter
+    def user(self, value: Optional[Union[str, int]]):
+        self._user = value
+
+    @property
+    def folders(self) -> List[dict]:
+        """
+        Emby 媒体库路径列表
+        """
+        self._metadata_ready.wait()
+        return self._folders
+
+    @folders.setter
+    def folders(self, value: List[dict]):
+        self._folders = value
+
+    @property
+    def serverid(self) -> Optional[str]:
+        """
+        Emby 服务器ID
+        """
+        self._metadata_ready.wait()
+        return self._serverid
+
+    @serverid.setter
+    def serverid(self, value: Optional[str]):
+        self._serverid = value
+
+    def _load_metadata(self):
+        """
+        从 Emby 服务加载用户、媒体库与服务器元数据
+        """
+        self._user = self.get_user(self._default_user_name)
+        self._folders = self.get_emby_folders()
+        self._serverid = self.get_server_id()
+
+    def _bootstrap_metadata(self):
+        """
+        后台初始化元数据，避免外部服务缓慢时阻塞应用启动
+        """
+        with self._metadata_lock:
+            try:
+                self._load_metadata()
+            except Exception as err:
+                logger.error(f"初始化Emby元数据出错：{err}")
+            finally:
+                self._metadata_ready.set()
 
     def is_inactive(self) -> bool:
         """
@@ -54,8 +117,12 @@ class Emby:
         """
         重连
         """
-        self.user = self.get_user()
-        self.folders = self.get_emby_folders()
+        with self._metadata_lock:
+            self._metadata_ready.clear()
+            try:
+                self._load_metadata()
+            finally:
+                self._metadata_ready.set()
 
     def get_emby_folders(self) -> List[dict]:
         """
