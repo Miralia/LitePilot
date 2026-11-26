@@ -82,6 +82,30 @@ class LogSettings(BaseSettings, LogConfigModel):
 # 实例化日志设置
 log_settings = LogSettings()
 
+# 日志会记录用户活动、媒体路径与外部服务诊断信息，不能对本机其它账户开放
+_LOG_DIR_MODE = 0o700
+_LOG_FILE_MODE = 0o600
+
+
+def _secure_log_file_permissions(log_file: Path) -> None:
+    """
+    将日志目录与目标日志族收紧为仅运行账户可读写。
+    """
+    if os.name == "nt":
+        return
+
+    log_dir = log_file.parent
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_dir.chmod(_LOG_DIR_MODE)
+
+    if not log_file.exists() and not log_file.is_symlink():
+        fd = os.open(log_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, _LOG_FILE_MODE)
+        os.close(fd)
+
+    for candidate in log_dir.glob(f"{log_file.name}*"):
+        if candidate.is_file() and not candidate.is_symlink():
+            candidate.chmod(_LOG_FILE_MODE)
+
 # 日志级别颜色映射
 level_name_colors = {
     logging.DEBUG: lambda level_name: click.style(str(level_name), fg="cyan"),
@@ -116,6 +140,22 @@ class LogEntry:
         self.message = message
         self.file_path = file_path
         self.timestamp = timestamp or datetime.now()
+
+
+class PrivateRotatingFileHandler(RotatingFileHandler):
+    """
+    以私有权限创建滚动日志文件的文件处理器。
+    """
+
+    def _open(self):
+        """
+        创建仅运行账户可写的日志文件流，避免滚动后继承进程 umask。
+        """
+        if os.name == "nt":
+            return super()._open()
+        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(self.baseFilename, flags, _LOG_FILE_MODE)
+        return os.fdopen(fd, self.mode, encoding=self.encoding, errors=self.errors)
 
 
 class NonBlockingFileHandler:
@@ -156,11 +196,10 @@ class NonBlockingFileHandler:
         """
         with self._handlers_lock:
             if file_path not in self._rotating_handlers:
-                # 确保目录存在
-                file_path.parent.mkdir(parents=True, exist_ok=True)
+                _secure_log_file_permissions(file_path)
 
                 # 创建RotatingFileHandler
-                handler = RotatingFileHandler(
+                handler = PrivateRotatingFileHandler(
                     filename=str(file_path),
                     maxBytes=log_settings.LOG_MAX_FILE_SIZE_BYTES,
                     backupCount=log_settings.LOG_BACKUP_COUNT,

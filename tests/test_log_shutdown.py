@@ -97,7 +97,7 @@ def test_non_blocking_file_handler_creates_one_handler_for_concurrent_first_writ
         def close(self):
             self.closed = True
 
-    monkeypatch.setattr("app.log.RotatingFileHandler", ProbeHandler)
+    monkeypatch.setattr("app.log.PrivateRotatingFileHandler", ProbeHandler)
     file_path = tmp_path / "concurrent.log"
 
     def get_handler(started=None):
