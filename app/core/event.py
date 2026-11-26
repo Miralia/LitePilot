@@ -558,16 +558,6 @@ class EventManager(metaclass=Singleton):
         MessageHelper().put(title=f"{module_name} 处理事件 {event.event_type} 时出错",
                             message=f"{class_name}.{method_name}：{str(e)}",
                             role="system")
-        self.send_event(
-            EventType.SystemError,
-            {
-                "type": "event",
-                "event_type": event.event_type,
-                "event_handle": f"{class_name}.{method_name}",
-                "error": str(e),
-                "traceback": traceback.format_exc()
-            }
-        )
 
     def register(self, etype: Union[EventType, List[EventType], type],
                  priority: Optional[int] = DEFAULT_EVENT_PRIORITY):

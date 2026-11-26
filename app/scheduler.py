@@ -24,7 +24,6 @@ from app.chain.downloadfilesync import DownloadFileSyncChain
 from app.chain.mediacover import MediaCoverChain
 from app.chain.transfer import TransferChain
 from app.core.config import settings, global_vars
-from app.core.event import Event, eventmanager
 from app.db import SessionFactory
 from app.db.models.downloadhistory import DownloadHistory, DownloadFiles
 from app.db.models.message import Message
@@ -37,7 +36,7 @@ from app.helper.progress import ProgressHelper
 from app.helper.service import ServiceConfigHelper
 from app.log import logger
 from app.schemas import Notification, NotificationType
-from app.schemas.types import EventType, SystemConfigKey
+from app.schemas.types import SystemConfigKey
 from app.utils.gc import get_memory_usage
 from app.utils.mixins import ConfigReloadMixin
 from app.utils.singleton import SingletonClass
@@ -651,23 +650,13 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
     @staticmethod
     def __handle_job_error(job_id: str, job: dict, error: Exception) -> None:
         """
-        记录定时任务执行异常并发送系统错误事件。
+        记录定时任务执行异常并写入系统消息。
         """
         logger.error(
             f"定时任务 {job.get('name')} 执行失败：{str(error)} - {traceback.format_exc()}"
         )
         MessageHelper().put(
             title=f"{job.get('name')} 执行失败", message=str(error), role="system"
-        )
-        eventmanager.send_event(
-            EventType.SystemError,
-            {
-                "type": "scheduler",
-                "scheduler_id": job_id,
-                "scheduler_name": job.get("name"),
-                "error": str(error),
-                "traceback": traceback.format_exc(),
-            },
         )
 
     def __build_progress_callback(self, job_id: str, job: dict) -> Callable[..., None]:

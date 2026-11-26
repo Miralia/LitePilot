@@ -45,10 +45,9 @@ class TestSystemNotificationDispatch(unittest.TestCase):
         ) as send_message:
             chain.post_message(message)
 
-        event_payload = send_event.call_args.kwargs["data"]
         queued_message = send_message.call_args.kwargs["message"]
 
-        self.assertIsNone(event_payload["userid"])
+        send_event.assert_not_called()
         self.assertIsNone(queued_message.userid)
         self.assertFalse(send_message.call_args.kwargs["immediately"])
 

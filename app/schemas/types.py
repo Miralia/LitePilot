@@ -51,26 +51,10 @@ class DownloadTaskState(Enum):
 class EventType(Enum):
     # 执行命令
     CommandExcute = "command.excute"
-    # 媒体文件整理完成
-    TransferComplete = "transfer.complete"
-    # 媒体文件整理失败
-    TransferFailed = "transfer.failed"
-    # 字幕整理完成
-    SubtitleTransferComplete = "transfer.subtitle.complete"
-    # 字幕整理失败
-    SubtitleTransferFailed = "transfer.subtitle.failed"
-    # 音频文件整理完成
-    AudioTransferComplete = "transfer.audio.complete"
-    # 音频文件整理失败
-    AudioTransferFailed = "transfer.audio.failed"
     # 删除下载源文件
     DownloadFileDeleted = "downloadfile.deleted"
     # 收到Webhook消息
     WebhookMessage = "webhook.message"
-    # 发送消息通知
-    NoticeMessage = "notice.message"
-    # 系统错误
-    SystemError = "system.error"
     # 刮削元数据
     MetadataScrape = "metadata.scrape"
     # 模块需要重载
@@ -82,16 +66,8 @@ class EventType(Enum):
 # EventType中文名称翻译字典
 EVENT_TYPE_NAMES = {
     EventType.CommandExcute: "执行命令",
-    EventType.TransferComplete: "整理完成",
-    EventType.TransferFailed: "整理失败",
-    EventType.SubtitleTransferComplete: "字幕整理完成",
-    EventType.SubtitleTransferFailed: "字幕整理失败",
-    EventType.AudioTransferComplete: "音频整理完成",
-    EventType.AudioTransferFailed: "音频整理失败",
     EventType.DownloadFileDeleted: "删除下载源文件",
     EventType.WebhookMessage: "收到Webhook消息",
-    EventType.NoticeMessage: "发送消息通知",
-    EventType.SystemError: "系统错误",
     EventType.MetadataScrape: "刮削元数据",
     EventType.ModuleReload: "模块重载",
     EventType.ConfigChanged: "配置项更新",

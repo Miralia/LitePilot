@@ -227,6 +227,5 @@ def test_transient_notification_post_message_skips_history_but_dispatches(monkey
     )
 
     assert MessageOper().list_by_page(page=1, count=10) == []
-    assert "save_history" not in chain.eventmanager.send_event.call_args.kwargs["data"]
-    chain.eventmanager.send_event.assert_called_once()
+    chain.eventmanager.send_event.assert_not_called()
     chain.messagequeue.send_message.assert_called_once()

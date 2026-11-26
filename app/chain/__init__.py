@@ -42,7 +42,6 @@ from app.schemas.types import (
     TorrentStatus,
     MediaType,
     MediaImageType,
-    EventType,
     MessageChannel,
     SystemConfigKey,
 )
@@ -201,13 +200,6 @@ class ChainBase(metaclass=ABCMeta):
         )
         return dispatch_message
 
-    @staticmethod
-    def _build_notice_message_data(message: Notification) -> dict:
-        """
-        构造消息通知事件数据。
-        """
-        return {**message.model_dump(exclude={"save_history"}), "type": message.mtype}
-
     async def async_remove_cache(self, filename: str) -> None:
         """
         异步删除缓存，同时删除Redis和本地缓存
@@ -237,17 +229,6 @@ class ChainBase(metaclass=ABCMeta):
         )
         self.messagehelper.put(
             title=f"{module_name}发生了错误", message=str(err), role="system"
-        )
-        self.eventmanager.send_event(
-            EventType.SystemError,
-            {
-                "type": "module",
-                "module_id": module_id,
-                "module_name": module_name,
-                "module_method": method,
-                "error": str(err),
-                "traceback": traceback.format_exc(),
-            },
         )
 
     @staticmethod
@@ -968,21 +949,11 @@ class ChainBase(metaclass=ABCMeta):
                         if not admin_sended:
                             send_orignal = True
                         break
-                    # 按设定发送
-                    self.eventmanager.send_event(
-                        etype=EventType.NoticeMessage,
-                        data=self._build_notice_message_data(send_message),
-                    )
                     self.messagequeue.send_message(
                         "post_message", message=send_message, **kwargs
                     )
                 if not send_orignal:
                     return
-        # 发送消息事件
-        self.eventmanager.send_event(
-            etype=EventType.NoticeMessage,
-            data=self._build_notice_message_data(dispatch_message),
-        )
         # 按原消息发送
         self.messagequeue.send_message(
             "post_message",
@@ -1081,21 +1052,11 @@ class ChainBase(metaclass=ABCMeta):
                         if not admin_sended:
                             send_orignal = True
                         break
-                    # 按设定发送
-                    await self.eventmanager.async_send_event(
-                        etype=EventType.NoticeMessage,
-                        data=self._build_notice_message_data(send_message),
-                    )
                     await self.messagequeue.async_send_message(
                         "post_message", message=send_message, **kwargs
                     )
                 if not send_orignal:
                     return
-        # 发送消息事件
-        await self.eventmanager.async_send_event(
-            etype=EventType.NoticeMessage,
-            data=self._build_notice_message_data(dispatch_message),
-        )
         # 按原消息发送
         await self.messagequeue.async_send_message(
             "post_message",

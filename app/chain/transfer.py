@@ -1184,50 +1184,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
                 transferinfo=transferinfo,
             )
 
-            # 整理失败事件
-            if self.__is_media_file(task.fileitem):
-                # 主要媒体文件整理失败事件
-                self.eventmanager.send_event(
-                    EventType.TransferFailed,
-                    {
-                        "fileitem": task.fileitem,
-                        "meta": task.meta,
-                        "mediainfo": task.mediainfo,
-                        "transferinfo": transferinfo,
-                        "downloader": task.downloader,
-                        "download_hash": task.download_hash,
-                        "transfer_history_id": history.id if history else None,
-                    },
-                )
-            elif self.__is_subtitle_file(task.fileitem):
-                # 字幕整理失败事件
-                self.eventmanager.send_event(
-                    EventType.SubtitleTransferFailed,
-                    {
-                        "fileitem": task.fileitem,
-                        "meta": task.meta,
-                        "mediainfo": task.mediainfo,
-                        "transferinfo": transferinfo,
-                        "downloader": task.downloader,
-                        "download_hash": task.download_hash,
-                        "transfer_history_id": history.id if history else None,
-                    },
-                )
-            elif self.__is_audio_file(task.fileitem):
-                # 音频文件整理失败事件
-                self.eventmanager.send_event(
-                    EventType.AudioTransferFailed,
-                    {
-                        "fileitem": task.fileitem,
-                        "meta": task.meta,
-                        "mediainfo": task.mediainfo,
-                        "transferinfo": transferinfo,
-                        "downloader": task.downloader,
-                        "download_hash": task.download_hash,
-                        "transfer_history_id": history.id if history else None,
-                    },
-                )
-
             # 发送失败消息
             self.post_message(
                 Notification(
@@ -1264,7 +1220,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             logger.info(f"{task.fileitem.name} 入库成功：{target_dir_path or ''}")
 
             # 新增task转移成功历史记录
-            history = transferhis.add_success(
+            transferhis.add_success(
                 fileitem=task.fileitem,
                 mode=transferinfo.transfer_type if transferinfo else "",
                 downloader=task.downloader,
@@ -1275,50 +1231,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             )
             # usenet 等非下载器来源：硬链接入库后源文件已无保留价值，直接清理
             self.__cleanup_source_after_link(task, transferinfo)
-
-            # task整理完成事件
-            if self.__is_media_file(task.fileitem):
-                # 主要媒体文件整理完成事件
-                self.eventmanager.send_event(
-                    EventType.TransferComplete,
-                    {
-                        "fileitem": task.fileitem,
-                        "meta": task.meta,
-                        "mediainfo": task.mediainfo,
-                        "transferinfo": transferinfo,
-                        "downloader": task.downloader,
-                        "download_hash": task.download_hash,
-                        "transfer_history_id": history.id if history else None,
-                    },
-                )
-            elif self.__is_subtitle_file(task.fileitem):
-                # 字幕整理完成事件
-                self.eventmanager.send_event(
-                    EventType.SubtitleTransferComplete,
-                    {
-                        "fileitem": task.fileitem,
-                        "meta": task.meta,
-                        "mediainfo": task.mediainfo,
-                        "transferinfo": transferinfo,
-                        "downloader": task.downloader,
-                        "download_hash": task.download_hash,
-                        "transfer_history_id": history.id if history else None,
-                    },
-                )
-            elif self.__is_audio_file(task.fileitem):
-                # 音频文件整理完成事件
-                self.eventmanager.send_event(
-                    EventType.AudioTransferComplete,
-                    {
-                        "fileitem": task.fileitem,
-                        "meta": task.meta,
-                        "mediainfo": task.mediainfo,
-                        "transferinfo": transferinfo,
-                        "downloader": task.downloader,
-                        "download_hash": task.download_hash,
-                        "transfer_history_id": history.id if history else None,
-                    },
-                )
 
             # task登记转移成功文件清单
             target_files = transferinfo.file_list_new
