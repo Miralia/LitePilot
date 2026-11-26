@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime
 from typing import Optional
 from urllib.parse import quote
@@ -6,6 +7,7 @@ import requests
 
 from app.core.cache import cached
 from app.core.config import settings
+from app.log import logger
 from app.utils.http import RequestUtils, AsyncRequestUtils
 
 
@@ -48,7 +50,7 @@ class BangumiApi(object):
             result = resp.json()
             return result.get(key) if key else result
         except Exception as e:
-            print(e)
+            logger.error(f"Bangumi请求解析失败：{str(e)} - {traceback.format_exc()}")
             return None
 
     @cached(maxsize=settings.CONF.bangumi, ttl=settings.CONF.meta, shared_key="get")
@@ -64,7 +66,7 @@ class BangumiApi(object):
             result = resp.json()
             return result.get(key) if key else result
         except Exception as e:
-            print(e)
+            logger.error(f"Bangumi请求解析失败：{str(e)} - {traceback.format_exc()}")
             return None
 
     def search(self, name):

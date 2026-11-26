@@ -418,8 +418,7 @@ class TmdbApi:
                                     and season == int(season_number):
                                 return True
             except Exception as e1:
-                logger.error(f"连接TMDB出错：{e1}")
-                print(traceback.format_exc())
+                logger.error(f"连接TMDB出错：{e1} - {traceback.format_exc()}")
                 return False
             return False
 
@@ -429,8 +428,7 @@ class TmdbApi:
             logger.error(f"连接TMDB出错：{str(err)}")
             return None
         except Exception as e:
-            logger.error(f"连接TMDB出错：{str(e)}")
-            print(traceback.format_exc())
+            logger.error(f"连接TMDB出错：{str(e)} - {traceback.format_exc()}")
             return None
 
         if (tvs is None) or (len(tvs) == 0):
@@ -515,8 +513,7 @@ class TmdbApi:
             logger.error(f"连接TMDB出错：{str(err)}")
             return None
         except Exception as e:
-            logger.error(f"连接TMDB出错：{str(e)}")
-            print(traceback.format_exc())
+            logger.error(f"连接TMDB出错：{str(e)} - {traceback.format_exc()}")
             return None
         logger.debug(f"API返回：{str(self.search.total_results)}")
 
@@ -1401,8 +1398,7 @@ class TmdbApi:
                                     and season == int(season_number):
                                 return True
             except Exception as e1:
-                logger.error(f"连接TMDB出错：{e1}")
-                print(traceback.format_exc())
+                logger.error(f"连接TMDB出错：{e1} - {traceback.format_exc()}")
                 return False
             return False
 
@@ -1412,8 +1408,7 @@ class TmdbApi:
             logger.error(f"连接TMDB出错：{str(err)}")
             return None
         except Exception as e:
-            logger.error(f"连接TMDB出错：{str(e)}")
-            print(traceback.format_exc())
+            logger.error(f"连接TMDB出错：{str(e)} - {traceback.format_exc()}")
             return None
 
         if (tvs is None) or (len(tvs) == 0):
@@ -1601,8 +1596,7 @@ class TmdbApi:
             logger.error(f"连接TMDB出错：{str(err)}")
             return None
         except Exception as e:
-            logger.error(f"连接TMDB出错：{str(e)}")
-            print(traceback.format_exc())
+            logger.error(f"连接TMDB出错：{str(e)} - {traceback.format_exc()}")
             return None
         logger.debug(f"API返回：{str(self.search.total_results)}")
 
