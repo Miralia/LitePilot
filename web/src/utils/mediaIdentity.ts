@@ -45,8 +45,3 @@ export function getMediaIdentity(media?: MediaInfo): MediaIdentity | undefined {
   }
   return undefined
 }
-
-/** 生成跨媒体源稳定的媒体标识。 */
-export function getMediaId(media?: MediaInfo) {
-  return getMediaIdentity(media)?.mediaKey ?? ''
-}

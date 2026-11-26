@@ -210,11 +210,3 @@ export function loadGlassWallpaperTone(url: string): Promise<GlassWallpaperToneL
 
   return profile
 }
-
-/**
- * 为 DOM 背景层加载可读像素。跨域来源不支持 CORS 时回落中性 profile，
- * 避免亮度分析阻断壁纸本身的 CSS 显示能力。
- */
-export async function loadGlassWallpaperToneProfile(url: string): Promise<GlassWallpaperToneProfile> {
-  return (await loadGlassWallpaperTone(url)).profile
-}
