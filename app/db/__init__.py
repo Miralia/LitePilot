@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, Generator, List, Optional, Self, Tuple, AsyncGenerator, Union
 
-from sqlalchemy import NullPool, QueuePool, and_, create_engine, event, inspect, text, select, delete, Column, Integer, \
+from sqlalchemy import NullPool, QueuePool, and_, create_engine, event, inspect, text, select, Column, Integer, \
     Sequence, Identity
 from sqlalchemy.engine import Engine as SQLAlchemyEngine, ExceptionContext
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -530,11 +530,6 @@ class Base:
     @db_update
     def truncate(cls, db: Session):
         db.query(cls).delete()
-
-    @classmethod
-    @async_db_update
-    async def async_truncate(cls, db: AsyncSession):
-        await db.execute(delete(cls))
 
     @classmethod
     @db_query

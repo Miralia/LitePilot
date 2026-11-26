@@ -19,7 +19,6 @@ from app.db.models.transferhistory import TransferHistory
 from app.db.user_oper import (
     get_current_active_manage_user,
     get_current_active_superuser,
-    get_current_active_superuser_async,
 )
 from app.helper.progress import ProgressHelper
 from app.schemas.types import EventType
@@ -171,16 +170,4 @@ def delete_transfer_history(
         )
     # 删除记录
     TransferHistory.delete(db, history_in.id)
-    return schemas.Response(success=True)
-
-
-@router.get("/empty/transfer", summary="清空整理记录", response_model=schemas.Response)
-async def empty_transfer_history(
-    db: AsyncSession = Depends(get_async_db),
-    _: User = Depends(get_current_active_superuser_async),
-) -> Any:
-    """
-    清空整理记录
-    """
-    await TransferHistory.async_truncate(db)
     return schemas.Response(success=True)

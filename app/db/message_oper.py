@@ -114,14 +114,6 @@ class MessageOper(DbOper):
         """
         return Message.exists_by_source(self._db, source)
 
-    async def async_list_by_page(
-            self, page: Optional[int] = 1, count: Optional[int] = 30
-    ) -> list[Message]:
-        """
-        分页获取消息记录。
-        """
-        return await Message.async_list_by_page(self._db, page, count)
-
     async def async_list_sent_by_page(
             self,
             page: Optional[int] = 1,

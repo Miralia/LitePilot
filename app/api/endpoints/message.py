@@ -1,22 +1,17 @@
-import json
 import time
-from typing import Union, Any, List, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import schemas
 from app.chain.message import MessageChain
-from app.core.config import settings, global_vars
 from app.core.security import verify_token, verify_apitoken
 from app.db import get_async_db
-from app.db.models import User
 from app.db.message_oper import MessageOper
 from app.db.systemconfig_oper import SystemConfigOper
-from app.db.user_oper import get_current_active_superuser
-from app.helper.service import ServiceConfigHelper
 from app.log import logger
-from app.schemas.types import MessageChannel, SystemConfigKey
+from app.schemas.types import SystemConfigKey
 
 router = APIRouter()
 
@@ -105,66 +100,6 @@ async def user_message(
     return schemas.Response(success=True)
 
 
-@router.post("/web", summary="接收WEB消息", response_model=schemas.Response)
-async def web_message(
-    request: Request,
-    text: Optional[str] = None,
-    current_user: User = Depends(get_current_active_superuser),
-):
-    """
-    WEB消息响应
-    """
-    images = None
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        try:
-            payload = await request.json()
-        except Exception:
-            payload = None
-        if isinstance(payload, dict):
-            text = payload.get("text", text)
-            image = payload.get("image")
-            images = payload.get("images")
-            if image:
-                if isinstance(images, list):
-                    images = [*images, image]
-                else:
-                    images = [image]
-            elif isinstance(images, str):
-                images = [images]
-
-    MessageChain().handle_message(
-        channel=MessageChannel.Web,
-        source=current_user.name,
-        userid=current_user.name,
-        username=current_user.name,
-        text=text or "",
-        images=images,
-    )
-    return schemas.Response(success=True)
-
-
-@router.get("/web", summary="获取WEB消息", response_model=List[dict])
-async def get_web_message(
-    _: schemas.TokenPayload = Depends(verify_token),
-    db: AsyncSession = Depends(get_async_db),
-    page: Optional[int] = 1,
-    count: Optional[int] = 20,
-):
-    """
-    获取WEB消息列表
-    """
-    ret_messages = []
-    messages = await MessageOper(db).async_list_by_page(page=page, count=count)
-    for message in messages:
-        try:
-            ret_messages.append(message.to_dict())
-        except Exception as e:
-            logger.error(f"获取WEB消息列表失败: {str(e)}")
-            continue
-    return ret_messages
-
-
 @router.get("/notification", summary="获取通知消息", response_model=List[schemas.NotificationHistoryItem])
 async def get_notification_message(
     _: schemas.TokenPayload = Depends(verify_token),
@@ -199,13 +134,3 @@ async def clear_notification_message(
     value[scope.value] = int(time.time() * 1000)
     await SystemConfigOper().async_set(SystemConfigKey.NotificationClearBefore, value)
     return schemas.Response(success=True, data={"clear_before": value})
-
-
-
-
-
-
-
-
-
-

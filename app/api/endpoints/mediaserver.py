@@ -5,9 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app import schemas
 from app.chain.mediaserver import MediaServerChain
 from app.core.security import verify_token
-from app.db.systemconfig_oper import SystemConfigOper
 from app.helper.mediaserver import MediaServerHelper
-from app.schemas.types import SystemConfigKey
 
 router = APIRouter()
 
@@ -112,18 +110,3 @@ def library(
             hidden=hidden,
         )
     )
-
-
-@router.get("/clients", summary="查询可用媒体服务器", response_model=List[dict])
-async def clients(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
-    """
-    查询可用媒体服务器
-    """
-    mediaservers: List[dict] = SystemConfigOper().get(SystemConfigKey.MediaServers)
-    if mediaservers:
-        return [
-            {"name": d.get("name"), "type": d.get("type")}
-            for d in mediaservers
-            if d.get("enabled")
-        ]
-    return []

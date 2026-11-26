@@ -76,22 +76,6 @@ class Message(Base):
 
     @classmethod
     @async_db_query
-    async def async_list_by_page(
-            cls, db: AsyncSession, page: Optional[int] = 1, count: Optional[int] = 30
-    ) -> List["Message"]:
-        """
-        异步分页获取消息记录。
-        """
-        result = await db.execute(
-            select(cls)
-            .order_by(cls.reg_time.desc(), cls.id.desc())
-            .offset((page - 1) * count)
-            .limit(count)
-        )
-        return result.scalars().all()
-
-    @classmethod
-    @async_db_query
     async def async_list_sent_by_page(
             cls,
             db: AsyncSession,
