@@ -1162,7 +1162,7 @@ class TransHandler:
             if media_file.type != "file":
                 continue
             # 当前只有视频文件需要保留最新版本，其余格式无需处理，以避免误删 (issue 5449)
-            if f".{media_file.extension.lower()}" not in settings.RMT_MEDIAEXT:
+            if f".{(media_file.extension or '').lower()}" not in settings.RMT_MEDIAEXT:
                 continue
             # 识别文件中的季集信息
             filemeta = MetaInfoPath(media_path)

@@ -57,3 +57,30 @@ def test_version_cleanup_warns_only_when_candidate_is_deleted(monkeypatch) -> No
     assert result is True
     assert deleted == [old_version]
     assert any("正在删除目标目录中其它版本" in message for message in warnings)
+
+
+def test_version_cleanup_skips_files_without_extension(monkeypatch) -> None:
+    """目录中的无扩展名文件不是媒体版本，不得让成功整理后的清理流程崩溃。"""
+    target = Path("/library/Show/Season 1/Show.S01E01.2160p.WEB-DL.mkv")
+    extensionless = FileItem(
+        storage="local",
+        path="/library/Show/Season 1/README",
+        type="file",
+        name="README",
+        extension=None,
+    )
+    deleted = []
+    storage = SimpleNamespace(
+        get_item=lambda path: SimpleNamespace(),
+        list=lambda item: [extensionless],
+        delete=lambda item: deleted.append(item) or True,
+    )
+    monkeypatch.setattr(
+        "app.modules.filemanager.transhandler.MetaInfoPath",
+        lambda path: SimpleNamespace(season="S01", episode="E01", part=None),
+    )
+
+    result = TransHandler._TransHandler__delete_version_files(storage, target)  # pylint: disable=protected-access
+
+    assert result is True
+    assert deleted == []
