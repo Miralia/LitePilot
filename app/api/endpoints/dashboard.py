@@ -133,14 +133,6 @@ def storage2(_: Annotated[str, Depends(verify_apitoken)]) -> Any:
     return _build_storage()
 
 
-@router.get("/processes", summary="进程信息", response_model=List[schemas.ProcessInfo])
-def processes(_: Any = Depends(get_current_active_superuser)) -> Any:
-    """
-    查询进程信息
-    """
-    return SystemUtils.processes()
-
-
 @router.get("/system", summary="系统摘要信息", response_model=schemas.DashboardSystemInfo)
 def system_info(_: Any = Depends(get_current_active_superuser)) -> Any:
     """

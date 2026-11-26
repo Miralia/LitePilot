@@ -32,25 +32,6 @@ class Storage(BaseModel):
     used_storage: Optional[float] = 0.0
 
 
-class ProcessInfo(BaseModel):
-    """仪表板进程运行信息。"""
-
-    # 进程ID
-    pid: Optional[int] = 0
-    # 进程名称
-    name: Optional[str] = None
-    # 进程状态
-    status: Optional[str] = None
-    # 进程占用CPU
-    cpu: Optional[float] = 0.0
-    # 进程占用内存 MB
-    memory: Optional[float] = 0.0
-    # 进程创建时间
-    create_time: Optional[float] = 0.0
-    # 进程运行时间 秒
-    run_time: Optional[float] = 0.0
-
-
 class DownloaderInfo(BaseModel):
     """仪表板下载器汇总信息。"""
 

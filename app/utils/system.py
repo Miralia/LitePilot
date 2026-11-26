@@ -667,27 +667,6 @@ class SystemUtils:
         return psutil.disk_usage(str(path)).total
 
     @staticmethod
-    def processes() -> List[schemas.ProcessInfo]:
-        """
-        获取所有进程
-        """
-        processes = []
-        for proc in psutil.process_iter(['pid', 'name', 'create_time', 'memory_info', 'status']):
-            try:
-                if proc.status() != psutil.STATUS_ZOMBIE:
-                    runtime = datetime.datetime.now() - datetime.datetime.fromtimestamp(
-                        int(getattr(proc, 'create_time', 0)()))
-                    mem_info = getattr(proc, 'memory_info', None)()
-                    if mem_info is not None:
-                        mem_mb = round(mem_info.rss / (1024 * 1024), 1)
-                        processes.append(schemas.ProcessInfo(
-                            pid=proc.pid, name=proc.name(), run_time=runtime.seconds, memory=mem_mb
-                        ))
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                pass
-        return processes
-
-    @staticmethod
     def dashboard_system_info() -> schemas.DashboardSystemInfo:
         """
         获取仪表板展示所需的系统摘要信息。

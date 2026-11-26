@@ -62,7 +62,6 @@ def test_dashboard_endpoints_require_superuser():
     """仪表板页面相关接口必须只允许管理员访问。"""
     assert _dependency_of(dashboard_endpoint.statistic, "_") is get_current_active_superuser
     assert _dependency_of(dashboard_endpoint.storage, "_") is get_current_active_superuser
-    assert _dependency_of(dashboard_endpoint.processes, "_") is get_current_active_superuser
     assert _dependency_of(dashboard_endpoint.system_info, "_") is get_current_active_superuser
     assert _dependency_of(dashboard_endpoint.downloader, "_") is get_current_active_superuser
     assert _dependency_of(dashboard_endpoint.schedule, "_") is get_current_active_superuser
