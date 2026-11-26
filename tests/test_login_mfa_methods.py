@@ -10,6 +10,16 @@ from app.api.endpoints import login as login_endpoint
 from app.chain.user import MfaRequired, UserChain
 
 
+@pytest.fixture(autouse=True)
+def reset_login_throttle_state():
+    """每个登录测试都从空的限流状态开始，避免用例间相互污染。"""
+    with login_endpoint._login_throttle_lock:
+        login_endpoint._login_throttle_states.clear()
+    yield
+    with login_endpoint._login_throttle_lock:
+        login_endpoint._login_throttle_states.clear()
+
+
 def _request() -> Request:
     """构造登录接口所需的最小请求。"""
     return Request(
@@ -95,3 +105,103 @@ def test_login_invalid_password_does_not_expose_mfa_methods(monkeypatch):
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "用户名或密码错误"
     assert "X-MFA-Required" not in (exc_info.value.headers or {})
+
+
+def test_login_throttles_repeated_failures_before_authentication(monkeypatch):
+    """同一来源与账号连续认证失败后必须限流，避免无界在线暴力破解。"""
+    calls: list[tuple[str, str]] = []
+
+    class FakeUserChain:
+        """始终返回密码失败并记录触达次数。"""
+
+        def user_authenticate(self, username, password, mfa_code=None):
+            """记录一次实际认证调用。"""
+            calls.append((username, password))
+            return False, "用户名、密码或验证码错误"
+
+    monkeypatch.setattr(login_endpoint, "UserChain", FakeUserChain)
+    form = SimpleNamespace(username="throttle-red-user", password="wrong")
+
+    for _ in range(5):
+        with pytest.raises(HTTPException) as exc_info:
+            login_endpoint.login_access_token(
+                request=_request(),
+                response=Response(),
+                form_data=form,
+            )
+        assert exc_info.value.status_code == 401
+
+    with pytest.raises(HTTPException) as exc_info:
+        login_endpoint.login_access_token(
+            request=_request(),
+            response=Response(),
+            form_data=form,
+        )
+
+    assert exc_info.value.status_code == 429
+    assert exc_info.value.headers and int(exc_info.value.headers["Retry-After"]) > 0
+    assert len(calls) == 5
+
+
+def test_mfa_challenge_does_not_count_as_password_failure(monkeypatch):
+    """密码通过后的 OTP 挑战响应不是暴力破解失败，不应触发账号限流。"""
+    calls = 0
+
+    class FakeUserChain:
+        """始终要求 OTP。"""
+
+        def user_authenticate(self, username, password, mfa_code=None):
+            """记录一次认证调用。"""
+            nonlocal calls
+            calls += 1
+            return False, MfaRequired(methods=("otp",))
+
+    monkeypatch.setattr(login_endpoint, "UserChain", FakeUserChain)
+    form = SimpleNamespace(username="mfa-throttle-user", password="correct")
+
+    for _ in range(8):
+        response = login_endpoint.login_access_token(
+            request=_request(),
+            response=Response(),
+            form_data=form,
+        )
+        assert response.status_code == 401
+
+    assert calls == 8
+
+
+def test_login_throttles_source_ip_across_rotated_usernames(monkeypatch):
+    """轮换账号的同一来源也不能无界尝试，IP 级阈值应独立生效。"""
+    calls = 0
+
+    class FakeUserChain:
+        """始终返回认证失败。"""
+
+        def user_authenticate(self, username, password, mfa_code=None):
+            """记录一次认证调用。"""
+            nonlocal calls
+            calls += 1
+            return False, "用户名、密码或验证码错误"
+
+    monkeypatch.setattr(login_endpoint, "UserChain", FakeUserChain)
+
+    for index in range(30):
+        form = SimpleNamespace(username=f"rotated-user-{index}", password="wrong")
+        with pytest.raises(HTTPException) as exc_info:
+            login_endpoint.login_access_token(
+                request=_request(),
+                response=Response(),
+                form_data=form,
+            )
+        assert exc_info.value.status_code == 401
+
+    form = SimpleNamespace(username="rotated-user-final", password="wrong")
+    with pytest.raises(HTTPException) as exc_info:
+        login_endpoint.login_access_token(
+            request=_request(),
+            response=Response(),
+            form_data=form,
+        )
+
+    assert exc_info.value.status_code == 429
+    assert calls == 30
