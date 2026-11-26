@@ -263,6 +263,7 @@ export function useBackground() {
     immediate: boolean = true,
   ) => {
     const loading = ref(false)
+    let isMounted = false
 
     const wrappedLoadData = async () => {
       if (loading.value) return
@@ -277,18 +278,26 @@ export function useBackground() {
       }
     }
 
-    onMounted(async () => {
-      if (immediate) {
-        await wrappedLoadData()
-      }
+    onMounted(() => {
+      isMounted = true
 
-      addBackgroundTimer(id, wrappedLoadData, interval, {
-        runInBackground: false, // 后台不刷新数据
-        skipInitialRun: true, // 已经手动执行过了
-      })
+      void (async () => {
+        if (immediate) {
+          await wrappedLoadData()
+        }
+
+        // 初始请求较慢时组件可能已经卸载，卸载后的补注册会成为无人清理的常驻定时器。
+        if (!isMounted) return
+
+        addBackgroundTimer(id, wrappedLoadData, interval, {
+          runInBackground: false, // 后台不刷新数据
+          skipInitialRun: true, // 已经手动执行过了
+        })
+      })()
     })
 
     onUnmounted(() => {
+      isMounted = false
       removeBackgroundTimer(id)
     })
 
