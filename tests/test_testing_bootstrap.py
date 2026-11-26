@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import builtins
+import importlib.util
 import types
 from pathlib import Path
 
@@ -38,3 +39,9 @@ def test_isolate_config_cleanup_uses_loaded_db_module_without_late_import(monkey
     assert import_calls == []
 
 
+def test_testing_package_does_not_keep_obsolete_stub_module():
+    """测试工具包不应保留已无消费者的 sys.modules 打桩工具。"""
+    import app.testing
+
+    assert not hasattr(app.testing, "stub_modules")
+    assert importlib.util.find_spec("app.testing.stub") is None
