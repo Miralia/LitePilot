@@ -36,7 +36,7 @@ function runWhenBrowserIdle(callback: () => void, timeout = 1500) {
     return
   }
 
-  globalThis.setTimeout(callback, 0)
+  globalThis.setTimeout(callback, 1200)
 }
 
 function loadIconBundle() {

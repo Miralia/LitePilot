@@ -73,8 +73,8 @@ export default defineConfig(({ command, mode, isPreview }) => ({
           // 若把全部 js 纳入预缓存，SW 首次安装会在后台下载 9MB
           // （three.js 720KB、ace 446KB、各语言 worker 1.4MB 等），
           // 与首屏资源抢带宽，反而让页面加载变得极慢。
-          // 其余资源由运行时缓存策略按需处理（script/style 走
-          // StaleWhileRevalidate，图片走 CacheFirst）。
+          // 其余资源由运行时缓存策略按需处理（带内容 hash 的 script/style
+          // 走 CacheFirst，图片也走 CacheFirst）。
           globPatterns: [
             'index.html',
             'offline.html',
