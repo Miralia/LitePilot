@@ -407,7 +407,7 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     "func": SchedulerChain().scheduler_job,
                     "running": False,
                 },
-                "random_wallpager": {
+                "random_wallpaper": {
                     "name": "壁纸缓存",
                     "func": WallpaperHelper().get_wallpapers,
                     "running": False,
@@ -467,11 +467,11 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
             self._scheduler.add_job(
                 self.start,
                 "interval",
-                id="random_wallpager",
+                id="random_wallpaper",
                 name="壁纸缓存",
                 minutes=30,
                 next_run_time=datetime.now(pytz.timezone(settings.TZ)) + timedelta(seconds=1),
-                kwargs={"job_id": "random_wallpager"},
+                kwargs={"job_id": "random_wallpaper"},
             )
 
             # 公共定时服务

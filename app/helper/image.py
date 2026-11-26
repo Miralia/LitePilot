@@ -53,7 +53,7 @@ class WallpaperHelper(metaclass=Singleton):
         """
         获取TMDB每日壁纸
         """
-        return TmdbChain().get_random_wallpager()
+        return TmdbChain().get_random_wallpaper()
 
     @cached(maxsize=1, ttl=3600, skip_empty=True)
     def get_tmdb_wallpapers(self, num: int = 10) -> List[str]:

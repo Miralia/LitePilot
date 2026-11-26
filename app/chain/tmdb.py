@@ -42,7 +42,7 @@ class TmdbChain(ChainBase):
         """
         return self.run_module("tmdb_trending", page=page)
 
-    def get_random_wallpager(self) -> Optional[str]:
+    def get_random_wallpaper(self) -> Optional[str]:
         """
         获取随机壁纸，缓存1个小时
         """

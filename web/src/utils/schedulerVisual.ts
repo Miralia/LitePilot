@@ -15,12 +15,36 @@ type SchedulerVisualRule = SchedulerVisual & {
 }
 
 const schedulerVisualRules: SchedulerVisualRule[] = [
-  { ids: ['mediaserver_sync'], names: ['媒体服务器'], icon: 'mdi-television-play', color: '#42c336', rgb: '66, 195, 54' },
-  { ids: ['transfer'], names: ['下载文件整理', '文件整理'], icon: 'mdi-folder-move-outline', color: '#3f8cff', rgb: '63, 140, 255' },
-  { ids: ['random_wallpager'], names: ['壁纸'], icon: 'mdi-image-outline', color: '#9b6cf3', rgb: '155, 108, 243' },
+  {
+    ids: ['mediaserver_sync'],
+    names: ['媒体服务器'],
+    icon: 'mdi-television-play',
+    color: '#42c336',
+    rgb: '66, 195, 54',
+  },
+  {
+    ids: ['transfer'],
+    names: ['下载文件整理', '文件整理'],
+    icon: 'mdi-folder-move-outline',
+    color: '#3f8cff',
+    rgb: '63, 140, 255',
+  },
+  { ids: ['random_wallpaper'], names: ['壁纸'], icon: 'mdi-image-outline', color: '#9b6cf3', rgb: '155, 108, 243' },
   { ids: ['scheduler_job'], names: ['公共定时服务'], icon: 'mdi-clock-outline', color: '#42c336', rgb: '66, 195, 54' },
-  { ids: ['clear_cache'], names: ['缓存清理'], icon: 'mdi-delete-sweep-outline', color: '#ffad1f', rgb: '255, 173, 31' },
-  { ids: ['data_cleanup'], names: ['数据表清理'], icon: 'mdi-database-remove-outline', color: '#ff704d', rgb: '255, 112, 77' },
+  {
+    ids: ['clear_cache'],
+    names: ['缓存清理'],
+    icon: 'mdi-delete-sweep-outline',
+    color: '#ffad1f',
+    rgb: '255, 173, 31',
+  },
+  {
+    ids: ['data_cleanup'],
+    names: ['数据表清理'],
+    icon: 'mdi-database-remove-outline',
+    color: '#ff704d',
+    rgb: '255, 112, 77',
+  },
   { ids: ['full_gc'], names: ['内存回收'], icon: 'mdi-memory', color: '#25b6c8', rgb: '37, 182, 200' },
 ]
 
