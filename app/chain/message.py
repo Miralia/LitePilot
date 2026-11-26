@@ -6,7 +6,6 @@ from app.chain.transfer import TransferChain
 from app.core.config import settings
 from app.log import logger
 from app.schemas import CommingMessage, Notification
-from app.schemas.message import ChannelCapabilityManager
 from app.schemas.types import EventType, MessageChannel
 
 
@@ -154,7 +153,7 @@ class MessageChain(ChainBase):
         """执行实际消息路由，便于统一包裹处理中状态。"""
 
         if text.startswith("CALLBACK:"):
-            if ChannelCapabilityManager.supports_callbacks(channel):
+            if channel == MessageChannel.Telegram:
                 return self._handle_callback(
                     text=text,
                     channel=channel,

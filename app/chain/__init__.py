@@ -37,7 +37,6 @@ from app.schemas import (
 )
 from app.utils.identity import normalize_internal_user_id
 from app.utils.media import is_supported_media_source, normalize_media_source
-from app.schemas.message import ChannelCapability, ChannelCapabilityManager
 from app.schemas.types import (
     TorrentStatus,
     MediaType,
@@ -130,9 +129,7 @@ class ChainBase(metaclass=ABCMeta):
         启动渠道侧消息输入/处理状态。
         具体表现由消息模块实现，例如 typing 保活或消息 reaction。
         """
-        if not channel or not ChannelCapabilityManager.supports_capability(
-                channel, ChannelCapability.PROCESSING_STATUS
-        ):
+        if not channel or channel != MessageChannel.Telegram:
             return None
         try:
             status = self.run_module(
@@ -168,9 +165,7 @@ class ChainBase(metaclass=ABCMeta):
                 target_channel = MessageChannel(status.get("channel"))
             except Exception:
                 target_channel = channel
-        if not target_channel or not ChannelCapabilityManager.supports_capability(
-                target_channel, ChannelCapability.PROCESSING_STATUS
-        ):
+        if not target_channel or target_channel != MessageChannel.Telegram:
             return
         try:
             self.run_module(
