@@ -347,6 +347,9 @@ class ConfigModel(BaseModel):
     )
 
 
+_PRIVATE_RUNTIME_DIR_MODE = 0o700
+
+
 class Settings(BaseSettings, ConfigModel, LogConfigModel):
     """
     系统配置类
@@ -360,10 +363,12 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # 初始化配置目录及子目录
-        for path in [self.CONFIG_PATH, self.TEMP_PATH, self.LOG_PATH, self.COOKIE_PATH]:
-            if not path.exists():
-                path.mkdir(parents=True, exist_ok=True)
+        # 初始化配置目录及子目录。运行时目录可能包含登录状态、缓存索引与下载内容，
+        # 即使目录已存在也必须修正历史安装遗留的宽松权限。
+        for path in [self.CONFIG_PATH, self.TEMP_PATH, self.LOG_PATH, self.COOKIE_PATH, self.CACHE_PATH]:
+            path.mkdir(parents=True, exist_ok=True)
+            if os.name != "nt":
+                path.chmod(_PRIVATE_RUNTIME_DIR_MODE)
         self._persist_generated_secret_keys()
 
     def _persist_generated_secret_keys(self) -> None:
