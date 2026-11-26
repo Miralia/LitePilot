@@ -1,6 +1,7 @@
 import os
 import setproctitle
 import signal
+import sys
 from pathlib import Path
 
 import uvicorn as uvicorn
@@ -55,6 +56,17 @@ def request_shutdown() -> None:
     Server.should_exit = True
 
 
+def _validate_launch_arguments(arguments: list[str]) -> None:
+    """拒绝被误传到服务入口的 CLI 参数，避免静默启动第二个后端实例。"""
+    if not arguments:
+        return
+    print(
+        "app.main 是后端服务入口，不接受命令行参数；管理命令请使用 moviepilot CLI。",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+
+
 def signal_handler(signum, frame):
     """
     信号处理函数，用于优雅停止服务
@@ -78,4 +90,5 @@ def run_application() -> None:
 
 
 if __name__ == '__main__':
+    _validate_launch_arguments(sys.argv[1:])
     run_application()
