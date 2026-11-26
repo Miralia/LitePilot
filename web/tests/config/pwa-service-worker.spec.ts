@@ -18,6 +18,14 @@ describe('PWA service worker subpath assets', () => {
     expect(source).toContain("'font-cache'")
   })
 
+  it('uses CacheFirst for content-hashed static resources', () => {
+    const staticRouteIndex = source.indexOf("['style', 'script', 'worker'].includes(request.destination)")
+
+    expect(staticRouteIndex).toBeGreaterThanOrEqual(0)
+    expect(source.slice(staticRouteIndex, staticRouteIndex + 240)).toContain('new CacheFirst')
+    expect(source.slice(staticRouteIndex, staticRouteIndex + 240)).not.toContain('StaleWhileRevalidate')
+  })
+
   it('registers the TMDB image route before the generic image route', () => {
     const tmdbRouteIndex = source.indexOf("url.hostname === 'image.tmdb.org'")
     const imageRouteIndex = source.indexOf("request.destination === 'image'")

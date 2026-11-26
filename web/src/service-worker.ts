@@ -1,6 +1,6 @@
 import { cleanupOutdatedCaches, matchPrecache, precacheAndRoute } from 'workbox-precaching'
 import { registerRoute, setCatchHandler } from 'workbox-routing'
-import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
+import { CacheFirst, NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 import * as navigationPreload from 'workbox-navigation-preload'
@@ -103,10 +103,10 @@ registerRoute(
   }),
 )
 
-// 静态资源 (JS, CSS, HTML) - 优先缓存
+// 静态资源 (JS, CSS, Worker) - 优先缓存；Vite 文件名带内容 hash，无需后台 revalidate
 registerRoute(
   ({ request }) => ['style', 'script', 'worker'].includes(request.destination),
-  new StaleWhileRevalidate({
+  new CacheFirst({
     cacheName: `static-resources-${CACHE_VERSION}`,
     plugins: [
       new CacheableResponsePlugin({
