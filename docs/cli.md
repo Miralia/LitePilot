@@ -313,7 +313,7 @@ nginx -t && systemctl reload nginx
 说明：
 
 - unit 直接守护 `python -m app.main`，`Restart=on-failure` 由 systemd 负责重启
-- 实际写入部署配置时，会在仓库根目录写入 `.moviepilot.env`，让后续 `moviepilot` CLI 默认使用同一个 `CONFIG_DIR`；`--print-only` 不会修改该文件
+- 实际写入部署配置时，会在仓库根目录写入 `.moviepilot.env`，让后续 `moviepilot` CLI 与直接 `python -m` 入口都默认使用同一个 `CONFIG_DIR`；`--print-only` 不会修改该文件
 - 当前生成的 systemd/nginx 文件名均为 `litepilot`；如果旧环境曾手工生成并启用上游命名的 `moviepilot.service`，迁移时不要同时启用两个后端实例
 - 后端默认只监听 `127.0.0.1`；nginx 托管仓库内 `public/`，`/api` 反代到后端端口（默认 3001）；系统消息、进度与日志 SSE 会单独关闭代理缓冲
 - `index.html`、`service-worker.js`、`manifest.webmanifest` 与 `version.txt` 不长期缓存，避免升级后版本判断或 PWA 元数据滞后；所有叶子 location 均显式输出 `nosniff`、Referrer-Policy 与 HSTS 安全头
@@ -402,7 +402,7 @@ moviepilot doctor --deep
 - `--deep` 执行可能较慢的深度探测，例如 PostgreSQL TCP 连通性检查
 - Doctor 只分析最近 24 小时日志，并跨主日志与控制台镜像聚合相同错误
 - `summary.advisory` 单独统计不影响整体状态的建议项，核心错误仍正常参与状态聚合
-- systemd 生产环境可使用 `CONFIG_DIR=/var/lib/moviepilot /opt/moviepilot/venv/bin/python -m app.cli doctor` 执行离线诊断
+- systemd 生产环境可使用 `/opt/moviepilot/moviepilot doctor` 执行离线诊断；直接 `python -m app.cli` 时也会读取仓库内的 `.moviepilot.env` 配置目录标记
 
 日志：
 

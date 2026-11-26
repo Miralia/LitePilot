@@ -2,6 +2,7 @@ import datetime
 import os
 import platform
 import re
+import shlex
 import shutil
 import socket
 import struct
@@ -35,6 +36,39 @@ _NETWORK_USAGE_MIN_INTERVAL_SECONDS = 1.0
 _network_usage_lock = threading.Lock()
 _network_usage_previous: Optional[Tuple[float, int, int]] = None
 _network_usage_last_result: Optional[List[int]] = None
+
+
+def _read_install_config_dir(root: Path) -> Optional[str]:
+    """读取 deploy 写入仓库根目录的 CONFIG_DIR 安装标记。"""
+    marker = root / ".moviepilot.env"
+    try:
+        lines = marker.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        key, separator, raw_value = stripped.partition("=")
+        if not separator:
+            continue
+        key = key.strip()
+        if key.startswith("export "):
+            key = key.removeprefix("export ").strip()
+        if key != "CONFIG_DIR":
+            continue
+        lexer = shlex.shlex(raw_value.strip(), posix=True)
+        lexer.whitespace_split = True
+        lexer.commenters = "#"
+        try:
+            parts = list(lexer)
+        except ValueError:
+            return None
+        if len(parts) == 1 and parts[0]:
+            return parts[0]
+        return None
+    return None
+
 
 class SystemUtils:
     """
@@ -767,7 +801,11 @@ class SystemUtils:
             config_dir = os.getenv("CONFIG_DIR")
         if config_dir:
             return Path(config_dir)
-        return Path(__file__).parents[2] / "config"
+        root = Path(__file__).parents[2]
+        install_config_dir = _read_install_config_dir(root)
+        if install_config_dir:
+            return Path(install_config_dir)
+        return root / "config"
 
     @staticmethod
     def get_env_path() -> Path:

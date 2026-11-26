@@ -543,3 +543,56 @@ def test_list_sub_file_includes_broken_symlink(tmp_path):
     broken.symlink_to(tmp_path / "missing-target.mkv")
 
     assert broken in SystemUtils.list_sub_file(tmp_path)
+
+
+def test_get_config_path_uses_install_marker_when_env_missing(monkeypatch, tmp_path):
+    """仓库写入安装标记后，直接 python -m 入口也必须使用同一个配置目录。"""
+    marked_config = tmp_path / "runtime config"
+    monkeypatch.delenv("CONFIG_DIR", raising=False)
+    monkeypatch.setattr(
+        "app.utils.system._read_install_config_dir",
+        lambda root: str(marked_config),
+    )
+
+    assert SystemUtils.get_config_path() == marked_config
+
+
+def test_get_config_path_explicit_env_wins_over_install_marker(monkeypatch, tmp_path):
+    """显式 CONFIG_DIR 仍是最高优先级，安装标记只补齐缺失环境。"""
+    explicit_config = tmp_path / "explicit"
+    monkeypatch.setenv("CONFIG_DIR", str(explicit_config))
+    monkeypatch.setattr(
+        "app.utils.system._read_install_config_dir",
+        lambda root: str(tmp_path / "marked"),
+    )
+
+    assert SystemUtils.get_config_path() == explicit_config
+
+
+def test_read_install_config_dir_parses_shell_quoted_path(tmp_path):
+    """deploy 用 shell quoting 写入带空格路径时，Python 入口要按同一语义解析。"""
+    config_dir = tmp_path / "runtime config"
+    (tmp_path / ".moviepilot.env").write_text(
+        f"CONFIG_DIR='{config_dir}'\n",
+        encoding="utf-8",
+    )
+
+    from app.utils.system import _read_install_config_dir
+
+    assert _read_install_config_dir(tmp_path) == str(config_dir)
+
+
+def test_settings_config_path_uses_install_marker(monkeypatch, tmp_path):
+    """Settings 的最终配置路径不得绕过安装标记 fallback。"""
+    from app.core.config import Settings
+
+    marked_config = tmp_path / "runtime config"
+    monkeypatch.delenv("CONFIG_DIR", raising=False)
+    monkeypatch.setattr(
+        "app.utils.system._read_install_config_dir",
+        lambda root: str(marked_config),
+    )
+    instance = object.__new__(Settings)
+    instance.__dict__["CONFIG_DIR"] = None
+
+    assert instance.CONFIG_PATH == marked_config

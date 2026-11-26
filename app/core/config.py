@@ -698,9 +698,7 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
 
     @property
     def CONFIG_PATH(self):
-        if self.CONFIG_DIR:
-            return Path(self.CONFIG_DIR)
-        return self.ROOT_PATH / "config"
+        return SystemUtils.get_config_path(self.CONFIG_DIR)
 
     @property
     def TEMP_PATH(self):
