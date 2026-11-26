@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from urllib.parse import quote
 
 import requests
 
@@ -16,6 +17,7 @@ class BangumiApi(object):
     """
 
     _urls = {
+        "search": "search/subject/%s",
         "detail": "v0/subjects/%s",
         "characters": "v0/subjects/%s/characters",
     }
@@ -69,7 +71,7 @@ class BangumiApi(object):
         """
         搜索媒体信息
         """
-        result = self.__invoke("search/subject/%s" % name)
+        result = self.__invoke(self._urls["search"] % quote(name, safe=""), type=2)
         if result:
             return result.get("list")
         return []
@@ -78,7 +80,7 @@ class BangumiApi(object):
         """
         搜索媒体信息（异步版本）
         """
-        result = await self.__async_invoke("search/subject/%s" % name)
+        result = await self.__async_invoke(self._urls["search"] % quote(name, safe=""), type=2)
         if result:
             return result.get("list")
         return []
