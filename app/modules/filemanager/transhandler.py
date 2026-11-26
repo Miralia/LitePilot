@@ -1,4 +1,5 @@
 import re
+import uuid
 from pathlib import Path
 from typing import Optional, List, Tuple
 
@@ -961,36 +962,75 @@ class TransHandler:
             f"正在整理文件：【{fileitem.storage}】{fileitem.path} 到 【{target_storage}】{target_file}，"
             f"操作类型：{transfer_type}"
         )
+        def __fallback_fileitem(path: Path, reference: Optional[FileItem] = None) -> FileItem:
+            """为元数据延迟可见的存储构造目标路径文件项。"""
+            size = reference.size if reference else None
+            modify_time = reference.modify_time if reference else None
+            if target_storage == "local":
+                try:
+                    stat = path.stat()
+                    size = stat.st_size
+                    modify_time = stat.st_mtime
+                except OSError:
+                    pass
+            return FileItem(
+                storage=target_storage,
+                path=path.as_posix(),
+                name=path.name,
+                basename=path.stem,
+                type=(reference.type if reference and reference.type else "file"),
+                size=size,
+                extension=path.suffix.lstrip("."),
+                modify_time=modify_time,
+            )
+
+        overwrite_backup_item = None
+        existing_item = None
         if target_storage == "local" and (
             target_file.exists() or target_file.is_symlink()
         ):
             if not over_flag:
                 logger.warning(f"文件已存在：{target_file}")
                 return None, f"{target_file} 已存在"
-            else:
-                logger.info(f"正在删除已存在的文件：{target_file}")
-                target_file.unlink()
+            existing_item = target_oper.get_item(target_file) or __fallback_fileitem(target_file)
         else:
             exists_item = target_oper.get_item(target_file)
             if exists_item:
                 if not over_flag:
                     logger.warning(f"文件已存在：【{target_storage}】{target_file}")
                     return None, f"【{target_storage}】{target_file} 已存在"
-                else:
-                    logger.info(
-                        f"正在删除已存在的文件：【{target_storage}】{target_file}"
-                    )
-                    target_oper.delete(exists_item)
+                existing_item = exists_item
+
+        if existing_item:
+            # 复制大文件可能耗时很久。先隐藏备份原文件，传输失败时才具备完整回滚能力。
+            backup_name = f".{target_file.name}.overwrite-{uuid.uuid4().hex}"
+            backup_path = target_file.with_name(backup_name)
+            if not target_oper.rename(existing_item, backup_name):
+                return None, f"无法备份已存在的文件，已取消覆盖：{target_file}"
+            overwrite_backup_item = target_oper.get_item(backup_path) or __fallback_fileitem(
+                backup_path, reference=existing_item
+            )
+            logger.info(f"已将待覆盖文件临时备份为：【{target_storage}】{backup_path}")
+
         # 执行文件整理命令
-        new_item, errmsg = self.__transfer_command(
-            fileitem=fileitem,
-            target_storage=target_storage,
-            source_oper=source_oper,
-            target_oper=target_oper,
-            target_file=target_file,
-            transfer_type=transfer_type,
-        )
+        try:
+            new_item, errmsg = self.__transfer_command(
+                fileitem=fileitem,
+                target_storage=target_storage,
+                source_oper=source_oper,
+                target_oper=target_oper,
+                target_file=target_file,
+                transfer_type=transfer_type,
+            )
+        except Exception as err:
+            logger.error(f"文件整理命令执行失败：{err}")
+            new_item, errmsg = None, str(err)
+
         if new_item:
+            if overwrite_backup_item and not target_oper.delete(overwrite_backup_item):
+                logger.warning(
+                    f"覆盖后的临时备份删除失败，请手动清理：【{target_storage}】{overwrite_backup_item.path}"
+                )
             self.__update_result(
                 result=result,
                 file_list=[fileitem.path],
@@ -999,6 +1039,27 @@ class TransHandler:
                 total_size=fileitem.size,
             )
             return new_item, errmsg
+
+        if overwrite_backup_item:
+            partial_item = target_oper.get_item(target_file)
+            if partial_item:
+                target_oper.delete(partial_item)
+            elif target_storage == "local" and (
+                target_file.exists() or target_file.is_symlink()
+            ):
+                target_file.unlink(missing_ok=True)
+
+            if target_oper.rename(overwrite_backup_item, target_file.name):
+                logger.info(f"覆盖传输失败，已恢复原文件：{target_file}")
+                errmsg = f"{errmsg}；已恢复原文件" if errmsg else "已恢复原文件"
+            else:
+                logger.error(
+                    f"覆盖传输失败且原文件恢复失败，备份保留在：【{target_storage}】{overwrite_backup_item.path}"
+                )
+                errmsg = (
+                    f"{errmsg}；原文件备份保留在 {overwrite_backup_item.path}"
+                    if errmsg else f"原文件备份保留在 {overwrite_backup_item.path}"
+                )
 
         return None, errmsg
 
