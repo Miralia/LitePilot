@@ -52,13 +52,7 @@ const imageUrl = computed(() => {
   const image = props.media?.image || ''
   if (!image || imageLoadError.value) return noImage
 
-  let url = `${import.meta.env.VITE_API_BASE_URL}system/img/0?imgurl=${encodeURIComponent(image)}`
-  const useCookies = props.media?.use_cookies
-  if (useCookies) {
-    url += `&use_cookies=${encodeURIComponent(useCookies)}`
-  }
-
-  return url
+  return `${import.meta.env.VITE_API_BASE_URL}system/img/0?imgurl=${encodeURIComponent(image)}`
 })
 
 /**

@@ -215,7 +215,7 @@ class ImageHelper(metaclass=Singleton):
             return None
 
     @staticmethod
-    def _get_request_params(url: str, proxy: Optional[bool], cookies: Optional[str | dict]) -> dict:
+    def _get_request_params(url: str, proxy: Optional[bool]) -> dict:
         """获取参数"""
         referer = "https://movie.douban.com/" if "doubanio.com" in url else None
         if proxy is None:
@@ -226,7 +226,6 @@ class ImageHelper(metaclass=Singleton):
             "ua": settings.NORMAL_USER_AGENT,
             "proxies": proxies,
             "referer": referer,
-            "cookies": cookies,
             "accept_type": "image/avif,image/webp,image/apng,*/*",
         }
 
@@ -234,8 +233,7 @@ class ImageHelper(metaclass=Singleton):
         self,
         url: str,
         proxy: Optional[bool] = None,
-        use_cache: bool = True,
-        cookies: Optional[str | dict] = None) -> Optional[bytes]:
+        use_cache: bool = True) -> Optional[bytes]:
         """
         获取图片（同步版本）
         """
@@ -243,7 +241,6 @@ class ImageHelper(metaclass=Singleton):
             url=url,
             proxy=proxy,
             use_cache=use_cache,
-            cookies=cookies,
         )
         return result[0] if result else None
 
@@ -252,7 +249,6 @@ class ImageHelper(metaclass=Singleton):
         url: str,
         proxy: Optional[bool] = None,
         use_cache: bool = True,
-        cookies: Optional[str | dict] = None,
     ) -> Optional[tuple[bytes, str]]:
         """
         同步获取图片及其内容识别 MIME 类型。
@@ -273,7 +269,7 @@ class ImageHelper(metaclass=Singleton):
                     return content, mime_type
 
         # 请求远程图片
-        params = self._get_request_params(url, proxy, cookies)
+        params = self._get_request_params(url, proxy)
         response = RequestUtils(**params).get_res(url=url)
         if response is None or response.status_code != 200:
             logger.warn(f"Failed to fetch image from URL: {url}")
@@ -292,8 +288,7 @@ class ImageHelper(metaclass=Singleton):
         self,
         url: str,
         proxy: Optional[bool] = None,
-        use_cache: bool = True,
-        cookies: Optional[str | dict] = None) -> Optional[bytes]:
+        use_cache: bool = True) -> Optional[bytes]:
         """
         获取图片（异步版本）
         """
@@ -301,7 +296,6 @@ class ImageHelper(metaclass=Singleton):
             url=url,
             proxy=proxy,
             use_cache=use_cache,
-            cookies=cookies,
         )
         return result[0] if result else None
 
@@ -310,7 +304,6 @@ class ImageHelper(metaclass=Singleton):
         url: str,
         proxy: Optional[bool] = None,
         use_cache: bool = True,
-        cookies: Optional[str | dict] = None,
     ) -> Optional[tuple[bytes, str]]:
         """
         异步获取图片及其内容识别 MIME 类型。
@@ -331,7 +324,7 @@ class ImageHelper(metaclass=Singleton):
                     return content, mime_type
 
         # 请求远程图片
-        params = self._get_request_params(url, proxy, cookies)
+        params = self._get_request_params(url, proxy)
         response = await AsyncRequestUtils(**params).get_res(url=url)
         if response is None or response.status_code != 200:
             logger.warn(f"Failed to fetch image from URL: {url}")

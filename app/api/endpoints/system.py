@@ -18,7 +18,6 @@ from fastapi.responses import StreamingResponse
 
 from app import schemas
 from app.chain.media import MediaChain
-from app.chain.mediaserver import MediaServerChain
 from app.chain.system import SystemChain
 from app.core.config import global_vars, settings
 from app.core.event import eventmanager
@@ -411,7 +410,6 @@ async def fetch_image(
     proxy: Optional[bool] = None,
     use_cache: bool = False,
     if_none_match: Optional[str] = None,
-    cookies: Optional[str | dict] = None,
     allowed_domains: Optional[set[str]] = None,
 ) -> Optional[Response]:
     """
@@ -436,7 +434,6 @@ async def fetch_image(
         url=fetch_url,
         proxy=proxy,
         use_cache=use_cache,
-        cookies=cookies,
     )
 
     if image_result:
@@ -463,7 +460,6 @@ async def proxy_img(
     imgurl: str,
     proxy: bool = False,
     cache: bool = False,
-    use_cookies: bool = False,
     if_none_match: Annotated[str | None, Header()] = None,
     _: schemas.TokenPayload = Depends(verify_resource_token),
 ) -> Response:
@@ -471,16 +467,10 @@ async def proxy_img(
     图片代理，可选是否使用代理服务器，支持 HTTP 缓存
     """
     allowed_domains = set(settings.SECURITY_IMAGE_DOMAINS)
-    cookies = (
-        MediaServerChain().get_image_cookies(server=None, image_url=imgurl)
-        if use_cookies
-        else None
-    )
     return await fetch_image(
         url=imgurl,
         proxy=proxy,
         use_cache=cache,
-        cookies=cookies,
         if_none_match=if_none_match,
         allowed_domains=allowed_domains,
     )

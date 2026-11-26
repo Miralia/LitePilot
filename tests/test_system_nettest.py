@@ -93,7 +93,6 @@ class NettestSecurityTest(unittest.TestCase):
             url=image_url,
             proxy=None,
             use_cache=False,
-            cookies=None,
         )
 
     def test_fetch_image_blocks_private_allowed_url_before_request(self):
@@ -153,7 +152,6 @@ class NettestSecurityTest(unittest.TestCase):
             url="https://img1.doubanio.com/poster.webp",
             proxy=None,
             use_cache=False,
-            cookies=None,
         )
 
     def test_fetch_image_blocks_tampered_signed_private_url(self):

@@ -232,16 +232,6 @@ class MediaServerChain(ChainBase):
         )
         return result or {}
 
-    def get_image_cookies(
-        self, server: Optional[str], image_url: str
-    ) -> Optional[str | dict]:
-        """
-        获取图片的Cookies
-        """
-        return self.run_module(
-            "mediaserver_image_cookies", server=server, image_url=image_url
-        )
-
     def sync(
             self,
             progress_callback: Optional[Callable[..., None]] = None,

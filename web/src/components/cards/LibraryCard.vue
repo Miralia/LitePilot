@@ -83,23 +83,17 @@ async function goPlay() {
 /**
  * 生成图片代理路径。
  * @param url 原始图片地址
- * @param use_cookies 是否携带 Cookie 代理图片
  */
-function getImgUrl(url: string, use_cookies?: boolean) {
+function getImgUrl(url: string) {
   if (!url || imageError.value) return getDefaultImage()
-  let imgurl = `${import.meta.env.VITE_API_BASE_URL}system/img/0?imgurl=${encodeURIComponent(url)}`
-  if (use_cookies) {
-    imgurl += `&use_cookies=${encodeURIComponent(use_cookies)}`
-  }
-  return imgurl
+  return `${import.meta.env.VITE_API_BASE_URL}system/img/0?imgurl=${encodeURIComponent(url)}`
 }
 
 /**
  * 根据多张图片生成媒体库封面。
  * @param imageList 媒体库封面候选图列表
- * @param use_cookies 是否携带 Cookie 代理图片
  */
-async function drawImages(imageList: string[], use_cookies?: boolean) {
+async function drawImages(imageList: string[]) {
   // 图片
   const IMAGES = [...imageList]
   if (IMAGES.length === 0) return getDefaultImage()
@@ -107,9 +101,6 @@ async function drawImages(imageList: string[], use_cookies?: boolean) {
   // 为所有图片添加system/img前缀
   for (let i = 0; i < IMAGES.length; i++) {
     IMAGES[i] = `${import.meta.env.VITE_API_BASE_URL}system/img/0?imgurl=${encodeURIComponent(IMAGES[i])}`
-    if (use_cookies) {
-      IMAGES[i] += `&use_cookies=${encodeURIComponent(use_cookies)}`
-    }
   }
 
   // canvas
@@ -186,8 +177,8 @@ async function drawImages(imageList: string[], use_cookies?: boolean) {
 
 onMounted(async () => {
   if (props.media?.image_list && props.media?.image_list.length > 0)
-    imgUrl.value = await drawImages(props.media?.image_list || [], props.media?.use_cookies)
-  else imgUrl.value = getImgUrl(props.media?.image || '', props.media?.use_cookies)
+    imgUrl.value = await drawImages(props.media?.image_list || [])
+  else imgUrl.value = getImgUrl(props.media?.image || '')
 })
 </script>
 
@@ -204,33 +195,33 @@ onMounted(async () => {
           }"
           @click="goPlay"
         >
-        <template #image>
-          <canvas ref="canvasRef" width="640" height="360" class="w-full h-full hidden" />
-          <VImg
-            :src="imgUrl"
-            aspect-ratio="2/3"
-            class="library-card-image"
-            :class="{ 'library-card-image--loaded': imageLoaded }"
-            cover
-            @load="imageLoadHandler"
-            @error="imageErrorHandler"
-          >
-            <template #placeholder>
-              <div class="library-card-placeholder">
-                <VSkeletonLoader class="library-card-skeleton" />
-              </div>
-            </template>
-            <template #default>
-              <div class="library-card-shade" aria-hidden="true" />
-              <div v-if="showCountCorner" class="library-card-count-corner">
-                <span>{{ countLabel }}</span>
-              </div>
-              <div class="library-card-label">
-                <span>{{ props.media?.name }}</span>
-              </div>
-            </template>
-          </VImg>
-        </template>
+          <template #image>
+            <canvas ref="canvasRef" width="640" height="360" class="w-full h-full hidden" />
+            <VImg
+              :src="imgUrl"
+              aspect-ratio="2/3"
+              class="library-card-image"
+              :class="{ 'library-card-image--loaded': imageLoaded }"
+              cover
+              @load="imageLoadHandler"
+              @error="imageErrorHandler"
+            >
+              <template #placeholder>
+                <div class="library-card-placeholder">
+                  <VSkeletonLoader class="library-card-skeleton" />
+                </div>
+              </template>
+              <template #default>
+                <div class="library-card-shade" aria-hidden="true" />
+                <div v-if="showCountCorner" class="library-card-count-corner">
+                  <span>{{ countLabel }}</span>
+                </div>
+                <div class="library-card-label">
+                  <span>{{ props.media?.name }}</span>
+                </div>
+              </template>
+            </VImg>
+          </template>
         </VCard>
       </div>
     </template>
@@ -301,7 +292,7 @@ onMounted(async () => {
   background: rgba(8, 13, 22, 72%);
   block-size: 100%;
   clip-path: polygon(100% 0, 100% 100%, 0 0);
-  content: "";
+  content: '';
   inset-block-start: 0;
   inset-inline-end: 0;
   inline-size: 100%;
@@ -312,7 +303,7 @@ onMounted(async () => {
   background: rgba(var(--v-theme-primary), 62%);
   block-size: 100%;
   clip-path: polygon(100% 0, 100% 100%, 0 0);
-  content: "";
+  content: '';
   inset-block-start: 0;
   inset-inline-end: 0;
   inline-size: 100%;
