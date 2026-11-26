@@ -42,8 +42,15 @@ class EmbyModule(_ModuleBase, _MediaServerBase[Emby]):
         """
         return 1
 
-    def stop(self):
-        pass
+    def stop(self) -> None:
+        """
+        停止模块并释放媒体服务器连接资源
+        """
+        for server in self.get_instances().values():
+            try:
+                server.close()
+            except Exception as err:
+                logger.error(f"停止Emby实例失败：{err}")
 
     def test(self) -> Optional[Tuple[bool, str]]:
         """

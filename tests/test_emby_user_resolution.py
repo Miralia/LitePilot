@@ -30,6 +30,9 @@ def test_emby_init_does_not_block_on_metadata_network_requests():
     ]
 
     class SlowRequestUtils:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
         def get_res(self, *_args, **_kwargs):
             lookup_started.set()
             release_lookup.wait(1)
@@ -64,6 +67,9 @@ def test_reconnect_waits_for_initial_metadata_bootstrap():
     ]
 
     class SlowFirstRequestUtils:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
         def get_res(self, *_args, **_kwargs):
             nonlocal request_count
             with request_count_lock:
