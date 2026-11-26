@@ -2,16 +2,42 @@ import { useBackground } from '@/composables/useBackground'
 import { addBackgroundTimer, removeBackgroundTimer } from '@/utils/backgroundManager'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/utils/backgroundManager', () => ({
   addBackgroundTimer: vi.fn(),
   removeBackgroundTimer: vi.fn(),
 }))
 
+class FakeEventSource {
+  static instances: FakeEventSource[] = []
+
+  readonly url: string
+  readyState = 0
+  onerror: ((event: Event) => void) | null = null
+  onmessage: ((event: MessageEvent) => void) | null = null
+  onopen: ((event: Event) => void) | null = null
+  close = vi.fn()
+
+  constructor(url: string | URL) {
+    this.url = String(url)
+    FakeEventSource.instances.push(this)
+  }
+
+  static reset() {
+    FakeEventSource.instances = []
+  }
+}
+
 describe('useBackground', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    FakeEventSource.reset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   it('does not register a data refresh timer after the component unmounts during the initial load', async () => {
@@ -89,5 +115,27 @@ describe('useBackground', () => {
     expect(loadData).toHaveBeenCalledTimes(2)
 
     wrapper.unmount()
+  })
+  it('isolates simultaneous SSE consumers even when they use the same listener id', () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource)
+    const TestComponent = defineComponent({
+      setup() {
+        useBackground().useSSE('/api/events', vi.fn(), 'shared-listener-id')
+        return {}
+      },
+      template: '<div />',
+    })
+
+    const first = mount(TestComponent)
+    const second = mount(TestComponent)
+    vi.advanceTimersByTime(100)
+
+    expect(FakeEventSource.instances).toHaveLength(2)
+
+    first.unmount()
+    expect(FakeEventSource.instances[0].close).toHaveBeenCalledOnce()
+    expect(FakeEventSource.instances[1].close).not.toHaveBeenCalled()
+    second.unmount()
   })
 })

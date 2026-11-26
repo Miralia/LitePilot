@@ -1,5 +1,5 @@
 import { getCurrentInstance, onMounted, onUnmounted, ref, type Ref } from 'vue'
-import { sseManagerSingleton, type SSEManagerOptions } from '@/utils/sseManager'
+import { SSEManager, type SSEManagerOptions } from '@/utils/sseManager'
 import { addBackgroundTimer, removeBackgroundTimer } from '@/utils/backgroundManager'
 
 type UseSSEOptions = Partial<SSEManagerOptions> & {
@@ -25,7 +25,7 @@ export function useBackground() {
     options?: UseSSEOptions,
   ) => {
     // 使用独立的SSE管理器，确保每个监听器都有独立的连接
-    const manager = sseManagerSingleton.getIndependentManager(url, listenerId, options)
+    const manager = new SSEManager(url, options)
     const isConnected = ref(false)
     let connectTimer: ReturnType<typeof setTimeout> | null = null
     let isClosed = false
@@ -47,7 +47,7 @@ export function useBackground() {
 
       manager.removeStatusListener(statusListenerId)
       manager.removeMessageListener(listenerId)
-      sseManagerSingleton.closeIndependentManager(url, listenerId)
+      manager.destroy()
       isConnected.value = false
     }
 
@@ -122,7 +122,7 @@ export function useBackground() {
     options?: UseSSEOptions,
   ) => {
     // 使用独立的SSE管理器，确保每个监听器都有独立的连接
-    const manager = sseManagerSingleton.getIndependentManager(url, listenerId, options)
+    const manager = new SSEManager(url, options)
     const isConnected = ref(false)
     let connectTimer: ReturnType<typeof setTimeout> | null = null
     let isClosed = false
@@ -144,7 +144,7 @@ export function useBackground() {
 
       manager.removeStatusListener(statusListenerId)
       manager.removeMessageListener(listenerId)
-      sseManagerSingleton.closeIndependentManager(url, listenerId)
+      manager.destroy()
       isConnected.value = false
     }
 
@@ -180,15 +180,12 @@ export function useBackground() {
     listenerId: string,
     isActive: Ref<boolean>,
   ) => {
-    let managerUrl = ''
-    const getManager = () => {
-      managerUrl = url
-      return sseManagerSingleton.getIndependentManager(managerUrl, listenerId, {
+    const getManager = () =>
+      new SSEManager(url, {
         backgroundCloseDelay: 1000, // 进度SSE更快关闭
         reconnectDelay: 1000,
         maxReconnectAttempts: 5,
       })
-    }
 
     let manager: ReturnType<typeof getManager> | null = null
     let isListening = false
@@ -210,9 +207,8 @@ export function useBackground() {
       manager.removeMessageListener(listenerId)
 
       if (destroyManager) {
-        sseManagerSingleton.closeIndependentManager(managerUrl || url, listenerId)
+        manager.destroy()
         manager = null
-        managerUrl = ''
       }
 
       isListening = false

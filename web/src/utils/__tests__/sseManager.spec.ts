@@ -1,4 +1,4 @@
-import { SSEManager, sseManagerSingleton, type SSEManagerOptions } from '@/utils/sseManager'
+import { SSEManager, type SSEManagerOptions } from '@/utils/sseManager'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /** 提供 SSEManager 生命周期测试所需的最小 EventSource 协议。 */
@@ -76,7 +76,6 @@ describe('SSEManager', () => {
 
   afterEach(() => {
     managers.splice(0).forEach(manager => manager.destroy())
-    sseManagerSingleton.closeAllManagers()
     vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
@@ -284,60 +283,5 @@ describe('SSEManager', () => {
     manager.addMessageListener('ignored', vi.fn())
     manager.forceReconnect()
     expect(FakeEventSource.instances).toHaveLength(1)
-  })
-})
-
-describe('sseManagerSingleton', () => {
-  beforeEach(() => {
-    FakeEventSource.reset()
-    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource)
-    vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
-  })
-
-  afterEach(() => {
-    sseManagerSingleton.closeAllManagers()
-    vi.restoreAllMocks()
-    vi.unstubAllGlobals()
-  })
-
-  it('按 URL 复用共享实例，只有注册表关闭操作才替换 identity', () => {
-    const manager = sseManagerSingleton.getManager('/shared', managerOptions)
-    manager.addMessageListener('listener', vi.fn())
-    const source = FakeEventSource.instances[0]
-
-    expect(sseManagerSingleton.getManager('/shared')).toBe(manager)
-    expect(sseManagerSingleton.getManager('/other')).not.toBe(manager)
-
-    sseManagerSingleton.closeManager('/shared')
-    expect(source.close).toHaveBeenCalledOnce()
-    expect(manager.hasActiveListeners).toBe(false)
-
-    manager.forceReconnect()
-    expect(FakeEventSource.instances).toHaveLength(1)
-
-    const replacement = sseManagerSingleton.getManager('/shared', managerOptions)
-    expect(replacement).not.toBe(manager)
-  })
-
-  it('按 URL 与 listenerId 隔离独立实例，关闭指定注册项后重新创建', () => {
-    const first = sseManagerSingleton.getIndependentManager('/independent', 'first', managerOptions)
-    const second = sseManagerSingleton.getIndependentManager('/independent', 'second', managerOptions)
-    first.addMessageListener('first-listener', vi.fn())
-    second.addMessageListener('second-listener', vi.fn())
-    const firstSource = FakeEventSource.instances[0]
-
-    expect(sseManagerSingleton.getIndependentManager('/independent', 'first')).toBe(first)
-    expect(second).not.toBe(first)
-
-    sseManagerSingleton.closeIndependentManager('/independent', 'first')
-    expect(firstSource.close).toHaveBeenCalledOnce()
-    expect(first.hasActiveListeners).toBe(false)
-
-    first.forceReconnect()
-    expect(FakeEventSource.instances).toHaveLength(2)
-
-    const replacement = sseManagerSingleton.getIndependentManager('/independent', 'first', managerOptions)
-    expect(replacement).not.toBe(first)
-    expect(sseManagerSingleton.getIndependentManager('/independent', 'second')).toBe(second)
   })
 })
