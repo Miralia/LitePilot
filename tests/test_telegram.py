@@ -137,6 +137,31 @@ def test_telegram_parser_preserves_callback_context():
     assert message.message_id == 88
     assert message.chat_id == "10001"
 
+
+def test_should_process_message_skips_media_without_text(telegram):
+    """纯媒体消息不应再转发到只处理文本命令的后端消息链。"""
+    message = SimpleNamespace(
+        chat=SimpleNamespace(type="private"),
+        from_user=SimpleNamespace(id=10001),
+        text=None,
+        caption=None,
+    )
+
+    assert telegram._should_process_message(message) is False
+
+
+def test_should_process_message_accepts_private_text(telegram):
+    """私聊文本消息仍应进入命令处理链。"""
+    message = SimpleNamespace(
+        chat=SimpleNamespace(type="private"),
+        from_user=SimpleNamespace(id=10001),
+        text="/redo 1",
+        caption=None,
+    )
+
+    assert telegram._should_process_message(message) is True
+
+
 def test_send_msg_with_longtext(telegram):
     """测试发送长消息"""
     result = telegram.send_msg(

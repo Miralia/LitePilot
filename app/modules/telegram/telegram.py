@@ -3,7 +3,7 @@ import json
 import re
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin, quote
 
 from app.modules.telegram.compat import ensure_urllib3_header_param_compat
@@ -55,7 +55,6 @@ class Telegram:
         f"http://127.0.0.1:{settings.PORT}/api/v1/message?token={settings.API_TOKEN}"
     )
     _bot: TeleBot = None
-    _callback_handlers: Dict[str, Callable] = {}  # 存储回调处理器
     _user_chat_mapping: Dict[
         str, str
     ] = {}  # userid -> chat_id mapping for reply targeting
@@ -337,13 +336,16 @@ class Telegram:
         :param message: Telegram消息对象
         :return: 是否处理
         """
+        # 消息内容：文本消息用 text，媒体消息的说明文字用 caption
+        message_text = message.text or message.caption or ""
+        if not message_text:
+            logger.debug("忽略无文本内容的Telegram消息")
+            return False
+
         # 私聊消息总是处理
         if message.chat.type == "private":
             logger.debug(f"处理私聊消息：用户 {message.from_user.id}")
             return True
-
-        # 消息内容：文本消息用 text，媒体消息的说明文字用 caption
-        message_text = message.text or message.caption or ""
 
         # 群聊中的命令消息总是处理（以/开头）
         if message_text.startswith("/"):

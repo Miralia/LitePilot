@@ -19,6 +19,8 @@ def test_notification_has_no_unproduced_telegram_interaction_fields():
         "original_chat_id",
         "disable_web_page_preview",
         "parse_mode",
+        "date",
+        "action",
         "stop_typing",
     ):
         assert field not in Notification.model_fields
@@ -28,6 +30,7 @@ def test_telegram_client_has_no_dead_attachment_or_edit_surface():
     """无生产者的附件发送与通知编辑能力不得重新出现。"""
     assert not hasattr(Telegram, "send_voice")
     assert not hasattr(Telegram, "send_file")
+    assert "_callback_handlers" not in Telegram.__dict__
     signature = inspect.signature(Telegram.send_msg)
     for parameter in (
         "force_reply",
