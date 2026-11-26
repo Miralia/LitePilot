@@ -54,7 +54,7 @@ function handleNavScroll(evt: Event) {
           <ThemeLogoMark />
 
           <h1 class="leading-normal text-xl">
-            <span class="moviepilot-wordmark">MOVIEPILOT</span> <span class="text-sm text-gray-500">v2</span>
+            <span class="moviepilot-wordmark">LitePilot</span>
           </h1>
         </RouterLink>
       </slot>
@@ -92,7 +92,10 @@ function handleNavScroll(evt: Event) {
   inline-size: variables.$layout-vertical-nav-width;
   inset-block-start: 0;
   inset-inline-start: 0;
-  transition: transform 0.25s ease-in-out, inline-size 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+  transition:
+    transform 0.25s ease-in-out,
+    inline-size 0.25s ease-in-out,
+    box-shadow 0.25s ease-in-out;
   visibility: hidden;
   will-change: transform, inline-size;
 
