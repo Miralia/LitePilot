@@ -1,4 +1,6 @@
 import asyncio
+import os
+from pathlib import Path
 from typing import Any, Generator, List, Optional, Self, Tuple, AsyncGenerator, Union
 
 from sqlalchemy import NullPool, QueuePool, and_, create_engine, event, inspect, text, select, Column, Integer, \
@@ -10,6 +12,30 @@ from sqlalchemy.orm import Session, as_declarative, declared_attr, scoped_sessio
 from app.core.config import settings
 from app.log import logger
 
+
+_SQLITE_DATABASE_FILE_MODE = 0o600
+_SQLITE_SIDECAR_SUFFIXES = ("", "-wal", "-shm", "-journal")
+
+
+def _secure_sqlite_file_permissions(db_path: Path) -> None:
+    """将包含凭据的 SQLite 数据库及 WAL 侧车文件限制为所有者访问。"""
+    if os.name == "nt":
+        return
+
+    # 先以私有权限预创建空数据库，避免 SQLite 按进程 umask 留下短暂的世界可读窗口。
+    try:
+        descriptor = os.open(db_path, os.O_RDWR | os.O_CREAT | os.O_EXCL, _SQLITE_DATABASE_FILE_MODE)
+    except FileExistsError:
+        pass
+    else:
+        os.close(descriptor)
+
+    for suffix in _SQLITE_SIDECAR_SUFFIXES:
+        candidate = Path(f"{db_path}{suffix}")
+        try:
+            candidate.chmod(_SQLITE_DATABASE_FILE_MODE)
+        except FileNotFoundError:
+            continue
 
 def _database_error_metadata(error: BaseException) -> Optional[dict[str, Any]]:
     """提取 SQLite 与 PostgreSQL 驱动提供的稳定错误分类字段。"""
@@ -86,6 +112,9 @@ def _get_sqlite_engine(is_async: bool = False):
     """
     获取SQLite数据库引擎
     """
+    db_path = settings.CONFIG_PATH / "user.db"
+    _secure_sqlite_file_permissions(db_path)
+
     # 连接参数
     _connect_args = {
         "timeout": settings.DB_TIMEOUT,
@@ -101,7 +130,7 @@ def _get_sqlite_engine(is_async: bool = False):
 
         # 数据库参数
         _db_kwargs = {
-            "url": f"sqlite:///{settings.CONFIG_PATH}/user.db",
+            "url": f"sqlite:///{db_path}",
             "pool_pre_ping": settings.DB_POOL_PRE_PING,
             "echo": settings.DB_ECHO,
             "poolclass": _pool_class,
@@ -126,12 +155,13 @@ def _get_sqlite_engine(is_async: bool = False):
         with engine.connect() as connection:
             current_mode = connection.execute(text(f"PRAGMA journal_mode={_journal_mode};")).scalar()
             logger.info(f"SQLite database journal mode set to: {current_mode}")
+        _secure_sqlite_file_permissions(db_path)
 
         return engine
     else:
         # 数据库参数，只能使用 NullPool
         _db_kwargs = {
-            "url": f"sqlite+aiosqlite:///{settings.CONFIG_PATH}/user.db",
+            "url": f"sqlite+aiosqlite:///{db_path}",
             "pool_pre_ping": settings.DB_POOL_PRE_PING,
             "echo": settings.DB_ECHO,
             "poolclass": NullPool,
@@ -158,6 +188,7 @@ def _get_sqlite_engine(is_async: bool = False):
             asyncio.run(set_async_wal_mode())
         except Exception as e:
             logger.warning(f"Failed to set async SQLite WAL mode: {e}")
+        _secure_sqlite_file_permissions(db_path)
 
         return async_engine
 
