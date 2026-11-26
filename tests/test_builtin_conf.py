@@ -332,6 +332,9 @@ def test_path_index_miss_refresh_is_throttled(monkeypatch):
     monkeypatch.setattr(type(chain), "_path_index", {})
     monkeypatch.setattr(type(chain), "_index_built_at", 0.0)
     monkeypatch.setattr(type(chain), "_miss_refresh_at", 0.0, raising=False)
+    # CI 容器的 monotonic 起点可能小于节流窗口；必须使用受控时钟，
+    # 否则测试会依赖宿主机启动时间而产生偶发失败。
+    monkeypatch.setattr("app.chain.downloadfilesync.time.monotonic", lambda: 1000.0)
 
     assert chain.resolve_torrent_by_path("/manual/one.mkv") == (None, None)
     assert chain.resolve_torrent_by_path("/manual/two.mkv") == (None, None)
