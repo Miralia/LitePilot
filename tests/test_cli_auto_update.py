@@ -14,10 +14,6 @@ MODULE_PATH = Path(__file__).resolve().parents[1] / "app" / "cli.py"
 
 class _DummySystemHelper:
     @staticmethod
-    def consume_one_shot_update_mode():
-        return None
-
-    @staticmethod
     def get_auto_update_mode():
         return "false"
 

@@ -156,7 +156,6 @@ def test_uvicorn_preserves_stop_requested_before_serve(monkeypatch):
     asyncio.run(server.serve())
 
 
-@pytest.mark.parametrize("endpoint_name", ["restart_system", "upgrade_system"])
 @pytest.mark.parametrize(
     "initially_stopped",
     [False, True],
@@ -164,10 +163,9 @@ def test_uvicorn_preserves_stop_requested_before_serve(monkeypatch):
 )
 def test_restart_endpoint_failure_preserves_stop_state(
     monkeypatch,
-    endpoint_name,
     initially_stopped,
 ):
-    """重启或升级失败不能发布或撤销停止请求"""
+    """重启失败不能发布或撤销停止请求"""
     from app.api.endpoints import system
 
     stop_event = threading.Event()
@@ -177,14 +175,11 @@ def test_restart_endpoint_failure_preserves_stop_state(
     monkeypatch.setattr(system.SystemHelper, "can_restart", MagicMock(return_value=True))
     monkeypatch.setattr(
         system.SystemHelper,
-        "restart" if endpoint_name == "restart_system" else "upgrade",
+        "restart",
         MagicMock(return_value=(False, "restart failed")),
     )
 
-    if endpoint_name == "restart_system":
-        response = system.restart_system(None)
-    else:
-        response = system.upgrade_system(None, None)
+    response = system.restart_system(None)
 
     assert not response.success
     assert stop_event.is_set() is initially_stopped

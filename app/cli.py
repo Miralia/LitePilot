@@ -274,9 +274,6 @@ def _git_current_branch() -> Optional[str]:
 
 
 def _auto_update_mode() -> str:
-    one_shot_mode = SystemHelper.consume_one_shot_update_mode()
-    if one_shot_mode:
-        return one_shot_mode
     return SystemHelper.get_auto_update_mode()
 
 
