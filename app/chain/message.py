@@ -5,7 +5,7 @@ from app.chain import ChainBase
 from app.chain.transfer import TransferChain
 from app.core.config import settings
 from app.log import logger
-from app.schemas import CommingMessage, Notification
+from app.schemas import Notification
 from app.schemas.types import EventType, MessageChannel
 
 
@@ -64,7 +64,7 @@ class MessageChain(ChainBase):
             logger.debug(f"未识别到用户ID：{body}{form}{args}")
             return
 
-        # 消息内容（本分支只处理文本，图片/语音/附件随智能体一并删除）
+        # 消息内容（本分支只处理文本命令和按钮回调）
         text = str(info.text).strip() if info.text else ""
         if not text:
             logger.debug(f"未识别到消息内容：：{body}{form}{args}")
@@ -79,7 +79,6 @@ class MessageChain(ChainBase):
             text=text,
             original_message_id=info.message_id,
             original_chat_id=info.chat_id,
-            reply_to_message_id=info.reply_to_message_id,
         )
 
     def handle_message(
@@ -91,7 +90,6 @@ class MessageChain(ChainBase):
             text: Optional[str],
             original_message_id: Optional[Union[str, int]] = None,
             original_chat_id: Optional[str] = None,
-            reply_to_message_id: Optional[Union[str, int]] = None,
     ) -> None:
         """
         识别消息内容，执行操作
@@ -124,7 +122,6 @@ class MessageChain(ChainBase):
                 text=text,
                 original_message_id=original_message_id,
                 original_chat_id=original_chat_id,
-                reply_to_message_id=reply_to_message_id,
                 processing_status=processing_status,
             ) is True
         finally:
@@ -148,7 +145,6 @@ class MessageChain(ChainBase):
             original_message_id: Optional[Union[str, int]] = None,
             original_chat_id: Optional[str] = None,
             processing_status: Optional[_ProcessingStatus] = None,
-            reply_to_message_id: Optional[Union[str, int]] = None,
     ) -> bool:
         """执行实际消息路由，便于统一包裹处理中状态。"""
 
@@ -387,16 +383,6 @@ class MessageChain(ChainBase):
         """
         保存一条用户消息到消息历史与数据库。
         """
-        self.messagehelper.put(
-            CommingMessage(
-                userid=userid,
-                username=username,
-                channel=channel,
-                source=source,
-                text=text,
-            ),
-            role="user",
-        )
         self.messageoper.add(
             channel=channel,
             source=source,

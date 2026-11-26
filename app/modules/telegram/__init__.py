@@ -230,13 +230,10 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
                 userid=user_id,
                 username=user_name,
                 text=callback_text,
-                is_callback=True,
-                callback_data=callback_data,
                 message_id=callback_query.get("message", {}).get("message_id"),
                 chat_id=str(
                     callback_query.get("message", {}).get("chat", {}).get("id", "")
                 ),
-                callback_query=callback_query,
             )
         return None
 
@@ -251,7 +248,6 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
         user_id = msg.get("from", {}).get("id")
         user_name = msg.get("from", {}).get("username")
         chat_id = msg.get("chat", {}).get("id")
-        reply_to_message_id = (msg.get("reply_to_message") or {}).get("message_id")
 
         # 将 text_link 实体中的 URL 嵌入到文本中
         if text:
@@ -260,28 +256,20 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
         # 将 reply_markup 中的 URL 按钮信息追加到文本中
         text = self._append_reply_markup_links(text, msg.get("reply_markup"))
 
-        images = self._extract_images(msg)
-        audio_refs = self._extract_audio_refs(msg)
-        files = self._extract_files(msg)
-
         if user_id:
-            if not text and not images and not audio_refs and not files:
+            if not text:
                 logger.debug(
-                    f"收到来自 {client_config.name} 的Telegram消息无文本、图片、语音和文件"
+                    f"收到来自 {client_config.name} 的Telegram消息无文本"
                 )
                 return None
 
             logger.info(
                 f"收到来自 {client_config.name} 的Telegram消息："
-                f"userid={user_id}, username={user_name}, chat_id={chat_id}, text={text}, "
-                f"images={len(images) if images else 0}, audios={len(audio_refs) if audio_refs else 0}, "
-                f"files={len(files) if files else 0}"
+                f"userid={user_id}, username={user_name}, chat_id={chat_id}, text={text}"
             )
 
-            cleaned_text = (
-                self._clean_bot_mention(text, client.bot_username if client else None)
-                if text
-                else None
+            cleaned_text = self._clean_bot_mention(
+                text, client.bot_username if client else None
             )
 
             user_list = client_config.config.get("TELEGRAM_USERS")
@@ -308,90 +296,8 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
                 text=cleaned_text,
                 message_id=message_id,
                 chat_id=str(chat_id) if chat_id else None,
-                reply_to_message_id=reply_to_message_id,
-                images=images if images else None,
-                audio_refs=audio_refs if audio_refs else None,
-                files=files if files else None,
             )
         return None
-
-    @staticmethod
-    def _extract_images(msg: dict) -> Optional[List[CommingMessage.MessageImage]]:
-        """
-        从Telegram消息中提取图片file_id
-        """
-        images = []
-        photo = msg.get("photo")
-        if photo and isinstance(photo, list):
-            largest_photo = photo[-1]
-            file_id = largest_photo.get("file_id")
-            if file_id:
-                images.append(
-                    CommingMessage.MessageImage(
-                        ref=f"tg://file_id/{file_id}",
-                        mime_type="image/jpeg",
-                        size=largest_photo.get("file_size"),
-                    )
-                )
-
-        document = msg.get("document")
-        if document:
-            file_id = document.get("file_id")
-            mime_type = document.get("mime_type", "")
-            if file_id and mime_type.startswith("image/"):
-                images.append(
-                    CommingMessage.MessageImage(
-                        ref=f"tg://file_id/{file_id}",
-                        name=document.get("file_name"),
-                        mime_type=document.get("mime_type"),
-                        size=document.get("file_size"),
-                    )
-                )
-
-        return images if images else None
-
-    @staticmethod
-    def _extract_audio_refs(msg: dict) -> Optional[List[str]]:
-        """
-        从Telegram消息中提取语音/音频 file_id。
-        """
-        audio_refs = []
-        voice = msg.get("voice")
-        if voice:
-            file_id = voice.get("file_id")
-            if file_id:
-                audio_refs.append(f"tg://voice_file_id/{file_id}")
-
-        audio = msg.get("audio")
-        if audio:
-            file_id = audio.get("file_id")
-            if file_id:
-                audio_refs.append(f"tg://audio_file_id/{file_id}")
-
-        return audio_refs if audio_refs else None
-
-    @staticmethod
-    def _extract_files(msg: dict) -> Optional[List[CommingMessage.MessageAttachment]]:
-        """
-        从 Telegram 消息中提取非图片文件附件。
-        """
-        document = msg.get("document")
-        if not isinstance(document, dict):
-            return None
-
-        file_id = document.get("file_id")
-        mime_type = (document.get("mime_type") or "").lower()
-        if not file_id or mime_type.startswith("image/"):
-            return None
-
-        return [
-            CommingMessage.MessageAttachment(
-                ref=f"tg://document_file_id/{file_id}",
-                name=document.get("file_name"),
-                mime_type=document.get("mime_type"),
-                size=document.get("file_size"),
-            )
-        ]
 
     @staticmethod
     def _embed_entity_links(text: str, entities: Optional[List[dict]]) -> str:
@@ -572,35 +478,3 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
                 continue
 
             client.register_commands(commands)
-
-    def download_telegram_file_to_base64(self, file_id: str, source: str) -> Optional[str]:
-        """
-        下载Telegram文件并转为base64
-        :param file_id: Telegram文件ID
-        :param source: 来源名称
-        :return: base64编码的图片数据
-        """
-        config = self.get_config(source)
-        if not config:
-            return None
-        client = self.get_instance(config.name)
-        if not client:
-            return None
-        file_content = client.download_file(file_id)
-        if file_content:
-            import base64
-
-            return base64.b64encode(file_content).decode()
-        return None
-
-    def download_telegram_file_bytes(self, file_id: str, source: str) -> Optional[bytes]:
-        """
-        下载Telegram文件并返回原始字节。
-        """
-        config = self.get_config(source)
-        if not config:
-            return None
-        client = self.get_instance(config.name)
-        if not client:
-            return None
-        return client.download_file(file_id)

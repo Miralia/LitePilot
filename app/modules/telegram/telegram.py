@@ -28,13 +28,11 @@ except ImportError:
     from telegramify_markdown.type import ContentTypes, File, Photo, Text  # noqa: E402
 
 from app.core.config import settings  # noqa: E402
-from app.core.metainfo import MetaInfo  # noqa: E402
 from app.helper.image import ImageHelper  # noqa: E402
 from app.helper.thread import ThreadHelper  # noqa: E402
 from app.log import logger  # noqa: E402
 from app.utils.common import retry  # noqa: E402
 from app.utils.http import RequestUtils  # noqa: E402
-from app.utils.string import StringUtils  # noqa: E402
 
 
 TELEGRAM_PARSE_MODE_MARKDOWN = "MarkdownV2"
@@ -226,41 +224,6 @@ class Telegram:
         :return: Bot用户名或None
         """
         return self._bot_username
-
-    def download_file(self, file_id: str) -> Optional[bytes]:
-        """
-        下载Telegram文件
-        :param file_id: 文件ID
-        :return: 文件字节数据
-        """
-        if not self._bot:
-            return None
-        try:
-            file_info = self._bot.get_file(file_id)
-            file_url = apihelper.FILE_URL.format(
-                self._telegram_token, file_info.file_path
-            )
-            resp = RequestUtils(
-                proxies=apihelper.proxy, timeout=30
-            ).get_res(file_url)
-            if resp and resp.content:
-                logger.info(
-                    "Telegram文件下载成功: file_id=%s, file_path=%s, content_bytes=%s",
-                    file_id,
-                    file_info.file_path,
-                    len(resp.content),
-                )
-                return resp.content
-            logger.warning(
-                "Telegram文件下载失败: file_id=%s, file_path=%s, file_url=%s, proxy_enabled=%s",
-                file_id,
-                getattr(file_info, "file_path", None),
-                file_url,
-                bool(apihelper.proxy),
-            )
-        except Exception as e:
-            logger.error(f"下载Telegram文件失败: {e}")
-        return None
 
     @staticmethod
     def _telegramify_item_text(item: Text) -> str:

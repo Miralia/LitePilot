@@ -51,8 +51,8 @@ def test_send_msg_success(telegram):
     assert result and result.get("success")
 
 
-def test_telegram_parser_preserves_reply_to_message_id():
-    """Telegram ForceReply 回复应保留来源消息和被回复消息的 message_id。"""
+def test_telegram_parser_preserves_message_context():
+    """Telegram 文本消息应保留 typing 所需的 message_id 和 chat_id。"""
     module = TelegramModule()
     client_config = SimpleNamespace(name="telegram-test", config={})
     client = SimpleNamespace(bot_username="mp_bot")
@@ -80,7 +80,62 @@ def test_telegram_parser_preserves_reply_to_message_id():
     assert message.text == "东张西望"
     assert message.message_id == 101
     assert message.chat_id == "10001"
-    assert message.reply_to_message_id == 99
+
+
+def test_telegram_parser_ignores_media_only_message():
+    """无文本的媒体消息不应进入只支持命令和按钮回调的消息链。"""
+    module = TelegramModule()
+    client_config = SimpleNamespace(name="telegram-test", config={})
+    client = SimpleNamespace(bot_username="mp_bot")
+    payload = {
+        "message": {
+            "message_id": 102,
+            "from": {"id": 10001, "username": "tester"},
+            "chat": {"id": 10001, "type": "private"},
+            "photo": [{"file_id": "photo-file", "file_size": 1024}],
+        },
+    }
+
+    with patch.object(module, "get_config", return_value=client_config), patch.object(
+        module, "get_instance", return_value=client
+    ):
+        message = module.message_parser(
+            source="telegram-test",
+            body=json.dumps(payload),
+            form=None,
+            args={},
+        )
+
+    assert message is None
+
+
+def test_telegram_parser_preserves_callback_context():
+    """按钮回调仍应转换为 CALLBACK 文本并保留原消息定位信息。"""
+    module = TelegramModule()
+    client_config = SimpleNamespace(name="telegram-test", config={})
+    client = SimpleNamespace(bot_username="mp_bot")
+    payload = {
+        "callback_query": {
+            "id": "callback-1",
+            "from": {"id": 10001, "username": "tester"},
+            "message": {"message_id": 88, "chat": {"id": 10001}},
+            "data": "transfer_retry_12",
+        },
+    }
+
+    with patch.object(module, "get_config", return_value=client_config), patch.object(
+        module, "get_instance", return_value=client
+    ):
+        message = module.message_parser(
+            source="telegram-test",
+            body=json.dumps(payload),
+            form=None,
+            args={},
+        )
+
+    assert message.text == "CALLBACK:transfer_retry_12"
+    assert message.message_id == 88
+    assert message.chat_id == "10001"
 
 def test_send_msg_with_longtext(telegram):
     """测试发送长消息"""
