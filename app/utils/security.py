@@ -21,7 +21,6 @@ from app.utils.coalesce import (
     EventCoalescer,
 )
 
-
 # DNS 解析结果缓存。
 # 正向缓存 TTL 选择 120s，短于常见 CDN / fake-ip 的 DNS TTL，避免长期持有失效 IP；
 # 负向缓存 TTL 选择 15s，避免临时解析失败把目标长时间拉黑。
@@ -42,7 +41,6 @@ _dns_cache_lock = threading.Lock()
 _dns_inflight_locks: Dict[str, asyncio.Lock] = {}
 _dns_inflight_meta_lock = threading.Lock()
 
-
 class UrlSafetyReason(str, Enum):
     """
     `evaluate_url_safety` 返回的诊断原因枚举。
@@ -61,7 +59,6 @@ class UrlSafetyReason(str, Enum):
     NON_GLOBAL_DNS_RESULT = "non_global_dns_result"
     # 配置了 `allowed_private_ranges`，但仍存在不在允许网段内的解析结果
     MIXED_OR_DISALLOWED_PRIVATE_RESULT = "mixed_or_disallowed_private_result"
-
 
 @dataclass(frozen=True)
 class UrlSafetyDiagnosis:
@@ -86,7 +83,6 @@ class UrlSafetyDiagnosis:
     # 命中允许放行的非公网网段，仅 `ALLOWED` 且走私网放行分支时非空
     matched_private_ranges: List[str] = field(default_factory=list)
 
-
 def _resolve_addrinfo_to_ips(
     address_infos: Iterable,
 ) -> Optional[List[ipaddress._BaseAddress]]:
@@ -103,7 +99,6 @@ def _resolve_addrinfo_to_ips(
         except ValueError:
             return None
     return addresses or None
-
 
 class SecurityUtils:
     _SIGNED_URL_PURPOSE = "image-proxy"
@@ -326,28 +321,6 @@ class SecurityUtils:
         return all(address.is_global for address in addresses)
 
     @staticmethod
-    def _is_global_hostname(hostname: str) -> bool:
-        """
-        判断主机名解析结果是否全部为公网地址（同步版本）。
-
-        图片代理会访问用户可控的 URL，这里必须在 allowlist 命中前后都排除
-        私有、回环、链路本地、保留地址等非公网目标，避免通过 DNS 或字面量 IP
-        绕过域名白名单访问内网服务。
-        """
-        return SecurityUtils._addresses_all_global(
-            SecurityUtils._hostname_addresses(hostname)
-        )
-
-    @staticmethod
-    async def _is_global_hostname_async(hostname: str) -> bool:
-        """
-        判断主机名解析结果是否全部为公网地址（异步版本）。语义与 `_is_global_hostname` 一致。
-        """
-        return SecurityUtils._addresses_all_global(
-            await SecurityUtils._hostname_addresses_async(hostname)
-        )
-
-    @staticmethod
     def _parse_ip_networks(ranges: Optional[Iterable[str]]) -> List[ipaddress._BaseNetwork]:
         """
         解析用户配置的 IP/CIDR 网段。
@@ -392,40 +365,6 @@ class SecurityUtils:
         return addresses, list(dict.fromkeys(matched_networks))
 
     @staticmethod
-    def _is_allowed_private_hostname(
-        hostname: str,
-        allowed_private_ranges: Optional[Iterable[str]],
-    ) -> Optional[tuple[List[ipaddress._BaseAddress], List[ipaddress._BaseNetwork]]]:
-        """
-        返回主机名命中的显式允许非公网地址和网段（同步版本）。
-
-        该能力只用于图片代理的受控例外，例如 TUN fake-ip 或内网 CDN。必须由
-        `is_safe_url` 先完成域名 allowlist 校验后再调用，避免把任意用户 URL
-        变成 SSRF 绕过入口。
-        """
-        networks = SecurityUtils._parse_ip_networks(allowed_private_ranges)
-        if not networks:
-            return None
-        return SecurityUtils._match_private_addresses(
-            SecurityUtils._hostname_addresses(hostname), networks
-        )
-
-    @staticmethod
-    async def _is_allowed_private_hostname_async(
-        hostname: str,
-        allowed_private_ranges: Optional[Iterable[str]],
-    ) -> Optional[tuple[List[ipaddress._BaseAddress], List[ipaddress._BaseNetwork]]]:
-        """
-        `_is_allowed_private_hostname` 的异步版本，语义保持一致。
-        """
-        networks = SecurityUtils._parse_ip_networks(allowed_private_ranges)
-        if not networks:
-            return None
-        return SecurityUtils._match_private_addresses(
-            await SecurityUtils._hostname_addresses_async(hostname), networks
-        )
-
-    @staticmethod
     def _url_signature_payload(url: str, purpose: str) -> bytes:
         """
         构造 URL 签名载荷。
@@ -461,7 +400,6 @@ class SecurityUtils:
             return url
         parsed_url = urlparse(url)
         return urlunparse(parsed_url._replace(fragment=""))
-
 
     @staticmethod
     def sign_url(
@@ -842,7 +780,6 @@ class SecurityUtils:
 
         return safe_path
 
-
 # 图片代理阻断日志聚合窗口（秒）。媒体详情页一次请求会批量触发同 host/同原因的拦截，
 # 按 (host, reason) 合并后只输出首条 warning + 窗口结束的聚合摘要，避免日志刷屏。
 _IMAGE_PROXY_BLOCK_LOG_WINDOW_SECONDS = 60.0
@@ -858,7 +795,6 @@ _IMAGE_PROXY_FAKEIP_HINT = (
 # 仅起标识作用，签名串本身不写入日志，避免泄露签名材料。
 _INVALID_SIGNATURE_TAG = "invalid_signature"
 
-
 def _url_carries_signature(url: str) -> bool:
     """
     判断 URL 是否在 fragment 中显式携带代理签名参数 `mp_sig`。
@@ -872,7 +808,6 @@ def _url_carries_signature(url: str) -> bool:
     if fragment_start < 0:
         return False
     return "mp_sig=" in url[fragment_start + 1:]
-
 
 def _format_image_proxy_block_warning(
     *,
@@ -902,7 +837,6 @@ def _format_image_proxy_block_warning(
         line = f"{line} | {hint}"
     return line
 
-
 def _log_image_proxy_block_summary(summary: CoalesceSummary) -> None:
     """
     图片代理阻断日志聚合窗口到期回调，输出窗口内的命中计数与首条样例。
@@ -921,7 +855,6 @@ def _log_image_proxy_block_summary(summary: CoalesceSummary) -> None:
         f"sample_url={payload.get('url', '')}, sample_ips={sample_ips}"
     )
 
-
 # 图片代理阻断日志聚合器。同 (host, reason) 高频拦截在窗口内合并为一条聚合摘要，避免媒体详情页一次请求把日志刷爆；
 # 放行 debug 日志与诊断布尔结果不受聚合影响。
 _image_proxy_block_log_coalescer = EventCoalescer(
@@ -929,7 +862,6 @@ _image_proxy_block_log_coalescer = EventCoalescer(
     on_flush=_log_image_proxy_block_summary,
     source="image_proxy",
 )
-
 
 async def _emit_image_proxy_block_warning(
     *,

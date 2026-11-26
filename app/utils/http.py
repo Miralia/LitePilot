@@ -18,7 +18,6 @@ from app.log import logger
 
 urllib3.disable_warnings(InsecureRequestWarning)
 
-
 class _NonClosingTransportProxy(httpx.AsyncBaseTransport):
     """
     包装共享底层 transport，转发请求但吞掉 __aexit__/aclose 调用。
@@ -44,7 +43,6 @@ class _NonClosingTransportProxy(httpx.AsyncBaseTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         return await self._wrapped.handle_async_request(request)
-
 
 _SharedTransportKey = Tuple[
     Optional[str],          # proxy
@@ -88,14 +86,12 @@ _H2_TUNNEL_BREAK_ERRORS = (
     httpx.CloseError,
 )
 
-
 def _h2_proxy_breaker_key(proxy: str, url: str) -> Tuple[str, str]:
     try:
         host = httpx.URL(url).host or ""
     except Exception:
         host = url
     return proxy, host
-
 
 def _h2_proxy_allowed(proxy: Optional[str], url: str) -> bool:
     """判断给定代理 + 目标 host 当前是否允许尝试 h2（未处于熔断冷却期）"""
@@ -104,7 +100,6 @@ def _h2_proxy_allowed(proxy: Optional[str], url: str) -> bool:
     with _h2_proxy_breaker_lock:
         retry_at = _h2_proxy_retry_at.get(_h2_proxy_breaker_key(proxy, url), 0.0)
     return time.monotonic() >= retry_at
-
 
 def _trip_h2_proxy_breaker(proxy: str, url: str) -> None:
     """记录一次 h2 连接层失败，熔断该 (proxy, host) 冷却期内的 h2 尝试"""
@@ -115,10 +110,8 @@ def _trip_h2_proxy_breaker(proxy: str, url: str) -> None:
             del _h2_proxy_retry_at[key]
         _h2_proxy_retry_at[_h2_proxy_breaker_key(proxy, url)] = now + _H2_PROXY_BREAKER_COOLDOWN
 
-
 # 持有 LRU 淘汰后正在异步关闭的 transport task，避免 fire-and-forget 被 GC 警告
 _pending_eviction_tasks: set[asyncio.Task] = set()
-
 
 def _discard_pending_eviction_task(task: asyncio.Task) -> None:
     """从跨线程共享集合移除已完成的 transport 关闭任务"""
@@ -126,7 +119,6 @@ def _discard_pending_eviction_task(task: asyncio.Task) -> None:
         _pending_eviction_tasks.discard(task)
     if not task.cancelled() and (error := task.exception()):
         logger.debug(f"LRU 淘汰共享 transport 时关闭失败: {error!r}")
-
 
 def _get_shared_async_transport(
     proxy: Optional[str],
@@ -200,7 +192,6 @@ def _get_shared_async_transport(
 
     return transport
 
-
 async def aclose_shared_async_transports() -> None:
     """
     关闭当前事件循环下所有共享 AsyncHTTPTransport，释放底层连接池。
@@ -237,7 +228,6 @@ async def aclose_shared_async_transports() -> None:
         if isinstance(result, BaseException):
             logger.debug(f"关闭共享 AsyncHTTPTransport 失败: {result!r}")
 
-
 def _url_decode_if_latin(original: str) -> str:
     """
     解码URL编码的字符串，只解码文本，二进制数据保持不变
@@ -256,7 +246,6 @@ def _url_decode_if_latin(original: str) -> str:
     except Exception as e:
         logger.error(f"latin-1解码URL编码失败：{e}")
     return original
-
 
 def cookie_parse(cookies_str: str, array: bool = False) -> Union[list, dict]:
     """
@@ -278,7 +267,6 @@ def cookie_parse(cookies_str: str, array: bool = False) -> Union[list, dict]:
     if array:
         return [{"name": k, "value": v} for k, v in cookie_dict.items()]
     return cookie_dict
-
 
 class RequestUtils:
     """
@@ -662,39 +650,6 @@ class RequestUtils:
         finally:
             if response is not None:
                 response.close()
-
-    @staticmethod
-    def parse_cache_control(header: str) -> Tuple[str, Optional[int]]:
-        """
-        解析 Cache-Control 头，返回 cache_directive 和 max_age
-        :param header: Cache-Control 头部的字符串
-        :return: cache_directive 和 max_age
-        """
-        cache_directive = ""
-        max_age = None
-
-        if not header:
-            return cache_directive, max_age
-
-        directives = [directive.strip() for directive in header.split(",")]
-        for directive in directives:
-            if directive.startswith("max-age"):
-                try:
-                    max_age = int(directive.split("=")[1])
-                except Exception as e:
-                    logger.debug(
-                        f"Invalid max-age directive in Cache-Control header: {directive}, {e}"
-                    )
-            elif directive in {
-                "no-cache",
-                "private",
-                "public",
-                "no-store",
-                "must-revalidate",
-            }:
-                cache_directive = directive
-
-        return cache_directive, max_age
 
     @staticmethod
     def generate_cache_headers(

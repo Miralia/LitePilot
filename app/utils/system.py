@@ -1,5 +1,4 @@
 import datetime
-import hashlib
 import os
 import platform
 import re
@@ -10,7 +9,6 @@ import subprocess
 import sys
 import time
 import urllib.parse
-import uuid
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
@@ -24,13 +22,11 @@ import psutil
 from app import schemas
 from version import APP_VERSION
 
-
 # Linux amd64/arm64 UAPI: _IOR(BTRFS_IOCTL_MAGIC, 31, struct btrfs_ioctl_fs_info_args)
 _BTRFS_IOC_FS_INFO = 0x8400941F
 _BTRFS_FS_INFO_SIZE = 1024
 _BTRFS_FSID_OFFSET = 16
 _BTRFS_FSID_SIZE = 16
-
 
 class SystemUtils:
     """
@@ -134,15 +130,6 @@ class SystemUtils:
                 f"错误：{SystemUtils.redact_url_userinfo(str(e))}"
             )
             return False, error_message
-
-    @staticmethod
-    def is_synology() -> bool:
-        """
-        判断是否为群晖系统
-        """
-        if SystemUtils.is_windows():
-            return False
-        return "synology" in SystemUtils.execute('uname -a')
 
     @staticmethod
     def is_windows() -> bool:
@@ -394,86 +381,6 @@ class SystemUtils:
             output = (result.stderr or result.stdout or "").strip()
             errors.append(f"{command[0]}：{output or f'返回码 {result.returncode}'}")
         raise RuntimeError(f"RAR 压缩包解压失败：{'；'.join(errors)}")
-
-    @staticmethod
-    def exits_files(directory: Path, extensions: list, min_filesize: int = 0, recursive: bool = True) -> bool:
-        """
-        判断目录下是否存在指定扩展名的文件
-
-        :param directory: 指定的父目录
-        :param extensions: 需要包含的扩展名列表，例如 ['mkv', 'mp4']
-        :param min_filesize: 文件最低大小，单位 MB
-        :param recursive: 是否递归查找，可选参数，默认 True
-        :return: True存在 False不存在
-        """
-
-        if not directory.exists():
-            return False
-
-        # 预编译正则表达式
-        if extensions:
-            pattern = re.compile(r".*(" + "|".join(extensions) + r")$", re.IGNORECASE)
-        else:
-            pattern = re.compile(r".*")
-
-        if directory.is_file():
-            # 检查单个文件是否符合条件
-            if extensions and not pattern.match(directory.name):
-                return False
-            if min_filesize > 0 and directory.stat().st_size < min_filesize * 1024 * 1024:
-                return False
-            return True
-
-        def _search_files(dir_path: Path, is_recursive: bool) -> bool:
-            try:
-                with os.scandir(dir_path) as entries:
-                    for entry in entries:
-                        try:
-                            if entry.is_file(follow_symlinks=False):
-                                # 检查文件是否符合条件
-                                if (pattern.match(entry.name) and
-                                    (min_filesize <= 0 or entry.stat().st_size >= min_filesize * 1024 * 1024)):
-                                    return True
-                            elif entry.is_dir() and is_recursive:
-                                # 递归搜索子目录
-                                if _search_files(Path(entry.path), is_recursive):
-                                    return True
-                        except (OSError, PermissionError):
-                            continue
-            except (OSError, PermissionError):
-                pass
-            return False
-
-        return _search_files(directory, recursive)
-
-    @staticmethod
-    def list_sub_files(directory: Path, extensions: list) -> List[Path]:
-        """
-        列出当前目录下的所有指定扩展名的文件(不包括子目录)
-        """
-        if not directory.exists():
-            return []
-
-        if directory.is_file():
-            return [directory]
-
-        files = []
-
-        # 预编译正则表达式
-        if extensions:
-            pattern = re.compile(r".*(" + "|".join(extensions) + r")$", re.IGNORECASE)
-        else:
-            pattern = re.compile(r".*")
-
-        try:
-            with os.scandir(directory) as entries:
-                for entry in entries:
-                    if entry.is_file() and pattern.match(entry.name):
-                        files.append(Path(entry.path))
-        except OSError:
-            pass
-
-        return files
 
     @staticmethod
     def list_sub_directory(directory: Path) -> List[Path]:
@@ -767,32 +674,6 @@ class SystemUtils:
         return [upload_speed, download_speed]
 
     @staticmethod
-    def is_hardlink(src: Path, dest: Path) -> bool:
-        """
-        判断是否为硬链接
-        """
-        try:
-            if not src.exists() or not dest.exists():
-                return False
-            if src.is_file():
-                # 如果是文件，直接比较文件
-                return src.samefile(dest)
-            else:
-                for src_file in src.glob("**/*"):
-                    if src_file.is_dir():
-                        continue
-                    # 计算目标文件路径
-                    relative_path = src_file.relative_to(src)
-                    target_file = dest.joinpath(relative_path)
-                    # 检查是否是硬链接
-                    if not target_file.exists() or not src_file.samefile(target_file):
-                        return False
-                return True
-        except Exception as e:
-            print(f"Error occurred: {e}")
-            return False
-
-    @staticmethod
     def is_network_filesystem(
             directory: Path, include_local_fuse: bool = False
     ) -> bool:
@@ -889,45 +770,3 @@ class SystemUtils:
             # 确保是空文件夹
             if folder.is_dir() and not any(folder.iterdir()):
                 folder.rmdir()
-
-    @staticmethod
-    def generate_user_unique_id():
-        """
-        根据优先级依次尝试生成稳定唯一ID：
-        1. 文件系统唯一标识符。
-        2. MAC 地址。
-        3. 主机名。
-        """
-
-        def get_filesystem_unique_id():
-            """
-            获取文件系统的唯一标识符。
-            使用根目录的设备号和 inode。
-            """
-            try:
-                stat_info = os.stat("/")
-                fs_id = f"{stat_info.st_dev}-{stat_info.st_ino}"
-                return hashlib.sha256(fs_id.encode("utf-8")).hexdigest()
-            except Exception as e:
-                print(str(e))
-                return None
-
-        def get_mac_address_id():
-            """
-            获取设备的 MAC 地址并生成唯一标识符。
-            """
-            try:
-                mac_address = uuid.getnode()
-                if (mac_address >> 40) % 2:  # 检查是否是虚拟MAC地址
-                    raise ValueError("MAC地址可能是虚拟地址")
-                mac_str = f"{mac_address:012x}"
-                return hashlib.sha256(mac_str.encode("utf-8")).hexdigest()
-            except Exception as e:
-                print(str(e))
-                return None
-
-        for method in [get_filesystem_unique_id, get_mac_address_id]:
-            unique_id = method()
-            if unique_id:
-                return unique_id
-        return None

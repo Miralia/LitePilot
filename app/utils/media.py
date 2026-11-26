@@ -1,15 +1,8 @@
 from typing import Any, Optional, Tuple
 
-
 MEDIA_SOURCE_ALIASES = {
     "tmdb": "themoviedb",
     "themoviedb": "themoviedb",
-    "douban": "douban",
-    "bangumi": "bangumi",
-}
-
-MEDIA_SOURCE_PREFIXES = {
-    "themoviedb": "tmdb",
     "douban": "douban",
     "bangumi": "bangumi",
 }
@@ -20,9 +13,7 @@ MEDIA_SOURCE_ID_FIELDS = {
     "douban": ("douban_id", "doubanid"),
 }
 
-
 SUPPORTED_MEDIA_SOURCES = frozenset({"themoviedb", "bangumi"})
-
 
 def normalize_media_source(source: Optional[str]) -> Optional[str]:
     """规范化媒体数据源名称，兼容外部使用的 ``tmdb`` 前缀。"""
@@ -31,11 +22,9 @@ def normalize_media_source(source: Optional[str]) -> Optional[str]:
     normalized = str(source).strip().casefold()
     return MEDIA_SOURCE_ALIASES.get(normalized, normalized or None)
 
-
 def is_supported_media_source(source: Optional[str]) -> bool:
     """判断数据源是否为当前可实际识别、搜索和刮削的集成来源。"""
     return normalize_media_source(source) in SUPPORTED_MEDIA_SOURCES
-
 
 def parse_media_key(media_key: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
     """解析带来源前缀的媒体键，返回规范化数据源与原生 ID。"""
@@ -47,7 +36,6 @@ def parse_media_key(media_key: Optional[str]) -> Tuple[Optional[str], Optional[s
     if not source or not media_id:
         return None, None
     return source, media_id
-
 
 def resolve_media_identity(
         media: Any = None,
@@ -104,12 +92,3 @@ def resolve_media_identity(
         if value is not None and str(value).strip():
             return media_source, str(value).strip()
     return None, None
-
-
-def build_media_key(source: Optional[str], media_id: Optional[Any]) -> str:
-    """构造 API 使用的带来源前缀媒体键。"""
-    normalized_source = normalize_media_source(source)
-    if not normalized_source or media_id is None or not str(media_id).strip():
-        return ""
-    prefix = MEDIA_SOURCE_PREFIXES.get(normalized_source, normalized_source)
-    return f"{prefix}:{str(media_id).strip()}"

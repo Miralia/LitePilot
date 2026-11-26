@@ -27,7 +27,6 @@ from app.schemas.types import SystemConfigKey
 from app.utils.singleton import Singleton, SingletonClass
 from app.utils.string import StringUtils
 
-
 # 文件名中不可用的控制字符与 Windows 禁止字符
 _FILENAME_CONTROL_RE = re.compile(r'[\x00-\x1f<>:"/\\|?*]')
 # Windows 保留设备名，作为文件名会被系统拒绝
@@ -36,7 +35,6 @@ _RESERVED_FILENAMES = {
     *(f"COM{i}" for i in range(1, 10)),
     *(f"LPT{i}" for i in range(1, 10)),
 }
-
 
 class TemplateContextBuilder:
     """
@@ -465,7 +463,6 @@ class TemplateContextBuilder:
             text = f"_{text}"
         return text or filename
 
-
 class TemplateHelper(metaclass=SingletonClass):
     """
     模板格式渲染帮助类
@@ -608,8 +605,6 @@ class TemplateHelper(metaclass=SingletonClass):
         except json.JSONDecodeError:
             return rendered
 
-
-
 class MessageTemplateHelper:
     """
     消息模板渲染器
@@ -672,7 +667,6 @@ class MessageTemplateHelper:
         """
         template_dict: dict[str, str] = SystemConfigOper().get(SystemConfigKey.NotificationTemplates)
         return template_dict.get(message.ctype.value)
-
 
 class MessageQueueManager(metaclass=SingletonClass):
     """
@@ -753,14 +747,6 @@ class MessageQueueManager(metaclass=SingletonClass):
                 logger.error(f"解析时间周期时出现意外错误：{period}. 错误：{str(e)}. 跳过此周期。")
                 continue
         return parsed
-
-    @staticmethod
-    def _time_to_minutes(time_str: str) -> int:
-        """
-        将 'HH:MM' 格式转换为分钟数
-        """
-        hours, minutes = map(int, time_str.split(':'))
-        return hours * 60 + minutes
 
     def _is_in_scheduled_time(self, current_time: datetime) -> bool:
         """
@@ -860,7 +846,6 @@ class MessageQueueManager(metaclass=SingletonClass):
         self.thread.join()
         logger.info("消息队列已停止")
 
-
 class MessageHelper(metaclass=Singleton):
     """
     消息队列管理器，负责系统实时消息的 SSE 推送
@@ -929,7 +914,6 @@ class MessageHelper(metaclass=Singleton):
         if not self.sys_queue.empty():
             return self.sys_queue.get(block=False)
         return None
-
 
 def stop_message():
     """

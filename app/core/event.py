@@ -527,9 +527,7 @@ class EventManager(metaclass=Singleton):
         jitter_factor = 0.1
         rate_limiter = ExponentialBackoffRateLimiter(base_wait=INITIAL_EVENT_QUEUE_IDLE_TIMEOUT_SECONDS,
                                                      max_wait=MAX_EVENT_QUEUE_IDLE_TIMEOUT_SECONDS,
-                                                     backoff_factor=2.0,
-                                                     source="BroadcastConsumer",
-                                                     enable_logging=False)
+                                                     backoff_factor=2.0)
         while self.__event.is_set():
             try:
                 priority, event = self.__event_queue.get(timeout=rate_limiter.current_wait)

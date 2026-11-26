@@ -1,6 +1,5 @@
 import re
 
-
 class Tokens:
     """
     按分隔符切分文本，并提供顺序消费与归属登记能力。
@@ -45,17 +44,6 @@ class Tokens:
             return None
         else:
             return self._tokens[index]
-
-    def peek_at(self, index):
-        """
-        读取指定位置的 token，不移动游标。
-
-        :param index: token 索引
-        :return: 该位置的 token，越界时返回 None
-        """
-        if index is None or index < 0 or index >= len(self._tokens):
-            return None
-        return self._tokens[index]
 
     def claim(self, index, owner: str) -> None:
         """

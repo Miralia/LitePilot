@@ -6,7 +6,6 @@ from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 from app.log import logger
 
-
 class UrlUtils:
 
     @staticmethod
@@ -23,21 +22,6 @@ class UrlUtils:
         if not host.startswith("http://") and not host.startswith("https://"):
             host = "http://" + host
         return host
-
-    @staticmethod
-    def adapt_request_url(host: str, endpoint: str) -> Optional[str]:
-        """
-        基于传入的host，适配请求的URL，确保每个请求的URL是完整的，用于在发送请求前自动处理和修正请求的URL
-        :param host: 主机头
-        :param endpoint: 端点
-        :return: 完整的请求URL字符串
-        """
-        if not host and not endpoint:
-            return None
-        if endpoint.startswith(("http://", "https://")):
-            return endpoint
-        host = UrlUtils.standardize_base_url(host)
-        return urljoin(host, endpoint) if host else endpoint
 
     @staticmethod
     def combine_url(host: str, path: Optional[str] = None, query: Optional[dict] = None) -> Optional[str]:
