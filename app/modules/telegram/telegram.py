@@ -51,6 +51,10 @@ class RetryException(Exception):
 _POLLING_LONG_TIMEOUT_SECONDS = 10
 # 正常停止只需等待最长一次长轮询返回，额外时间用于覆盖 SDK worker 收尾。
 _POLLING_STOP_TIMEOUT_SECONDS = 15
+# 正常 TCP 建连远低于 5 秒；SDK 默认 15 秒会让黑洞 IPv6 地址
+# 在每个线程首次请求时长时间占用连接。
+_TELEGRAM_CONNECT_TIMEOUT_SECONDS = 5
+apihelper.CONNECT_TIMEOUT = _TELEGRAM_CONNECT_TIMEOUT_SECONDS
 
 
 class Telegram:
@@ -191,7 +195,11 @@ class Telegram:
                 定义线程函数来运行 infinity_polling
                 """
                 try:
-                    _bot.infinity_polling(long_polling_timeout=_POLLING_LONG_TIMEOUT_SECONDS, logger_level=None)
+                    _bot.infinity_polling(
+                        timeout=_TELEGRAM_CONNECT_TIMEOUT_SECONDS,
+                        long_polling_timeout=_POLLING_LONG_TIMEOUT_SECONDS,
+                        logger_level=None,
+                    )
                 except Exception as err:
                     logger.error(f"Telegram消息接收服务异常：{str(err)}")
 

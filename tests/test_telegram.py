@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from telebot import apihelper
 
 from app.modules.telegram import TelegramModule
 from app.modules.telegram.telegram import Telegram
@@ -85,6 +86,12 @@ def test_telegram_long_polling_keeps_shutdown_window_bounded(telegram):
     telegram._polling_thread.join(timeout=1)
 
     assert telegram.bot.infinity_polling.call_args.kwargs["long_polling_timeout"] == 10
+    assert telegram.bot.infinity_polling.call_args.kwargs["timeout"] == 5
+
+
+def test_telegram_api_connect_timeout_is_bounded():
+    """IPv6 黑洞等异常网络不能让每次 Telegram 首次建连占用 15 秒以上。"""
+    assert apihelper.CONNECT_TIMEOUT == 5
 
 
 def test_telegram_init_does_not_block_on_bot_info_lookup():
