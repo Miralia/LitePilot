@@ -426,6 +426,7 @@ class TransHandler:
 
                 # 判断是否要覆盖，附加文件强制覆盖
                 overflag = False
+                cleanup_versions_after_transfer = False
                 if not __is_extra_file(fileitem):
                     # 目标文件（严格查询：无法确认状态时拒绝覆盖，避免已有文件被误覆盖）
                     try:
@@ -496,18 +497,19 @@ class TransHandler:
                                 )
                                 return result
                             elif overwrite_mode == "latest":
-                                # 仅保留最新版本
+                                # 仅保留最新版本；同名目标覆盖成功后，仍要清理分辨率等其它旧版本
                                 logger.info(
                                     f"当前整理覆盖模式设置为仅保留最新版本，将覆盖：{new_file}"
                                 )
                                 overflag = True
+                                cleanup_versions_after_transfer = True
                     else:
                         if overwrite_mode == "latest":
                             # 文件不存在，但仅保留最新版本
                             logger.info(
-                                f"当前整理覆盖模式设置为 {overwrite_mode}，仅保留最新版本，正在删除已有版本文件 ..."
+                                f"当前整理覆盖模式设置为 {overwrite_mode}，仅保留最新版本，将在新版本写入后删除已有版本文件 ..."
                             )
-                            self.__delete_version_files(target_oper, new_file)
+                            cleanup_versions_after_transfer = True
                 else:
                     # 附加文件 总是需要覆盖
                     overflag = True
@@ -538,6 +540,9 @@ class TransHandler:
                         need_notify=need_notify,
                     )
                     return result
+
+                if cleanup_versions_after_transfer:
+                    self.__delete_version_files(target_oper, new_file)
 
                 logger.info(f"文件 {fileitem.path} 整理成功")
                 self.__update_result(
