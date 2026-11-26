@@ -119,26 +119,13 @@ class WebhookEventInfo(BaseModel):
     Webhook事件信息
     """
     event: Optional[str] = None
-    channel: Optional[str] = None
     server_name: Optional[str] = None
     item_type: Optional[str] = None
     item_name: Optional[str] = None
-    item_id: Optional[str] = None
     item_path: Optional[str] = None
     season_id: Optional[str] = None
     episode_id: Optional[str] = None
     tmdb_id: Optional[str] = None
-    overview: Optional[str] = None
-    percentage: Optional[float] = None
-    ip: Optional[str] = None
-    device_name: Optional[str] = None
-    client: Optional[str] = None
-    user_name: Optional[str] = None
-    image_url: Optional[str] = None
-    item_favorite: Optional[bool] = None
-    save_reason: Optional[str] = None
-    item_isvirtual: Optional[bool] = None
-    media_type: Optional[str] = None
     json_object: Optional[dict] = Field(default_factory=dict)
 
 

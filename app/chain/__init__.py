@@ -708,7 +708,7 @@ class ChainBase(metaclass=ABCMeta):
         :param body:  请求体
         :param form:  请求表单
         :param args:  请求参数
-        :return: 字典，解析为消息时需要包含：title、text、image
+        :return: 解析后的 Webhook 事件信息，无法识别时返回 None
         """
         return self.run_module("webhook_parser", body=body, form=form, args=args)
 

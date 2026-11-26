@@ -339,20 +339,9 @@ def test_residual_source_skipped_when_not_deletable(tmp_path):
     assert src.exists()
 
 
-@pytest.mark.parametrize(
-    ("isvirtual", "expected"),
-    [
-        # ScripterX 传的是字符串，参数解析不能依赖真值判断
-        ("False", False),
-        ("false", False),
-        ("True", True),
-        (None, None),
-    ],
-)
-def test_emby_webhook_parses_query_params_regardless_of_isvirtual(
-    isvirtual, expected
-):
-    """item_* 参数与是否为虚拟条目无关，携带即应解析。"""
+@pytest.mark.parametrize("isvirtual", ["False", "false", "True", None])
+def test_emby_webhook_parses_query_params_regardless_of_isvirtual(isvirtual):
+    """item_* 删除定位参数与是否携带虚拟条目标记无关。"""
     from app.modules.emby.emby import Emby
 
     server = object.__new__(Emby)
@@ -367,7 +356,6 @@ def test_emby_webhook_parses_query_params_regardless_of_isvirtual(
     }
     if isvirtual is not None:
         args["item_isvirtual"] = isvirtual
-    server.get_remote_image_by_id = lambda **_: None
     info = Emby.get_webhook_message(server, form={}, args=args)
 
     assert info.item_path == "/media/a.mkv"
@@ -375,7 +363,6 @@ def test_emby_webhook_parses_query_params_regardless_of_isvirtual(
     assert info.season_id == "2"
     assert info.episode_id == "3"
     assert info.item_type == "Episode"
-    assert info.item_isvirtual is expected
 
 
 def test_missing_file_list_pauses_instead_of_deleting():

@@ -1119,9 +1119,8 @@ class Emby:
         if not eventType:
             return None
         logger.debug(f"接收到emby webhook：{message}")
-        eventItem = schemas.WebhookEventInfo(event=eventType, channel="emby")
+        eventItem = schemas.WebhookEventInfo(event=eventType)
         if message.get('Item'):
-            eventItem.media_type = message.get('Item', {}).get('Type')
             if message.get('Item', {}).get('Type') == 'Episode' \
                     or message.get('Item', {}).get('Type') == 'Series' \
                     or message.get('Item', {}).get('Type') == 'Season':
@@ -1140,60 +1139,28 @@ class Emby:
                         message.get('Item', {}).get('Name'))
                 else:
                     eventItem.item_name = message.get('Item', {}).get('Name')
-                eventItem.item_id = message.get('Item', {}).get('SeriesId')
                 eventItem.season_id = message.get('Item', {}).get('ParentIndexNumber')
                 eventItem.episode_id = message.get('Item', {}).get('IndexNumber')
             elif message.get('Item', {}).get('Type') == 'Audio':
                 eventItem.item_type = "AUD"
                 album = message.get('Item', {}).get('Album')
-                file_name = message.get('Item', {}).get('FileName')
                 eventItem.item_name = album
-                eventItem.overview = file_name
-                eventItem.item_id = message.get('Item', {}).get('AlbumId')
             else:
                 eventItem.item_type = "MOV"
                 eventItem.item_name = "%s %s" % (
                     message.get('Item', {}).get('Name'), "(" + str(message.get('Item', {}).get('ProductionYear')) + ")")
-                eventItem.item_id = message.get('Item', {}).get('Id')
 
             eventItem.item_path = message.get('Item', {}).get('Path')
             eventItem.tmdb_id = message.get('Item', {}).get('ProviderIds', {}).get('Tmdb')
-            if message.get('Item', {}).get('Overview') and len(message.get('Item', {}).get('Overview')) > 100:
-                eventItem.overview = str(message.get('Item', {}).get('Overview'))[:100] + "..."
-            else:
-                eventItem.overview = message.get('Item', {}).get('Overview')
-            eventItem.percentage = message.get('TranscodingInfo', {}).get('CompletionPercentage')
-            if not eventItem.percentage:
-                if message.get('PlaybackInfo', {}).get('PositionTicks') and message.get('Item', {}).get('RunTimeTicks'):
-                    eventItem.percentage = message.get('PlaybackInfo', {}).get('PositionTicks') / \
-                                           message.get('Item', {}).get('RunTimeTicks') * 100
-        if message.get('Session'):
-            eventItem.ip = message.get('Session').get('RemoteEndPoint')
-            eventItem.device_name = message.get('Session').get('DeviceName')
-            eventItem.client = message.get('Session').get('Client')
-        if message.get("User"):
-            eventItem.user_name = message.get("User").get('Name')
         # ScripterX 通过 query 参数补充条目信息。这些参数与是否为虚拟条目无关，
         # 只要携带就应解析：删除事件正依赖 item_path/tmdb_id/季集定位整理记录。
-        # item_isvirtual 单独按字面取值，避免字符串 "False" 被当成真值。
         if message.get("item_type") or message.get("item_path"):
-            is_virtual = message.get("item_isvirtual")
-            if is_virtual is not None:
-                eventItem.item_isvirtual = (
-                    str(is_virtual).strip().lower() in ("true", "1", "yes")
-                )
             eventItem.item_type = message.get("item_type")
             eventItem.item_name = message.get("item_name")
             eventItem.item_path = message.get("item_path")
             eventItem.tmdb_id = message.get("tmdb_id")
             eventItem.season_id = message.get("season_id")
             eventItem.episode_id = message.get("episode_id")
-
-        # 获取消息图片
-        if eventItem.item_id:
-            # 根据返回的item_id去调用媒体服务器获取
-            eventItem.image_url = self.get_remote_image_by_id(item_id=eventItem.item_id,
-                                                              image_type="Backdrop")
 
         eventItem.json_object = message
 
