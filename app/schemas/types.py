@@ -132,8 +132,6 @@ class SystemConfigKey(Enum):
     LibraryCoverGenerator = "LibraryCoverGenerator"
     # 配置向导状态
     SetupWizardState = "SetupWizardState"
-    # 绿联影视登录会话缓存
-
 
 # 处理进度Key字典
 class ProgressKey(Enum):
