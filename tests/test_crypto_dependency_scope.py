@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import app.core.security as core_security
 import app.utils.crypto as crypto_utils
 
 
@@ -26,5 +27,18 @@ def test_application_does_not_depend_on_pycryptodome():
     assert "import Crypto" not in app_sources
     assert not any(
         line.startswith("pycryptodome")
+        for line in requirements_source.splitlines()
+    )
+
+
+def test_core_security_drops_dead_fernet_decrypt_dependency():
+    """核心认证模块不保留无消费者的 Fernet 解密兼容入口及重复加密依赖。"""
+    security_source = Path("app/core/security.py").read_text(encoding="utf-8")
+    requirements_source = Path("requirements.in").read_text(encoding="utf-8")
+
+    assert not hasattr(core_security, "decrypt")
+    assert "cryptography.fernet" not in security_source
+    assert not any(
+        line.startswith("cryptography")
         for line in requirements_source.splitlines()
     )

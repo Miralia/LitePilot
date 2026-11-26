@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
+import app.core.cache as core_cache
 import app.utils.gc as memory_utils
+import app.utils.singleton as singleton_utils
 
 from app.helper import message
 from app.utils import dom, http, ip, limit, media, security, system, timer, tokens, url
@@ -93,3 +95,11 @@ def test_exponential_backoff_limiter_preserves_event_loop_backoff_semantics():
     assert limiter.current_wait == 3.0
     limiter.reset()
     assert limiter.current_wait == 1.0
+
+
+def test_unused_singleton_and_cache_compatibility_wrappers_are_removed():
+    """当前单例与缓存调用方直接使用具体能力，不保留上游抽象兼容外壳。"""
+    assert not hasattr(singleton_utils, "AbstractSingleton")
+    assert not hasattr(singleton_utils, "AbstractSingletonClass")
+    assert hasattr(core_cache, "TTLCache")
+    assert not hasattr(core_cache, "LRUCache")

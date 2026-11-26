@@ -22,13 +22,6 @@ class Singleton(abc.ABCMeta, type):
         return cls._instances[key]
 
 
-class AbstractSingleton(abc.ABC, metaclass=Singleton):
-    """
-    抽像类单例模式
-    """
-    pass
-
-
 class SingletonClass(abc.ABCMeta, type):
     """
     类单例模式（按类）
@@ -44,13 +37,6 @@ class SingletonClass(abc.ABCMeta, type):
         if cls not in cls._instances:
             cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
-
-
-class AbstractSingletonClass(abc.ABC, metaclass=SingletonClass):
-    """
-    抽像类单例模式（按类）
-    """
-    pass
 
 
 class WeakSingleton(abc.ABCMeta, type):

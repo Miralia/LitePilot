@@ -1514,22 +1514,3 @@ class TTLCache(CacheProxy):
         :param region: 缓存的区，为 None 时使用默认区
         """
         super().__init__(Cache(cache_type='ttl', maxsize=maxsize, ttl=ttl), region)
-
-
-class LRUCache(CacheProxy):
-    """
-    基于 LRU 的缓存类，兼容 cachetools.LRUCache 接口
-    使用项目的缓存后端实现，支持 Redis 和内存缓存
-    """
-
-    def __init__(self,
-                 region: Optional[str] = DEFAULT_CACHE_REGION,
-                 maxsize: Optional[int] = DEFAULT_CACHE_SIZE
-                 ):
-        """
-        初始化 LRU 缓存
-
-        :param maxsize: 缓存的最大条目数
-        :param region: 缓存的区，为 None 时使用默认区
-        """
-        super().__init__(Cache(cache_type='lru', maxsize=maxsize), region)

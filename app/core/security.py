@@ -5,14 +5,12 @@ import hmac
 import json
 import os
 import threading
-import traceback
 from datetime import timedelta
 from typing import Any, Union, Annotated, Optional
 
 import bcrypt
 import jwt
 from cachetools import TTLCache
-from cryptography.fernet import Fernet
 from fastapi import HTTPException, status, Security, Request, Response
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader, APIKeyQuery, APIKeyCookie
 
@@ -377,25 +375,3 @@ def get_password_hash(password: str) -> str:
         __password_bytes(password),
         bcrypt.gensalt(rounds=12),
     ).decode("ascii")
-
-
-def decrypt(data: bytes, key: bytes) -> Optional[bytes]:
-    """
-    解密二进制数据
-    """
-    fernet = Fernet(key)
-    try:
-        return fernet.decrypt(data)
-    except Exception as e:
-        logger.error(f"解密失败：{str(e)} - {traceback.format_exc()}")
-        return None
-
-
-
-
-
-
-
-
-
-
