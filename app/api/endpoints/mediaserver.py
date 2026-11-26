@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app import schemas
 from app.chain.mediaserver import MediaServerChain
 from app.core.security import verify_token
-from app.helper.mediaserver import MediaServerHelper
 
 router = APIRouter()
 
@@ -21,35 +20,6 @@ def _require_mediaserver_result(result: Optional[List[Any]]) -> List[Any]:
         )
     return result
 
-
-@router.get("/play/{itemid:path}", summary="在线播放")
-def play_item(
-    itemid: str, _: schemas.TokenPayload = Depends(verify_token)
-) -> schemas.Response:
-    """
-    获取媒体服务器播放页面地址
-    """
-    if not itemid:
-        return schemas.Response(success=False, message="参数错误")
-    configs = MediaServerHelper().get_configs()
-    if not configs:
-        return schemas.Response(success=False, message="未配置媒体服务器")
-    media_chain = MediaServerChain()
-    for name in configs.keys():
-        item = media_chain.iteminfo(server=name, item_id=itemid)
-        if item:
-            play_url = media_chain.get_play_url(server=name, item_id=itemid)
-            if play_url:
-                return schemas.Response(
-                    success=True,
-                    data={
-                        "url": play_url,
-                        "item_id": item.item_id or itemid,
-                        "server_id": item.server_id,
-                        "server_type": item.server,
-                    },
-                )
-    return schemas.Response(success=False, message="未找到播放地址")
 
 
 @router.get(

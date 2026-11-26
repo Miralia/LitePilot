@@ -1,8 +1,6 @@
 from typing import Any
 from unittest.mock import Mock, patch
 
-from app import schemas
-from app.api.endpoints.mediaserver import play_item
 from app.modules.emby.emby import Emby
 
 
@@ -111,25 +109,3 @@ def test_get_librarys_returns_item_and_server_ids():
     assert items[0].server_id == "library-server-id"
     assert "parentId=library-id" in items[0].link
     assert "serverId=library-server-id" in items[0].link
-
-
-def test_play_item_returns_server_type():
-    """播放地址接口需要返回 server_type，供前端跳转时选择正确媒体服务器类型。"""
-    item = schemas.MediaServerItem(server="emby", item_id="emby-item-id", server_id="server-id")
-
-    with (
-        patch("app.api.endpoints.mediaserver.MediaServerHelper") as helper_cls,
-        patch("app.api.endpoints.mediaserver.MediaServerChain") as chain_cls,
-    ):
-        helper_cls.return_value.get_configs.return_value = {"Emby": object()}
-        chain = chain_cls.return_value
-        chain.iteminfo.return_value = item
-        chain.get_play_url.return_value = "http://emby.local/web/index.html#!/item?id=emby-item-id"
-
-        response = play_item("emby-item-id")
-
-    assert response.success
-    assert response.data["url"] == "http://emby.local/web/index.html#!/item?id=emby-item-id"
-    assert response.data["item_id"] == "emby-item-id"
-    assert response.data["server_id"] == "server-id"
-    assert response.data["server_type"] == "emby"

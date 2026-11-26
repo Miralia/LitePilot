@@ -71,7 +71,6 @@ class EmbyModule(_ModuleBase, _MediaServerBase[Emby]):
                 logger.info(f"Emby服务器 {name} 连接断开，尝试重连 ...")
                 server.reconnect()
 
-
     def webhook_parser(self, body: Any, form: Any, args: Any) -> Optional[schemas.WebhookEventInfo]:
         """
         解析Webhook报文体
@@ -192,15 +191,6 @@ class EmbyModule(_ModuleBase, _MediaServerBase[Emby]):
         if not server_obj:
             return None
         return server_obj.get_resume(num=count, username=username)
-
-    def mediaserver_play_url(self, server: str, item_id: Union[str, int]) -> Optional[str]:
-        """
-        获取媒体库播放地址
-        """
-        server_obj: Emby = self.get_instance(server)
-        if not server_obj:
-            return None
-        return server_obj.get_play_url(item_id)
 
     def mediaserver_season_episode_ids(self, server: str, item_id: Union[str, int],
                                        season: int) -> Optional[Dict[int, str]]:
