@@ -32,6 +32,15 @@ def telegram():
         # polling/stop 使用普通函数，避免后台线程执行 MagicMock 时在退出阶段产生锁竞争。
         bot_instance.infinity_polling = lambda *args, **kwargs: None
         bot_instance.stop_polling = lambda *args, **kwargs: None
+
+        def capture_callback_query_handler(*args, **kwargs):
+            """捕获 TeleBot 注册的回调处理函数。"""
+            def decorator(func):
+                bot_instance.registered_callback_query_handler = func
+                return func
+            return decorator
+
+        bot_instance.callback_query_handler.side_effect = capture_callback_query_handler
         mock_telebot_cls.return_value = bot_instance
         mock_image_cls.return_value.fetch_image.return_value = b"fake-image-bytes"
         telegram = Telegram(TELEGRAM_TOKEN="fake_token", TELEGRAM_CHAT_ID="fake_chat_id")
@@ -113,7 +122,8 @@ def test_telegram_parser_preserves_callback_context():
     """按钮回调仍应转换为 CALLBACK 文本并保留原消息定位信息。"""
     module = TelegramModule()
     client_config = SimpleNamespace(name="telegram-test", config={})
-    client = SimpleNamespace(bot_username="mp_bot")
+    client = MagicMock()
+    client.bot_username = "mp_bot"
     payload = {
         "callback_query": {
             "id": "callback-1",
@@ -217,7 +227,9 @@ def test_telegram_transfer_callback_accepts_configured_admin():
 
     assert message is not None
     assert message.text == "CALLBACK:transfer_retry_12"
-    client.answer_callback_query.assert_not_called()
+    client.answer_callback_query.assert_called_once_with(
+        callback_query_id="callback-1"
+    )
 
 
 def _parse_text_message(module, config, client, user_id=10001, text="/redo 1"):
@@ -326,6 +338,143 @@ def test_send_msg_with_longtext(telegram):
     )
     assert result and result.get("success")
 
+
+def test_should_process_message_skips_group_text_when_bot_username_unknown(telegram):
+    """无法识别 @mention 时，无命令的普通群聊文本不应进入后端。"""
+    telegram._bot_username = None
+    message = SimpleNamespace(
+        chat=SimpleNamespace(type="group"),
+        from_user=SimpleNamespace(id=10001),
+        text="普通群聊消息",
+        caption=None,
+        entities=[],
+        caption_entities=[],
+    )
+
+    assert telegram._should_process_message(message) is False
+
+
+def test_should_process_message_accepts_group_command_when_bot_username_unknown(telegram):
+    """即使 bot 用户名未知，群聊斜杠命令仍可处理。"""
+    telegram._bot_username = None
+    message = SimpleNamespace(
+        chat=SimpleNamespace(type="group"),
+        from_user=SimpleNamespace(id=10001),
+        text="/redo 1",
+        caption=None,
+        entities=[],
+        caption_entities=[],
+    )
+
+    assert telegram._should_process_message(message) is True
+
+
+def test_callback_forwarding_waits_for_authorization_before_answer(telegram):
+    """低层回调转发不得提前空应答，否则授权告警会被 Telegram 忽略。"""
+    call = SimpleNamespace(
+        id="callback-1",
+        data="transfer_retry_12",
+        from_user=SimpleNamespace(
+            id=10001,
+            to_dict=lambda: {"id": 10001, "username": "tester"},
+        ),
+        message=SimpleNamespace(
+            message_id=88,
+            chat=SimpleNamespace(id=10001, type="private"),
+        ),
+    )
+
+    with patch("app.modules.telegram.telegram.RequestUtils") as request_utils:
+        request_utils.return_value.post_res.return_value = SimpleNamespace(
+            status_code=200
+        )
+        telegram.bot.registered_callback_query_handler(call)
+
+    telegram.bot.answer_callback_query.assert_not_called()
+    request_utils.return_value.post_res.assert_called_once()
+
+
+def test_user_chat_mapping_ignores_group_chat(telegram):
+    """群聊不应成为用户私信通知的目标，避免个人通知泄露到群组。"""
+    telegram._update_user_chat_mapping(10001, -100200, "group")
+
+    assert telegram._get_user_chat_id("10001") is None
+
+
+def test_user_chat_mapping_accepts_private_chat(telegram):
+    """私聊仍可建立用户通知目标映射。"""
+    telegram._update_user_chat_mapping(10001, 10001, "private")
+
+    assert telegram._get_user_chat_id("10001") == "10001"
+
+
+
+def test_telegram_runtime_state_isolated_between_instances():
+    """多个 Telegram 配置不得共享用户聊天映射和 typing 任务状态。"""
+    first = Telegram()
+    second = Telegram()
+
+    first._update_user_chat_mapping(10001, 10001, "private")
+    first._typing_tasks["10001"] = MagicMock()
+
+    assert second._get_user_chat_id("10001") is None
+    assert "10001" not in second._typing_tasks
+
+def test_send_long_photo_message_respects_caption_limit_and_image_bytes(telegram):
+    """长图文首条图片 caption 不得超过 1024，且图片字节不应包装为空文件名。"""
+    image = b"fake-image-bytes"
+    caption = "标题\n" + ("x" * 1500)
+
+    telegram._Telegram__send_long_message(
+        image,
+        caption,
+        set(),
+        chat_id="10001",
+        parse_mode="MarkdownV2",
+        reply_markup=None,
+    )
+
+    photo_kwargs = telegram.bot.send_photo.call_args.kwargs
+    assert len(photo_kwargs["caption"]) <= 1024
+    assert photo_kwargs["photo"] == image
+
+
+def test_photo_caption_limit_uses_utf16_units(telegram):
+    """包含 emoji 的 caption 应按 Telegram UTF-16 上限判断，而不是 Python 字符数。"""
+    caption = ("x" * 1023) + "😀"
+
+    telegram._Telegram__send_request(
+        userid="10001",
+        image=b"fake-image-bytes",
+        caption=caption,
+    )
+
+    photo_kwargs = telegram.bot.send_photo.call_args.kwargs
+    utf16_length = len(photo_kwargs["caption"].encode("utf-16-le")) // 2
+    assert utf16_length <= 1024
+
+
+def test_long_photo_message_starting_with_file_sends_correct_types(telegram):
+    """长消息首个分片为文件时，外部图片与文件应分别按正确类型发送。"""
+    image = b"fake-image-bytes"
+    caption = "```python\n" + ("print(1)\n" * 120) + "```"
+
+    telegram._Telegram__send_long_message(
+        image,
+        caption,
+        set(),
+        chat_id="10001",
+        parse_mode="MarkdownV2",
+        reply_markup=None,
+    )
+
+    photo_kwargs = telegram.bot.send_photo.call_args.kwargs
+    document_kwargs = telegram.bot.send_document.call_args.kwargs
+    assert photo_kwargs["photo"] == image
+    assert document_kwargs["document"][0] == "readable.py"
+    assert b"print(1)" in document_kwargs["document"][1]
+
+
 def test_send_msg_with_buttons_and_link(telegram):
     """测试发送带按钮和链接的消息"""
     buttons = [[
@@ -341,6 +490,7 @@ def test_send_msg_with_buttons_and_link(telegram):
 
     # 验证返回值：send_msg 失败时返回 {"success": False}（非空字典），故显式断言 success
     assert result and result.get("success")
+
 
 def test_send_msg_with_url_buttons(telegram):
     """测试发送带URL按钮的消息"""

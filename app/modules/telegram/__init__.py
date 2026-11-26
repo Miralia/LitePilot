@@ -250,6 +250,11 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
                     )
                 return None
 
+            if client:
+                client.answer_callback_query(
+                    callback_query_id=callback_query.get("id")
+                )
+
             logger.info(
                 f"收到来自 {client_config.name} 的Telegram按钮回调："
                 f"userid={user_id}, username={user_name}, callback_data={callback_data}"

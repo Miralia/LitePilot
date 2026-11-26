@@ -54,14 +54,11 @@ class Telegram:
     _ds_url = (
         f"http://127.0.0.1:{settings.PORT}/api/v1/message?token={settings.API_TOKEN}"
     )
-    _bot: TeleBot = None
-    _user_chat_mapping: Dict[
-        str, str
-    ] = {}  # userid -> chat_id mapping for reply targeting
-    _bot_username: Optional[str] = None  # Bot username for mention detection
-    _typing_tasks: Dict[str, threading.Thread] = {}  # chat_id -> typing任务
-    _typing_stop_flags: Dict[str, threading.Event] = {}  # chat_id -> 停止信号
-    _typing_lock = threading.RLock()
+    _bot: TeleBot
+    _user_chat_mapping: Dict[str, str]
+    _bot_username: Optional[str]
+    _typing_tasks: Dict[str, threading.Thread]
+    _typing_stop_flags: Dict[str, threading.Event]
     _typing_interval_seconds = 5
     _typing_initial_delay_seconds = 1
     _typing_max_duration_seconds = 10 * 60
@@ -81,6 +78,12 @@ class Telegram:
         self._telegram_token = TELEGRAM_TOKEN
         self._telegram_chat_id = TELEGRAM_CHAT_ID
         self._polling_thread = None
+        self._bot = None
+        self._user_chat_mapping = {}
+        self._bot_username = None
+        self._typing_tasks = {}
+        self._typing_stop_flags = {}
+        self._typing_lock = threading.RLock()
         if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
             logger.error("Telegram配置不完整！")
             return
@@ -132,7 +135,11 @@ class Telegram:
             ], func=lambda message: True)
             def echo_all(message):
                 # Update user-chat mapping when receiving messages
-                self._update_user_chat_mapping(message.from_user.id, message.chat.id)
+                self._update_user_chat_mapping(
+                    message.from_user.id,
+                    message.chat.id,
+                    message.chat.type,
+                )
 
                 # Check if we should process this message
                 if self._should_process_message(message):
@@ -156,7 +163,9 @@ class Telegram:
                     # Update user-chat mapping for callbacks too
                     chat_id = call.message.chat.id
                     self._update_user_chat_mapping(
-                        call.from_user.id, chat_id
+                        call.from_user.id,
+                        chat_id,
+                        getattr(call.message.chat, "type", None),
                     )
 
                     # 解析回调数据
@@ -180,10 +189,7 @@ class Telegram:
                         }
                     }
 
-                    # 先确认回调，避免用户看到loading状态
-                    _bot.answer_callback_query(call.id)
-
-                    # 发送给主程序处理
+                    # 发送给主程序处理；授权结果确定后由消息模块确认回调
                     response = RequestUtils(timeout=15).post_res(
                         self._ds_url, json=callback_json
                     )
@@ -313,13 +319,16 @@ class Telegram:
             logger.error(f"序列化Telegram消息失败: {e}")
             return None
 
-    def _update_user_chat_mapping(self, userid: int, chat_id: int) -> None:
+    def _update_user_chat_mapping(
+            self, userid: int, chat_id: int, chat_type: Optional[str] = None
+    ) -> None:
         """
-        更新用户与聊天的映射关系
+        更新用户与私聊的映射关系；群聊 ID 不能作为个人通知目标。
         :param userid: 用户ID
         :param chat_id: 聊天ID
+        :param chat_type: 聊天类型
         """
-        if userid and chat_id:
+        if userid and chat_id and chat_type == "private":
             self._user_chat_mapping[str(userid)] = str(chat_id)
 
     def _get_user_chat_id(self, userid: str) -> Optional[str]:
@@ -355,9 +364,9 @@ class Telegram:
         # 群聊中检查是否@了机器人
         if message.chat.type in ["group", "supergroup"]:
             if not self._bot_username:
-                # 如果没有获取到bot用户名，为了安全起见处理所有消息
-                logger.debug("未获取到bot用户名，处理所有群聊消息")
-                return True
+                # 当前消息链只消费命令和按钮回调；无法识别 mention 时，普通群聊文本转发到后端也只会被丢弃。
+                logger.debug("未获取到bot用户名，跳过普通群聊消息")
+                return False
 
             # 检查消息文本或说明文字中是否包含@bot_username
             if f"@{self._bot_username}" in message_text:
@@ -650,7 +659,8 @@ class Telegram:
         try:
             # 图片消息的标题长度限制为1024，文本消息为4096
             caption_limit = 1024 if image else 4096
-            if len(caption) < caption_limit:
+            caption_length = len(caption.encode("utf-16-le")) // 2
+            if caption_length <= caption_limit:
                 return self.__send_short_message(image, caption, **kwargs)
             sent_idx = set()
             return self.__send_long_message(image, caption, sent_idx, **kwargs)
@@ -699,9 +709,15 @@ class Telegram:
 
         reply_markup = kwargs.pop("reply_markup", None)
 
+        max_message_length = 1024 if image else 4096
         boxs: list[Text | File | Photo] = (
             ThreadHelper()
-            .submit(lambda x: asyncio.run(telegramify(x)), caption)
+            .submit(
+                lambda x: asyncio.run(
+                    telegramify(x, max_message_length=max_message_length)
+                ),
+                caption,
+            )
             .result()
         )
 
@@ -714,31 +730,45 @@ class Telegram:
             try:
                 current_reply_markup = reply_markup if i == 0 else None
 
-                if item.content_type == ContentTypes.TEXT and (i != 0 or not image):
-                    ret = self._bot.send_message(
-                        **kwargs,
-                        text=self._telegramify_item_text(item),
-                        reply_markup=current_reply_markup,
-                    )
+                if item.content_type == ContentTypes.TEXT:
+                    if image and i == 0:
+                        ret = self._bot.send_photo(
+                            **kwargs,
+                            photo=image,
+                            caption=self._telegramify_item_text(item),
+                            reply_markup=current_reply_markup,
+                        )
+                    else:
+                        ret = self._bot.send_message(
+                            **kwargs,
+                            text=self._telegramify_item_text(item),
+                            reply_markup=current_reply_markup,
+                        )
 
-                elif item.content_type == ContentTypes.PHOTO or (image and i == 0):
-                    ret = self._bot.send_photo(
-                        **kwargs,
-                        photo=(
-                            getattr(item, "file_name", ""),
-                            getattr(item, "file_data", image),
-                        ),
-                        caption=self._telegramify_item_caption(item),
-                        reply_markup=current_reply_markup,
-                    )
+                else:
+                    # 图片通知附带的首个分片不是文本时，先保留海报，再按分片类型发送内容。
+                    if image and i == 0 and -1 not in sent_idx:
+                        self._bot.send_photo(
+                            **kwargs,
+                            photo=image,
+                            reply_markup=None,
+                        )
+                        sent_idx.add(-1)
 
-                elif item.content_type == ContentTypes.FILE:
-                    ret = self._bot.send_document(
-                        **kwargs,
-                        document=(item.file_name, item.file_data),
-                        caption=self._telegramify_item_caption(item),
-                        reply_markup=current_reply_markup,
-                    )
+                    if item.content_type == ContentTypes.PHOTO:
+                        ret = self._bot.send_photo(
+                            **kwargs,
+                            photo=(item.file_name, item.file_data),
+                            caption=self._telegramify_item_caption(item),
+                            reply_markup=current_reply_markup,
+                        )
+                    elif item.content_type == ContentTypes.FILE:
+                        ret = self._bot.send_document(
+                            **kwargs,
+                            document=(item.file_name, item.file_data),
+                            caption=self._telegramify_item_caption(item),
+                            reply_markup=current_reply_markup,
+                        )
 
                 sent_idx.add(i)
 
