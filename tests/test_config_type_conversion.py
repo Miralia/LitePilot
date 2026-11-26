@@ -122,3 +122,17 @@ def test_security_image_domains_follow_active_media_sources() -> None:
         "doubanio.com",
         "lain.bgm.tv",
     ]
+
+
+def test_removed_feishu_notification_settings_are_not_retained() -> None:
+    """飞书通知模块已删除，配置层不应继续暴露其密钥与事件回调字段。"""
+    for field_name in (
+        "FEISHU_APP_ID",
+        "FEISHU_APP_SECRET",
+        "FEISHU_OPEN_ID",
+        "FEISHU_CHAT_ID",
+        "FEISHU_ADMINS",
+        "FEISHU_VERIFICATION_TOKEN",
+        "FEISHU_ENCRYPT_KEY",
+    ):
+        assert field_name not in type(settings).model_fields
