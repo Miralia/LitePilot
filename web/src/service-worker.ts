@@ -55,13 +55,6 @@ self.addEventListener('activate', event => {
   )
 })
 
-// 通知选项
-const options = {
-  icon: scopedAssetUrl('logo.png'),
-  vibrate: [100, 50, 100],
-  actions: [{ action: 'close', title: '关闭' }],
-}
-
 // 存储未读消息数量的键名
 const UNREAD_COUNT_KEY = 'mp_unread_count'
 
@@ -103,6 +96,24 @@ registerRoute(
   }),
 )
 
+// TMDB 图片 - 优先缓存；专用路由必须先于通用图片路由注册。
+registerRoute(
+  ({ url }) => url.hostname === 'image.tmdb.org',
+  new CacheFirst({
+    cacheName: `tmdb-image-cache-${RESOURCE_VERSION}`,
+    plugins: [
+      corsSafeCachePlugin,
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new ExpirationPlugin({
+        maxEntries: 300,
+        maxAgeSeconds: 7 * 24 * 60 * 60, // 7天
+      }),
+    ],
+  }),
+)
+
 // 图片资源 - 优先缓存
 registerRoute(
   ({ request }) => request.destination === 'image',
@@ -116,24 +127,6 @@ registerRoute(
       new ExpirationPlugin({
         maxEntries: 200,
         maxAgeSeconds: 30 * 24 * 60 * 60, // 30天
-      }),
-    ],
-  }),
-)
-
-// TMDB 图片 - 优先缓存
-registerRoute(
-  ({ url }) => url.hostname === 'image.tmdb.org',
-  new CacheFirst({
-    cacheName: `tmdb-image-cache-${RESOURCE_VERSION}`,
-    plugins: [
-      corsSafeCachePlugin,
-      new CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-      new ExpirationPlugin({
-        maxEntries: 300,
-        maxAgeSeconds: 7 * 24 * 60 * 60, // 7天
       }),
     ],
   }),
@@ -228,7 +221,7 @@ async function openDB(): Promise<IDBDatabase> {
   })
 }
 
-async function get(key: string, storeName: string = 'badge'): Promise<any> {
+async function get(key: string, storeName: string = 'badge'): Promise<unknown> {
   try {
     const db = await openDB()
     return new Promise((resolve, reject) => {
@@ -242,12 +235,12 @@ async function get(key: string, storeName: string = 'badge'): Promise<any> {
       request.onerror = () => reject(request.error)
       request.onsuccess = () => resolve(request.result)
     })
-  } catch (e) {
+  } catch {
     return null
   }
 }
 
-async function set(key: string, value: any, storeName: string = 'badge'): Promise<void> {
+async function set(key: string, value: unknown, storeName: string = 'badge'): Promise<void> {
   try {
     const db = await openDB()
     return new Promise((resolve, reject) => {
@@ -322,7 +315,6 @@ async function clearBadge() {
 // 监控缓存大小
 async function monitorCacheSize() {
   const cacheSizes: Record<string, number> = {}
-  let calculatedTotalSize = 0
 
   try {
     const cacheNames = await caches.keys()
@@ -348,7 +340,7 @@ async function monitorCacheSize() {
       }),
     )
 
-    calculatedTotalSize = Object.values(cacheSizes).reduce((acc, size) => acc + size, 0)
+    const calculatedTotalSize = Object.values(cacheSizes).reduce((acc, size) => acc + size, 0)
 
     // 获取系统级存储估算
     let quota = 0
@@ -398,56 +390,6 @@ async function monitorCacheSize() {
 }
 
 // --- 事件监听 ---
-
-// 监听 push 事件
-self.addEventListener('push', function (event) {
-  if (!event.data) {
-    return
-  }
-  let payload
-  try {
-    payload = event.data?.json()
-  } catch (err) {
-    payload = {
-      title: event.data?.text(),
-    }
-  }
-
-  try {
-    const content = {
-      body: payload.body || '',
-      icon: payload.icon || options.icon,
-      vibrate: [100, 50, 100],
-      data: { url: payload.url },
-      actions: options.actions,
-    }
-
-    event.waitUntil(
-      (async () => {
-        const currentCount = await getStoredUnreadCount()
-        const newCount = currentCount + 1
-        await setStoredUnreadCount(newCount)
-        await Promise.all([
-          self.registration.showNotification(payload.title, content),
-          updateBadge(newCount),
-          broadcastUnreadCount(newCount),
-        ])
-      })(),
-    )
-  } catch (e) {
-    // 忽略错误
-  }
-})
-
-// 监听通知点击
-self.addEventListener('notificationclick', function (event) {
-  const info = event.notification
-  if (event.action === 'close') {
-    info.close()
-  } else if (info.data?.url) {
-    event.waitUntil(self.clients.openWindow(info.data?.url))
-  }
-})
 
 // 监听消息
 self.addEventListener('message', function (event) {

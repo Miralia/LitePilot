@@ -243,20 +243,6 @@
       "count": 7
     }
   },
-  "src/service-worker.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    },
-    "no-useless-assignment": {
-      "count": 1
-    },
-    "sonarjs/no-ignored-exceptions": {
-      "count": 1
-    }
-  },
   "src/stores/global.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 2

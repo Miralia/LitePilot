@@ -17,4 +17,21 @@ describe('PWA service worker subpath assets', () => {
     expect(source).not.toContain('`font-cache-${RESOURCE_VERSION}`')
     expect(source).toContain("'font-cache'")
   })
+
+  it('registers the TMDB image route before the generic image route', () => {
+    const tmdbRouteIndex = source.indexOf("url.hostname === 'image.tmdb.org'")
+    const imageRouteIndex = source.indexOf("request.destination === 'image'")
+
+    expect(tmdbRouteIndex).toBeGreaterThanOrEqual(0)
+    expect(imageRouteIndex).toBeGreaterThanOrEqual(0)
+    expect(tmdbRouteIndex).toBeLessThan(imageRouteIndex)
+  })
+
+  it('keeps the badge message channel without unreachable Web Push handlers', () => {
+    expect(source).toContain("event.data.type === 'UPDATE_BADGE'")
+    expect(source).toContain('mp_unread_count')
+    expect(source).not.toContain("addEventListener('push'")
+    expect(source).not.toContain("addEventListener('notificationclick'")
+    expect(source).not.toContain('showNotification')
+  })
 })
