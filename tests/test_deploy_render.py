@@ -82,3 +82,11 @@ def test_render_nginx_site_disables_access_log_for_tokenized_api_proxy():
     api_block = text.split("location /api/ {", 1)[1].split("# 入口页", 1)[0]
     assert "access_log off;" in sse_block
     assert "access_log off;" in api_block
+
+
+def test_render_nginx_site_adds_baseline_security_headers_to_every_leaf_location():
+    """静态入口、hash 资产与 API 反代都应始终携带基础浏览器安全头。"""
+    text = render_nginx_site(public_dir=Path("/opt/moviepilot/public"), backend_port=3001)
+
+    assert text.count("add_header X-Content-Type-Options nosniff always;") == 8
+    assert text.count('add_header Referrer-Policy "strict-origin-when-cross-origin" always;') == 8

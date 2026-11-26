@@ -45,7 +45,10 @@ NGINX_SITE_TEMPLATE = """\
 # 注意：前端以 api/v1/ 相对路径发起请求，子路径部署时必须让该前缀同样反代到后端，
 # 否则浏览器会把 {prefix}api/v1/... 解析成 {prefix}login/... 之类并落到静态处理。
 # SSE 接口必须关闭代理缓冲，否则进度、系统消息与日志事件会滞留在 nginx 缓冲区。
+# nginx 的 add_header 在子 location 自定义缓存头时会停止继承，因此安全头需显式写入每个叶子 location。
 location ~ ^{prefix_regex}api/v1/system/(message$|progress/|logging$) {{
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     default_type text/event-stream;
     add_header Cache-Control "no-cache, no-transform";
     add_header X-Accel-Buffering no;
@@ -67,6 +70,8 @@ location ~ ^{prefix_regex}api/v1/system/(message$|progress/|logging$) {{
 }}
 
 location {prefix}api/ {{
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     # API query 可能携带 token；外层访问日志关闭，后端访问日志已脱敏。
     access_log off;
     proxy_pass http://127.0.0.1:{backend_port}/api/;
@@ -82,22 +87,30 @@ location {prefix}api/ {{
 
 # 入口页与 Service Worker 必须每次回源校验，否则旧版本会被浏览器长期缓存
 location = {prefix}index.html {{
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     alias {public_dir}/index.html;
     add_header Cache-Control "no-cache, must-revalidate";
 }}
 
 location = {prefix}service-worker.js {{
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     alias {public_dir}/service-worker.js;
     add_header Cache-Control "no-cache, must-revalidate";
 }}
 
 location = {prefix}manifest.webmanifest {{
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     alias {public_dir}/manifest.webmanifest;
     default_type application/manifest+json;
     add_header Cache-Control "no-cache, must-revalidate";
 }}
 
 location = {prefix}version.txt {{
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     alias {public_dir}/version.txt;
     default_type text/plain;
     add_header Cache-Control "no-cache, must-revalidate";
@@ -105,11 +118,15 @@ location = {prefix}version.txt {{
 
 # 带内容哈希的静态资源可长期缓存
 location {prefix}assets/ {{
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     alias {public_dir}/assets/;
     add_header Cache-Control "public, max-age=31536000, immutable";
 }}
 
 location {prefix} {{
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     alias {public_dir}/;
     try_files $uri $uri/ {prefix}index.html;
 }}

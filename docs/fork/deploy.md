@@ -44,10 +44,14 @@ CONFIG_DIR=/var/lib/moviepilot ./moviepilot start
 
 ```nginx
 location /mp/ {
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     alias /opt/moviepilot/public/;
     try_files $uri $uri/ /mp/index.html;
 }
 location /mp/api/ {
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     # API query 可能携带 token；外层访问日志关闭，后端访问日志已脱敏。
     access_log off;
     proxy_pass http://127.0.0.1:3001/api/;
@@ -60,6 +64,8 @@ location /mp/api/ {
 # 系统消息、进度与日志 SSE 不能经过 nginx 默认缓冲；
 # 推荐直接使用 `moviepilot deploy --prefix /mp/ --print-only` 生成完整片段。
 location ~ ^/mp/api/v1/system/(message$|progress/|logging$) {
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     rewrite ^/mp/api/(.*)$ /api/$1 break;
     proxy_pass http://127.0.0.1:3001;
     proxy_http_version 1.1;
