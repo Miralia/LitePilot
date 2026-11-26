@@ -440,3 +440,15 @@ def test_build_frontend_script_uses_atomic_dist_publisher() -> None:
 
     assert "publish_frontend_dist" in script
     assert 'find "$DIST_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf' not in script
+
+
+def test_build_frontend_script_prefers_repository_node_runtime() -> None:
+    """手动构建脚本不得回退到系统 Node；当前依赖要求 Node 22+。"""
+    script = (
+        Path(__file__).resolve().parents[1] / "scripts" / "build-frontend.sh"
+    ).read_text(encoding="utf-8")
+
+    assert 'LOCAL_NODE_BIN_DIR="$PROJECT_ROOT/.runtime/node/bin"' in script
+    local_corepack_branch = 'if [[ -x "$LOCAL_NODE_BIN_DIR/node" && -x "$LOCAL_NODE_BIN_DIR/corepack" ]]; then'
+    assert local_corepack_branch in script
+    assert script.index(local_corepack_branch) < script.index('if command -v yarn')

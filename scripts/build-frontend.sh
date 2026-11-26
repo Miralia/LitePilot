@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WEB_DIR="$PROJECT_ROOT/web"
 DIST_DIR="$PROJECT_ROOT/public"
+LOCAL_NODE_BIN_DIR="$PROJECT_ROOT/.runtime/node/bin"
 
 skip_install=0
 frozen=1
@@ -44,10 +45,15 @@ if [[ ! -d "$WEB_DIR" ]]; then
   exit 1
 fi
 
-# 探测包管理器：优先使用与 yarn.lock 匹配的 yarn，其次通过 corepack 调用。
+# 探测包管理器：优先使用安装器维护的本地 Node/corepack，其次才回退到系统 yarn。
 resolve_package_manager() {
   if [[ -n "${FRONTEND_PACKAGE_MANAGER:-}" ]]; then
     printf '%s\n' "$FRONTEND_PACKAGE_MANAGER"
+    return 0
+  fi
+  # 安装器维护的本地 Node 版本与依赖 engine 保持一致；系统 Node/yarn 可能过旧。
+  if [[ -x "$LOCAL_NODE_BIN_DIR/node" && -x "$LOCAL_NODE_BIN_DIR/corepack" ]]; then
+    printf '%s\n' "$LOCAL_NODE_BIN_DIR/corepack yarn"
     return 0
   fi
   if command -v yarn >/dev/null 2>&1; then
@@ -62,7 +68,7 @@ resolve_package_manager() {
 }
 
 if ! package_manager="$(resolve_package_manager)"; then
-  printf '未找到 yarn，也未找到 corepack。请安装 Node.js 20.19+ 后重试。\n' >&2
+  printf '未找到 yarn，也未找到 corepack。请执行 ./moviepilot install frontend 或安装 Node.js 22+ 后重试。\n' >&2
   exit 1
 fi
 
