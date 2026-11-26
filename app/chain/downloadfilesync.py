@@ -244,22 +244,29 @@ class DownloadFileSyncChain(ChainBase):
                 return None, None
         return download_hash, downloader
 
-    def sync_torrent_by_path(self, file_path: str) -> int:
+    def resolve_and_sync_torrent_by_path(self, file_path: str):
         """
-        按文件路径定位所属种子，仅同步该种子的文件记录。
+        按文件路径解析所属种子，并在命中时复用该结果执行精准同步。
 
-        目录监控发现新文件时调用：优先查内存索引（零额外请求），
-        未命中时重建索引再匹配；命中后只拉取单个种子的文件列表，
-        避免全量同步带来的性能压力。
+        目录监控即使未启用精准同步也必须返回种子信息给整理链，
+        因此解析不受功能开关控制；只有落库同步受配置和节流约束。
 
         :param file_path: 发生变化的文件路径
-        :return: 新增的文件记录数，未匹配到种子时返回 0
+        :return: (种子Hash, 下载器)，未匹配返回 (None, None)
+        """
+        torrent_hash, downloader = self.resolve_torrent_by_path(file_path)
+        if torrent_hash:
+            self._sync_resolved_torrent(file_path, torrent_hash, downloader)
+        return torrent_hash, downloader
+
+    def _sync_resolved_torrent(self, file_path: str, torrent_hash: str, downloader: Optional[str]) -> int:
+        """
+        对已解析出的种子执行节流精准同步。
         """
         conf = download_file_sync_conf()
         if not conf.enabled or not file_path:
             return 0
 
-        target = str(file_path).replace("\\", "/")
         # 节流：瞬时大量文件事件只处理第一个，其余由索引复用
         throttle = max(0, int(conf.trigger_throttle_seconds or 0))
         now = time.monotonic()
@@ -267,10 +274,6 @@ class DownloadFileSyncChain(ChainBase):
             logger.debug(f"目录监控触发过于频繁，跳过精准同步：{file_path}")
             return 0
 
-        torrent_hash, downloader = self.resolve_torrent_by_path(file_path)
-        if not torrent_hash:
-            logger.debug(f"路径未匹配到下载器种子，跳过精准同步：{file_path}")
-            return 0
         type(self)._last_trigger_at = now
         added = self._sync_torrent_files(torrent_hash, downloader)
         if added:

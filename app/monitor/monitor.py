@@ -498,10 +498,7 @@ class Monitor(ConfigReloadMixin, metaclass=SingletonClass):
             )
 
             chain = DownloadFileSyncChain()
-            download_hash, downloader = chain.resolve_torrent_by_path(event_path)
-            if download_hash:
-                chain.sync_torrent_by_path(file_path=event_path)
-            return download_hash, downloader
+            return chain.resolve_and_sync_torrent_by_path(event_path)
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(f"按路径同步下载器失败：{err}")
             return None, None

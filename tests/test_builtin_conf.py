@@ -339,6 +339,71 @@ def test_path_index_miss_refresh_is_throttled(monkeypatch):
     assert len(calls) == 2
 
 
+def test_resolve_and_sync_reuses_single_resolution(monkeypatch):
+    """目录监控组合路径解析与精准同步时，同一路径只能解析一次。"""
+    from types import SimpleNamespace
+
+    from app.chain.downloadfilesync import DownloadFileSyncChain
+
+    chain = DownloadFileSyncChain()
+    resolve_calls = []
+    sync_calls = []
+
+    def fake_resolve(path):
+        resolve_calls.append(path)
+        return "hash-a", "qBittorrent"
+
+    def fake_sync(torrent_hash, downloader):
+        sync_calls.append((torrent_hash, downloader))
+        return 1
+
+    monkeypatch.setattr(chain, "resolve_torrent_by_path", fake_resolve)
+    monkeypatch.setattr(chain, "_sync_torrent_files", fake_sync)
+    monkeypatch.setattr(
+        "app.chain.downloadfilesync.download_file_sync_conf",
+        lambda: SimpleNamespace(enabled=True, trigger_throttle_seconds=0),
+    )
+    monkeypatch.setattr(type(chain), "_last_trigger_at", 0.0)
+
+    assert chain.resolve_and_sync_torrent_by_path("/dl/Show/ep01.mkv") == (
+        "hash-a",
+        "qBittorrent",
+    )
+    assert resolve_calls == ["/dl/Show/ep01.mkv"]
+    assert sync_calls == [("hash-a", "qBittorrent")]
+
+
+def test_split_download_sync_entry_is_removed():
+    """精准同步只保留组合入口，不保留会重复解析路径的拆分调用面。"""
+    from app.chain.downloadfilesync import DownloadFileSyncChain
+
+    assert not hasattr(DownloadFileSyncChain, "sync_torrent_by_path")
+
+
+def test_monitor_download_sync_uses_combined_resolution(monkeypatch):
+    """目录监控入口必须调用组合方法，不能重新拆成两次路径解析。"""
+    import app.chain.downloadfilesync as downloadfilesync
+    from app.monitor.monitor import Monitor
+
+    calls = []
+
+    def fake_resolve_and_sync(self, path):
+        calls.append(path)
+        return "hash-a", "qBittorrent"
+
+    monkeypatch.setattr(
+        downloadfilesync.DownloadFileSyncChain,
+        "resolve_and_sync_torrent_by_path",
+        fake_resolve_and_sync,
+    )
+
+    assert Monitor._trigger_download_sync("/dl/Show/ep01.mkv") == (
+        "hash-a",
+        "qBittorrent",
+    )
+    assert calls == ["/dl/Show/ep01.mkv"]
+
+
 def test_residual_source_kept_when_hardlinked(tmp_path):
     """源文件仍被其它硬链接引用时不得删除。"""
     from unittest.mock import MagicMock
