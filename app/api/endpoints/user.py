@@ -16,10 +16,18 @@ from app.db.user_oper import (
 )
 from app.db.userconfig_oper import UserConfigOper
 from app.helper.swizzin import SwizzinUserSync
+from app.schemas.types import UserConfigKey
 
 router = APIRouter()
 
+_USER_CONFIG_KEYS = frozenset(item.value for item in UserConfigKey)
 
+
+def _validate_user_config_key(key: str) -> str:
+    """校验用户配置键属于当前前端封闭契约。"""
+    if key not in _USER_CONFIG_KEYS:
+        raise HTTPException(status_code=422, detail="不支持的用户配置键")
+    return key
 
 
 @router.put("/", summary="更新当前用户", response_model=schemas.Response)
@@ -66,7 +74,8 @@ def get_config(key: str, current_user: User = Depends(get_current_active_user)):
     """
     查询用户配置
     """
-    value = UserConfigOper().get(username=current_user.name, key=key)
+    config_key = _validate_user_config_key(key)
+    value = UserConfigOper().get(username=current_user.name, key=config_key)
     return schemas.Response(success=True, data={"value": value})
 
 
@@ -79,5 +88,6 @@ def set_config(
     """
     更新用户配置
     """
-    UserConfigOper().set(username=current_user.name, key=key, value=value)
+    config_key = _validate_user_config_key(key)
+    UserConfigOper().set(username=current_user.name, key=config_key, value=value)
     return schemas.Response(success=True)

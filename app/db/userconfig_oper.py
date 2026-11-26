@@ -30,11 +30,11 @@ class UserConfigOper(DbOper, metaclass=Singleton):
         # 写入数据库
         conf = UserConfig.get_by_key(db=self._db, username=username, key=key)
         if conf:
-            if value:
+            if value is not None:
                 conf.update(self._db, {"value": value})
             else:
                 conf.delete(self._db, conf.id)
-        else:
+        elif value is not None:
             conf = UserConfig(username=username, key=key, value=value)
             conf.create(self._db)
 
@@ -60,6 +60,10 @@ class UserConfigOper(DbOper, metaclass=Singleton):
         if not cache:
             cache = {}
         user_cache = cache.get(username)
+        if value is None:
+            if user_cache:
+                user_cache.pop(key, None)
+            return
         if not user_cache:
             user_cache = {}
             cache[username] = user_cache

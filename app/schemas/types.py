@@ -207,8 +207,16 @@ class MediaRecognizeType(Enum):
 
 # 用户配置Key字典
 class UserConfigKey(Enum):
-    # 监控面板
+    # 监控面板显示项（旧版全局配置，仍用于兼容迁移）
     Dashboard = "Dashboard"
+    # 监控面板排序
+    DashboardOrder = "DashboardOrder"
+    # 桌面端监控面板布局
+    DashboardGridLayout = "DashboardGridLayout"
+    # 平板端监控面板布局
+    DashboardGridLayoutTablet = "DashboardGridLayoutTablet"
+    # 移动端监控面板布局
+    DashboardGridLayoutMobile = "DashboardGridLayoutMobile"
 
 
 # 支持的存储类型
