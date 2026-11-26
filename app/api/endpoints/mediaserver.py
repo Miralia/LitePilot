@@ -1,22 +1,13 @@
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import schemas
-from app.chain.download import DownloadChain
 from app.chain.mediaserver import MediaServerChain
-from app.core.context import MediaInfo
-from app.core.metainfo import MetaInfo
 from app.core.security import verify_token
-from app.db import get_async_db
-from app.db.mediaserver_oper import MediaServerOper
-from app.db.models import MediaServerItem
 from app.db.systemconfig_oper import SystemConfigOper
 from app.helper.mediaserver import MediaServerHelper
-from app.schemas import MediaType, NotExistMediaInfo
 from app.schemas.types import SystemConfigKey
-from app.utils.media import build_media_key, resolve_media_identity
 
 router = APIRouter()
 
@@ -61,97 +52,6 @@ def play_item(
                     },
                 )
     return schemas.Response(success=False, message="未找到播放地址")
-
-
-@router.get(
-    "/exists", summary="查询本地是否存在（数据库）", response_model=schemas.Response
-)
-async def exists_local(
-    title: Optional[str] = None,
-    year: Optional[str] = None,
-    mtype: Optional[str] = None,
-    tmdbid: Optional[int] = None,
-    season: Optional[int] = None,
-    db: AsyncSession = Depends(get_async_db),
-    _: schemas.TokenPayload = Depends(verify_token),
-) -> Any:
-    """
-    判断本地是否存在
-    """
-    meta = MetaInfo(title)
-    if season is None:
-        season = meta.begin_season
-    # 返回对象
-    ret_info = {}
-    # 本地数据库是否存在
-    exist: MediaServerItem = await MediaServerOper(db).async_exists(
-        title=meta.name, year=year, mtype=mtype, tmdbid=tmdbid, season=season
-    )
-    if exist:
-        ret_info = {"id": exist.item_id}
-    return schemas.Response(success=True if exist else False, data={"item": ret_info})
-
-
-@router.post(
-    "/exists_remote",
-    summary="查询已存在的剧集信息（媒体服务器）",
-    response_model=Dict[int, list],
-)
-def exists(
-    media_in: schemas.MediaInfo, _: schemas.TokenPayload = Depends(verify_token)
-) -> Any:
-    """
-    根据媒体信息查询媒体库已存在的剧集信息
-    """
-    # 转化为媒体信息对象
-    mediainfo = MediaInfo()
-    mediainfo.from_dict(media_in.model_dump())
-    existsinfo: schemas.ExistMediaInfo = MediaServerChain().media_exists(
-        mediainfo=mediainfo
-    )
-    if not existsinfo:
-        return {}
-    if media_in.season is not None:
-        return {media_in.season: existsinfo.seasons.get(media_in.season) or []}
-    return existsinfo.seasons
-
-
-@router.post(
-    "/notexists",
-    summary="查询媒体库缺失信息（媒体服务器）",
-    response_model=List[schemas.NotExistMediaInfo],
-)
-def not_exists(
-    media_in: schemas.MediaInfo, _: schemas.TokenPayload = Depends(verify_token)
-) -> Any:
-    """
-    根据媒体信息查询缺失电影/剧集
-    """
-    # 媒体信息
-    meta = MetaInfo(title=media_in.title)
-    mtype = MediaType(media_in.type) if media_in.type else None
-    if mtype:
-        meta.type = mtype
-    if media_in.season is not None:
-        meta.begin_season = media_in.season
-        meta.type = MediaType.TV
-    if media_in.year:
-        meta.year = media_in.year
-    # 转化为媒体信息对象
-    mediainfo = MediaInfo()
-    mediainfo.from_dict(media_in.model_dump())
-    exist_flag, no_exists = DownloadChain().get_no_exists_info(
-        meta=meta, mediainfo=mediainfo
-    )
-    media_source, media_id = resolve_media_identity(media=mediainfo)
-    mediakey = build_media_key(media_source, media_id)
-    if mediainfo.type == MediaType.MOVIE:
-        # 电影已存在时返回空列表，不存在时返回空对像列表
-        return [] if exist_flag else [NotExistMediaInfo()]
-    elif no_exists and no_exists.get(mediakey):
-        # 电视剧返回缺失的剧集
-        return list(no_exists.get(mediakey).values())
-    return []
 
 
 @router.get(

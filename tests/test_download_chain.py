@@ -1,10 +1,8 @@
 from types import SimpleNamespace
 
-import app.chain.download as download_module
 from app.chain.download import DownloadChain
-from app.core.context import MediaInfo
 from app.schemas import DownloaderTorrent
-from app.schemas.types import MediaType, MessageChannel
+from app.schemas.types import MessageChannel
 
 
 def test_remote_downloading_does_not_link_removed_downloading_page(monkeypatch):
@@ -19,23 +17,6 @@ def test_remote_downloading_does_not_link_removed_downloading_page(monkeypatch):
     assert len(notifications) == 1
     assert notifications[0].title == "没有正在下载的任务！"
     assert notifications[0].link is None
-
-
-def test_get_no_exists_info_returns_missing_movie_without_database_write(monkeypatch):
-    """电影缺失检查只查询媒体库状态，不依赖已移除的下载候选链。"""
-    chain = DownloadChain.__new__(DownloadChain)
-    media = MediaInfo(type=MediaType.MOVIE, title="示例电影", year="2024", tmdb_id=1001)
-    monkeypatch.setattr(
-        download_module,
-        "MediaServerOper",
-        lambda: SimpleNamespace(get_item_id=lambda **_kwargs: "emby-item-id"),
-    )
-    monkeypatch.setattr(chain, "media_exists", lambda **_kwargs: None)
-
-    exists, no_exists = chain.get_no_exists_info(meta=SimpleNamespace(), mediainfo=media)
-
-    assert exists is False
-    assert no_exists == {}
 
 
 def test_download_file_deleted_removes_torrent_but_keeps_files(monkeypatch):

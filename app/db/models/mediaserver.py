@@ -2,11 +2,9 @@ from datetime import datetime
 from typing import Optional, List
 
 from sqlalchemy import Column, Integer, String, JSON, Index, or_
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, get_id_column, async_db_query, Base
+from app.db import db_query, db_update, get_id_column, Base
 
 
 class MediaServerItem(Base):
@@ -50,11 +48,6 @@ class MediaServerItem(Base):
 
     @classmethod
     @db_query
-    def get_by_itemid(cls, db: Session, item_id: str):
-        return db.query(cls).filter(cls.item_id == item_id).first()
-
-    @classmethod
-    @db_query
     def get_by_server_itemid(cls, db: Session, server: str, item_id: str):
         return db.query(cls).filter(cls.server == server,
                                     cls.item_id == item_id).first()
@@ -81,54 +74,3 @@ class MediaServerItem(Base):
             return db.query(cls).delete(synchronize_session=False)
         return db.query(cls).filter(or_(cls.server.is_(None),
                                         ~cls.server.in_(servers))).delete(synchronize_session=False)
-
-    @classmethod
-    @db_query
-    def exist_by_tmdbid(cls, db: Session, tmdbid: int, mtype: str):
-        return db.query(cls).filter(cls.tmdbid == tmdbid,
-                                    cls.item_type == mtype).first()
-
-    @classmethod
-    @db_query
-    def exists_by_title(cls, db: Session, title: str, mtype: str, year: str):
-        if not mtype and not year:
-            return db.query(cls).filter(cls.title == title).first()
-        elif not year:
-            return db.query(cls).filter(cls.title == title,
-                                        cls.item_type == mtype).first()
-        elif not mtype:
-            return db.query(cls).filter(cls.title == title,
-                                        cls.year == str(year)).first()
-        return db.query(cls).filter(cls.title == title,
-                                    cls.item_type == mtype,
-                                    cls.year == str(year)).first()
-
-    @classmethod
-    @async_db_query
-    async def async_get_by_itemid(cls, db: AsyncSession, item_id: str):
-        result = await db.execute(select(cls).filter(cls.item_id == item_id))
-        return result.scalars().first()
-
-    @classmethod
-    @async_db_query
-    async def async_exist_by_tmdbid(cls, db: AsyncSession, tmdbid: int, mtype: str):
-        result = await db.execute(select(cls).filter(cls.tmdbid == tmdbid,
-                                                     cls.item_type == mtype))
-        return result.scalars().first()
-
-    @classmethod
-    @async_db_query
-    async def async_exists_by_title(cls, db: AsyncSession, title: str, mtype: str, year: str):
-        if not mtype and not year:
-            result = await db.execute(select(cls).filter(cls.title == title))
-        elif not year:
-            result = await db.execute(select(cls).filter(cls.title == title,
-                                                         cls.item_type == mtype))
-        elif not mtype:
-            result = await db.execute(select(cls).filter(cls.title == title,
-                                                         cls.year == str(year)))
-        else:
-            result = await db.execute(select(cls).filter(cls.title == title,
-                                                     cls.item_type == mtype,
-                                                     cls.year == str(year)))
-        return result.scalars().first()

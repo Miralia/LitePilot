@@ -5,7 +5,6 @@ from app.chain.tmdb import TmdbChain
 from app.core.config import settings
 from app.core.context import MediaInfo
 from app.core.meta import MetaBase
-from app.core.metainfo import MetaInfo
 from app.helper.directory import DirectoryHelper
 from app.helper.message import MessageHelper
 from app.helper.module import ModuleHelper
@@ -13,7 +12,7 @@ from app.log import logger
 from app.modules import _ModuleBase
 from app.modules.filemanager.storages import StorageBase
 from app.modules.filemanager.transhandler import TransHandler
-from app.schemas import TransferInfo, ExistMediaInfo, TmdbEpisode, TransferDirectoryConf, FileItem, StorageUsage
+from app.schemas import TransferInfo, TmdbEpisode, TransferDirectoryConf, FileItem, StorageUsage
 from app.schemas.types import MediaType, ModuleType, OtherModulesType
 from app.utils.system import SystemUtils
 
@@ -507,108 +506,3 @@ class FileManagerModule(_ModuleBase):
                                       preview=preview,
                                       source_oper=source_oper,
                                       target_oper=target_oper)
-
-    def media_files(self, mediainfo: MediaInfo) -> List[FileItem]:
-        """
-        获取对应媒体的媒体库文件列表
-        :param mediainfo: 媒体信息
-        """
-        handler = TransHandler()
-        ret_fileitems = []
-        # 检查本地媒体库
-        dest_dirs = DirectoryHelper().get_library_dirs()
-        # 检查每一个媒体库目录
-        for dest_dir in dest_dirs:
-            # 存储
-            storage_oper = self.__get_storage_oper(dest_dir.library_storage)
-            if not storage_oper:
-                continue
-            # 媒体分类路径
-            dir_path = handler.get_dest_dir(mediainfo=mediainfo, target_dir=dest_dir)
-            # 重命名格式
-            rename_format = settings.RENAME_FORMAT(mediainfo.type)
-            # 元数据补上常用属性，尽可能确保重命名后的路径不出现空白
-            meta = MetaInfo(mediainfo.title)
-            if meta.type == MediaType.UNKNOWN and mediainfo.type is not None:
-                meta.type = mediainfo.type
-            if meta.year is None:
-                meta.year = mediainfo.year
-            if meta.begin_season is None:
-                meta.begin_season = 1
-            if meta.begin_episode is None:
-                meta.begin_episode = 1
-            # 获取路径（重命名路径）
-            target_path = handler.get_rename_path(
-                path=dir_path,
-                template_string=rename_format,
-                rename_dict=handler.get_naming_dict(meta=meta,
-                                                    mediainfo=mediainfo)
-            )
-            # 获取重命名后的媒体文件根路径
-            media_path = DirectoryHelper.get_media_root_path(
-                rename_format, rename_path=target_path
-            )
-            if not media_path:
-                # 忽略
-                continue
-            if dir_path != media_path and dir_path.is_relative_to(media_path):
-                # 兜底检查，避免不必要的扫盘
-                logger.warn(f"{media_path} 是媒体库目录 {dir_path} 的父目录，忽略获取媒体文件列表，请检查重命名格式！")
-                continue
-            # 检索媒体文件
-            fileitem = storage_oper.get_item(media_path)
-            if not fileitem:
-                continue
-            try:
-                media_files = self.list_files(fileitem, True)
-            except Exception as e:
-                logger.debug(f"获取媒体文件列表失败：{str(e)}")
-                continue
-            if media_files:
-                for media_file in media_files:
-                    if f".{media_file.extension.lower()}" in settings.RMT_MEDIAEXT:
-                        if media_file not in ret_fileitems:
-                            ret_fileitems.append(media_file)
-        return ret_fileitems
-
-    def media_exists(self, mediainfo: MediaInfo, **kwargs) -> Optional[ExistMediaInfo]:
-        """
-        判断媒体文件是否存在于本地或远程存储文件系统，只支持标准媒体库结构
-        :param mediainfo:  识别的媒体信息
-        :param server:  指定媒体服务器名称时跳过本地文件系统检查
-        :return: 如不存在返回None，存在时返回信息，包括每季已存在所有集{type: movie/tv, seasons: {season: [episodes]}}
-        """
-        if kwargs.get("server"):
-            return None
-
-        if not settings.LOCAL_EXISTS_SEARCH:
-            return None
-
-        logger.debug(f"正在本地媒体库中查找 {mediainfo.title_year}...")
-
-        # 检查媒体库
-        fileitems = self.media_files(mediainfo)
-        if not fileitems:
-            logger.debug(f"{mediainfo.title_year} 不在本地媒体库中")
-            return None
-
-        if mediainfo.type == MediaType.MOVIE:
-            # 电影存在任何文件为存在
-            logger.info(f"{mediainfo.title_year} 在本地文件系统中找到了")
-            return ExistMediaInfo(type=MediaType.MOVIE)
-        else:
-            # 电视剧检索集数
-            seasons: Dict[int, list] = {}
-            for fileitem in fileitems:
-                file_meta = MetaInfo(fileitem.basename)
-                season_index = file_meta.begin_season if file_meta.begin_season is not None else 1
-                episode_index = file_meta.begin_episode
-                if not episode_index:
-                    continue
-                if season_index not in seasons:
-                    seasons[season_index] = []
-                if episode_index not in seasons[season_index]:
-                    seasons[season_index].append(episode_index)
-            # 返回剧集情况
-            logger.info(f"{mediainfo.title_year} 在本地文件系统中找到了这些季集：{seasons}")
-            return ExistMediaInfo(type=MediaType.TV, seasons=seasons)

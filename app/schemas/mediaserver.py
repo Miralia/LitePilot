@@ -6,36 +6,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from app.schemas.types import MediaType
 
 
-class ExistMediaInfo(BaseModel):
-    """
-    媒体服务器存在媒体信息
-    """
-    # 类型 电影、电视剧
-    type: Optional[MediaType] = None
-    # 季
-    seasons: Optional[Dict[int, list]] = Field(default_factory=dict)
-    # 媒体服务器类型：emby
-    server_type: Optional[str] = None
-    # 媒体服务器名称
-    server: Optional[str] = None
-    # 媒体ID
-    itemid: Optional[Union[str, int]] = None
-
-
-class NotExistMediaInfo(BaseModel):
-    """
-    媒体服务器不存在媒体信息
-    """
-    # 季
-    season: Optional[int] = None
-    # 剧集列表
-    episodes: Optional[list] = Field(default_factory=list)
-    # 总集数
-    total_episode: Optional[int] = 0
-    # 开始集
-    start_episode: Optional[int] = 0
-
-
 class RefreshMediaItem(BaseModel):
     """
     媒体库刷新信息

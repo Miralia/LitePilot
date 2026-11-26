@@ -1,12 +1,11 @@
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from app import schemas
-from app.core.context import MediaInfo
 from app.core.event import eventmanager
 from app.log import logger
 from app.modules import _MediaServerBase, _ModuleBase
 from app.modules.emby.emby import Emby
-from app.schemas.types import MediaType, ModuleType, MediaServerType
+from app.schemas.types import ModuleType, MediaServerType
 
 
 class EmbyModule(_ModuleBase, _MediaServerBase[Emby]):
@@ -96,66 +95,6 @@ class EmbyModule(_ModuleBase, _MediaServerBase[Emby]):
                 result = server.get_webhook_message(form, args)
                 if result:
                     return result
-        return None
-
-    def media_exists(self, mediainfo: MediaInfo, itemid: Optional[str] = None,
-                     server: Optional[str] = None) -> Optional[schemas.ExistMediaInfo]:
-        """
-        判断媒体文件是否存在
-        :param mediainfo:  识别的媒体信息
-        :param itemid:  媒体服务器ItemID
-        :param server:  媒体服务器名称
-        :return: 如不存在返回None，存在时返回信息，包括每季已存在所有集{type: movie/tv, seasons: {season: [episodes]}}
-        """
-        if server:
-            servers = [(server, self.get_instance(server))]
-        else:
-            servers = self.get_instances().items()
-        for name, s in servers:
-            if not s:
-                continue
-            if mediainfo.type == MediaType.MOVIE:
-                if itemid:
-                    movie = s.get_iteminfo(itemid)
-                    if movie:
-                        logger.info(f"媒体库 {name} 中找到了 {movie}")
-                        return schemas.ExistMediaInfo(
-                            type=MediaType.MOVIE,
-                            server_type="emby",
-                            server=name,
-                            itemid=movie.item_id
-                        )
-                movies = s.get_movies(title=mediainfo.title,
-                                      year=mediainfo.year,
-                                      tmdb_id=mediainfo.tmdb_id)
-                if not movies:
-                    logger.info(f"{mediainfo.title_year} 没有在媒体库 {name} 中")
-                    continue
-                else:
-                    logger.info(f"媒体库 {name} 中找到了 {movies}")
-                    return schemas.ExistMediaInfo(
-                        type=MediaType.MOVIE,
-                        server_type="emby",
-                        server=name,
-                        itemid=movies[0].item_id
-                    )
-            else:
-                itemid, tvs = s.get_tv_episodes(title=mediainfo.title,
-                                                year=mediainfo.year,
-                                                tmdb_id=mediainfo.tmdb_id,
-                                                item_id=itemid)
-                if not tvs:
-                    logger.info(f"{mediainfo.title_year} 没有在媒体库 {name} 中")
-                    continue
-                else:
-                    logger.info(f"{mediainfo.title_year} 在媒体库 {name} 中找到了这些季集：{tvs}")
-                    return schemas.ExistMediaInfo(
-                        type=MediaType.TV,
-                        seasons=tvs,
-                        server_type="emby",
-                        server=name,
-                        itemid=itemid
-                    )
         return None
 
     def media_statistic(self, server: Optional[str] = None) -> Optional[List[schemas.Statistic]]:

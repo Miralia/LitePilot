@@ -26,7 +26,6 @@ from app.log import logger
 from app.schemas import (
     RateLimitExceededException,
     TransferInfo,
-    ExistMediaInfo,
     DownloaderTorrent,
     CommingMessage,
     Notification,
@@ -878,31 +877,6 @@ class ChainBase(metaclass=ABCMeta):
         :return: 种子文件
         """
         return self.run_module("torrent_files", tid=tid, downloader=downloader)
-
-    def media_exists(
-            self,
-            mediainfo: MediaInfo,
-            itemid: Optional[str] = None,
-            server: Optional[str] = None,
-    ) -> Optional[ExistMediaInfo]:
-        """
-        判断媒体文件是否存在
-        :param mediainfo:  识别的媒体信息
-        :param itemid:  媒体服务器ItemID
-        :param server:  媒体服务器
-        :return: 如不存在返回None，存在时返回信息，包括每季已存在所有集{type: movie/tv, seasons: {season: [episodes]}}
-        """
-        return self.run_module(
-            "media_exists", mediainfo=mediainfo, itemid=itemid, server=server
-        )
-
-    def media_files(self, mediainfo: MediaInfo) -> Optional[List[FileItem]]:
-        """
-        获取媒体文件清单
-        :param mediainfo:  识别的媒体信息
-        :return: 媒体文件列表
-        """
-        return self.run_module("media_files", mediainfo=mediainfo)
 
     def post_message(
             self,

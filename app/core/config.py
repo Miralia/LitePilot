@@ -267,9 +267,6 @@ class ConfigModel(BaseModel):
     # 媒体服务器同步间隔（小时）
     MEDIASERVER_SYNC_INTERVAL: int = 6
 
-    # 检查本地媒体库是否存在资源开关
-    LOCAL_EXISTS_SEARCH: bool = True
-
 
     # ==================== 下载配置 ====================
     # 种子标签

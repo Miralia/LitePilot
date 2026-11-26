@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.schemas import NotExistMediaInfo
+from app import schemas
 
 
 def test_async_timeout_is_not_required_for_supported_python_versions() -> None:
@@ -10,6 +10,6 @@ def test_async_timeout_is_not_required_for_supported_python_versions() -> None:
     assert "async_timeout" not in Path("requirements.in").read_text()
 
 
-def test_missing_media_schema_does_not_keep_acquisition_coverage_field() -> None:
-    """缺失媒体查询只返回季集缺失状态，不保留批量下载择优覆盖标记。"""
-    assert "require_complete_coverage" not in NotExistMediaInfo.model_fields
+def test_missing_media_probe_schema_is_not_retained() -> None:
+    """订阅缺失探测能力移除后，不保留对应的季集缺失响应 schema。"""
+    assert not hasattr(schemas, "NotExistMediaInfo")
