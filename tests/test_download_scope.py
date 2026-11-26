@@ -48,3 +48,14 @@ def test_download_lifecycle_events_match_supported_downloader_scope():
     assert not hasattr(EventType, "DownloadDeleted")
     assert hasattr(EventType, "DownloadFileDeleted")
     assert not hasattr(SystemConfigKey, "TorrentsPriority")
+
+
+def test_removed_downloading_page_enrichment_stays_removed():
+    """已删除的 downloading 页面不再保留历史站点/用户回填链和空壳模型。"""
+    from app import schemas
+
+    assert not hasattr(DownloadChain, "downloading")
+    assert not hasattr(schemas, "TransferTorrent")
+    assert not hasattr(schemas, "DownloadingTorrent")
+    for field in ("site_name", "media", "userid", "username"):
+        assert field not in schemas.DownloaderTorrent.model_fields

@@ -17,7 +17,6 @@ class DownloaderTorrent(BaseModel):
     downloader: Optional[str] = None
     hash: Optional[str] = None
     title: Optional[str] = None
-    site_name: Optional[str] = None
     name: Optional[str] = None
     year: Optional[str] = None
     season_episode: Optional[str] = None
@@ -36,22 +35,7 @@ class DownloaderTorrent(BaseModel):
     ratio_limit: Optional[float] = None
     seeding_time_limit: Optional[int] = None
     trackers: Optional[List[str]] = Field(default_factory=list)
-    media: Optional[dict] = Field(default_factory=dict)
-    userid: Optional[str] = None
-    username: Optional[str] = None
     left_time: Optional[str] = None
-
-
-class TransferTorrent(DownloaderTorrent):
-    """
-    待转移任务信息
-    """
-
-
-class DownloadingTorrent(DownloaderTorrent):
-    """
-    下载中任务信息
-    """
 
 
 class TransferTask(BaseModel):

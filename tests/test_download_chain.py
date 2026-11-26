@@ -7,43 +7,6 @@ from app.schemas import DownloaderTorrent
 from app.schemas.types import MediaType, MessageChannel
 
 
-def test_downloading_includes_media_type_and_source_site(monkeypatch):
-    """
-    正在下载任务应从下载历史回填媒体类型和来源站点。
-    """
-    torrent = DownloaderTorrent(hash="download-hash", title="Demo.Release")
-    history = SimpleNamespace(
-        episodes="E02",
-        image="https://images.example.com/backdrop.jpg",
-        poster="https://images.example.com/poster.jpg",
-        seasons="S01",
-        title="示例剧集",
-        tmdbid=1001,
-        torrent_site="示例站点",
-        type="电视剧",
-        userid="user-1",
-        username="tester",
-    )
-    chain = DownloadChain.__new__(DownloadChain)
-    monkeypatch.setattr(chain, "list_torrents", lambda **_kwargs: [torrent])
-    monkeypatch.setattr(
-        download_module,
-        "DownloadHistoryOper",
-        lambda: SimpleNamespace(get_by_hashes=lambda _hashes: {torrent.hash: history}),
-    )
-
-    result = chain.downloading(name="qb-main")
-
-    assert result == [torrent]
-    assert torrent.media["type"] == "电视剧"
-    assert torrent.media["image"] == "https://images.example.com/poster.jpg"
-    assert torrent.media["poster"] == "https://images.example.com/poster.jpg"
-    assert torrent.media["backdrop"] == "https://images.example.com/backdrop.jpg"
-    assert torrent.site_name == "示例站点"
-    assert torrent.userid == "user-1"
-    assert torrent.username == "tester"
-
-
 def test_remote_downloading_does_not_link_removed_downloading_page(monkeypatch):
     """Telegram 下载状态消息不应再指向已删除的 downloading 页面。"""
     chain = DownloadChain.__new__(DownloadChain)

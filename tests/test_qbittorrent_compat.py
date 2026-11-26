@@ -115,8 +115,6 @@ def _load_qbittorrent_modules():
     config_module.settings = types.SimpleNamespace(TORRENT_TAG="moviepilot-tag")
     metainfo_module.MetaInfo = _MetaInfo
     schemas_module.DownloaderInfo = object
-    schemas_module.TransferTorrent = object
-    schemas_module.DownloadingTorrent = object
     schemas_module.DownloaderTorrent = _DownloaderTorrent
     schema_types_module.TorrentStatus = TorrentStatus
     schema_types_module.TorrentQueryStatus = TorrentQueryStatus

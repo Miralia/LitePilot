@@ -5,10 +5,9 @@ from app.chain import ChainBase
 from app.core.context import MediaInfo
 from app.core.event import Event, eventmanager
 from app.core.meta import MetaBase
-from app.db.downloadhistory_oper import DownloadHistoryOper
 from app.db.mediaserver_oper import MediaServerOper
 from app.log import logger
-from app.schemas import DownloaderTorrent, ExistMediaInfo, NotExistMediaInfo, Notification
+from app.schemas import ExistMediaInfo, NotExistMediaInfo, Notification
 from app.schemas.types import EventType, MediaType, MessageChannel, NotificationType, TorrentStatus
 from app.utils.media import build_media_key, resolve_media_identity
 from app.utils.string import StringUtils
@@ -188,39 +187,6 @@ class DownloadChain(ChainBase):
             userid=userid,
             save_history=False,
         ))
-
-    def downloading(self, name: Optional[str] = None) -> List[DownloaderTorrent]:
-        """
-        查询正在下载的任务
-        """
-        torrents = self.list_torrents(downloader=name, status=TorrentStatus.DOWNLOADING)
-        if not torrents:
-            return []
-
-        history_map = DownloadHistoryOper().get_by_hashes(
-            [torrent.hash for torrent in torrents if torrent.hash]
-        )
-        ret_torrents = []
-        for torrent in torrents:
-            history = history_map.get(torrent.hash)
-            if history:
-                # 媒体信息
-                torrent.media = {
-                    "tmdbid": history.tmdbid,
-                    "type": history.type,
-                    "title": history.title,
-                    "season": history.seasons,
-                    "episode": history.episodes,
-                    "image": history.poster,
-                    "poster": history.poster,
-                    "backdrop": history.image,
-                }
-                torrent.site_name = history.torrent_site
-                # 下载用户
-                torrent.userid = history.userid
-                torrent.username = history.username
-            ret_torrents.append(torrent)
-        return ret_torrents
 
     def remove_downloading(self, hash_str: str, name: Optional[str] = None) -> bool:
         """
