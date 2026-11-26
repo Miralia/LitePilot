@@ -66,10 +66,12 @@ def create_app() -> FastAPI:
     _app.add_exception_handler(HTTPException, localized_http_exception_handler)
 
     # 配置 CORS 中间件
+    cors_allow_credentials = "*" not in settings.ALLOWED_HOSTS
     _app.add_middleware(
         CORSMiddleware,  # noqa
         allow_origins=settings.ALLOWED_HOSTS,
-        allow_credentials=True,
+        # 通配来源若允许凭据会被反射成任意可信 Origin，只能为非凭据请求保留兼容。
+        allow_credentials=cors_allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

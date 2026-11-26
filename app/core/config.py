@@ -82,7 +82,7 @@ class ConfigModel(BaseModel):
     SECRET_KEY: str = secrets.token_urlsafe(32)
     # RESOURCE密钥
     RESOURCE_SECRET_KEY: str = secrets.token_urlsafe(32)
-    # 允许的域名
+    # 允许的跨源访问域名；包含 "*" 时为避免任意站点携带凭据读取接口，浏览器凭据会自动禁用
     ALLOWED_HOSTS: list = Field(default_factory=lambda: ["*"])
     # TOKEN过期时间：默认一年，避免自用环境频繁重新登录（可用环境变量覆盖）
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 365
