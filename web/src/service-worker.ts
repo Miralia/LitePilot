@@ -1,4 +1,4 @@
-import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
+import { cleanupOutdatedCaches, matchPrecache, precacheAndRoute } from 'workbox-precaching'
 import { registerRoute, setCatchHandler } from 'workbox-routing'
 import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
@@ -10,6 +10,8 @@ import { corsSafeCachePlugin } from '@/utils/serviceWorkerCache'
 declare let self: ServiceWorkerGlobalScope & {
   readonly __WB_MANIFEST: Array<{ url: string; revision?: string }>
 }
+
+const scopedAssetUrl = (path: string) => new URL(path, self.registration.scope).href
 
 // 缓存版本控制
 const RESOURCE_VERSION = 'V2'
@@ -55,7 +57,7 @@ self.addEventListener('activate', event => {
 
 // 通知选项
 const options = {
-  icon: '/logo.png',
+  icon: scopedAssetUrl('logo.png'),
   vibrate: [100, 50, 100],
   actions: [{ action: 'close', title: '关闭' }],
 }
@@ -186,7 +188,7 @@ registerRoute(
 // 设置默认离线页面
 setCatchHandler(async ({ request }) => {
   if (request?.destination === 'document') {
-    return (await caches.match('/offline.html')) || Response.error()
+    return (await matchPrecache(scopedAssetUrl('offline.html'))) || Response.error()
   }
   return Response.error()
 })
