@@ -34,7 +34,6 @@ class DownloaderTorrent(BaseModel):
     upload_limit: Optional[float] = None
     ratio_limit: Optional[float] = None
     seeding_time_limit: Optional[int] = None
-    trackers: Optional[List[str]] = Field(default_factory=list)
     left_time: Optional[str] = None
 
 
