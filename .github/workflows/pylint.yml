@@ -1,6 +1,13 @@
 name: Pylint Code Quality Check
 
 on:
+  # 指向 main 的 PR 与推送都执行静态检查，作为合并门禁
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
   # 允许手动触发
   workflow_dispatch:
 
