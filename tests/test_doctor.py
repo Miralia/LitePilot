@@ -185,12 +185,37 @@ def test_doctor_skips_frontend_port_when_service_js_lacks_node_runtime(tmp_path,
     assert runner.report.find("frontend.static_reverse_proxy") is not None
 
 
-def test_doctor_checks_frontend_port_when_node_runtime_exists(tmp_path, monkeypatch):
-    """service.js 与 express 依赖同时存在时，仍应检查独立前端端口。"""
+def test_doctor_skips_frontend_port_when_node_runtime_is_not_managed(tmp_path, monkeypatch):
+    """安装产物即使带有独立 Node 运行能力，也不代表外部 nginx 部署必须监听该端口。"""
     (tmp_path / "service.js").write_text("console.log('frontend')", encoding="utf-8")
     (tmp_path / "node_modules" / "express").mkdir(parents=True)
     monkeypatch.setattr(checks, "_frontend_dir", lambda: tmp_path)
     monkeypatch.setattr(checks, "_check_runtime_file", lambda *args, **kwargs: None)
+    checked_ports: list[str] = []
+
+    def record_port(runner, *, name, port, managed_process):
+        checked_ports.append(name)
+
+    monkeypatch.setattr(checks, "_check_port", record_port)
+
+    runner = DoctorRunner()
+    checks._check_processes_and_ports(runner)
+
+    assert "frontend" not in checked_ports
+    assert runner.report.find("frontend.static_reverse_proxy") is not None
+
+
+def test_doctor_checks_frontend_port_for_managed_node_runtime(tmp_path, monkeypatch):
+    """只有 CLI 运行时证据表明前端应处于托管运行状态时，才检查独立前端端口。"""
+    (tmp_path / "service.js").write_text("console.log('frontend')", encoding="utf-8")
+    (tmp_path / "node_modules" / "express").mkdir(parents=True)
+    frontend_process = SimpleNamespace(pid=1234)
+    monkeypatch.setattr(checks, "_frontend_dir", lambda: tmp_path)
+
+    def fake_runtime_file(runner, *, name, path, port):
+        return frontend_process if name == "frontend" else None
+
+    monkeypatch.setattr(checks, "_check_runtime_file", fake_runtime_file)
     checked_ports: list[str] = []
 
     def record_port(runner, *, name, port, managed_process):

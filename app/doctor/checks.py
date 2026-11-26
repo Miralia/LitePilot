@@ -589,11 +589,6 @@ def _check_port(
     )
 
 
-def _frontend_standalone_runtime_available(frontend_dir: Path) -> bool:
-    """判断当前前端产物是否具备独立 Node 服务运行条件。"""
-    return (frontend_dir / "service.js").exists() and (frontend_dir / "node_modules" / "express").exists()
-
-
 def _check_processes_and_ports(runner: DoctorRunnerProtocol) -> None:
     backend_process = _check_runtime_file(
         runner,
@@ -610,7 +605,7 @@ def _check_processes_and_ports(runner: DoctorRunnerProtocol) -> None:
     _check_port(runner, name="backend", port=int(settings.PORT), managed_process=backend_process)
 
     frontend_dir = _frontend_dir()
-    if _frontend_standalone_runtime_available(frontend_dir) or frontend_process:
+    if frontend_process:
         _check_port(runner, name="frontend", port=int(settings.NGINX_PORT), managed_process=frontend_process)
         return
 
@@ -618,9 +613,9 @@ def _check_processes_and_ports(runner: DoctorRunnerProtocol) -> None:
         finding_id="frontend.static_reverse_proxy",
         severity=DoctorSeverity.Info,
         status=DoctorFindingStatus.Skipped,
-        title="前端使用静态资源反代部署",
-        detail="前端产物缺少独立 Node 服务运行依赖，当前部署应由 nginx 或其他 Web 服务器直接托管静态资源，不需要监听 NGINX_PORT。",
-        recommendation="请检查外部 nginx/反向代理配置与静态资源版本；无需在前端端口启动独立进程。",
+        title="前端未按独立 Node 服务托管",
+        detail="未发现 CLI 管理的独立前端进程；当前部署可由 nginx 或其他 Web 服务器直接托管静态资源，不要求监听 NGINX_PORT。",
+        recommendation="如果使用外部 nginx/反向代理，请检查其配置与静态资源版本；如果应使用 CLI 独立前端服务，请通过 moviepilot start 启动。",
         affects_report_status=False,
         context={"frontend_dir": str(frontend_dir)},
     )
