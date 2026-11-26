@@ -20,10 +20,7 @@ export function useBackground() {
    */
   const useSSE = (url: string, messageHandler: (event: MessageEvent) => void, options?: UseSSEOptions) => {
     const { connectDelay = 100, ...managerOptions } = options ?? {}
-    const isConnected = ref(false)
-    const manager = new SSEManager(url, managerOptions, status => {
-      isConnected.value = status === 'open'
-    })
+    const manager = new SSEManager(url, managerOptions)
     let connectTimer: ReturnType<typeof setTimeout> | null = null
     let isClosed = false
     let shouldListen = true
@@ -40,7 +37,6 @@ export function useBackground() {
       }
 
       manager.destroy()
-      isConnected.value = false
     }
 
     const startListening = () => {
@@ -75,7 +71,6 @@ export function useBackground() {
     onUnmounted(cleanup)
 
     return {
-      isConnected,
       pause,
       resume,
     }

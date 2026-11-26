@@ -108,11 +108,16 @@ describe('frontend dead export scope', () => {
       'removeMessageListener(',
       'addStatusListener(',
       'removeStatusListener(',
+      'SSEConnectionStatus',
+      'statusListener',
+      'connectionStatus',
+      'setConnectionStatus',
     ]) {
       expect(sseManager).not.toContain(name)
     }
 
     expect(background).not.toContain('listenerId')
+    expect(background).not.toContain('isConnected')
     expect(background).not.toContain('get manager()')
     expect(background).not.toContain('destroyManager')
   })

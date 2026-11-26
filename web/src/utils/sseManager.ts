@@ -1,5 +1,3 @@
-export type SSEConnectionStatus = 'idle' | 'connecting' | 'open' | 'error' | 'closed'
-
 export interface SSEManagerOptions {
   backgroundCloseDelay: number
   reconnectDelay: number
@@ -9,7 +7,6 @@ export interface SSEManagerOptions {
 }
 
 type SSEMessageListener = (event: MessageEvent) => void
-type SSEStatusListener = (status: SSEConnectionStatus) => void
 
 /**
  * SSE连接管理器
@@ -18,7 +15,6 @@ type SSEStatusListener = (status: SSEConnectionStatus) => void
 export class SSEManager {
   private eventSource: EventSource | null = null
   private readonly url: string
-  private readonly statusListener?: SSEStatusListener
   private isBackground = document.hidden
   private reconnectTimer: number | null = null
   private backgroundCloseTimer: number | null = null
@@ -27,7 +23,6 @@ export class SSEManager {
   private reconnectAttempts = 0
   private isConnecting = false
   private isDestroyed = false
-  private connectionStatus: SSEConnectionStatus = 'idle'
   private readonly handleVisibilityChange = () => {
     if (document.hidden) {
       this.handleBackground()
@@ -39,9 +34,8 @@ export class SSEManager {
     this.destroy()
   }
 
-  constructor(url: string, options: Partial<SSEManagerOptions> = {}, statusListener?: SSEStatusListener) {
+  constructor(url: string, options: Partial<SSEManagerOptions> = {}) {
     this.url = url
-    this.statusListener = statusListener
     this.options = {
       backgroundCloseDelay: 5000, // 5秒后关闭后台连接
       reconnectDelay: 3000, // 3秒后重连
@@ -76,7 +70,6 @@ export class SSEManager {
     this.backgroundCloseTimer = window.setTimeout(() => {
       if (this.isBackground && this.eventSource) {
         this.closeCurrentEventSource()
-        this.setConnectionStatus('closed')
       }
     }, this.options.backgroundCloseDelay)
   }
@@ -102,7 +95,6 @@ export class SSEManager {
 
     if (attemptCount > this.options.maxReconnectAttempts) {
       this.reconnectAttempts = this.options.maxReconnectAttempts
-      this.setConnectionStatus('closed')
       return
     }
 
@@ -114,7 +106,6 @@ export class SSEManager {
     this.closeCurrentEventSource()
     this.isConnecting = true
     this.reconnectAttempts = attemptCount
-    this.setConnectionStatus('connecting')
 
     try {
       const source = new EventSource(this.url)
@@ -124,14 +115,12 @@ export class SSEManager {
         if (source !== this.eventSource) return
         this.isConnecting = false
         this.reconnectAttempts = 0
-        this.setConnectionStatus('open')
       }
 
       source.onerror = () => {
         if (source !== this.eventSource) return
 
         this.isConnecting = false
-        this.setConnectionStatus('error')
 
         if (source.readyState === EventSource.CLOSED) {
           this.closeCurrentEventSource()
@@ -150,7 +139,6 @@ export class SSEManager {
       }
     } catch (error) {
       this.isConnecting = false
-      this.setConnectionStatus('error')
 
       // 连接创建失败，尝试重连
       this.scheduleReconnect(this.reconnectAttempts + 1)
@@ -165,7 +153,6 @@ export class SSEManager {
 
     if (attemptCount > this.options.maxReconnectAttempts) {
       this.reconnectAttempts = this.options.maxReconnectAttempts
-      this.setConnectionStatus('closed')
       return
     }
 
@@ -209,19 +196,6 @@ export class SSEManager {
 
     clearTimeout(this.backgroundCloseTimer)
     this.backgroundCloseTimer = null
-  }
-
-  private setConnectionStatus(status: SSEConnectionStatus) {
-    if (this.connectionStatus === status) return
-
-    this.connectionStatus = status
-    if (!this.statusListener) return
-
-    try {
-      this.statusListener(status)
-    } catch (error) {
-      console.error('SSE: 状态监听器错误', error)
-    }
   }
 
   /**
@@ -270,6 +244,5 @@ export class SSEManager {
     this.clearBackgroundCloseTimer()
     this.isConnecting = false
     this.reconnectAttempts = 0
-    this.setConnectionStatus('idle')
   }
 }

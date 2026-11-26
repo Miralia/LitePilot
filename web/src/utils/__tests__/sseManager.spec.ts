@@ -1,4 +1,4 @@
-import { SSEManager, type SSEConnectionStatus, type SSEManagerOptions } from '@/utils/sseManager'
+import { SSEManager, type SSEManagerOptions } from '@/utils/sseManager'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /** 提供 SSEManager 生命周期测试所需的最小 EventSource 协议。 */
@@ -60,11 +60,8 @@ describe('SSEManager', () => {
   const managers: SSEManager[] = []
   let hidden = false
 
-  function createManager(
-    options: Partial<SSEManagerOptions> = {},
-    statusListener?: (status: SSEConnectionStatus) => void,
-  ) {
-    const manager = new SSEManager('/api/events', { ...managerOptions, ...options }, statusListener)
+  function createManager(options: Partial<SSEManagerOptions> = {}) {
+    const manager = new SSEManager('/api/events', { ...managerOptions, ...options })
     managers.push(manager)
     return manager
   }
@@ -86,14 +83,12 @@ describe('SSEManager', () => {
 
   it('start 建立连接并分发消息，stop 关闭连接', () => {
     const messageListener = vi.fn()
-    const statusListener = vi.fn()
-    const manager = createManager({}, statusListener)
+    const manager = createManager()
 
     manager.start(messageListener)
 
     expect(FakeEventSource.instances).toHaveLength(1)
     expect(FakeEventSource.instances[0].url).toBe('/api/events')
-    expect(statusListener).toHaveBeenLastCalledWith('connecting')
 
     const source = FakeEventSource.instances[0]
     source.open()
@@ -101,36 +96,30 @@ describe('SSEManager', () => {
 
     expect(messageListener).toHaveBeenCalledOnce()
     expect(messageListener.mock.calls[0][0].data).toEqual({ id: 1 })
-    expect(statusListener.mock.calls.map(([status]) => status)).toEqual(['connecting', 'open'])
 
     manager.stop()
     expect(source.close).toHaveBeenCalledOnce()
-    expect(statusListener).toHaveBeenLastCalledWith('idle')
   })
 
-  it('消息和状态监听器错误不会中断连接生命周期', () => {
+  it('消息监听器错误不会中断后续消息分发', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const messageListener = vi.fn(() => {
       throw new Error('message listener failed')
     })
-    const statusListener = vi.fn(() => {
-      throw new Error('status listener failed')
-    })
-    const manager = createManager({}, statusListener)
+    const manager = createManager()
 
     manager.start(messageListener)
     const source = FakeEventSource.instances[0]
     source.open()
     source.emit({ id: 1 })
+    source.emit({ id: 2 })
 
-    expect(messageListener).toHaveBeenCalledOnce()
+    expect(messageListener).toHaveBeenCalledTimes(2)
     expect(consoleError).toHaveBeenCalledWith('SSE: 消息监听器错误', expect.any(Error))
-    expect(consoleError).toHaveBeenCalledWith('SSE: 状态监听器错误', expect.any(Error))
   })
 
   it('按退避上限重连并在达到最大次数后关闭', () => {
-    const statusListener = vi.fn()
-    const manager = createManager({}, statusListener)
+    const manager = createManager()
     manager.start(vi.fn())
 
     FakeEventSource.instances[0].fail()
@@ -146,8 +135,6 @@ describe('SSEManager', () => {
     expect(FakeEventSource.instances).toHaveLength(3)
 
     FakeEventSource.instances[2].fail()
-    expect(statusListener).toHaveBeenLastCalledWith('closed')
-
     vi.advanceTimersByTime(1_000)
     expect(FakeEventSource.instances).toHaveLength(3)
   })
@@ -169,23 +156,20 @@ describe('SSEManager', () => {
 
   it('EventSource 构造失败时记录错误并按相同策略恢复', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const statusListener = vi.fn()
-    const manager = createManager({}, statusListener)
+    const manager = createManager()
     FakeEventSource.throwOnNextConstruction = true
 
     manager.start(vi.fn())
 
-    expect(statusListener).toHaveBeenLastCalledWith('error')
     expect(consoleError).toHaveBeenCalledWith('SSE: 连接创建失败', expect.any(Error))
+    expect(FakeEventSource.instances).toHaveLength(0)
 
     vi.advanceTimersByTime(100)
     expect(FakeEventSource.instances).toHaveLength(1)
-    expect(statusListener).toHaveBeenLastCalledWith('connecting')
   })
 
   it('短暂进入后台会取消延迟关闭，长期后台关闭后在前台恢复', () => {
-    const statusListener = vi.fn()
-    const manager = createManager({}, statusListener)
+    const manager = createManager()
     manager.start(vi.fn())
     const source = FakeEventSource.instances[0]
     source.open()
@@ -204,12 +188,10 @@ describe('SSEManager', () => {
     document.dispatchEvent(new Event('visibilitychange'))
     vi.advanceTimersByTime(500)
     expect(source.close).toHaveBeenCalledOnce()
-    expect(statusListener).toHaveBeenLastCalledWith('closed')
 
     hidden = false
     document.dispatchEvent(new Event('visibilitychange'))
     expect(FakeEventSource.instances).toHaveLength(2)
-    expect(statusListener).toHaveBeenLastCalledWith('connecting')
   })
 
   it('stop 清理待重连定时器并阻止后续自动建连', () => {

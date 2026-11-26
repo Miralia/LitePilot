@@ -486,12 +486,11 @@ function handleSSEMessage(event: MessageEvent) {
     return
   }
 
-  isConnected.value = true
   buffer.push(String(event.data))
   scheduleFlush()
 }
 
-const { isConnected, pause, resume } = useSSE(
+const { pause, resume } = useSSE(
   `${import.meta.env.VITE_API_BASE_URL}system/logging?logfile=${encodeURIComponent(props.logfile ?? 'moviepilot.log')}`,
   handleSSEMessage,
   {
