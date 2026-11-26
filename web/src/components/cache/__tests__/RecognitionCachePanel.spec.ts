@@ -36,14 +36,14 @@ async function renderRecognitionCachePanel(recognitionSource = 'themoviedb') {
   })
 }
 
-describe('RecognitionCachePanel shared recognition statistics', () => {
+describe('RecognitionCachePanel recognition statistics', () => {
   beforeEach(() => {
     mocks.apiGet.mockReset()
     mocks.toastError.mockReset()
     mocks.toastSuccess.mockReset()
   })
 
-  it('shows the persisted shared recognition count when sharing is enabled', async () => {
+  it('does not render removed shared recognition statistics from legacy payloads', async () => {
     mocks.apiGet.mockResolvedValue({
       data: {
         count: 12,
@@ -57,27 +57,25 @@ describe('RecognitionCachePanel shared recognition statistics', () => {
 
     await renderRecognitionCachePanel()
 
-    expect(await screen.findByText('共享识别')).toBeInTheDocument()
-    expect(screen.getByText('27')).toBeInTheDocument()
-    expect(screen.getByText('未识别')).toBeInTheDocument()
+    expect(await screen.findByText('未识别')).toBeInTheDocument()
+    expect(screen.getByText('3')).toBeInTheDocument()
+    expect(screen.queryByText('共享识别')).not.toBeInTheDocument()
   })
 
-  it('hides shared recognition statistics when sharing is disabled', async () => {
+  it('shows unrecognized statistics without depending on a sharing feature flag', async () => {
     mocks.apiGet.mockResolvedValue({
       data: {
         count: 12,
         recognized: 9,
         unrecognized: 3,
-        shared_recognized: 27,
-        shared_recognize_enabled: false,
         data: [],
       },
     })
 
     await renderRecognitionCachePanel()
-    await waitFor(() => expect(mocks.apiGet).toHaveBeenCalledWith('tmdb/cache'))
 
-    expect(screen.queryByText('共享识别')).not.toBeInTheDocument()
+    expect(await screen.findByText('未识别')).toBeInTheDocument()
+    expect(screen.getByText('3')).toBeInTheDocument()
   })
 
   it('keeps the panel TMDB-specific when settings contain a legacy recognition source', async () => {
@@ -86,8 +84,6 @@ describe('RecognitionCachePanel shared recognition statistics', () => {
         count: 0,
         recognized: 0,
         unrecognized: 0,
-        shared_recognized: 0,
-        shared_recognize_enabled: false,
         data: [],
       },
     })

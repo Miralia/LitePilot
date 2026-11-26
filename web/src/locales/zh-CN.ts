@@ -930,7 +930,6 @@ export default {
     cache: {
       totalCount: '总条数',
       recognized: '已识别',
-      sharedRecognized: '共享识别',
       recognizedOnly: '仅已识别',
       unrecognizedOnly: '仅未识别',
       allStatuses: '全部状态',
