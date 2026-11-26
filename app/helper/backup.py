@@ -182,7 +182,11 @@ def restore_backup(
                 member_path = Path(member.name)
                 if member_path.is_absolute() or ".." in member_path.parts:
                     raise ValueError(f"备份包包含非法路径：{member.name}")
-            tar.extractall(staging, members=[m for m in members if m.name != MANIFEST_NAME])
+            tar.extractall(
+                staging,
+                members=[m for m in members if m.name != MANIFEST_NAME],
+                filter="data",
+            )
 
         if target.exists():
             shutil.rmtree(target)
