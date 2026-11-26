@@ -5,6 +5,7 @@
 以及渲染入口在缺参时的降级行为。渲染用例使用极小的假图，不访问网络。
 """
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
@@ -201,3 +202,50 @@ def test_latest_source_image_error_log_redacts_api_key(monkeypatch):
     assert errors
     assert "emby-secret" not in "\n".join(errors)
     assert "api_key=<redacted>" in "\n".join(errors)
+
+
+def test_pick_library_image_falls_back_to_series_primary_poster(monkeypatch):
+    """剧集条目没有 Backdrop 时，应使用 Series 自身 Primary 海报而不是误报无素材。"""
+    instance = SimpleNamespace(_host="https://emby.example/", _apikey="api-key", user="user-id")
+    service = SimpleNamespace(instance=instance)
+    monkeypatch.setattr(
+        "app.chain.mediacover.MediaServerHelper",
+        lambda: SimpleNamespace(get_services=lambda **_kwargs: {"emby": service}),
+    )
+
+    class FakeResponse:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {
+                "Items": [
+                    {
+                        "Id": "series-1",
+                        "Type": "Series",
+                        "BackdropImageTags": [],
+                        "ImageTags": {"Primary": "primary-tag"},
+                    }
+                ]
+            }
+
+    class FakeRequestUtils:
+        def __init__(self, **_kwargs):
+            pass
+
+        @staticmethod
+        def get_res(_url, params=None):
+            assert params and params["ParentId"] == "library-1"
+            return FakeResponse()
+
+    monkeypatch.setattr("app.chain.mediacover.RequestUtils", FakeRequestUtils)
+
+    image_url = MediaCoverChain._pick_library_image(
+        "emby",
+        MediaServerLibrary(name="剧集", item_id="library-1"),
+    )
+
+    assert image_url == (
+        "https://emby.example/emby/Items/series-1/Images/Primary"
+        "?tag=primary-tag&api_key=api-key"
+    )

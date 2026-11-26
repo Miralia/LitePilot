@@ -259,6 +259,9 @@ class MediaCoverChain(ChainBase):
             image_id = item.get("Id")
             if tags and image_id:
                 return f"{host}emby/Items/{image_id}/Images/Backdrop/0?tag={tags[0]}&api_key={apikey}"
+            primary_tag = (item.get("ImageTags") or {}).get("Primary")
+            if primary_tag and image_id:
+                return f"{host}emby/Items/{image_id}/Images/Primary?tag={primary_tag}&api_key={apikey}"
             series_tag = item.get("SeriesPrimaryImageTag")
             series_id = item.get("SeriesId")
             if series_tag and series_id:
