@@ -52,6 +52,8 @@ location ~ ^{prefix_regex}api/v1/system/(message$|progress/|logging$) {{
     gzip off;
     proxy_buffering off;
     proxy_cache off;
+    # API query 可能携带 token；外层访问日志关闭，后端访问日志已脱敏。
+    access_log off;
 
     rewrite ^{prefix_regex}api/(.*)$ /api/$1 break;
     proxy_pass http://127.0.0.1:{backend_port};
@@ -65,6 +67,8 @@ location ~ ^{prefix_regex}api/v1/system/(message$|progress/|logging$) {{
 }}
 
 location {prefix}api/ {{
+    # API query 可能携带 token；外层访问日志关闭，后端访问日志已脱敏。
+    access_log off;
     proxy_pass http://127.0.0.1:{backend_port}/api/;
     proxy_set_header Host $http_host;
     proxy_set_header X-Real-IP $remote_addr;

@@ -47,6 +47,8 @@ location /mp/ {
     try_files $uri $uri/ /mp/index.html;
 }
 location /mp/api/ {
+    # API query 可能携带 token；外层访问日志关闭，后端访问日志已脱敏。
+    access_log off;
     proxy_pass http://127.0.0.1:3001/api/;
     proxy_set_header Host $http_host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -66,6 +68,7 @@ location ~ ^/mp/api/v1/system/(message$|progress/|logging$) {
     add_header X-Accel-Buffering no;
     proxy_buffering off;
     proxy_cache off;
+    access_log off;
     proxy_read_timeout 3600s;
 }
 ```

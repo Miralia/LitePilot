@@ -72,3 +72,13 @@ def test_paths_follow_systemd_and_swizzin_layout():
     assert nginx_site_path(site_name="demo", apps_dir=Path("/tmp/nginx")) == Path(
         "/tmp/nginx/demo.conf"
     )
+
+
+def test_render_nginx_site_disables_access_log_for_tokenized_api_proxy():
+    """API query 可能携带 token，外层 nginx 不得把请求行明文写入 access log。"""
+    text = render_nginx_site(public_dir=Path("/opt/moviepilot/public"), backend_port=3001)
+
+    sse_block = text.split("location ~ ^/api/v1/system/", 1)[1].split("location /api/", 1)[0]
+    api_block = text.split("location /api/ {", 1)[1].split("# 入口页", 1)[0]
+    assert "access_log off;" in sse_block
+    assert "access_log off;" in api_block
