@@ -56,4 +56,26 @@ describe('MediaIdSelector layout', () => {
     const results = container.querySelector('.media-id-selector__results')
     expect(results).toBeInstanceOf(HTMLElement)
   })
+
+  it('escapes external media overview HTML instead of injecting it', async () => {
+    mocks.apiGet.mockResolvedValue([
+      {
+        media_id: 'tmdb-xss',
+        overview: '<img src=x onerror="alert(1)"><script>alert(2)</script>安全简介',
+        poster_path: '',
+        title: 'XSS Probe',
+        type: '电影',
+        year: '2026',
+      },
+    ])
+
+    await renderWithProviders(MediaIdSelector)
+    const input = screen.getByPlaceholderText('输入媒体名称')
+    await fireEvent.update(input, 'xss')
+    await fireEvent.keyDown(input, { key: 'Enter' })
+
+    const subtitle = await screen.findByText(/安全简介/)
+    expect(subtitle.querySelector('img,script')).toBeNull()
+    expect(subtitle.textContent).toContain('<img src=x')
+  })
 })

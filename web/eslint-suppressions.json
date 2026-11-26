@@ -122,11 +122,6 @@
       "count": 2
     }
   },
-  "src/components/misc/MediaIdSelector.vue": {
-    "vue/no-v-text-v-html-on-component": {
-      "count": 1
-    }
-  },
   "src/components/misc/OpticalLogoLab.vue": {
     "no-useless-assignment": {
       "count": 1

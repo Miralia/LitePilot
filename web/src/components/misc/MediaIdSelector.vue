@@ -79,7 +79,7 @@ async function searchMedias() {
         poster: getW500Image(item.poster_path),
         type: item.type,
         title: item.year ? `${item.title}（${item.year}）` : item.title || '',
-        overview: `<span class="text-primary">${item.type}</span> ${item.overview}`,
+        overview: item.overview || '',
       })
     }
   } catch (e) {
@@ -151,7 +151,9 @@ onMounted(() => {
           <VListItemTitle>
             {{ item.title }}
           </VListItemTitle>
-          <VListItemSubtitle class="mt-2" v-html="item.overview" />
+          <VListItemSubtitle class="mt-2">
+            <span v-if="item.type" class="text-primary">{{ item.type }}</span> {{ item.overview }}
+          </VListItemSubtitle>
         </VListItem>
       </template>
     </VList>
