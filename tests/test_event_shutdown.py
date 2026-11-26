@@ -1,0 +1,56 @@
+"""事件总线停止生命周期测试。"""
+
+import threading
+import time
+
+from app.core.event import EventManager
+from app.schemas.types import EventType
+
+
+def make_isolated_manager() -> EventManager:
+    """创建绕开进程级单例的事件管理器，避免影响全局测试环境。"""
+    manager = object.__new__(EventManager)
+    manager.__init__()
+    return manager
+
+
+def test_event_stop_wakes_idle_consumer_without_queue_timeout():
+    """消费者阻塞等待事件时，停止信号必须立即唤醒线程。"""
+    manager = make_isolated_manager()
+    manager.start()
+    time.sleep(0.05)
+
+    started_at = time.monotonic()
+    manager.stop()
+    elapsed = time.monotonic() - started_at
+
+    assert elapsed < 0.75
+
+
+def test_event_consumer_restart_ignores_stop_sentinel_left_by_busy_generation(monkeypatch):
+    """停止时正在派发的事件可能让哨兵滞留，下一代消费者不能因此退出。"""
+    manager = make_isolated_manager()
+    dispatch_started = threading.Event()
+    allow_dispatch_return = threading.Event()
+
+    def blocking_dispatch(_event):
+        dispatch_started.set()
+        allow_dispatch_return.wait(1)
+
+    monkeypatch.setattr(manager, "_EventManager__dispatch_broadcast_event", blocking_dispatch)
+    manager.start()
+    manager.send_event(EventType.ConfigChanged)
+    assert dispatch_started.wait(1)
+
+    stop_thread = threading.Thread(target=manager.stop)
+    stop_thread.start()
+    allow_dispatch_return.set()
+    stop_thread.join(1)
+    assert not stop_thread.is_alive()
+
+    manager.start()
+    time.sleep(0.1)
+    restarted_thread = manager._EventManager__consumer_threads[-1]
+
+    assert restarted_thread.is_alive()
+    manager.stop()

@@ -119,6 +119,23 @@ def test_telegram_stop_closes_sdk_and_waits_for_polling_thread():
     client.stop()
 
     bot.stop_bot.assert_called_once_with()
-    polling_thread.join.assert_called_once_with()
+    polling_thread.join.assert_called_once_with(timeout=15)
     assert client._bot is None
     assert client._polling_thread is None
+
+
+def test_telegram_stop_waits_for_polling_before_closing_sdk_workers():
+    """已取回但尚未派发的消息不能在 polling 未退出时随 worker pool 一起关闭。"""
+    client = Telegram()
+    bot = Mock()
+    polling_thread = Mock()
+    client._bot = bot
+    client._polling_thread = polling_thread
+    calls = []
+    bot.stop_polling.side_effect = lambda: calls.append("stop_polling")
+    polling_thread.join.side_effect = lambda timeout: calls.append("join")
+    bot.stop_bot.side_effect = lambda: calls.append("stop_bot")
+
+    client.stop()
+
+    assert calls == ["stop_polling", "join", "stop_bot"]

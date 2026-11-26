@@ -47,6 +47,12 @@ class RetryException(Exception):
     pass
 
 
+# SDK 不能在 stop 时取消进行中的 getUpdates；10 秒在接收实时性、请求频率和停机上限之间保持平衡。
+_POLLING_LONG_TIMEOUT_SECONDS = 10
+# 正常停止只需等待最长一次长轮询返回，额外时间用于覆盖 SDK worker 收尾。
+_POLLING_STOP_TIMEOUT_SECONDS = 15
+
+
 class Telegram:
     """
     Telegram 消息客户端，负责发送、接收和转发 Telegram 消息。
@@ -190,7 +196,7 @@ class Telegram:
                 定义线程函数来运行 infinity_polling
                 """
                 try:
-                    _bot.infinity_polling(long_polling_timeout=30, logger_level=None)
+                    _bot.infinity_polling(long_polling_timeout=_POLLING_LONG_TIMEOUT_SECONDS, logger_level=None)
                 except Exception as err:
                     logger.error(f"Telegram消息接收服务异常：{str(err)}")
 
@@ -811,9 +817,12 @@ class Telegram:
         if not self._bot:
             return
 
-        self._bot.stop_bot()
+        self._bot.stop_polling()
         if self._polling_thread:
-            self._polling_thread.join()
+            self._polling_thread.join(timeout=_POLLING_STOP_TIMEOUT_SECONDS)
+            if self._polling_thread.is_alive():
+                logger.warning("Telegram消息接收线程未在停止超时内退出，已继续关闭客户端")
+        self._bot.stop_bot()
         self._polling_thread = None
         self._bot = None
         logger.info("Telegram消息接收服务已停止")

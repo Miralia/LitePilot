@@ -30,7 +30,7 @@ def telegram():
         # get_me 用于初始化 bot 用户名，需返回带 username 的对象
         bot_instance.get_me.return_value = MagicMock(username="test_bot")
         # polling/stop 使用普通函数，避免后台线程执行 MagicMock 时在退出阶段产生锁竞争。
-        bot_instance.infinity_polling = lambda *args, **kwargs: None
+        bot_instance.infinity_polling = MagicMock(return_value=None)
         bot_instance.stop_polling = lambda *args, **kwargs: None
 
         def capture_callback_query_handler(*args, **kwargs):
@@ -72,6 +72,13 @@ def test_send_msg_success(telegram):
 
     # 验证返回值：send_msg 失败时返回 {"success": False}（非空字典，仅 truthy 检查会漏判），故显式断言 success
     assert result and result.get("success")
+
+
+def test_telegram_long_polling_keeps_shutdown_window_bounded(telegram):
+    """长轮询不能使用会让生产停机接近 30 秒的服务端超时。"""
+    telegram._polling_thread.join(timeout=1)
+
+    assert telegram.bot.infinity_polling.call_args.kwargs["long_polling_timeout"] == 10
 
 
 def test_telegram_parser_preserves_message_context():

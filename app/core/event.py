@@ -1,12 +1,11 @@
 import asyncio
 import importlib
 import inspect
-import random
 import threading
 import time
 import traceback
 import uuid
-from queue import Empty, PriorityQueue
+from queue import PriorityQueue
 from typing import Callable, Dict, List, Optional, Tuple, Union, Any
 
 from fastapi.concurrency import run_in_threadpool
@@ -15,13 +14,10 @@ from app.core.config import global_vars
 from app.helper.thread import ThreadHelper
 from app.log import logger
 from app.schemas.types import EventType
-from app.utils.limit import ExponentialBackoffRateLimiter
 from app.utils.singleton import Singleton
 
 DEFAULT_EVENT_PRIORITY = 10  # 事件的默认优先级
 MIN_EVENT_CONSUMER_THREADS = 1  # 最小事件消费者线程数
-INITIAL_EVENT_QUEUE_IDLE_TIMEOUT_SECONDS = 1  # 事件队列空闲时的初始超时时间（秒）
-MAX_EVENT_QUEUE_IDLE_TIMEOUT_SECONDS = 5  # 事件队列空闲时的最大超时时间（秒）
 
 
 class Event:
@@ -88,6 +84,8 @@ class EventManager(metaclass=Singleton):
         self.__lock = threading.Lock()
         # 退出事件
         self.__event = threading.Event()
+        # 停止时唤醒阻塞队列消费者的专用哨兵；即使滞留到下一代，也只能在停止状态生效。
+        self.__stop_sentinel = Event(EventType.ConfigChanged, priority=0)
 
     def start(self):
         """
@@ -106,10 +104,13 @@ class EventManager(metaclass=Singleton):
         """
         logger.info("正在停止事件处理...")
         self.__event.clear()  # 停止广播事件处理
+        for _ in self.__consumer_threads:
+            self.__event_queue.put((self.__stop_sentinel.priority, self.__stop_sentinel))
         try:
             # 通过遍历保存的线程来等待它们完成
             for consumer_thread in self.__consumer_threads:
                 consumer_thread.join()
+            self.__consumer_threads.clear()
             logger.info("事件处理停止完成")
         except Exception as e:
             logger.error(f"停止事件处理线程出错：{str(e)} - {traceback.format_exc()}")
@@ -524,18 +525,13 @@ class EventManager(metaclass=Singleton):
         """
         持续从队列中提取事件的后台广播消费者线程
         """
-        jitter_factor = 0.1
-        rate_limiter = ExponentialBackoffRateLimiter(base_wait=INITIAL_EVENT_QUEUE_IDLE_TIMEOUT_SECONDS,
-                                                     max_wait=MAX_EVENT_QUEUE_IDLE_TIMEOUT_SECONDS,
-                                                     backoff_factor=2.0)
         while self.__event.is_set():
-            try:
-                priority, event = self.__event_queue.get(timeout=rate_limiter.current_wait)
-                rate_limiter.reset()
-                self.__dispatch_broadcast_event(event)
-            except Empty:
-                rate_limiter.current_wait = rate_limiter.current_wait * random.uniform(1, 1 + jitter_factor)
-                rate_limiter.trigger_limit()
+            priority, event = self.__event_queue.get()
+            if event is self.__stop_sentinel:
+                if not self.__event.is_set():
+                    break
+                continue
+            self.__dispatch_broadcast_event(event)
 
     @staticmethod
     def __log_event_lifecycle(event: Event, stage: str):

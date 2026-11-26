@@ -7,7 +7,7 @@ import app.utils.gc as memory_utils
 import app.utils.singleton as singleton_utils
 
 from app.helper import message
-from app.utils import dom, http, ip, limit, media, security, system, timer, tokens, url
+from app.utils import dom, http, ip, media, security, system, timer, tokens, url
 
 
 def test_xml_cache_ip_and_url_dead_helpers_are_removed():
@@ -20,14 +20,8 @@ def test_xml_cache_ip_and_url_dead_helpers_are_removed():
 
 
 def test_unwired_rate_limiter_abstractions_are_removed():
-    """当前只使用指数退避限流器，不保留未接线窗口、组合和装饰器抽象。"""
-    assert hasattr(limit, "ExponentialBackoffRateLimiter")
-    assert not hasattr(limit, "BaseRateLimiter")
-    assert not hasattr(limit, "WindowRateLimiter")
-    assert not hasattr(limit, "CompositeRateLimiter")
-    assert not hasattr(limit, "rate_limit_handler")
-    for name in ("can_call", "reset_on_success", "record_call"):
-        assert not hasattr(limit.ExponentialBackoffRateLimiter, name)
+    """事件队列改用停止哨兵后，不再保留只剩测试自引用的限流工具。"""
+    assert not Path("app/utils/limit.py").exists()
 
 
 def test_dead_security_wrappers_and_system_utilities_are_removed():
@@ -79,22 +73,6 @@ def test_test_only_structures_utility_is_removed_with_its_tests():
     """ListUtils 只有测试消费者，工具和对应测试一起移除。"""
     assert not Path("app/utils/structures.py").exists()
     assert not Path("tests/test_structures.py").exists()
-
-
-def test_exponential_backoff_limiter_preserves_event_loop_backoff_semantics():
-    """事件队列只依赖当前等待时间的指数增长、上限和成功重置。"""
-    limiter = limit.ExponentialBackoffRateLimiter(
-        base_wait=1.0,
-        max_wait=3.0,
-        backoff_factor=2.0,
-    )
-    assert limiter.current_wait == 1.0
-    limiter.trigger_limit()
-    assert limiter.current_wait == 2.0
-    limiter.trigger_limit()
-    assert limiter.current_wait == 3.0
-    limiter.reset()
-    assert limiter.current_wait == 1.0
 
 
 def test_unused_singleton_and_cache_compatibility_wrappers_are_removed():
