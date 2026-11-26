@@ -10,8 +10,6 @@ from typing import Any, Union, Annotated, Optional
 
 import bcrypt
 import jwt
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad
 from cryptography.fernet import Fernet
 from fastapi import HTTPException, status, Security, Request, Response
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader, APIKeyQuery, APIKeyCookie
