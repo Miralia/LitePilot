@@ -120,5 +120,8 @@ describe('frontend dead export scope', () => {
     expect(background).not.toContain('isConnected')
     expect(background).not.toContain('get manager()')
     expect(background).not.toContain('destroyManager')
+
+    const userNotification = readFileSync('src/layouts/default/components/UserNotification.vue', 'utf-8')
+    expect(userNotification).not.toContain('role=notification')
   })
 })

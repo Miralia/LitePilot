@@ -481,7 +481,7 @@ function toggleNotificationExpanded(item: SystemNotification) {
   expandedNotificationKeys.value = expandedKeys
 }
 
-useDelayedSSE(`${import.meta.env.VITE_API_BASE_URL}system/message?role=notification`, handleMessage, 3000, {
+useDelayedSSE(`${import.meta.env.VITE_API_BASE_URL}system/message`, handleMessage, 3000, {
   backgroundCloseDelay: 5000,
   reconnectDelay: 3000,
   maxReconnectAttempts: 3,

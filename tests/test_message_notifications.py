@@ -120,36 +120,13 @@ def test_system_helper_message_only_enters_sse_queue() -> None:
     helper = MessageHelper()
     _reset_message_helper(helper)
 
-    helper.put("调度任务执行失败", role="system", title="系统错误")
+    helper.put("调度任务执行失败", title="系统错误")
 
     assert MessageOper().list_by_page(page=1, count=10) == []
     realtime_message = json.loads(helper.get())
     assert realtime_message["type"] == "system"
     assert realtime_message["title"] == "系统错误"
     assert realtime_message["text"] == "调度任务执行失败"
-
-def test_non_system_helper_message_does_not_enter_sse_queue() -> None:
-    """
-    非系统消息不进入前端 SSE 队列。
-    """
-    helper = MessageHelper()
-    _reset_message_helper(helper)
-
-    helper.put("自动回复", role="agent", title="MoviePilot助手")
-
-    assert helper.get() is None
-
-
-def test_user_helper_message_does_not_enter_sse_queue() -> None:
-    """
-    用户消息不进入前端 SSE 队列。
-    """
-    helper = MessageHelper()
-    _reset_message_helper(helper)
-
-    helper.put("用户输入", role="user", title="admin")
-
-    assert helper.get() is None
 
 
 def test_notification_post_message_is_persisted_without_sse_queue(monkeypatch) -> None:

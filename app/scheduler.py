@@ -656,7 +656,7 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
             f"定时任务 {job.get('name')} 执行失败：{str(error)} - {traceback.format_exc()}"
         )
         MessageHelper().put(
-            title=f"{job.get('name')} 执行失败", message=str(error), role="system"
+            title=f"{job.get('name')} 执行失败", message=str(error)
         )
 
     def __build_progress_callback(self, job_id: str, job: dict) -> Callable[..., None]:

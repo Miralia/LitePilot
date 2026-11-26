@@ -550,8 +550,7 @@ class EventManager(metaclass=Singleton):
         # 发送系统错误通知
         from app.helper.message import MessageHelper
         MessageHelper().put(title=f"{module_name} 处理事件 {event.event_type} 时出错",
-                            message=f"{class_name}.{method_name}：{str(e)}",
-                            role="system")
+                            message=f"{class_name}.{method_name}：{str(e)}")
 
     def register(self, etype: Union[EventType, List[EventType], type],
                  priority: Optional[int] = DEFAULT_EVENT_PRIORITY):

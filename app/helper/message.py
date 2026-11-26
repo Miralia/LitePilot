@@ -36,6 +36,7 @@ _RESERVED_FILENAMES = {
     *(f"LPT{i}" for i in range(1, 10)),
 }
 
+
 class TemplateContextBuilder:
     """
     模板上下文构建器。
@@ -857,14 +858,13 @@ class MessageHelper(metaclass=Singleton):
 
     @staticmethod
     def _build_system_notification_key(
-            message: Any, role: str, title: str = None, note: Union[list, dict] = None
+            message: Any, title: str = None, note: Union[list, dict] = None
     ) -> str:
         """
         构建系统通知短期去重键。
         """
         return json.dumps(
             {
-                "role": role,
                 "title": title or "",
                 "text": str(message),
                 "note": note or {},
@@ -875,41 +875,37 @@ class MessageHelper(metaclass=Singleton):
         )
 
     def _is_recent_system_notification(
-            self, message: Any, role: str, title: str = None, note: Union[list, dict] = None
+            self, message: Any, title: str = None, note: Union[list, dict] = None
     ) -> bool:
         """
         判断系统通知是否在短时间内重复。
         """
-        key = self._build_system_notification_key(message, role, title=title, note=note)
+        key = self._build_system_notification_key(message, title=title, note=note)
         if self._recent_notification_keys.get(key):
             return True
         self._recent_notification_keys.set(key, True)
         return False
 
-    def put(self, message: Any, role: str = "system", title: str = None, note: Union[list, dict] = None):
+    def put(self, message: Any, title: str = None, note: Union[list, dict] = None):
         """
-        存消息
+        存系统实时消息
         :param message: 消息
-        :param role: 消息通道，当前仅支持 system
         :param title: 标题
         :param note: 附件json
         """
-        if role != "system":
-            return
-        if self._is_recent_system_notification(message, role, title=title, note=note):
+        if self._is_recent_system_notification(message, title=title, note=note):
             return
         self.sys_queue.put(json.dumps({
-            "type": role,
+            "type": "system",
             "title": title,
             "text": message,
             "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             "note": note
         }))
 
-    def get(self, role: str = "system") -> Optional[str]:
+    def get(self) -> Optional[str]:
         """
-        取消息
-        :param role: 兼容旧参数，当前所有 SSE 消息共用一个队列
+        取系统实时消息
         """
         if not self.sys_queue.empty():
             return self.sys_queue.get(block=False)

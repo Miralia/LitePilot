@@ -213,7 +213,7 @@ class ChainBase(metaclass=ABCMeta):
             f"运行模块 {module_id}.{method} 出错：{str(err)}\n{traceback.format_exc()}"
         )
         self.messagehelper.put(
-            title=f"{module_name}发生了错误", message=str(err), role="system"
+            title=f"{module_name}发生了错误", message=str(err)
         )
 
     @staticmethod

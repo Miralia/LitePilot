@@ -697,7 +697,6 @@ async def set_setting(
 @router.get("/message", summary="实时消息")
 async def get_message(
     request: Request,
-    role: Optional[str] = "system",
     _: schemas.TokenPayload = Depends(verify_resource_token),
 ):
     """
@@ -710,7 +709,7 @@ async def get_message(
             while not global_vars.is_system_stopped:
                 if await request.is_disconnected():
                     break
-                detail = message.get(role)
+                detail = message.get()
                 yield f"data: {detail or ''}\n\n"
                 await asyncio.sleep(3)
         except asyncio.CancelledError:

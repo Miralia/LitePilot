@@ -1,5 +1,6 @@
 """上游通用工具残留边界测试。"""
 
+import inspect
 from pathlib import Path
 
 import app.core.cache as core_cache
@@ -58,6 +59,12 @@ def test_dead_timer_token_media_and_message_helpers_are_removed():
     assert not hasattr(tokens.Tokens, "peek_at")
     assert not hasattr(media, "build_media_key")
     assert not hasattr(message.MessageQueueManager, "_time_to_minutes")
+
+
+def test_legacy_realtime_message_role_channel_is_removed():
+    """系统实时消息只有单一 system 队列，不保留上游 role 通道兼容参数。"""
+    assert "role" not in inspect.signature(message.MessageHelper.put).parameters
+    assert "role" not in inspect.signature(message.MessageHelper.get).parameters
 
 
 def test_dead_memory_decorators_and_http_convenience_methods_are_removed():
