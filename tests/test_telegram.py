@@ -3,6 +3,8 @@
 Telegram 模块单元测试（pytest 原生）。
 """
 import json
+import threading
+import time
 import warnings
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
@@ -58,6 +60,10 @@ def telegram():
             TELEGRAM_CHAT_ID="fake_chat_id",
             name="telegram-test",
         )
+        deadline = time.monotonic() + 1
+        while telegram._polling_thread is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert telegram._polling_thread is not None
         yield telegram
         telegram.stop()
 
@@ -79,6 +85,77 @@ def test_telegram_long_polling_keeps_shutdown_window_bounded(telegram):
     telegram._polling_thread.join(timeout=1)
 
     assert telegram.bot.infinity_polling.call_args.kwargs["long_polling_timeout"] == 10
+
+
+def test_telegram_init_does_not_block_on_bot_info_lookup():
+    """外部 Telegram API 首次连接较慢时，模块构造不得阻塞应用启动。"""
+    lookup_started = threading.Event()
+    release_lookup = threading.Event()
+
+    def slow_get_me():
+        lookup_started.set()
+        if not release_lookup.wait(1):
+            raise TimeoutError("test get_me timeout")
+        return SimpleNamespace(username="slow_bot")
+
+    with patch("app.modules.telegram.telegram.TeleBot") as mock_telebot_cls:
+        bot_instance = MagicMock()
+        bot_instance.get_me.side_effect = slow_get_me
+        bot_instance.infinity_polling = MagicMock(return_value=None)
+        bot_instance.stop_polling = lambda *args, **kwargs: None
+        mock_telebot_cls.return_value = bot_instance
+
+        started_at = time.monotonic()
+        client = Telegram(
+            TELEGRAM_TOKEN="fake_token",
+            TELEGRAM_CHAT_ID="fake_chat_id",
+            name="telegram-bootstrap-test",
+        )
+        elapsed = time.monotonic() - started_at
+
+        try:
+            assert elapsed < 0.5
+            assert lookup_started.wait(0.5)
+        finally:
+            release_lookup.set()
+            client.stop()
+
+        deadline = time.monotonic() + 1
+        while client.bot_username != "slow_bot" and time.monotonic() < deadline:
+            time.sleep(0.01)
+
+        assert client.bot_username == "slow_bot"
+
+
+def test_telegram_stop_during_bot_info_lookup_never_starts_polling():
+    """停止发生在后台引导期间时，延迟返回的 get_me 不得为旧实例启动 polling。"""
+    release_lookup = threading.Event()
+    lookup_started = threading.Event()
+
+    def slow_get_me():
+        lookup_started.set()
+        release_lookup.wait(1)
+        return SimpleNamespace(username="slow_bot")
+
+    with patch("app.modules.telegram.telegram.TeleBot") as mock_telebot_cls:
+        bot_instance = MagicMock()
+        bot_instance.get_me.side_effect = slow_get_me
+        bot_instance.infinity_polling = MagicMock(return_value=None)
+        bot_instance.stop_polling = lambda *args, **kwargs: None
+        mock_telebot_cls.return_value = bot_instance
+
+        client = Telegram(
+            TELEGRAM_TOKEN="fake_token",
+            TELEGRAM_CHAT_ID="fake_chat_id",
+            name="telegram-stop-bootstrap-test",
+        )
+        assert lookup_started.wait(0.5)
+        client.stop()
+        release_lookup.set()
+        client._bootstrap_thread.join(timeout=1)
+
+        assert not client._bootstrap_thread.is_alive()
+        bot_instance.infinity_polling.assert_not_called()
 
 
 def test_telegram_parser_preserves_message_context():

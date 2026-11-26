@@ -82,6 +82,9 @@ class Telegram:
         self._telegram_token = TELEGRAM_TOKEN
         self._telegram_chat_id = TELEGRAM_CHAT_ID
         self._polling_thread = None
+        self._bootstrap_thread = None
+        self._lifecycle_lock = threading.RLock()
+        self._stop_requested = threading.Event()
         self._bot = None
         self._user_chat_mapping = {}
         self._bot_username = None
@@ -110,16 +113,8 @@ class Telegram:
                 apihelper.proxy = settings.PROXY
             # bot
             _bot = TeleBot(self._telegram_token, parse_mode=TELEGRAM_PARSE_MODE_MARKDOWN)
-            # 记录句柄
+            # 记录句柄；发送通知不依赖 bot 元数据，立即可用。
             self._bot = _bot
-            # 获取并存储bot用户名用于@检测
-            try:
-                bot_info = _bot.get_me()
-                self._bot_username = bot_info.username
-                logger.info(f"Telegram bot用户名: @{self._bot_username}")
-            except Exception as e:
-                logger.error(f"获取bot信息失败: {e}")
-                self._bot_username = None
 
             @_bot.message_handler(commands=["start", "help"])
             def send_welcome(message):
@@ -200,10 +195,30 @@ class Telegram:
                 except Exception as err:
                     logger.error(f"Telegram消息接收服务异常：{str(err)}")
 
-            # 启动线程来运行 infinity_polling
-            self._polling_thread = threading.Thread(target=run_polling, daemon=True)
-            self._polling_thread.start()
-            logger.info("Telegram消息接收服务启动")
+            def bootstrap_polling():
+                """先完成 bot 元数据探测，再按原生命周期启动长轮询。"""
+                try:
+                    bot_info = _bot.get_me()
+                    self._bot_username = bot_info.username
+                    logger.info(f"Telegram bot用户名: @{self._bot_username}")
+                except Exception as err:
+                    logger.error(f"获取bot信息失败: {err}")
+                    self._bot_username = None
+
+                # get_me 首次连接可能达到 SDK 的 15 秒 connect timeout。若在等待期间
+                # 服务已经停止或配置已重载，不能再为旧 generation 启动新的 polling。
+                with self._lifecycle_lock:
+                    if self._stop_requested.is_set() or self._bot is not _bot:
+                        return
+                    polling_thread = threading.Thread(target=run_polling, daemon=True)
+                    self._polling_thread = polling_thread
+                    polling_thread.start()
+                logger.info("Telegram消息接收服务启动")
+
+            # Telegram API 首次建连在生产环境可能接近 connect timeout；元数据探测和 polling
+            # 引导放入专用 daemon 线程，避免外部网络状况阻塞 FastAPI lifespan。
+            self._bootstrap_thread = threading.Thread(target=bootstrap_polling, daemon=True)
+            self._bootstrap_thread.start()
 
     @property
     def bot(self):
@@ -811,18 +826,26 @@ class Telegram:
         """
         停止Telegram消息接收服务
         """
+        with self._lifecycle_lock:
+            self._stop_requested.set()
+            bot = self._bot
+            polling_thread = self._polling_thread
+
         # 停止所有typing任务
         for chat_id in list(self._typing_tasks.keys()):
             self._stop_typing_task(chat_id)
-        if not self._bot:
+        if not bot:
             return
 
-        self._bot.stop_polling()
-        if self._polling_thread:
-            self._polling_thread.join(timeout=_POLLING_STOP_TIMEOUT_SECONDS)
-            if self._polling_thread.is_alive():
+        bot.stop_polling()
+        if polling_thread:
+            polling_thread.join(timeout=_POLLING_STOP_TIMEOUT_SECONDS)
+            if polling_thread.is_alive():
                 logger.warning("Telegram消息接收线程未在停止超时内退出，已继续关闭客户端")
-        self._bot.stop_bot()
-        self._polling_thread = None
-        self._bot = None
+        bot.stop_bot()
+        with self._lifecycle_lock:
+            if self._polling_thread is polling_thread:
+                self._polling_thread = None
+            if self._bot is bot:
+                self._bot = None
         logger.info("Telegram消息接收服务已停止")
