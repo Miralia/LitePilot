@@ -36,6 +36,8 @@ _RESERVED_FILENAMES = {
     *(f"LPT{i}" for i in range(1, 10)),
 }
 
+# 停止时只等待当前发送回调短暂收尾；网络渠道无响应时不能无限阻塞进程退出。
+_MESSAGE_QUEUE_STOP_TIMEOUT_SECONDS = 5.0
 
 class TemplateContextBuilder:
     """
@@ -824,7 +826,7 @@ class MessageQueueManager(metaclass=SingletonClass):
             current_time = datetime.now()
             if self._is_in_scheduled_time(current_time):
                 while not self.queue.empty():
-                    if global_vars.is_system_stopped:
+                    if not self._running or global_vars.is_system_stopped:
                         break
                     if not self._is_in_scheduled_time(datetime.now()):
                         break
@@ -844,8 +846,11 @@ class MessageQueueManager(metaclass=SingletonClass):
         self._running = False
         self._stop_event.set()
         logger.info("正在停止消息队列...")
-        self.thread.join()
-        logger.info("消息队列已停止")
+        self.thread.join(timeout=_MESSAGE_QUEUE_STOP_TIMEOUT_SECONDS)
+        if self.thread.is_alive():
+            logger.warning("消息队列发送线程未在预期时间内退出，剩余发送可能随进程退出中断")
+        else:
+            logger.info("消息队列已停止")
 
 class MessageHelper(metaclass=Singleton):
     """
