@@ -95,7 +95,7 @@ api.interceptors.response.use(
       }
       // 其他网络错误
       return Promise.reject(new Error(error.message || 'Network error'))
-    } else if (error.response.status === 403) {
+    } else if (error.response.status === 401) {
       normalizeLocalizedMessage(error.response.data)
       // 认证 Store
       const authStore = useAuthStore()

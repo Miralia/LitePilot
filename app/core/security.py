@@ -225,7 +225,7 @@ def __verify_token(token: str, purpose: Optional[str] = "authentication") -> sch
 
         if not token:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"{purpose} token not found"
             )
 
@@ -241,7 +241,7 @@ def __verify_token(token: str, purpose: Optional[str] = "authentication") -> sch
         return schemas.TokenPayload(**payload)
     except (jwt.DecodeError, jwt.InvalidTokenError, jwt.ImmatureSignatureError):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="token校验不通过",
         )
 
