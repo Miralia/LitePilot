@@ -82,10 +82,10 @@ def test_send_msg_success(telegram):
 
 
 def test_telegram_long_polling_keeps_shutdown_window_bounded(telegram):
-    """长轮询不能使用会让生产停机接近 30 秒的服务端超时。"""
+    """长轮询空闲窗口不应让生产重启等待接近 10 秒。"""
     telegram._polling_thread.join(timeout=1)
 
-    assert telegram.bot.infinity_polling.call_args.kwargs["long_polling_timeout"] == 10
+    assert telegram.bot.infinity_polling.call_args.kwargs["long_polling_timeout"] <= 3
     assert telegram.bot.infinity_polling.call_args.kwargs["timeout"] == 5
 
 

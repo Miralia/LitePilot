@@ -47,8 +47,9 @@ class RetryException(Exception):
     pass
 
 
-# SDK 不能在 stop 时取消进行中的 getUpdates；10 秒在接收实时性、请求频率和停机上限之间保持平衡。
-_POLLING_LONG_TIMEOUT_SECONDS = 10
+# SDK 不能在 stop 时取消进行中的 getUpdates。长轮询在有消息时会立即返回，
+# 3 秒只增加空闲空轮询次数，却能把生产重启的最坏等待从约 10 秒压到 3 秒量级。
+_POLLING_LONG_TIMEOUT_SECONDS = 3
 # 正常停止只需等待最长一次长轮询返回，额外时间用于覆盖 SDK worker 收尾。
 _POLLING_STOP_TIMEOUT_SECONDS = 15
 # 正常 TCP 建连远低于 5 秒；SDK 默认 15 秒会让黑洞 IPv6 地址
