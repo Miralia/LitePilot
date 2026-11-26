@@ -28,6 +28,8 @@ class Qbittorrent:
         self._client_ready = threading.Event()
         self._client_thread: Optional[threading.Thread] = None
         self._qbc: Optional[Client] = None
+        self._client_generation = 0
+        self._close_requested = False
         if host and port:
             self._host, self._port = host, port
         elif host:
@@ -40,7 +42,13 @@ class Qbittorrent:
         self._password = password
         self._apikey = str(apikey or "").strip() or None
         self._incomplete_files_ext = incomplete_files_ext
-        self._client_thread = threading.Thread(target=self._bootstrap_client, daemon=True)
+        self._client_generation = 1
+        initial_generation = self._client_generation
+        self._client_thread = threading.Thread(
+            target=self._bootstrap_client,
+            args=(initial_generation,),
+            daemon=True,
+        )
         self._client_thread.start()
 
     @property
@@ -55,17 +63,68 @@ class Qbittorrent:
     def qbc(self, value: Optional[Client]):
         self._qbc = value
 
-    def _bootstrap_client(self):
+    @staticmethod
+    def __close_client(client: Optional[Client]):
+        """
+        关闭 qbittorrent 客户端持有的本地 HTTP session
+        """
+        if not client:
+            return
+        try:
+            # SDK 未提供公开的本地 close；该重置入口只关闭已建 session，不会发起网络请求
+            close_session = getattr(client, "_trigger_session_initialization", None)
+            if callable(close_session):
+                close_session()
+        except Exception as err:
+            logger.debug(f"关闭 qbittorrent HTTP session 失败：{err}")
+
+    def _finish_connect(self, generation: int, client: Optional[Client]):
+        """
+        安装或回收一次连接结果
+        """
+        clients_to_close = []
+        with self._client_lock:
+            if self._close_requested or generation != self._client_generation:
+                clients_to_close.append(client)
+            else:
+                if self._qbc is not client:
+                    clients_to_close.append(self._qbc)
+                self._qbc = client
+            if generation == self._client_generation or self._close_requested:
+                self._client_ready.set()
+        for client_to_close in clients_to_close:
+            self.__close_client(client_to_close)
+
+    def _connect_and_install(self, generation: int):
+        """
+        执行一次连接并按代际安装结果
+        """
+        with self._client_lock:
+            if self._close_requested or generation != self._client_generation:
+                return
+        client = None
+        try:
+            client = self.__login_qbittorrent()
+        except Exception as err:
+            logger.error(f"初始化 qbittorrent 连接出错：{err}")
+        self._finish_connect(generation, client)
+
+    def _bootstrap_client(self, generation: int):
         """
         后台初始化下载器连接，避免外部服务缓慢时阻塞应用启动
         """
+        self._connect_and_install(generation)
+
+    def close(self):
+        """
+        关闭下载器连接，迟到完成的登录结果会被立即回收
+        """
         with self._client_lock:
-            try:
-                self._qbc = self.__login_qbittorrent()
-            except Exception as err:
-                logger.error(f"初始化 qbittorrent 连接出错：{err}")
-            finally:
-                self._client_ready.set()
+            self._close_requested = True
+            client = self._qbc
+            self._qbc = None
+            self._client_ready.set()
+        self.__close_client(client)
 
     def __use_api_key_auth(self) -> bool:
         return bool(self._apikey)
@@ -98,11 +157,12 @@ class Qbittorrent:
         重连
         """
         with self._client_lock:
+            if self._close_requested:
+                return
+            self._client_generation += 1
+            generation = self._client_generation
             self._client_ready.clear()
-            try:
-                self._qbc = self.__login_qbittorrent()
-            finally:
-                self._client_ready.set()
+        self._connect_and_install(generation)
 
     def __login_qbittorrent(self) -> Optional[Client]:
         """

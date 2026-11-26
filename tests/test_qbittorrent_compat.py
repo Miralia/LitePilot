@@ -220,8 +220,8 @@ def test_init_does_not_block_on_qbittorrent_login():
         assert downloader.qbc is fake_client
 
 
-def test_reconnect_waits_for_initial_qbittorrent_login():
-    """启动中的首次登录与定时重连必须串行完成，不能相互覆盖或死锁。"""
+def test_reconnect_supersedes_initial_qbittorrent_login():
+    """重连代际必须覆盖启动中的首次登录，旧登录迟到完成不得覆盖新客户端。"""
     login_started = threading.Event()
     release_login = threading.Event()
     first_client = MagicMock(name="first-client")
@@ -250,6 +250,83 @@ def test_reconnect_waits_for_initial_qbittorrent_login():
 
         assert not reconnect_thread.is_alive()
         assert downloader.qbc is reconnected_client
+
+
+def test_close_releases_qbittorrent_session():
+    """下载器关闭时必须释放底层 HTTP session，避免配置重载累积连接池。"""
+    fake_client = MagicMock()
+
+    with patch.object(Qbittorrent, "_Qbittorrent__login_qbittorrent", return_value=fake_client):
+        downloader = Qbittorrent(host="http://127.0.0.1", port=8080, username="admin", password="adminadmin")
+        assert downloader.qbc is fake_client
+
+    downloader.close()
+
+    fake_client._trigger_session_initialization.assert_called_once_with()
+    assert downloader.qbc is None
+
+
+def test_close_does_not_wait_for_initial_login_and_discards_late_client():
+    """停止不得等待慢登录；登录迟到完成后也必须立即关闭而不是安装为活跃客户端。"""
+    login_started = threading.Event()
+    release_login = threading.Event()
+    fake_client = MagicMock()
+
+    def slow_login(*_args, **_kwargs):
+        login_started.set()
+        release_login.wait(1)
+        return fake_client
+
+    with patch.object(Qbittorrent, "_Qbittorrent__login_qbittorrent", side_effect=slow_login):
+        downloader = Qbittorrent(host="http://127.0.0.1", port=8080, username="admin", password="adminadmin")
+        assert login_started.wait(1)
+
+        started_at = time.monotonic()
+        downloader.close()
+        elapsed = time.monotonic() - started_at
+        release_login.set()
+        downloader._client_thread.join(1)
+
+        assert elapsed < 0.5
+        assert not downloader._client_thread.is_alive()
+        fake_client._trigger_session_initialization.assert_called_once_with()
+        assert downloader.qbc is None
+
+
+def test_close_before_bootstrap_start_prevents_late_login():
+    """关闭先于后台线程运行时，迟到线程不得再发起登录或偏好写入。"""
+    manual_thread = None
+
+    class ManualThread:
+        def __init__(self, target, args=(), daemon=None):
+            nonlocal manual_thread
+            self.target = target
+            self.args = args
+            self.daemon = daemon
+            manual_thread = self
+
+        def start(self):
+            pass
+
+    with patch.object(qbittorrent_module.threading, "Thread", ManualThread), patch.object(
+        Qbittorrent, "_Qbittorrent__login_qbittorrent"
+    ) as login:
+        downloader = Qbittorrent(host="http://127.0.0.1", port=8080, username="admin", password="adminadmin")
+        downloader.close()
+        manual_thread.target(*manual_thread.args)
+
+    login.assert_not_called()
+
+
+def test_module_stop_closes_qbittorrent_instances():
+    """模块停止必须逐实例释放下载器连接资源。"""
+    server = MagicMock()
+    module = QbittorrentModule.__new__(QbittorrentModule)
+    module.get_instances = MagicMock(return_value={"qb": server})
+
+    module.stop()
+
+    server.close.assert_called_once_with()
 
 
 def test_login_uses_api_key_header_without_auth_login():

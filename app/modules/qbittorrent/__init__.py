@@ -81,9 +81,13 @@ class QbittorrentModule(_ModuleBase, _DownloaderBase[Qbittorrent]):
 
     def stop(self) -> None:
         """
-        停止模块
+        停止模块并释放下载器连接资源
         """
-        pass
+        for server in self.get_instances().values():
+            try:
+                server.close()
+            except Exception as err:
+                logger.error(f"停止Qbittorrent实例失败：{err}")
 
     def test(self) -> Optional[Tuple[bool, str]]:
         """
