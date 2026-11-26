@@ -403,3 +403,40 @@ def test_install_frontend_writes_local_runtime_without_remote_download(
             "cwd": public_dir,
         }
     ]
+
+
+def test_publish_frontend_dist_retains_previous_hashed_assets(local_setup_module, tmp_path):
+    """独立构建脚本复用的发布函数不得清空 public，并应保留上一代 hash 资产。"""
+    dist_dir = tmp_path / "dist"
+    dist_assets = dist_dir / "assets"
+    dist_assets.mkdir(parents=True)
+    (dist_dir / "index.html").write_text("new entry", encoding="utf-8")
+    (dist_assets / "chunk-new.js").write_text("new chunk", encoding="utf-8")
+
+    public_dir = tmp_path / "public"
+    public_assets = public_dir / "assets"
+    public_assets.mkdir(parents=True)
+    (public_dir / "index.html").write_text("old entry", encoding="utf-8")
+    (public_assets / "chunk-previous.js").write_text("previous chunk", encoding="utf-8")
+    (public_assets / "chunk-obsolete.js").write_text("obsolete chunk", encoding="utf-8")
+    (public_dir / ".asset-generation.json").write_text(
+        json.dumps({"current": ["assets/chunk-previous.js"]}),
+        encoding="utf-8",
+    )
+
+    local_setup_module.publish_frontend_dist(dist_dir, public_dir)
+
+    assert (public_dir / "index.html").read_text(encoding="utf-8") == "new entry"
+    assert (public_assets / "chunk-new.js").read_text(encoding="utf-8") == "new chunk"
+    assert (public_assets / "chunk-previous.js").read_text(encoding="utf-8") == "previous chunk"
+    assert not (public_assets / "chunk-obsolete.js").exists()
+
+
+def test_build_frontend_script_uses_atomic_dist_publisher() -> None:
+    """手动构建脚本不得通过清空 public 制造静态资产空窗。"""
+    script = (
+        Path(__file__).resolve().parents[1] / "scripts" / "build-frontend.sh"
+    ).read_text(encoding="utf-8")
+
+    assert "publish_frontend_dist" in script
+    assert 'find "$DIST_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf' not in script

@@ -140,13 +140,15 @@ git -C /opt/moviepilot pull --ff-only
 ## 离线构建后同步静态产物
 
 生产机内存或 CPU 有限时，可以在构建机执行 `./scripts/build-frontend.sh --skip-install`，再只同步
-`public/`。同步前保留当前线上静态目录副本；同步时必须清理旧哈希文件，否则 `public/` 会同时残留
-多套构建产物，后续排障时无法判断实际生效版本：
+`public/`。同步前保留当前线上静态目录副本。发布器会有意保留上一代内容寻址资产并写入
+`.asset-generation.json`，不要手工清空 `assets/`；使用 `--delete-after --delay-updates` 精确复制整个目录，
+让过期文件在新文件落盘后再移除：
 
 ```bash
 cp -a /opt/moviepilot/public /root/litepilot-public-rollback-$(date +%Y%m%d%H%M%S)
-rsync -a --checksum --delete public/ root@<host>:/opt/moviepilot/public/
+rsync -a --checksum --delete-after --delay-updates public/ root@<host>:/opt/moviepilot/public/
 ```
 
-同步后访问入口页、入口 JS 与 `service-worker.js`，确认均为 200；后端未变更时无需重启
+优先在生产机直接运行 `./scripts/build-frontend.sh --skip-install`；它能按生产机当前代际保留已打开页面
+可能仍在请求的 hash chunk。离线同步后访问入口页、入口 JS 与 `service-worker.js`，确认均为 200；后端未变更时无需重启
 `litepilot.service`。

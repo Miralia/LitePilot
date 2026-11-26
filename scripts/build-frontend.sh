@@ -4,6 +4,7 @@
 # 后端与原生部署都直接使用 public/ 中的自建产物（settings.FRONTEND_PATH 默认即指向它），
 # 不再从 GitHub Release 下载前端。注意 web/public/ 是 Vite 的静态资源源目录，与本产物目录无关。
 # 依赖安装默认使用 web/yarn.lock 的冻结锁文件，保证构建可重复；本地调试可用 --no-frozen 放宽。
+# 发布阶段复用 scripts/local_setup.py 的逐文件原子替换逻辑，并保留上一代 hash 资产。
 
 set -euo pipefail
 
@@ -99,7 +100,19 @@ fi
 
 printf '==> 同步产物到 public/\n'
 mkdir -p "$DIST_DIR"
-find "$DIST_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-cp -a "$WEB_DIR/dist/." "$DIST_DIR/"
+python3 - "$PROJECT_ROOT" "$WEB_DIR/dist" "$DIST_DIR" <<'PYTHON'
+import importlib.util
+import sys
+from pathlib import Path
+
+project_root, dist_dir, public_dir = (Path(value) for value in sys.argv[1:])
+module_path = project_root / "scripts" / "local_setup.py"
+spec = importlib.util.spec_from_file_location("litepilot_local_setup", module_path)
+if spec is None or spec.loader is None:
+    raise SystemExit(f"无法加载前端发布模块：{module_path}")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+module.publish_frontend_dist(dist_dir, public_dir)
+PYTHON
 
 printf '完成：%s\n' "$DIST_DIR"

@@ -950,6 +950,17 @@ def _prune_frontend_assets(public_dir: Path, keep_paths: list[str]) -> None:
             pass
 
 
+def publish_frontend_dist(dist_dir: Path, public_dir: Path) -> None:
+    """原子发布前端构建产物，并为已打开页面保留上一代 hash 资产。"""
+    # 已打开页面可能尚未加载全部懒加载 chunk。发布过程不删除 public 目录：
+    # 先复制新 assets，再替换入口 HTML，旧入口在整个复制期间仍能加载旧 assets。
+    previous_asset_paths = _current_frontend_asset_paths(public_dir)
+    _copy_frontend_dist_files(dist_dir, public_dir)
+    current_asset_paths = _scan_frontend_asset_paths(dist_dir)
+    _prune_frontend_assets(public_dir, current_asset_paths + previous_asset_paths)
+    _write_frontend_asset_generation(public_dir, dist_dir)
+
+
 def build_frontend_from_source() -> None:
     """构建仓内前端源码，并把产物同步到本地运行时目录。"""
     if not WEB_DIR.is_dir():
@@ -976,13 +987,7 @@ def build_frontend_from_source() -> None:
     if not (WEB_DIST_DIR / "index.html").exists():
         raise RuntimeError("前端构建产物缺少 dist/index.html")
 
-    # 已打开页面可能尚未加载全部懒加载 chunk。更新过程不删除 public 目录：
-    # 先复制新 assets，再替换入口 HTML，旧入口在整个复制期间仍能加载旧 assets。
-    previous_asset_paths = _current_frontend_asset_paths(PUBLIC_DIR)
-    _copy_frontend_dist_files(WEB_DIST_DIR, PUBLIC_DIR)
-    current_asset_paths = _scan_frontend_asset_paths(WEB_DIST_DIR)
-    _prune_frontend_assets(PUBLIC_DIR, current_asset_paths + previous_asset_paths)
-    _write_frontend_asset_generation(PUBLIC_DIR, WEB_DIST_DIR)
+    publish_frontend_dist(WEB_DIST_DIR, PUBLIC_DIR)
 
 
 def install_frontend(node_version: str) -> dict[str, str]:
