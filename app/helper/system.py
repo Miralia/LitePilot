@@ -44,11 +44,36 @@ class SystemHelper(ConfigReloadMixin):
         return "日志设置"
 
     @staticmethod
+    def _parse_systemd_unit_name(cgroup: str) -> Optional[str]:
+        """
+        从 cgroup 路径中解析当前进程所属的 systemd service 单元名。
+        """
+        for line in cgroup.splitlines():
+            cgroup_path = line.split(":", 2)[-1].strip()
+            for segment in reversed(cgroup_path.split("/")):
+                if segment.endswith(".service") and len(segment) > len(".service"):
+                    return segment
+        return None
+
+    @staticmethod
+    def _systemd_unit_name() -> Optional[str]:
+        """
+        读取当前进程的 systemd service 单元名。
+        """
+        if os.name == "nt":
+            return None
+        try:
+            cgroup = Path("/proc/self/cgroup").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return None
+        return SystemHelper._parse_systemd_unit_name(cgroup)
+
+    @staticmethod
     def can_restart() -> bool:
         """
         判断是否可以内部重启
         """
-        return SystemHelper._is_local_cli_managed()
+        return SystemHelper._is_local_cli_managed() or SystemHelper._systemd_unit_name() is not None
 
     @staticmethod
     def _load_runtime_file(path: Path) -> Optional[dict]:
@@ -179,13 +204,10 @@ class SystemHelper(ConfigReloadMixin):
             logger.warning(f"删除一次性升级标记失败: {err}")
 
     @staticmethod
-    def _spawn_local_restart_helper() -> None:
-        helper_code = (
-            "import os, subprocess, sys, time;"
-            "time.sleep(1.0);"
-            "cmd=[sys.executable, '-m', 'app.cli', 'restart', '--force', '--stop-timeout', '30', '--start-timeout', '60'];"
-            "subprocess.run(cmd, cwd=os.environ.get('MOVIEPILOT_ROOT'), env=os.environ.copy(), check=False)"
-        )
+    def _spawn_restart_helper_process(helper_code: str, description: str) -> None:
+        """
+        以独立会话启动延迟重启辅助进程，并把输出写入重启日志。
+        """
         env = os.environ.copy()
         env["MOVIEPILOT_ROOT"] = str(settings.ROOT_PATH)
         env["PYTHONUNBUFFERED"] = "1"
@@ -205,22 +227,53 @@ class SystemHelper(ConfigReloadMixin):
             else:
                 kwargs["start_new_session"] = True
             process = subprocess.Popen([sys.executable, "-c", helper_code], **kwargs)
-        logger.info(f"已创建本地 CLI 重启任务，辅助进程 PID: {process.pid}")
+        logger.info(f"已创建{description}，辅助进程 PID: {process.pid}")
+
+    @staticmethod
+    def _spawn_local_restart_helper() -> None:
+        """
+        启动本地 CLI 重启辅助进程。
+        """
+        helper_code = (
+            "import os, subprocess, sys, time;"
+            "time.sleep(1.0);"
+            "cmd=[sys.executable, '-m', 'app.cli', 'restart', '--force', '--stop-timeout', '30', '--start-timeout', '60'];"
+            "subprocess.run(cmd, cwd=os.environ.get('MOVIEPILOT_ROOT'), env=os.environ.copy(), check=False)"
+        )
+        SystemHelper._spawn_restart_helper_process(helper_code, "本地 CLI 重启任务")
+
+    @staticmethod
+    def _spawn_systemd_restart_helper(unit_name: str) -> None:
+        """
+        启动 systemd 重启辅助进程，延迟排队以避免当前响应被提前终止。
+        """
+        unit_literal = json.dumps(unit_name)
+        helper_code = (
+            "import subprocess, time;"
+            "time.sleep(1.0);"
+            f"subprocess.run(['systemctl', '--no-block', 'restart', {unit_literal}], check=False)"
+        )
+        SystemHelper._spawn_restart_helper_process(helper_code, "systemd 重启任务")
 
     @staticmethod
     def restart() -> Tuple[bool, str]:
         """
-        执行本地 CLI 管理实例的重启操作。
+        执行本地 CLI 或 systemd 管理实例的重启操作。
         """
-        if not SystemHelper._is_local_cli_managed():
-            return False, "当前实例不是由 moviepilot CLI 启动，请使用 systemd 或外部进程管理器重启！"
         try:
-            SystemHelper._spawn_local_restart_helper()
-            os.kill(os.getpid(), signal.SIGTERM)
-            return True, ""
+            if SystemHelper._is_local_cli_managed():
+                SystemHelper._spawn_local_restart_helper()
+                os.kill(os.getpid(), signal.SIGTERM)
+                return True, ""
+
+            unit_name = SystemHelper._systemd_unit_name()
+            if unit_name:
+                SystemHelper._spawn_systemd_restart_helper(unit_name)
+                return True, ""
+            return False, "当前实例不是由 moviepilot CLI 或 systemd 管理，请使用外部进程管理器重启！"
         except Exception as err:
-            logger.error(f"本地 CLI 重启失败: {str(err)}")
-            return False, f"本地 CLI 重启失败：{str(err)}"
+            logger.error(f"系统重启失败: {str(err)}")
+            return False, f"系统重启失败：{str(err)}"
 
     @staticmethod
     def upgrade(mode: str = "release") -> Tuple[bool, str]:
