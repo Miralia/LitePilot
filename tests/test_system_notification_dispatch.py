@@ -51,21 +51,6 @@ class TestSystemNotificationDispatch(unittest.TestCase):
         self.assertIsNone(queued_message.userid)
         self.assertFalse(send_message.call_args.kwargs["immediately"])
 
-    def test_send_direct_message_normalizes_internal_userid(self):
-        chain = MessageChain()
-        message = Notification(
-            userid=SYSTEM_INTERNAL_USER_ID,
-            username="admin",
-            title="后台报告",
-            text="任务完成",
-        )
-
-        with patch.object(chain, "run_module") as run_module:
-            chain.send_direct_message(message)
-
-        sent_message = run_module.call_args.kwargs["message"]
-        self.assertIsNone(sent_message.userid)
-
     def test_async_send_message_uses_executor_for_immediate_send(self):
         """异步立即发送不能在事件循环里直接执行同步渠道回调。"""
 

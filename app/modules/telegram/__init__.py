@@ -10,7 +10,6 @@ from app.schemas import (
     CommingMessage,
     Notification,
     NotificationConf,
-    MessageResponse,
 )
 from app.schemas.types import ModuleType
 
@@ -534,78 +533,6 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
                         parse_mode=message.parse_mode,
                     )
 
-    def delete_message(
-        self,
-        channel: MessageChannel,
-        source: str,
-        message_id: int,
-        chat_id: Optional[int] = None,
-    ) -> Optional[bool]:
-        """
-        删除消息
-        :param channel: 消息渠道
-        :param source: 指定的消息源
-        :param message_id: 消息ID
-        :param chat_id: 聊天ID
-        :return: 删除是否成功
-        """
-        if channel != self._channel:
-            return None
-        success = False
-        for conf in self.get_configs().values():
-            if source != conf.name:
-                continue
-            client: Telegram = self.get_instance(conf.name)
-            if client:
-                result = client.delete_msg(message_id=message_id, chat_id=chat_id)
-                if result:
-                    success = True
-        return success
-
-    def edit_message(
-        self,
-        channel: MessageChannel,
-        source: str,
-        message_id: Union[str, int],
-        chat_id: Union[str, int],
-        text: str,
-        title: Optional[str] = None,
-        buttons: Optional[List[List[dict]]] = None,
-        metadata: Optional[dict] = None,
-        parse_mode: Optional[str] = None,
-    ) -> Optional[bool]:
-        """
-        编辑消息
-        :param channel: 消息渠道
-        :param source: 指定的消息源
-        :param message_id: 消息ID
-        :param chat_id: 聊天ID
-        :param text: 新的消息内容
-        :param title: 消息标题
-        :param buttons: 新的按钮列表
-        :param metadata: 其他元信息
-        :param parse_mode: Telegram 消息格式类型，默认 MarkdownV2，可传 HTML
-        :return: 编辑是否成功
-        """
-        if channel != self._channel:
-            return None
-        for conf in self.get_configs().values():
-            if source != conf.name:
-                continue
-            client: Telegram = self.get_instance(conf.name)
-            if client:
-                result = client.edit_msg(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    text=text,
-                    title=title,
-                    buttons=buttons,
-                    parse_mode=parse_mode,
-                )
-                if result:
-                    return True
-        return False
-
     def mark_message_processing_started(
             self,
             channel: MessageChannel,
@@ -663,59 +590,6 @@ class TelegramModule(_ModuleBase, _MessageBase[Telegram]):
         if not client:
             return False
         return client.stop_typing(chat_id=chat_id, userid=userid)
-
-    def send_direct_message(self, message: Notification) -> Optional[MessageResponse]:
-        """
-        直接发送消息并返回消息ID等信息
-        :param message: 消息体
-        :return: 消息响应（包含message_id, chat_id等）
-        """
-        for conf in self.get_configs().values():
-            if not self.check_message(message, conf.name):
-                continue
-            targets = message.targets
-            userid = message.userid
-            if not userid and targets is not None:
-                userid = targets.get("telegram_userid")
-                if not userid:
-                    logger.warning("用户没有指定 Telegram用户ID，消息无法发送")
-                    return None
-            client: Telegram = self.get_instance(conf.name)
-            if client:
-                if message.voice_path:
-                    result = client.send_voice(
-                        voice_path=message.voice_path,
-                        userid=userid,
-                        caption=message.voice_caption,
-                        original_chat_id=message.original_chat_id,
-                        parse_mode=message.parse_mode,
-                    )
-                else:
-                    # direct message 只禁用编辑旧消息；仅 ForceReply 使用 original_chat_id
-                    # 发回原会话，并保留 original_message_id 让 client reply_to 原消息。
-                    original_chat_id = message.original_chat_id if message.force_reply else None
-                    original_message_id = message.original_message_id if message.force_reply else None
-                    result = client.send_msg(
-                        title=message.title,
-                        text=message.text,
-                        image=message.image,
-                        userid=userid,
-                        link=message.link,
-                        force_reply=message.force_reply,
-                        original_message_id=original_message_id,
-                        original_chat_id=original_chat_id,
-                        disable_web_page_preview=message.disable_web_page_preview,
-                        parse_mode=message.parse_mode,
-                    )
-                if result and result.get("success"):
-                    return MessageResponse(
-                        message_id=result.get("message_id"),
-                        chat_id=result.get("chat_id"),
-                        channel=MessageChannel.Telegram,
-                        source=conf.name,
-                        success=True,
-                    )
-        return None
 
     def register_commands(self, commands: Dict[str, dict]):
         """

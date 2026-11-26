@@ -33,7 +33,6 @@ from app.schemas import (
     TmdbEpisode,
     FileItem,
     TransferDirectoryConf,
-    MessageResponse,
 )
 from app.utils.identity import normalize_internal_user_id
 from app.utils.media import is_supported_media_source, normalize_media_source
@@ -1059,86 +1058,6 @@ class ChainBase(metaclass=ABCMeta):
             immediately=True if dispatch_message.userid else False,
             **kwargs,
         )
-
-    def delete_message(
-            self,
-            channel: MessageChannel,
-            source: str,
-            message_id: Union[str, int],
-            chat_id: Optional[Union[str, int]] = None,
-    ) -> bool:
-        """
-        删除消息
-        :param channel: 消息渠道
-        :param source: 消息源（指定特定的消息模块）
-        :param message_id: 消息ID
-        :param chat_id: 聊天ID（如群组ID）
-        :return: 删除是否成功
-        """
-        return self.run_module(
-            "delete_message",
-            channel=channel,
-            source=source,
-            message_id=message_id,
-            chat_id=chat_id,
-        )
-
-    def edit_message(
-            self,
-            channel: MessageChannel,
-            source: str,
-            message_id: Union[str, int],
-            chat_id: Union[str, int],
-            text: str,
-            title: Optional[str] = None,
-            buttons: Optional[List[List[dict]]] = None,
-            metadata: Optional[Dict[str, Any]] = None,
-    ) -> bool:
-        """
-        编辑已发送的消息
-        :param channel: 消息渠道
-        :param source: 消息源（指定特定的消息模块）
-        :param message_id: 消息ID
-        :param chat_id: 聊天ID
-        :param text: 新的消息内容
-        :param title: 消息标题
-        :param buttons: 更新后的按钮列表
-        :param metadata: 其他消息元数据
-        :return: 编辑是否成功
-        """
-        return self.run_module(
-            "edit_message",
-            channel=channel,
-            source=source,
-            message_id=message_id,
-            chat_id=chat_id,
-            text=text,
-            title=title,
-            buttons=buttons,
-            metadata=metadata,
-        )
-
-    def send_direct_message(self, message: Notification) -> Optional[MessageResponse]:
-        """
-        直接发送消息并返回消息ID等信息（用于后续编辑消息的场景）
-        不经过消息队列、不保存消息历史
-        :param message: 消息体
-        :return: 消息响应（包含message_id, chat_id等）
-        """
-        return self.run_module(
-            "send_direct_message",
-            message=self._normalize_notification_for_dispatch(message),
-        )
-
-    def finalize_message(
-            self,
-            response: MessageResponse,
-    ) -> bool:
-        """
-        对已发送消息执行渠道收尾动作。
-        例如关闭流式卡片状态；无特殊收尾的渠道直接返回 False。
-        """
-        return self.run_module("finalize_message", response=response)
 
     def metadata_img(
             self,
