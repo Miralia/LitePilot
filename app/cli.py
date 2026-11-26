@@ -1112,7 +1112,7 @@ def deploy(service_dir: Path, nginx_dir: Path, prefix: str, user: str,
     unit_text = render_systemd_unit(
         root=root, config_dir=config_dir, python_bin=python_bin, user=user
     )
-    nginx_text = render_nginx_site(public_dir=public_dir, prefix=prefix)
+    nginx_text = render_nginx_site(public_dir=public_dir, backend_port=settings.PORT, prefix=prefix)
 
     unit_path = systemd_unit_path()
     site_path = nginx_site_path(apps_dir=nginx_dir)

@@ -61,3 +61,24 @@ def test_deploy_print_only_does_not_persist_config_dir(tmp_path):
 
     assert result.exit_code == 0, result.output
     assert not (root / ".moviepilot.env").exists()
+
+
+def test_deploy_uses_configured_backend_port_in_nginx(tmp_path, monkeypatch):
+    """自定义后端 PORT 时，nginx 反代不得继续指向默认 3001。"""
+    module, _root = _load_deploy_module(tmp_path)
+    monkeypatch.setattr(module.settings, "PORT", 3009)
+
+    result = CliRunner().invoke(
+        module.deploy,
+        [
+            "--service-dir",
+            str(tmp_path / "systemd"),
+            "--nginx-dir",
+            str(tmp_path / "nginx"),
+            "--print-only",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "proxy_pass http://127.0.0.1:3009/api/;" in result.output
+    assert "proxy_pass http://127.0.0.1:3001" not in result.output
