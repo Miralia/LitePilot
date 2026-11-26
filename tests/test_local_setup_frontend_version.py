@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import uuid
 from pathlib import Path
 
@@ -311,6 +312,14 @@ def test_build_frontend_copies_assets_before_index(
     def record_copy(source, target):
         copied_files.append(target.relative_to(public_dir).as_posix())
 
+    replaced_targets = []
+    real_replace = os.replace
+
+    def record_replace(source, target):
+        replaced_targets.append(Path(target).name)
+        return real_replace(source, target)
+
+    monkeypatch.setattr(local_setup_module.os, "replace", record_replace)
     monkeypatch.setattr(local_setup_module, "WEB_DIR", web_dir)
     monkeypatch.setattr(local_setup_module, "WEB_DIST_DIR", web_dir / "dist")
     monkeypatch.setattr(local_setup_module, "PUBLIC_DIR", public_dir)
@@ -323,6 +332,7 @@ def test_build_frontend_copies_assets_before_index(
 
     assert copied_files[-1] == "index.html"
     assert copied_files.index("assets/chunk-new-hash.js") < copied_files.index("index.html")
+    assert ".asset-generation.json" in replaced_targets
 
 
 def test_install_frontend_writes_local_runtime_without_remote_download(
@@ -348,6 +358,14 @@ def test_install_frontend_writes_local_runtime_without_remote_download(
     def fail_download(*args, **kwargs):
         raise AssertionError("不得下载远程前端或资源包")
 
+    replaced_targets = []
+    real_replace = os.replace
+
+    def record_replace(source, target):
+        replaced_targets.append(Path(target).name)
+        return real_replace(source, target)
+
+    monkeypatch.setattr(local_setup_module.os, "replace", record_replace)
     monkeypatch.setattr(local_setup_module, "PUBLIC_DIR", public_dir)
     monkeypatch.setattr(local_setup_module, "_repo_frontend_version", lambda: "v9.9.9")
     monkeypatch.setattr(local_setup_module, "install_node_runtime", lambda _version: node_bin)
@@ -372,6 +390,7 @@ def test_install_frontend_writes_local_runtime_without_remote_download(
         "express": "4.22.3",
         "express-http-proxy": "2.1.1",
     }
+    assert {"version.txt", "service.js", "package.json"}.issubset(set(replaced_targets))
     assert commands == [
         {
             "command": [

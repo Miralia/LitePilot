@@ -722,10 +722,7 @@ def _write_local_frontend_service_script(target_dir: Path) -> None:
     """
     写入本地 CLI 托管前端服务使用的受控代理脚本。
     """
-    (target_dir / "service.js").write_text(
-        LOCAL_FRONTEND_SERVICE_SCRIPT,
-        encoding="utf-8",
-    )
+    _write_text_file_atomic(target_dir / "service.js", LOCAL_FRONTEND_SERVICE_SCRIPT)
 
 
 def _lzma_available() -> bool:
@@ -885,12 +882,24 @@ def _current_frontend_asset_paths(public_dir: Path) -> list[str]:
     return asset_paths or existing_assets
 
 
+def _write_text_file_atomic(path: Path, content: str) -> None:
+    """用同目录临时文件原子发布文本内容，避免运行时读到半截 metadata。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
 def _write_frontend_asset_generation(public_dir: Path, dist_dir: Path) -> None:
     """记录本次安装生成的 assets 清单，供下一次更新只保留一个旧代际。"""
     state = {"current": _scan_frontend_asset_paths(dist_dir)}
-    (public_dir / FRONTEND_ASSET_GENERATION_FILE).write_text(
+    _write_text_file_atomic(
+        public_dir / FRONTEND_ASSET_GENERATION_FILE,
         json.dumps(state, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
     )
 
 
@@ -983,14 +992,14 @@ def install_frontend(node_version: str) -> dict[str, str]:
     build_frontend_from_source()
     if not (PUBLIC_DIR / "index.html").exists():
         raise RuntimeError("前端构建产物未正确同步到 public 目录")
-    (PUBLIC_DIR / "version.txt").write_text(version_tag, encoding="utf-8")
+    _write_text_file_atomic(PUBLIC_DIR / "version.txt", version_tag)
     _write_local_frontend_service_script(PUBLIC_DIR)
 
     runtime_package = dict(RUNTIME_PACKAGE)
     runtime_package["version"] = version_tag
-    (PUBLIC_DIR / "package.json").write_text(
+    _write_text_file_atomic(
+        PUBLIC_DIR / "package.json",
         json.dumps(runtime_package, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
     )
 
     npm_bin = get_npm_bin()

@@ -288,7 +288,7 @@ moviepilot update all --ref latest
 说明：
 
 - `update backend` 会更新 Git 仓库并重新安装后端依赖
-- `update frontend` 会重新构建当前仓库 `web/` 源码并覆盖同步到 `public/`；入口 HTML 最后更新，内容寻址的上一代静态资源会保留一代，避免已打开页面在更新后立即请求到 404 chunk
+- `update frontend` 会重新构建当前仓库 `web/` 源码并覆盖同步到 `public/`；文件逐个原子替换，入口 HTML 最后更新，内容寻址的上一代静态资源会保留一代，避免已打开页面在更新后立即请求到 404 chunk
 - `update all` 会先更新后端，再按更新后代码重新构建前端
 - 更新前请先执行 `moviepilot stop`
 
