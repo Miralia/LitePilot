@@ -62,9 +62,9 @@ def test_dead_timer_token_media_and_message_helpers_are_removed():
 
 
 def test_legacy_realtime_message_role_channel_is_removed():
-    """系统实时消息只有单一 system 队列，不保留上游 role 通道兼容参数。"""
+    """系统实时消息使用订阅扇出，不保留上游 role 或竞争消费式队列接口。"""
     assert "role" not in inspect.signature(message.MessageHelper.put).parameters
-    assert "role" not in inspect.signature(message.MessageHelper.get).parameters
+    assert not hasattr(message.MessageHelper, "get")
 
 
 def test_dead_memory_decorators_and_http_convenience_methods_are_removed():

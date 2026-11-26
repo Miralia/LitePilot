@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import os
+import queue
 import re
 import zipfile
 from collections import deque
@@ -705,15 +706,27 @@ async def get_message(
     message = MessageHelper()
 
     async def event_generator():
+        subscriber = message.subscribe()
         try:
             while not global_vars.is_system_stopped:
                 if await request.is_disconnected():
                     break
-                detail = message.get()
-                yield f"data: {detail or ''}\n\n"
+                details = []
+                while True:
+                    try:
+                        details.append(subscriber.get(block=False))
+                    except queue.Empty:
+                        break
+                if details:
+                    for detail in details:
+                        yield f"data: {detail}\n\n"
+                else:
+                    yield "data: \n\n"
                 await asyncio.sleep(3)
         except asyncio.CancelledError:
             return
+        finally:
+            message.unsubscribe(subscriber)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

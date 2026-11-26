@@ -8,6 +8,7 @@ import re
 import threading
 import time
 import unicodedata
+from collections import deque
 from datetime import datetime
 from typing import Any, Literal, Optional, List, Dict, Union
 from typing import Callable
@@ -38,6 +39,10 @@ _RESERVED_FILENAMES = {
 
 # 停止时只等待当前发送回调短暂收尾；网络渠道无响应时不能无限阻塞进程退出。
 _MESSAGE_QUEUE_STOP_TIMEOUT_SECONDS = 5.0
+# 实时系统消息只用于即时提醒；保留最近 100 条足以覆盖短暂断线，
+# 且能限制异常连接的内存占用。
+_SYSTEM_MESSAGE_REPLAY_LIMIT = 100
+
 
 class TemplateContextBuilder:
     """
@@ -858,7 +863,9 @@ class MessageHelper(metaclass=Singleton):
     """
 
     def __init__(self):
-        self.sys_queue = queue.Queue()
+        self._system_messages = deque(maxlen=_SYSTEM_MESSAGE_REPLAY_LIMIT)
+        self._subscribers = set()
+        self._subscription_lock = threading.RLock()
         self._recent_notification_keys = TTLCache(region="message:notification", maxsize=500, ttl=60)
 
     @staticmethod
@@ -900,21 +907,53 @@ class MessageHelper(metaclass=Singleton):
         """
         if self._is_recent_system_notification(message, title=title, note=note):
             return
-        self.sys_queue.put(json.dumps({
+        payload = json.dumps({
             "type": "system",
             "title": title,
             "text": message,
             "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             "note": note
-        }))
+        })
+        with self._subscription_lock:
+            self._system_messages.append(payload)
+            for subscriber in self._subscribers:
+                self._put_latest(subscriber, payload)
 
-    def get(self) -> Optional[str]:
+    @staticmethod
+    def _put_latest(subscriber: queue.Queue[str], payload: str) -> None:
         """
-        取系统实时消息
+        写入订阅队列；订阅端长期不消费时丢弃最旧消息，保留最新实时状态。
         """
-        if not self.sys_queue.empty():
-            return self.sys_queue.get(block=False)
-        return None
+        try:
+            subscriber.put_nowait(payload)
+        except queue.Full:
+            try:
+                subscriber.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                subscriber.put_nowait(payload)
+            except queue.Full:
+                pass
+
+    def subscribe(self) -> queue.Queue[str]:
+        """
+        订阅系统实时消息，返回包含近期未消费消息的独立队列。
+        """
+        subscriber: queue.Queue[str] = queue.Queue(maxsize=_SYSTEM_MESSAGE_REPLAY_LIMIT)
+        with self._subscription_lock:
+            for payload in self._system_messages:
+                self._put_latest(subscriber, payload)
+            self._subscribers.add(subscriber)
+        return subscriber
+
+    def unsubscribe(self, subscriber: queue.Queue[str]) -> None:
+        """
+        取消系统实时消息订阅，停止为已断开连接累积消息。
+        """
+        with self._subscription_lock:
+            self._subscribers.discard(subscriber)
+
 
 def stop_message():
     """
