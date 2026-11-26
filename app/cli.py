@@ -221,12 +221,12 @@ def _release_sort_key(tag: str) -> tuple[int, ...]:
     return tuple(int(part) for part in re.findall(r"\d+", tag))
 
 
-def _github_api_json(url: str, *, repo: str) -> Any:
+def _github_api_json(url: str) -> Any:
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": settings.USER_AGENT,
     }
-    headers.update(settings.REPO_GITHUB_HEADERS(repo))
+    headers.update(settings.GITHUB_HEADERS)
     opener = build_opener(ProxyHandler(settings.PROXY or {}))
     request = Request(url=url, headers=headers, method="GET")
 
@@ -242,8 +242,8 @@ def _github_api_json(url: str, *, repo: str) -> Any:
         raise RuntimeError(f"GitHub API 返回了无法解析的响应：{url}") from exc
 
 
-def _latest_release_tag(url: str, *, repo: str, prefix: str) -> Optional[str]:
-    payload = _github_api_json(url, repo=repo)
+def _latest_release_tag(url: str, *, prefix: str) -> Optional[str]:
+    payload = _github_api_json(url)
     if not isinstance(payload, list):
         raise RuntimeError(f"GitHub API 返回格式异常：{url}")
 
@@ -291,7 +291,6 @@ def _resolve_auto_update_targets(mode: str) -> Optional[str]:
     else:
         backend_ref = _latest_release_tag(
             BACKEND_RELEASES_API,
-            repo="Miralia/LitePilot",
             prefix=backend_prefix,
         )
     return backend_ref
@@ -304,7 +303,7 @@ def _best_effort_auto_update() -> None:
 
     try:
         backend_ref = _resolve_auto_update_targets(mode)
-    except RuntimeError as exc:
+    except Exception as exc:
         _warn(f"自动更新准备失败，继续使用当前版本启动：{exc}")
         return
 

@@ -55,6 +55,12 @@ def test_validate_api_token_does_not_log_generated_secret(monkeypatch) -> None:
     assert generated_token not in "".join(messages)
 
 
+def test_repo_specific_github_headers_are_removed() -> None:
+    """仓库级 GitHub 令牌属于已移除的上游插件市场残留。"""
+    assert not hasattr(settings, "REPO_GITHUB_HEADERS")
+    assert "REPO_GITHUB_TOKEN" not in type(settings).model_fields
+
+
 def test_update_setting_replaces_unsupported_recognize_source(monkeypatch) -> None:
     """已移除的识别源配置应自动回退到可执行的TMDB源。"""
     persisted: dict[str, Any] = {}
