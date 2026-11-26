@@ -1,14 +1,6 @@
-import sys
 import asyncio
 import unittest
-from types import ModuleType
 from unittest.mock import patch
-
-sys.modules.setdefault("qbittorrentapi", ModuleType("qbittorrentapi"))
-setattr(sys.modules["qbittorrentapi"], "TorrentFilesList", list)
-sys.modules.setdefault("transmission_rpc", ModuleType("transmission_rpc"))
-setattr(sys.modules["transmission_rpc"], "File", object)
-sys.modules.setdefault("psutil", ModuleType("psutil"))
 
 from app.chain.message import MessageChain
 from app.helper.message import MessageQueueManager
@@ -18,7 +10,6 @@ from app.utils.identity import (
     is_internal_user_id,
     normalize_internal_user_id,
 )
-
 
 class TestSystemNotificationDispatch(unittest.TestCase):
     def test_internal_userid_identity_helpers(self):

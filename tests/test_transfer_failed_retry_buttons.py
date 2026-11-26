@@ -1,21 +1,12 @@
 import unittest
 import asyncio
-import sys
-from types import ModuleType
 from types import SimpleNamespace
 from unittest.mock import patch
-
-sys.modules.setdefault("qbittorrentapi", ModuleType("qbittorrentapi"))
-setattr(sys.modules["qbittorrentapi"], "TorrentFilesList", list)
-sys.modules.setdefault("transmission_rpc", ModuleType("transmission_rpc"))
-setattr(sys.modules["transmission_rpc"], "File", object)
-sys.modules.setdefault("psutil", ModuleType("psutil"))
 
 from app.chain.message import MessageChain
 from app.chain.transfer import TransferChain
 from app.core.config import settings
 from app.schemas.types import MessageChannel
-
 
 class TestTransferFailedRetryButtons(unittest.TestCase):
     def test_build_failed_transfer_buttons(self):

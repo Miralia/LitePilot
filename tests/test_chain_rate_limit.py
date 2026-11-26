@@ -1,13 +1,7 @@
 import asyncio
-import sys
-import unittest
-from types import ModuleType
 from unittest.mock import Mock
 
-sys.modules.setdefault("qbittorrentapi", ModuleType("qbittorrentapi"))
-setattr(sys.modules["qbittorrentapi"], "TorrentFilesList", list)
-sys.modules.setdefault("transmission_rpc", ModuleType("transmission_rpc"))
-setattr(sys.modules["transmission_rpc"], "File", object)
+import pytest
 
 from app.chain import ChainBase
 from app.schemas import RateLimitExceededException
@@ -39,53 +33,53 @@ class _LimitedModule:
         raise RateLimitExceededException("[async_limited_method] 限流期间，跳过调用")
 
 
-class ChainRateLimitTest(unittest.TestCase):
-    def _build_chain(self):
-        """
-        构造隔离的 ChainBase，避免依赖真实模块和插件运行状态。
-        """
-        chain = ChainBase()
-        limited_module = _LimitedModule()
-        chain.pluginmanager = Mock()
-        chain.pluginmanager.get_plugin_modules.return_value = {}
-        chain.modulemanager = Mock()
-        chain.modulemanager.get_running_modules.return_value = [limited_module]
-        chain.messagehelper = Mock()
-        chain.eventmanager = Mock()
-        return chain
+def _build_chain():
+    """
+    构造隔离的 ChainBase，避免依赖真实模块运行状态。
+    """
+    chain = object.__new__(ChainBase)
+    limited_module = _LimitedModule()
+    chain.modulemanager = Mock()
+    chain.modulemanager.get_running_modules.return_value = [limited_module]
+    chain.messagehelper = Mock()
+    chain.eventmanager = Mock()
+    return chain
 
-    def test_rate_limit_is_not_reported_as_system_error(self):
-        """
-        本地限流跳过不应写入系统错误通知或事件。
-        """
-        chain = self._build_chain()
 
-        result = chain.run_module("limited_method")
+def test_rate_limit_is_not_reported_as_system_error():
+    """
+    本地限流跳过不应写入系统错误通知或事件。
+    """
+    chain = _build_chain()
 
-        self.assertIsNone(result)
-        chain.messagehelper.put.assert_not_called()
-        chain.eventmanager.send_event.assert_not_called()
+    result = chain.run_module("limited_method")
 
-    def test_rate_limit_can_still_be_raised_explicitly(self):
-        """
-        调用方显式要求抛出异常时，限流异常应继续向上抛出。
-        """
-        chain = self._build_chain()
+    assert result is None
+    chain.messagehelper.put.assert_not_called()
+    chain.eventmanager.send_event.assert_not_called()
 
-        with self.assertRaises(RateLimitExceededException):
-            chain.run_module("limited_method", raise_exception=True)
 
-        chain.messagehelper.put.assert_not_called()
-        chain.eventmanager.send_event.assert_not_called()
+def test_rate_limit_can_still_be_raised_explicitly():
+    """
+    调用方显式要求抛出异常时，限流异常应继续向上抛出。
+    """
+    chain = _build_chain()
 
-    def test_async_rate_limit_is_not_reported_as_system_error(self):
-        """
-        异步模块的本地限流跳过也不应触发系统错误路径。
-        """
-        chain = self._build_chain()
+    with pytest.raises(RateLimitExceededException):
+        chain.run_module("limited_method", raise_exception=True)
 
-        result = asyncio.run(chain.async_run_module("async_limited_method"))
+    chain.messagehelper.put.assert_not_called()
+    chain.eventmanager.send_event.assert_not_called()
 
-        self.assertIsNone(result)
-        chain.messagehelper.put.assert_not_called()
-        chain.eventmanager.send_event.assert_not_called()
+
+def test_async_rate_limit_is_not_reported_as_system_error():
+    """
+    异步模块的本地限流跳过也不应触发系统错误路径。
+    """
+    chain = _build_chain()
+
+    result = asyncio.run(chain.async_run_module("async_limited_method"))
+
+    assert result is None
+    chain.messagehelper.put.assert_not_called()
+    chain.eventmanager.send_event.assert_not_called()
