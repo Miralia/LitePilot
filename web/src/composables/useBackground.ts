@@ -2,7 +2,8 @@ import { getCurrentInstance, onMounted, onUnmounted, ref, type Ref } from 'vue'
 import { SSEManager, type SSEManagerOptions } from '@/utils/sseManager'
 import { addBackgroundTimer, removeBackgroundTimer } from '@/utils/backgroundManager'
 
-type UseSSEOptions = Partial<SSEManagerOptions> & {
+type SSEConnectionOptions = Partial<SSEManagerOptions>
+type UseSSEOptions = SSEConnectionOptions & {
   connectDelay?: number
 }
 
@@ -15,25 +16,18 @@ export function useBackground() {
    * 使用SSE连接
    * @param url SSE连接地址
    * @param messageHandler 消息处理函数
-   * @param listenerId 监听器ID（用于区分不同的监听器）
    * @param options 选项
    */
-  const useSSE = (
-    url: string,
-    messageHandler: (event: MessageEvent) => void,
-    listenerId: string,
-    options?: UseSSEOptions,
-  ) => {
-    // 使用独立的SSE管理器，确保每个监听器都有独立的连接
-    const manager = new SSEManager(url, options)
+  const useSSE = (url: string, messageHandler: (event: MessageEvent) => void, options?: UseSSEOptions) => {
+    const { connectDelay = 100, ...managerOptions } = options ?? {}
     const isConnected = ref(false)
-    let connectTimer: ReturnType<typeof setTimeout> | null = null
-    let isClosed = false
-    const statusListenerId = `${listenerId}:status`
-
-    manager.addStatusListener(statusListenerId, status => {
+    const manager = new SSEManager(url, managerOptions, status => {
       isConnected.value = status === 'open'
     })
+    let connectTimer: ReturnType<typeof setTimeout> | null = null
+    let isClosed = false
+    let shouldListen = true
+    let connectDelayElapsed = false
 
     const cleanup = () => {
       if (isClosed) return
@@ -45,35 +39,45 @@ export function useBackground() {
         connectTimer = null
       }
 
-      manager.removeStatusListener(statusListenerId)
-      manager.removeMessageListener(listenerId)
       manager.destroy()
       isConnected.value = false
     }
 
+    const startListening = () => {
+      if (isClosed || !shouldListen) return
+
+      manager.start(messageHandler)
+    }
+
+    const pause = () => {
+      if (isClosed) return
+
+      shouldListen = false
+      manager.stop()
+    }
+
+    const resume = () => {
+      if (isClosed) return
+
+      shouldListen = true
+      if (connectDelayElapsed) startListening()
+    }
+
     onMounted(() => {
       // 延迟建立连接，确保组件完全挂载
-      const connectDelay = options?.connectDelay || 100
       connectTimer = setTimeout(() => {
         connectTimer = null
-        if (isClosed) return
-
-        try {
-          manager.addMessageListener(listenerId, messageHandler)
-        } catch (error) {
-          console.error('SSE连接建立失败:', error)
-        }
+        connectDelayElapsed = true
+        startListening()
       }, connectDelay)
     })
 
     onUnmounted(cleanup)
 
     return {
-      manager,
-      readyState: () => manager.readyState,
-      close: cleanup,
       isConnected,
-      forceReconnect: () => manager.forceReconnect(),
+      pause,
+      resume,
     }
   }
 
@@ -110,27 +114,18 @@ export function useBackground() {
    * 使用延迟SSE连接（类似原来的setTimeout延迟）
    * @param url SSE连接地址
    * @param messageHandler 消息处理函数
-   * @param listenerId 监听器ID
    * @param delay 延迟时间（毫秒）
    * @param options SSE选项
    */
   const useDelayedSSE = (
     url: string,
     messageHandler: (event: MessageEvent) => void,
-    listenerId: string,
     delay: number = 3000,
-    options?: UseSSEOptions,
+    options?: SSEConnectionOptions,
   ) => {
-    // 使用独立的SSE管理器，确保每个监听器都有独立的连接
     const manager = new SSEManager(url, options)
-    const isConnected = ref(false)
     let connectTimer: ReturnType<typeof setTimeout> | null = null
     let isClosed = false
-    const statusListenerId = `${listenerId}:status`
-
-    manager.addStatusListener(statusListenerId, status => {
-      isConnected.value = status === 'open'
-    })
 
     const cleanup = () => {
       if (isClosed) return
@@ -142,10 +137,7 @@ export function useBackground() {
         connectTimer = null
       }
 
-      manager.removeStatusListener(statusListenerId)
-      manager.removeMessageListener(listenerId)
       manager.destroy()
-      isConnected.value = false
     }
 
     onMounted(() => {
@@ -153,80 +145,46 @@ export function useBackground() {
         connectTimer = null
         if (isClosed) return
 
-        manager.addMessageListener(listenerId, messageHandler)
+        manager.start(messageHandler)
       }, delay)
     })
 
     onUnmounted(cleanup)
-
-    return {
-      manager,
-      readyState: () => manager.readyState,
-      close: cleanup,
-      isConnected,
-    }
   }
 
   /**
    * 使用进度SSE连接（用于进度监听）
    * @param url SSE连接地址
    * @param messageHandler 消息处理函数
-   * @param listenerId 监听器ID
    * @param isActive 是否激活的响应式变量
    */
-  const useProgressSSE = (
-    url: string,
-    messageHandler: (event: MessageEvent) => void,
-    listenerId: string,
-    isActive: Ref<boolean>,
-  ) => {
-    const getManager = () =>
-      new SSEManager(url, {
+  const useProgressSSE = (url: string, messageHandler: (event: MessageEvent) => void, isActive: Ref<boolean>) => {
+    let manager: SSEManager | null = null
+
+    const startProgress = () => {
+      if (!isActive.value || manager) return
+
+      manager = new SSEManager(url, {
         backgroundCloseDelay: 1000, // 进度SSE更快关闭
         reconnectDelay: 1000,
         maxReconnectAttempts: 5,
       })
-
-    let manager: ReturnType<typeof getManager> | null = null
-    let isListening = false
-
-    const startProgress = () => {
-      if (!isActive.value || isListening) return
-
-      manager ??= getManager()
-      manager.addMessageListener(listenerId, messageHandler)
-      isListening = true
+      manager.start(messageHandler)
     }
 
-    const stopProgress = (destroyManager = true) => {
-      if (!manager) {
-        isListening = false
-        return
-      }
-
-      manager.removeMessageListener(listenerId)
-
-      if (destroyManager) {
-        manager.destroy()
-        manager = null
-      }
-
-      isListening = false
+    const stopProgress = () => {
+      manager?.destroy()
+      manager = null
     }
 
     // 进度监听有些场景会在用户操作后动态创建；只有 setup 阶段创建时才注册自动卸载钩子。
     if (getCurrentInstance()) {
-      onUnmounted(() => {
-        stopProgress(true)
-      })
+      onUnmounted(stopProgress)
     }
 
     return {
       start: startProgress,
       stop: stopProgress,
-      get manager() {
-        return manager
-      },
     }
   }
 

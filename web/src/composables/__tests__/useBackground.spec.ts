@@ -10,14 +10,19 @@ vi.mock('@/utils/backgroundManager', () => ({
 }))
 
 class FakeEventSource {
+  static readonly CLOSED = 2
+  static readonly CONNECTING = 0
+  static readonly OPEN = 1
   static instances: FakeEventSource[] = []
 
   readonly url: string
-  readyState = 0
+  readyState = FakeEventSource.CONNECTING
   onerror: ((event: Event) => void) | null = null
   onmessage: ((event: MessageEvent) => void) | null = null
   onopen: ((event: Event) => void) | null = null
-  close = vi.fn()
+  close = vi.fn(() => {
+    this.readyState = FakeEventSource.CLOSED
+  })
 
   constructor(url: string | URL) {
     this.url = String(url)
@@ -116,12 +121,12 @@ describe('useBackground', () => {
 
     wrapper.unmount()
   })
-  it('isolates simultaneous SSE consumers even when they use the same listener id', () => {
+  it('isolates simultaneous SSE consumers', () => {
     vi.useFakeTimers()
     vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource)
     const TestComponent = defineComponent({
       setup() {
-        useBackground().useSSE('/api/events', vi.fn(), 'shared-listener-id')
+        useBackground().useSSE('/api/events', vi.fn())
         return {}
       },
       template: '<div />',
@@ -137,5 +142,50 @@ describe('useBackground', () => {
     expect(FakeEventSource.instances[0].close).toHaveBeenCalledOnce()
     expect(FakeEventSource.instances[1].close).not.toHaveBeenCalled()
     second.unmount()
+  })
+  it('does not connect when paused during the initial connection delay', () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource)
+    let controls!: { pause: () => void; resume: () => void }
+    const TestComponent = defineComponent({
+      setup() {
+        controls = useBackground().useSSE('/api/events', vi.fn())
+        return {}
+      },
+      template: '<div />',
+    })
+
+    const wrapper = mount(TestComponent)
+    controls.pause()
+    vi.advanceTimersByTime(1_000)
+    expect(FakeEventSource.instances).toHaveLength(0)
+
+    controls.resume()
+    expect(FakeEventSource.instances).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('pauses and resumes an established SSE connection', () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource)
+    let controls!: { pause: () => void; resume: () => void }
+    const TestComponent = defineComponent({
+      setup() {
+        controls = useBackground().useSSE('/api/events', vi.fn())
+        return {}
+      },
+      template: '<div />',
+    })
+
+    const wrapper = mount(TestComponent)
+    vi.advanceTimersByTime(100)
+    expect(FakeEventSource.instances).toHaveLength(1)
+
+    controls.pause()
+    expect(FakeEventSource.instances[0].close).toHaveBeenCalledOnce()
+
+    controls.resume()
+    expect(FakeEventSource.instances).toHaveLength(2)
+    wrapper.unmount()
   })
 })

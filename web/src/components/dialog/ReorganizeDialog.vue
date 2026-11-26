@@ -1355,7 +1355,7 @@ function startLoadingProgress(key: string) {
   const url = `${import.meta.env.VITE_API_BASE_URL}system/progress/${key}`
 
   // 创建新的SSE连接
-  progressSSE.value = useProgressSSE(url, handleProgressMessage, `reorganize-progress-${key}`, progressActive)
+  progressSSE.value = useProgressSSE(url, handleProgressMessage, progressActive)
 
   progressSSE.value.start()
 }

@@ -267,14 +267,8 @@ function startFileProgress(filePath: string) {
   if (fileProgressSSEMap.value.has(filePath)) return
 
   const filePathMd5 = CryptoJS.MD5(filePath).toString()
-  const uniqueListenerId = `transfer-queue-file-progress-${filePathMd5}`
   const fileProgressUrl = `${import.meta.env.VITE_API_BASE_URL}system/progress/${filePathMd5}`
-  const fileProgressSSE = useProgressSSE(
-    fileProgressUrl,
-    createFileProgressHandler(filePath),
-    uniqueListenerId,
-    progressActive,
-  )
+  const fileProgressSSE = useProgressSSE(fileProgressUrl, createFileProgressHandler(filePath), progressActive)
 
   fileProgressSSE.start()
   fileProgressSSEMap.value.set(filePath, fileProgressSSE)

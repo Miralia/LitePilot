@@ -87,4 +87,33 @@ describe('frontend dead export scope', () => {
     const moduleTest = readFileSync('src/views/system/ModuleTestView.vue', 'utf-8')
     expect(moduleTest).not.toContain('name_key')
   })
+  it('keeps the SSE lifecycle API limited to active consumers', () => {
+    const sseManager = readFileSync('src/utils/sseManager.ts', 'utf-8')
+    const background = readFileSync('src/composables/useBackground.ts', 'utf-8')
+
+    for (const name of [
+      'SSEManagerSingleton',
+      'sseManagerSingleton',
+      'getIndependentManager',
+      'closeIndependentManager',
+      'closeAllManagers',
+      'get readyState',
+      'get status',
+      'get connectionUrl',
+      'forceReconnect()',
+      'get hasActiveListeners',
+      'get currentReconnectAttempts',
+      'get hasReachedMaxAttempts',
+      'addMessageListener(',
+      'removeMessageListener(',
+      'addStatusListener(',
+      'removeStatusListener(',
+    ]) {
+      expect(sseManager).not.toContain(name)
+    }
+
+    expect(background).not.toContain('listenerId')
+    expect(background).not.toContain('get manager()')
+    expect(background).not.toContain('destroyManager')
+  })
 })

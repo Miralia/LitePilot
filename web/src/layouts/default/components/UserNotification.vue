@@ -481,17 +481,11 @@ function toggleNotificationExpanded(item: SystemNotification) {
   expandedNotificationKeys.value = expandedKeys
 }
 
-useDelayedSSE(
-  `${import.meta.env.VITE_API_BASE_URL}system/message?role=notification`,
-  handleMessage,
-  'user-notification',
-  3000,
-  {
-    backgroundCloseDelay: 5000,
-    reconnectDelay: 3000,
-    maxReconnectAttempts: 3,
-  },
-)
+useDelayedSSE(`${import.meta.env.VITE_API_BASE_URL}system/message?role=notification`, handleMessage, 3000, {
+  backgroundCloseDelay: 5000,
+  reconnectDelay: 3000,
+  maxReconnectAttempts: 3,
+})
 
 /** 监听通知中心展开状态，展开时主动刷新首屏通知。 */
 function handleNotificationMenuVisibleChange(open: boolean) {

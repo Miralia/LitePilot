@@ -788,7 +788,6 @@ function handleProgressMessage(event: MessageEvent) {
 const progressSSE = useProgressSSE(
   `${import.meta.env.VITE_API_BASE_URL}system/progress/batchrename`,
   handleProgressMessage,
-  'file-batch-rename-progress',
   progressActive,
 )
 

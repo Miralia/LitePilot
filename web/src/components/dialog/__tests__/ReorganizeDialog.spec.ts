@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => ({
   progressControllers: [] as Array<{
     active: unknown
     handler: (event: MessageEvent) => void
-    key: string
     start: ReturnType<typeof vi.fn>
     stop: ReturnType<typeof vi.fn>
     url: string
@@ -27,11 +26,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/composables/useBackground', () => ({
   useBackground: () => ({
-    useProgressSSE: (url: string, handler: (event: MessageEvent) => void, key: string, active: unknown) => {
+    useProgressSSE: (url: string, handler: (event: MessageEvent) => void, active: unknown) => {
       const controller = {
         active,
         handler,
-        key,
         start: vi.fn(),
         stop: vi.fn(),
         url,
@@ -552,7 +550,7 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
       expect.objectContaining({ fileitem: file, logid: 0 }),
     ])
     expect(mocks.progressControllers).toHaveLength(2)
-    expect(mocks.progressControllers[0].key).toBe('reorganize-progress-filetransfer')
+    expect(mocks.progressControllers[0].url).toContain('/system/progress/filetransfer')
     expect(mocks.progressControllers[0].start).toHaveBeenCalledTimes(1)
     expect(mocks.progressControllers[0].stop).toHaveBeenCalledTimes(1)
     expect(mocks.progressControllers[1].start).toHaveBeenCalledTimes(1)

@@ -17,13 +17,13 @@ type SSEStatusListener = (status: SSEConnectionStatus) => void
  */
 export class SSEManager {
   private eventSource: EventSource | null = null
-  private url: string
+  private readonly url: string
+  private readonly statusListener?: SSEStatusListener
   private isBackground = document.hidden
   private reconnectTimer: number | null = null
   private backgroundCloseTimer: number | null = null
-  private listeners: Map<string, SSEMessageListener> = new Map()
-  private statusListeners: Map<string, SSEStatusListener> = new Map()
-  private options: SSEManagerOptions
+  private messageListener: SSEMessageListener | null = null
+  private readonly options: SSEManagerOptions
   private reconnectAttempts = 0
   private isConnecting = false
   private isDestroyed = false
@@ -39,8 +39,9 @@ export class SSEManager {
     this.destroy()
   }
 
-  constructor(url: string, options: Partial<SSEManagerOptions> = {}) {
+  constructor(url: string, options: Partial<SSEManagerOptions> = {}, statusListener?: SSEStatusListener) {
     this.url = url
+    this.statusListener = statusListener
     this.options = {
       backgroundCloseDelay: 5000, // 5秒后关闭后台连接
       reconnectDelay: 3000, // 3秒后重连
@@ -88,14 +89,14 @@ export class SSEManager {
     // 清除后台关闭定时器
     this.clearBackgroundCloseTimer()
 
-    // 只有在有活跃监听器时才重新建立连接
-    if (this.listeners.size > 0 && (!this.eventSource || this.eventSource.readyState === EventSource.CLOSED)) {
+    // 只有在监听仍处于激活状态时才重新建立连接
+    if (this.messageListener && (!this.eventSource || this.eventSource.readyState === EventSource.CLOSED)) {
       this.reconnectSSE(0)
     }
   }
 
   private reconnectSSE(attemptCount = 0) {
-    if (this.isDestroyed || this.isBackground || this.listeners.size === 0) {
+    if (this.isDestroyed || this.isBackground || !this.messageListener) {
       return
     }
 
@@ -139,17 +140,13 @@ export class SSEManager {
       }
 
       source.onmessage = event => {
-        if (source !== this.eventSource || this.isDestroyed) return
+        if (source !== this.eventSource || this.isDestroyed || !this.messageListener) return
 
-        // 分发消息给所有监听器
-        this.listeners.forEach((listener, listenerId) => {
-          try {
-            // 为每个监听器提供独立的错误处理
-            listener(event)
-          } catch (error) {
-            console.error(`SSE: 监听器错误 [${listenerId}]`, error)
-          }
-        })
+        try {
+          this.messageListener(event)
+        } catch (error) {
+          console.error('SSE: 消息监听器错误', error)
+        }
       }
     } catch (error) {
       this.isConnecting = false
@@ -162,7 +159,7 @@ export class SSEManager {
   }
 
   private scheduleReconnect(attemptCount: number) {
-    if (this.isDestroyed || this.isBackground || this.listeners.size === 0) {
+    if (this.isDestroyed || this.isBackground || !this.messageListener) {
       return
     }
 
@@ -218,22 +215,22 @@ export class SSEManager {
     if (this.connectionStatus === status) return
 
     this.connectionStatus = status
-    this.statusListeners.forEach((listener, listenerId) => {
-      try {
-        listener(status)
-      } catch (error) {
-        console.error(`SSE: 状态监听器错误 [${listenerId}]`, error)
-      }
-    })
+    if (!this.statusListener) return
+
+    try {
+      this.statusListener(status)
+    } catch (error) {
+      console.error('SSE: 状态监听器错误', error)
+    }
   }
 
   /**
-   * 添加消息监听器
+   * 开始监听消息并按需建立连接
    */
-  addMessageListener(id: string, listener: SSEMessageListener) {
+  start(listener: SSEMessageListener) {
     if (this.isDestroyed) return
 
-    this.listeners.set(id, listener)
+    this.messageListener = listener
 
     // 如果还没有连接且不在后台，现在建立连接
     if (
@@ -246,24 +243,13 @@ export class SSEManager {
   }
 
   /**
-   * 移除消息监听器
+   * 停止监听并关闭当前连接
    */
-  removeMessageListener(id: string) {
+  stop() {
     if (this.isDestroyed) return
 
-    this.listeners.delete(id)
-
-    // 如果没有监听器了，关闭连接
-    if (this.listeners.size === 0) {
-      this.close()
-    }
-  }
-
-  /**
-   * 关闭连接
-   */
-  close() {
-    this.resetConnectionState()
+    this.messageListener = null
+    this.resetConnection()
   }
 
   /**
@@ -273,100 +259,17 @@ export class SSEManager {
     if (this.isDestroyed) return
 
     this.isDestroyed = true
-    this.resetConnectionState(true)
+    this.messageListener = null
+    this.resetConnection()
     this.removeVisibilityListener()
   }
 
-  private resetConnectionState(clearListeners = false) {
+  private resetConnection() {
     this.closeCurrentEventSource()
     this.clearReconnectTimer()
     this.clearBackgroundCloseTimer()
-
-    if (clearListeners) {
-      this.listeners.clear()
-    }
-
     this.isConnecting = false
     this.reconnectAttempts = 0
-    this.setConnectionStatus(this.listeners.size > 0 ? 'closed' : 'idle')
-
-    if (clearListeners) {
-      this.statusListeners.clear()
-    }
-  }
-
-  /**
-   * 添加连接状态监听器
-   */
-  addStatusListener(id: string, listener: SSEStatusListener, emitCurrent = true) {
-    if (this.isDestroyed) return
-
-    this.statusListeners.set(id, listener)
-
-    if (emitCurrent) {
-      listener(this.connectionStatus)
-    }
-  }
-
-  /**
-   * 移除连接状态监听器
-   */
-  removeStatusListener(id: string) {
-    this.statusListeners.delete(id)
-  }
-
-  /**
-   * 获取连接状态
-   */
-  get readyState(): number {
-    return this.eventSource?.readyState ?? EventSource.CLOSED
-  }
-
-  /**
-   * 获取内部连接状态
-   */
-  get status(): SSEConnectionStatus {
-    return this.connectionStatus
-  }
-
-  /**
-   * 获取连接URL
-   */
-  get connectionUrl(): string {
-    return this.url
-  }
-
-  /**
-   * 强制重新连接
-   */
-  forceReconnect() {
-    if (this.isDestroyed) return
-
-    const hasActiveListeners = this.listeners.size > 0
-    this.close()
-    if (!this.isBackground && hasActiveListeners) {
-      this.reconnectSSE(0)
-    }
-  }
-
-  /**
-   * 检查是否有活跃的监听器
-   */
-  get hasActiveListeners(): boolean {
-    return this.listeners.size > 0
-  }
-
-  /**
-   * 获取当前重连次数
-   */
-  get currentReconnectAttempts(): number {
-    return this.reconnectAttempts
-  }
-
-  /**
-   * 检查是否达到最大重连次数
-   */
-  get hasReachedMaxAttempts(): boolean {
-    return this.reconnectAttempts >= this.options.maxReconnectAttempts
+    this.setConnectionStatus('idle')
   }
 }

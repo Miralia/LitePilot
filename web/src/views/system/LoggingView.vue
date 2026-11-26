@@ -71,8 +71,6 @@ let mountTimerId: number | null = null
 let logSequence = 0
 const buffer: string[] = []
 
-const listenerId = `logging-${props.logfile}`
-
 const logColorMap: Record<string, string> = {
   TRACE: 'secondary',
   DEBUG: 'secondary',
@@ -493,10 +491,9 @@ function handleSSEMessage(event: MessageEvent) {
   scheduleFlush()
 }
 
-const { manager, isConnected } = useSSE(
+const { isConnected, pause, resume } = useSSE(
   `${import.meta.env.VITE_API_BASE_URL}system/logging?logfile=${encodeURIComponent(props.logfile ?? 'moviepilot.log')}`,
   handleSSEMessage,
-  listenerId,
   {
     backgroundCloseDelay: 5000,
     reconnectDelay: 3000,
@@ -513,8 +510,7 @@ function pauseStream() {
 
   flushBuffer()
   isStreamPaused.value = true
-  isConnected.value = false
-  manager.removeMessageListener(listenerId)
+  pause()
 }
 
 /** 恢复实时日志流。 */
@@ -524,8 +520,7 @@ function resumeStream() {
   }
 
   isStreamPaused.value = false
-  isConnected.value = false
-  manager.addMessageListener(listenerId, handleSSEMessage)
+  resume()
 }
 
 /** 切换实时日志流的暂停状态。 */
