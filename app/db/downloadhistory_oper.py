@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from app.db import DbOper
+from app.db import DbOper, SessionFactory
 from app.db.models.downloadhistory import DownloadHistory, DownloadFiles
 
 
@@ -33,9 +33,21 @@ class DownloadHistoryOper(DbOper):
         """
         新增下载历史文件
         """
-        for file_item in file_items:
-            downloadfile = DownloadFiles(**file_item)
-            downloadfile.create(self._db)
+        if not file_items:
+            return
+        db = self._db or SessionFactory()
+        close_db = self._db is None
+        try:
+            # create() 每行都会独立提交；大型种子一次可能包含数百个文件，
+            # 批量插入必须共享一个事务以避免 SQLite 写放大。
+            db.add_all([DownloadFiles(**file_item) for file_item in file_items])
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            if close_db:
+                db.close()
 
     def get_files_by_hash(self, download_hash: str, state: Optional[int] = None) -> List[DownloadFiles]:
         """

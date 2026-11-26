@@ -7,6 +7,7 @@ from app.db.downloadhistory_oper import DownloadHistoryOper
 from app.helper.builtinconf import download_file_sync_conf
 from app.helper.service import ServiceConfigHelper
 from app.log import logger
+from app.schemas import DownloaderTorrent
 from app.schemas.types import SystemConfigKey
 
 
@@ -34,12 +35,18 @@ class DownloadFileSyncChain(ChainBase):
     这样刚入库就删除的场景不会因为等不到下一个同步周期而丢失对应记录。
     """
 
-    def _sync_torrent_files(self, torrent_hash: str, downloader: Optional[str]) -> int:
+    def _sync_torrent_files(
+            self,
+            torrent_hash: str,
+            downloader: Optional[str],
+            torrent: Optional[DownloaderTorrent] = None,
+    ) -> int:
         """
         同步单个种子的文件列表。
 
         :param torrent_hash: 种子 Hash
         :param downloader: 下载器名称
+        :param torrent: 定时同步已列出的种子对象，用于复用保存路径
         :return: 新增的文件记录数
         """
         files = self.torrent_files(tid=torrent_hash, downloader=downloader)
@@ -48,9 +55,17 @@ class DownloadFileSyncChain(ChainBase):
 
         downloadhis = DownloadHistoryOper()
         history = downloadhis.get_by_hash(download_hash=torrent_hash)
-        # 优先问下载器：种子可能由外部添加，此时不存在下载历史；
-        # 下载历史里的 path 还可能因移动任务而过时
-        save_path = self._resolve_save_path(torrent_hash, downloader)
+        # 定时同步已经把 torrent 对象列出来，直接复用其中的保存路径；
+        # 目录监控精准同步只有 hash 时才需要回退到按 hash 查询下载器。
+        listed_torrent = None
+        if (
+                torrent is not None
+                and str(getattr(torrent, "hash", "") or "").lower() == str(torrent_hash).lower()
+        ):
+            listed_torrent = torrent
+        save_path = self._save_path_from_torrent(listed_torrent)
+        if not save_path:
+            save_path = self._resolve_save_path(torrent_hash, downloader)
         if not save_path and history and history.path:
             save_path = str(history.path)
         if save_path:
@@ -63,9 +78,14 @@ class DownloadFileSyncChain(ChainBase):
                     f"修正 {backfilled} 条记录"
                 )
 
+        # state=0 是已删除墓碑，也必须参与去重；否则下一轮周期同步
+        # 会把同一文件重复插入成新的正常记录。
         existing = {
             item.fullpath
-            for item in downloadhis.get_files_by_hash(torrent_hash, state=1)
+            for item in downloadhis.get_files_by_hash(torrent_hash)
+            # 下载器是文件记录身份的一部分；缺失下载器的历史行无法归属，
+            # 只能保守地继续参与去重，避免删除墓碑被复活。
+            if not getattr(item, "downloader", None) or item.downloader == downloader
         }
         file_items: List[dict] = []
         for file in files:
@@ -99,6 +119,24 @@ class DownloadFileSyncChain(ChainBase):
             )
         return len(file_items)
 
+    @staticmethod
+    def _save_path_from_torrent(torrent: Optional[DownloaderTorrent]) -> str:
+        """从下载器任务对象提取保存根目录。"""
+        if torrent is None:
+            return ""
+        # save_path 是保存根目录；content_path 是任务内容路径，
+        # 单文件种子下它已含文件名，直接当根目录会拼出重复文件名，
+        # 因此优先 save_path，缺失时再从 content_path 反推
+        save_path = getattr(torrent, "save_path", None)
+        if save_path:
+            return str(save_path).replace("\\", "/").rstrip("/")
+        content_path = getattr(torrent, "content_path", None)
+        if content_path:
+            content = Path(str(content_path).replace("\\", "/"))
+            # 单文件种子的 content_path 即文件本身，根目录是它的父级
+            return (content.parent if content.suffix else content).as_posix()
+        return ""
+
     def _resolve_save_path(self, torrent_hash: str, downloader: Optional[str]) -> str:
         """
         从下载器查询种子的保存根目录。
@@ -124,18 +162,7 @@ class DownloadFileSyncChain(ChainBase):
         for torrent in torrents or []:
             if str(getattr(torrent, "hash", "") or "").lower() != target:
                 continue
-            # save_path 是保存根目录；content_path 是任务内容路径，
-            # 单文件种子下它已含文件名，直接当根目录会拼出重复文件名，
-            # 因此优先 save_path，缺失时再从 content_path 反推
-            save_path = getattr(torrent, "save_path", None)
-            if save_path:
-                return str(save_path).replace("\\", "/").rstrip("/")
-            content_path = getattr(torrent, "content_path", None)
-            if content_path:
-                content = Path(str(content_path).replace("\\", "/"))
-                # 单文件种子的 content_path 即文件本身，根目录是它的父级
-                return (content.parent if content.suffix else content).as_posix()
-            return ""
+            return self._save_path_from_torrent(torrent)
         return ""
 
     def _build_path_index(self) -> None:
@@ -373,6 +400,7 @@ class DownloadFileSyncChain(ChainBase):
                     total += self._sync_torrent_files(
                         torrent_hash=torrent.hash,
                         downloader=downloader_name,
+                        torrent=torrent,
                     )
                 except Exception as err:
                     logger.error(
