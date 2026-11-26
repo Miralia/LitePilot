@@ -467,13 +467,16 @@ async def proxy_img(
     图片代理，可选是否使用代理服务器，支持 HTTP 缓存
     """
     allowed_domains = set(settings.SECURITY_IMAGE_DOMAINS)
-    return await fetch_image(
+    response = await fetch_image(
         url=imgurl,
         proxy=proxy,
         use_cache=cache,
         if_none_match=if_none_match,
         allowed_domains=allowed_domains,
     )
+    if response is None:
+        raise HTTPException(status_code=404, detail="图片不可用")
+    return response
 
 
 @router.get("/cache/image", summary="图片缓存")
@@ -486,9 +489,12 @@ async def cache_img(
     本地缓存图片文件，支持 HTTP 缓存，如果启用全局图片缓存，则使用磁盘缓存
     """
     # 如果没有启用全局图片缓存，则不使用磁盘缓存
-    return await fetch_image(
+    response = await fetch_image(
         url=url, use_cache=settings.GLOBAL_IMAGE_CACHE, if_none_match=if_none_match
     )
+    if response is None:
+        raise HTTPException(status_code=404, detail="图片不可用")
+    return response
 
 
 @router.get("/global", summary="查询非敏感系统设置", response_model=schemas.Response)

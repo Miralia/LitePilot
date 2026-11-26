@@ -3,6 +3,7 @@ import io
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from fastapi import HTTPException
 from PIL import Image
 
 from app.api.endpoints import system as system_endpoint
@@ -218,3 +219,35 @@ def test_fetch_image_adds_nosniff_to_not_modified_response():
     assert response.status_code == 304
     assert response.headers["content-type"] == "image/jpeg"
     assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_proxy_img_returns_not_found_when_fetch_fails():
+    """图片代理失败不得返回 200 null，避免浏览器或 Service Worker 缓存伪成功响应。"""
+    with patch.object(system_endpoint, "fetch_image", new=AsyncMock(return_value=None)):
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(
+                system_endpoint.proxy_img(
+                    imgurl="https://images.example/missing.jpg",
+                    proxy=False,
+                    cache=False,
+                    if_none_match=None,
+                    _=Mock(),
+                )
+            )
+
+    assert exc_info.value.status_code == 404
+
+
+def test_cache_img_returns_not_found_when_fetch_fails():
+    """图片缓存接口同样必须以 404 表达失败，而不是返回空成功。"""
+    with patch.object(system_endpoint, "fetch_image", new=AsyncMock(return_value=None)):
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(
+                system_endpoint.cache_img(
+                    url="https://images.example/missing.jpg",
+                    if_none_match=None,
+                    _=Mock(),
+                )
+            )
+
+    assert exc_info.value.status_code == 404
