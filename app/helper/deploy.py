@@ -7,6 +7,7 @@
 写盘与 systemd/nginx 的启停由调用方（CLI deploy 命令）负责，便于先打印后落盘。
 """
 
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -43,6 +44,26 @@ NGINX_SITE_TEMPLATE = """\
 # LitePilot 站点配置：静态产物由 nginx 托管，接口反代到后端。
 # 注意：前端以 api/v1/ 相对路径发起请求，子路径部署时必须让该前缀同样反代到后端，
 # 否则浏览器会把 {prefix}api/v1/... 解析成 {prefix}login/... 之类并落到静态处理。
+# SSE 接口必须关闭代理缓冲，否则进度、系统消息与日志事件会滞留在 nginx 缓冲区。
+location ~ ^{prefix_regex}api/v1/system/(message$|progress/|logging$) {{
+    default_type text/event-stream;
+    add_header Cache-Control "no-cache, no-transform";
+    add_header X-Accel-Buffering no;
+    gzip off;
+    proxy_buffering off;
+    proxy_cache off;
+
+    rewrite ^{prefix_regex}api/(.*)$ /api/$1 break;
+    proxy_pass http://127.0.0.1:{backend_port};
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 3600s;
+}}
+
 location {prefix}api/ {{
     proxy_pass http://127.0.0.1:{backend_port}/api/;
     proxy_set_header Host $http_host;
@@ -63,6 +84,18 @@ location = {prefix}index.html {{
 
 location = {prefix}service-worker.js {{
     alias {public_dir}/service-worker.js;
+    add_header Cache-Control "no-cache, must-revalidate";
+}}
+
+location = {prefix}manifest.webmanifest {{
+    alias {public_dir}/manifest.webmanifest;
+    default_type application/manifest+json;
+    add_header Cache-Control "no-cache, must-revalidate";
+}}
+
+location = {prefix}version.txt {{
+    alias {public_dir}/version.txt;
+    default_type text/plain;
     add_header Cache-Control "no-cache, must-revalidate";
 }}
 
@@ -118,6 +151,7 @@ def render_nginx_site(
     normalized = prefix if prefix.endswith("/") else f"{prefix}/"
     return NGINX_SITE_TEMPLATE.format(
         prefix=normalized,
+        prefix_regex=re.escape(normalized),
         public_dir=str(public_dir).rstrip("/"),
         backend_port=backend_port,
     )

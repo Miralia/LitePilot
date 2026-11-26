@@ -40,6 +40,10 @@ def test_render_nginx_site_root_prefix():
     assert "try_files $uri $uri/ /index.html;" in text
     assert "location /api/ {" in text
     assert "proxy_pass http://127.0.0.1:3001/api/;" in text
+    assert "location ~ ^/api/v1/system/(message$|progress/|logging$) {" in text
+    assert "rewrite ^/api/(.*)$ /api/$1 break;" in text
+    assert "location = /manifest.webmanifest {" in text
+    assert "location = /version.txt {" in text
 
 
 def test_render_nginx_site_subpath_prefix_normalizes_slash():
@@ -52,6 +56,13 @@ def test_render_nginx_site_subpath_prefix_normalizes_slash():
     assert "try_files $uri $uri/ /mp/index.html;" in text
     assert "location /mp/api/ {" in text
     assert "proxy_pass http://127.0.0.1:3001/api/;" in text
+    assert "location ~ ^/mp/api/v1/system/(message$|progress/|logging$) {" in text
+    assert "rewrite ^/mp/api/(.*)$ /api/$1 break;" in text
+    assert "proxy_buffering off;" in text
+    assert "proxy_cache off;" in text
+    assert 'add_header X-Accel-Buffering no;' in text
+    assert "location = /mp/manifest.webmanifest {" in text
+    assert "location = /mp/version.txt {" in text
 
 
 def test_paths_follow_systemd_and_swizzin_layout():

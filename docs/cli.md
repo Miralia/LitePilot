@@ -313,7 +313,8 @@ nginx -t && systemctl reload nginx
 说明：
 
 - unit 直接守护 `python -m app.main`，`Restart=on-failure` 由 systemd 负责重启
-- nginx 托管仓库内 `public/`，`/api` 反代到后端端口（默认 3001）
+- nginx 托管仓库内 `public/`，`/api` 反代到后端端口（默认 3001）；系统消息、进度与日志 SSE 会单独关闭代理缓冲
+- `index.html`、`service-worker.js`、`manifest.webmanifest` 与 `version.txt` 不长期缓存，避免升级后版本判断或 PWA 元数据滞后
 - swizzin 环境下片段写入 `/etc/nginx/apps/` 即被主配置 include
 
 ## 备份与迁移命令

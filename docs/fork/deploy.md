@@ -53,6 +53,21 @@ location /mp/api/ {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
 }
+
+# 系统消息、进度与日志 SSE 不能经过 nginx 默认缓冲；
+# 推荐直接使用 `moviepilot deploy --prefix /mp/ --print-only` 生成完整片段。
+location ~ ^/mp/api/v1/system/(message$|progress/|logging$) {
+    rewrite ^/mp/api/(.*)$ /api/$1 break;
+    proxy_pass http://127.0.0.1:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    add_header X-Accel-Buffering no;
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 3600s;
+}
 ```
 
 改完执行 `nginx -t && systemctl reload nginx`。
