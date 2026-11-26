@@ -763,13 +763,11 @@ def _check_database(runner: DoctorRunnerProtocol) -> None:
 
 def _check_frontend_assets(runner: DoctorRunnerProtocol) -> None:
     frontend_dir = _frontend_dir()
-    required = [frontend_dir / "version.txt"]
+    required = [frontend_dir / "version.txt", frontend_dir / "index.html"]
     service_file = frontend_dir / "service.js"
-    index_file = frontend_dir / "index.html"
-    if service_file.exists():
+    node_runtime_dir = frontend_dir / "node_modules" / "express"
+    if service_file.exists() or node_runtime_dir.exists():
         required.append(service_file)
-    else:
-        required.append(index_file)
     missing = [path for path in required if not path.exists()]
     if missing:
         runner.add(

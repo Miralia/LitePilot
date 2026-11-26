@@ -109,6 +109,37 @@ def test_doctor_accepts_healthy_unmanaged_backend_port(monkeypatch):
 
 
 
+def test_doctor_frontend_assets_always_require_index_html(tmp_path, monkeypatch):
+    """独立 Node 前端脚本不能替代 index.html 成为唯一入口资源。"""
+    (tmp_path / "version.txt").write_text("test", encoding="utf-8")
+    (tmp_path / "service.js").write_text("console.log('frontend')", encoding="utf-8")
+    monkeypatch.setattr(checks, "_frontend_dir", lambda: tmp_path)
+
+    runner = DoctorRunner()
+    checks._check_frontend_assets(runner)
+
+    finding = runner.report.find("frontend.assets_missing")
+    assert finding is not None
+    assert finding.status == DoctorFindingStatus.Failed
+    assert str(tmp_path / "index.html") in finding.context["missing"]
+
+
+def test_doctor_frontend_assets_require_service_for_node_runtime(tmp_path, monkeypatch):
+    """存在独立 Node 运行依赖时，缺失 service.js 不应被当成纯静态部署。"""
+    (tmp_path / "version.txt").write_text("test", encoding="utf-8")
+    (tmp_path / "index.html").write_text("<html></html>", encoding="utf-8")
+    (tmp_path / "node_modules" / "express").mkdir(parents=True)
+    monkeypatch.setattr(checks, "_frontend_dir", lambda: tmp_path)
+
+    runner = DoctorRunner()
+    checks._check_frontend_assets(runner)
+
+    finding = runner.report.find("frontend.assets_missing")
+    assert finding is not None
+    assert finding.status == DoctorFindingStatus.Failed
+    assert str(tmp_path / "service.js") in finding.context["missing"]
+
+
 def test_doctor_skips_frontend_port_for_static_reverse_proxy(tmp_path, monkeypatch):
     """纯静态前端部署不应把缺失的独立前端端口误报为故障。"""
     (tmp_path / "index.html").write_text("<html></html>", encoding="utf-8")
