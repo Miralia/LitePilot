@@ -1,5 +1,7 @@
 import copy
 import inspect
+import io
+import json
 import pickle
 import traceback
 from abc import ABCMeta
@@ -11,7 +13,7 @@ from typing import Optional, Any, Tuple, List, Union, Dict
 from fastapi.concurrency import run_in_threadpool
 from qbittorrentapi import TorrentFilesList
 
-from app.core.cache import FileCache, AsyncFileCache, fresh, async_fresh
+from app.core.cache import FileCache, fresh, async_fresh
 from app.core.config import settings
 from app.core.context import MediaInfo
 from app.core.event import EventManager
@@ -46,6 +48,22 @@ from app.schemas.types import (
 from app.utils.object import ObjectUtils
 
 
+class _PlainDataUnpickler(pickle.Unpickler):
+    """只兼容旧版 plain data 缓存，不允许还原任何全局对象。"""
+
+    def find_class(self, module: str, name: str):
+        """拒绝所有 pickle 全局对象引用。"""
+        raise pickle.UnpicklingError(f"禁止反序列化对象：{module}.{name}")
+
+
+def _load_plain_cache(content: bytes) -> Any:
+    """优先读取 JSON 缓存，并安全兼容旧版 plain data pickle。"""
+    try:
+        return json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return _PlainDataUnpickler(io.BytesIO(content)).load()
+
+
 class ChainBase(metaclass=ABCMeta):
     """
     处理链基类
@@ -61,7 +79,6 @@ class ChainBase(metaclass=ABCMeta):
         self.messagehelper = MessageHelper()
         self.messagequeue = MessageQueueManager(send_callback=self.run_module)
         self.filecache = FileCache()
-        self.async_filecache = AsyncFileCache()
 
     def load_cache(self, filename: str) -> Any:
         """
@@ -71,40 +88,20 @@ class ChainBase(metaclass=ABCMeta):
         if not content:
             return None
         try:
-            return pickle.loads(content)
+            return _load_plain_cache(content)
         except Exception as err:
             logger.error(f"加载缓存 {filename} 出错：{str(err)}")
             return None
-
-    async def async_load_cache(self, filename: str) -> Any:
-        """
-        异步加载缓存
-        """
-        content = await self.async_filecache.get(filename)
-        if not content:
-            return None
-        try:
-            return pickle.loads(content)
-        except Exception as err:
-            logger.error(f"异步加载缓存 {filename} 出错：{str(err)}")
-            return None
-
-    async def async_save_cache(self, cache: Any, filename: str) -> None:
-        """
-        异步保存缓存
-        """
-        try:
-            await self.async_filecache.set(filename, pickle.dumps(cache))
-        except Exception as err:
-            logger.error(f"异步保存缓存 {filename} 出错：{str(err)}")
-            return
 
     def save_cache(self, cache: Any, filename: str) -> None:
         """
         保存缓存
         """
         try:
-            self.filecache.set(filename, pickle.dumps(cache))
+            self.filecache.set(
+                filename,
+                json.dumps(cache, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
+            )
         except Exception as err:
             logger.error(f"保存缓存 {filename} 出错：{str(err)}")
             return
@@ -193,12 +190,6 @@ class ChainBase(metaclass=ABCMeta):
             dispatch_message.userid
         )
         return dispatch_message
-
-    async def async_remove_cache(self, filename: str) -> None:
-        """
-        异步删除缓存，同时删除Redis和本地缓存
-        """
-        await self.async_filecache.delete(filename)
 
     @staticmethod
     def __is_valid_empty(ret):
