@@ -785,7 +785,7 @@ export default {
         '被替换词 => 替换词\n' +
         '前定位词 <> 后定位词 >> 集偏移量（EP）\n' +
         '被替换词 => 替换词 && 前定位词 <> 后定位词 >> 集偏移量（EP）\n' +
-        '其中替换词支持格式：&#123;[tmdbid/bangumiid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]&#125; 直接指定媒体数据源ID识别，其中g为剧集组编号，s、e为季数和集数（均可选）',
+        '其中替换词支持格式：{[tmdbid/bangumiid=xxx;type=movie/tv;g=xxx;s=xxx;e=xxx]} 直接指定媒体数据源ID识别，其中g为剧集组编号，s、e为季数和集数（均可选）',
       identifierSaveSuccess: '自定义识别词保存成功',
       streamingPlatform: '流媒体平台词表',
       streamingPlatformShort: '流媒体平台',

@@ -822,7 +822,7 @@ onMounted(() => {
                 </template>
               </VExpansionPanelTitle>
               <VExpansionPanelText>
-                <div class="words-help-content" v-html="activeGuideContent.split('\n').join('<br>')" />
+                <div class="words-help-content">{{ activeGuideContent }}</div>
               </VExpansionPanelText>
             </VExpansionPanel>
           </VExpansionPanels>
@@ -1241,7 +1241,7 @@ onMounted(() => {
   font-size: 0.78rem;
   line-height: 1.7;
   overflow-wrap: anywhere;
-  white-space: normal;
+  white-space: pre-line;
   word-break: break-word;
 }
 

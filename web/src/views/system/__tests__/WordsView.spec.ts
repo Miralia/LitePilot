@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { cwd } from 'node:process'
+
 import WordsView from '@/views/system/WordsView.vue'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
@@ -74,6 +78,13 @@ describe('WordsView editor preferences', () => {
     mocks.aceSetMode.mockClear()
     mocks.aceSetPadding.mockClear()
     mocks.aceSetScrollMargin.mockClear()
+  })
+
+  it('renders guide content as text rather than injectable HTML', () => {
+    const source = readFileSync(resolve(cwd(), 'src/views/system/WordsView.vue'), 'utf8')
+
+    expect(source).not.toContain('v-html="activeGuideContent')
+    expect(source).toContain('white-space: pre-line')
   })
 
   it('keeps line numbers disabled when no preference is stored', async () => {
