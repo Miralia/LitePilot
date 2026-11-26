@@ -21,7 +21,7 @@ import urllib.parse
 import uuid
 import zipfile
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 from typing import Any, Optional
 
@@ -32,6 +32,7 @@ HELPER_DIR = ROOT / "app" / "helper"
 PUBLIC_DIR = ROOT / "public"
 WEB_DIR = ROOT / "web"
 WEB_DIST_DIR = WEB_DIR / "dist"
+FRONTEND_ASSET_GENERATION_FILE = ".asset-generation.json"
 RUNTIME_DIR = ROOT / ".runtime"
 NODE_DIR = RUNTIME_DIR / "node"
 INSTALL_ENV_FILE = ROOT / ".moviepilot.env"
@@ -824,6 +825,63 @@ def _local_node_env() -> dict[str, str]:
     return env
 
 
+def _scan_frontend_asset_paths(root: Path) -> list[str]:
+    """列出构建产物中内容寻址 assets 目录内的相对文件路径。"""
+    assets_root = root / "assets"
+    if not assets_root.is_dir():
+        return []
+    return sorted(
+        item.relative_to(root).as_posix()
+        for item in assets_root.rglob("*")
+        if item.is_file()
+    )
+
+
+def _safe_frontend_asset_path(value: Any) -> Optional[str]:
+    """校验资产代际记录中的相对路径，避免状态文件损坏后越出 assets 目录。"""
+    if not isinstance(value, str) or "\\" in value:
+        return None
+    relative_path = PurePosixPath(value)
+    if (
+        relative_path.is_absolute()
+        or len(relative_path.parts) < 2
+        or relative_path.parts[0] != "assets"
+        or ".." in relative_path.parts
+    ):
+        return None
+    return relative_path.as_posix()
+
+
+def _current_frontend_asset_paths(public_dir: Path) -> list[str]:
+    """读取上一安装代际的 assets 清单；无清单时把现有 assets 视为当前代。"""
+    existing_assets = _scan_frontend_asset_paths(public_dir)
+    generation_file = public_dir / FRONTEND_ASSET_GENERATION_FILE
+    if not generation_file.exists():
+        return existing_assets
+    try:
+        state = json.loads(generation_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return existing_assets
+    recorded = state.get("current") if isinstance(state, dict) else None
+    if not isinstance(recorded, list):
+        return existing_assets
+    asset_paths = []
+    for value in recorded:
+        safe_path = _safe_frontend_asset_path(value)
+        if safe_path and safe_path not in asset_paths:
+            asset_paths.append(safe_path)
+    return asset_paths or existing_assets
+
+
+def _write_frontend_asset_generation(public_dir: Path, dist_dir: Path) -> None:
+    """记录本次安装生成的 assets 清单，供下一次更新只保留一个旧代际。"""
+    state = {"current": _scan_frontend_asset_paths(dist_dir)}
+    (public_dir / FRONTEND_ASSET_GENERATION_FILE).write_text(
+        json.dumps(state, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
 def build_frontend_from_source() -> None:
     """构建仓内前端源码，并把产物同步到本地运行时目录。"""
     if not WEB_DIR.is_dir():
@@ -849,8 +907,34 @@ def build_frontend_from_source() -> None:
 
     if not (WEB_DIST_DIR / "index.html").exists():
         raise RuntimeError("前端构建产物缺少 dist/index.html")
-    _remove_path(PUBLIC_DIR)
-    shutil.copytree(WEB_DIST_DIR, PUBLIC_DIR)
+
+    # 已打开页面可能尚未加载全部懒加载 chunk。hash 资产只保留上一个代际，
+    # 避免更新后立即 404，同时不会让历史构建产物无界累积。
+    previous_asset_paths = _current_frontend_asset_paths(PUBLIC_DIR)
+    with TemporaryDirectory() as retained_dir:
+        retained_root = Path(retained_dir)
+        for relative_path in previous_asset_paths:
+            source = PUBLIC_DIR / relative_path
+            if not source.is_file():
+                continue
+            retained_target = retained_root / relative_path
+            retained_target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, retained_target)
+
+        _remove_path(PUBLIC_DIR)
+        shutil.copytree(WEB_DIST_DIR, PUBLIC_DIR)
+
+        for retained_source in retained_root.rglob("*"):
+            if not retained_source.is_file():
+                continue
+            relative_path = retained_source.relative_to(retained_root)
+            target = PUBLIC_DIR / relative_path
+            if target.exists():
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(retained_source, target)
+
+    _write_frontend_asset_generation(PUBLIC_DIR, WEB_DIST_DIR)
 
 
 def install_frontend(node_version: str) -> dict[str, str]:

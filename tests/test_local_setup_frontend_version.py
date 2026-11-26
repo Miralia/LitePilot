@@ -140,6 +140,92 @@ def test_build_frontend_from_source_uses_local_node_and_copies_dist(
     )
 
 
+def test_build_frontend_from_source_retains_only_previous_hashed_assets(
+    local_setup_module,
+    monkeypatch,
+    tmp_path,
+):
+    """更新前端时应保留上一代 hash 资产供已打开页面加载，并淘汰更早一代。"""
+    web_dir = tmp_path / "web"
+    web_dir.mkdir()
+    public_dir = tmp_path / "public"
+    assets_dir = public_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    (assets_dir / "chunk-current-oldhash.js").write_text("current old", encoding="utf-8")
+    (assets_dir / "chunk-obsolete-olderhash.js").write_text("obsolete", encoding="utf-8")
+    (public_dir / ".asset-generation.json").write_text(
+        json.dumps({"current": ["assets/chunk-current-oldhash.js"]}),
+        encoding="utf-8",
+    )
+    node_bin = tmp_path / "node" / "bin" / "node"
+    corepack_bin = tmp_path / "node" / "bin" / "corepack"
+    node_bin.parent.mkdir(parents=True)
+    node_bin.write_text("", encoding="utf-8")
+    corepack_bin.write_text("", encoding="utf-8")
+
+    def fake_run(command, cwd=None, env=None, safe_command=None):
+        if "build" in command:
+            dist_assets = web_dir / "dist" / "assets"
+            dist_assets.mkdir(parents=True, exist_ok=True)
+            (web_dir / "dist" / "index.html").write_text("built", encoding="utf-8")
+            (dist_assets / "chunk-new-newhash.js").write_text("new", encoding="utf-8")
+
+    monkeypatch.setattr(local_setup_module, "WEB_DIR", web_dir)
+    monkeypatch.setattr(local_setup_module, "WEB_DIST_DIR", web_dir / "dist")
+    monkeypatch.setattr(local_setup_module, "PUBLIC_DIR", public_dir)
+    monkeypatch.setattr(local_setup_module, "get_node_bin", lambda: node_bin)
+    monkeypatch.setattr(local_setup_module, "get_corepack_bin", lambda: corepack_bin)
+    monkeypatch.setattr(local_setup_module, "run", fake_run)
+
+    local_setup_module.build_frontend_from_source()
+
+    assert (assets_dir / "chunk-new-newhash.js").read_text(encoding="utf-8") == "new"
+    assert (assets_dir / "chunk-current-oldhash.js").read_text(encoding="utf-8") == "current old"
+    assert not (assets_dir / "chunk-obsolete-olderhash.js").exists()
+    state = json.loads((public_dir / ".asset-generation.json").read_text(encoding="utf-8"))
+    assert state == {"current": ["assets/chunk-new-newhash.js"]}
+
+
+def test_build_frontend_from_source_migrates_assets_without_generation_state(
+    local_setup_module,
+    monkeypatch,
+    tmp_path,
+):
+    """无代际清单的历史安装首次升级时应把现有 assets 全部视为上一代保留。"""
+    web_dir = tmp_path / "web"
+    web_dir.mkdir()
+    public_dir = tmp_path / "public"
+    assets_dir = public_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    (assets_dir / "chunk-legacy-oldhash.js").write_text("legacy", encoding="utf-8")
+    node_bin = tmp_path / "node" / "bin" / "node"
+    corepack_bin = tmp_path / "node" / "bin" / "corepack"
+    node_bin.parent.mkdir(parents=True)
+    node_bin.write_text("", encoding="utf-8")
+    corepack_bin.write_text("", encoding="utf-8")
+
+    def fake_run(command, cwd=None, env=None, safe_command=None):
+        if "build" in command:
+            dist_assets = web_dir / "dist" / "assets"
+            dist_assets.mkdir(parents=True, exist_ok=True)
+            (web_dir / "dist" / "index.html").write_text("built", encoding="utf-8")
+            (dist_assets / "chunk-new-newhash.js").write_text("new", encoding="utf-8")
+
+    monkeypatch.setattr(local_setup_module, "WEB_DIR", web_dir)
+    monkeypatch.setattr(local_setup_module, "WEB_DIST_DIR", web_dir / "dist")
+    monkeypatch.setattr(local_setup_module, "PUBLIC_DIR", public_dir)
+    monkeypatch.setattr(local_setup_module, "get_node_bin", lambda: node_bin)
+    monkeypatch.setattr(local_setup_module, "get_corepack_bin", lambda: corepack_bin)
+    monkeypatch.setattr(local_setup_module, "run", fake_run)
+
+    local_setup_module.build_frontend_from_source()
+
+    assert (assets_dir / "chunk-legacy-oldhash.js").read_text(encoding="utf-8") == "legacy"
+    assert (assets_dir / "chunk-new-newhash.js").read_text(encoding="utf-8") == "new"
+    state = json.loads((public_dir / ".asset-generation.json").read_text(encoding="utf-8"))
+    assert state == {"current": ["assets/chunk-new-newhash.js"]}
+
+
 def test_install_frontend_writes_local_runtime_without_remote_download(
     local_setup_module,
     monkeypatch,
