@@ -315,7 +315,7 @@ nginx -t && systemctl reload nginx
 - unit 直接守护 `python -m app.main`，`Restart=on-failure` 由 systemd 负责重启
 - 实际写入部署配置时，会在仓库根目录写入 `.moviepilot.env`，让后续 `moviepilot` CLI 默认使用同一个 `CONFIG_DIR`；`--print-only` 不会修改该文件
 - 当前生成的 systemd/nginx 文件名均为 `litepilot`；如果旧环境曾手工生成并启用上游命名的 `moviepilot.service`，迁移时不要同时启用两个后端实例
-- nginx 托管仓库内 `public/`，`/api` 反代到后端端口（默认 3001）；系统消息、进度与日志 SSE 会单独关闭代理缓冲
+- 后端默认只监听 `127.0.0.1`；nginx 托管仓库内 `public/`，`/api` 反代到后端端口（默认 3001）；系统消息、进度与日志 SSE 会单独关闭代理缓冲
 - `index.html`、`service-worker.js`、`manifest.webmanifest` 与 `version.txt` 不长期缓存，避免升级后版本判断或 PWA 元数据滞后
 - swizzin 环境下片段写入 `/etc/nginx/apps/` 即被主配置 include
 

@@ -136,3 +136,8 @@ def test_removed_feishu_notification_settings_are_not_retained() -> None:
         "FEISHU_ENCRYPT_KEY",
     ):
         assert field_name not in type(settings).model_fields
+
+
+def test_api_host_defaults_to_loopback_for_reverse_proxy_deployment() -> None:
+    """native systemd + nginx 部署下，后端不应默认绕过反向代理暴露到公网。"""
+    assert type(settings).model_fields["HOST"].default == "127.0.0.1"

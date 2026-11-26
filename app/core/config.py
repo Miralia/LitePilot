@@ -58,8 +58,8 @@ class ConfigModel(BaseModel):
     FRONTEND_PATH: str = "/public"
     # 时区
     TZ: str = "Asia/Shanghai"
-    # API监听地址
-    HOST: str = "0.0.0.0"
+    # API监听地址；native nginx 反代部署默认只允许本机回源，避免绕过外层代理直接暴露
+    HOST: str = "127.0.0.1"
     # API监听端口
     PORT: int = 3001
     # 前端监听端口

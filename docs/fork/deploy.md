@@ -38,8 +38,9 @@ CONFIG_DIR=/var/lib/moviepilot ./moviepilot start
 
 ## nginx 反代
 
-前端由 nginx 托管 `public/`，`/api` 反代到后端端口（默认 3001）。放在 swizzin 的
-`/etc/nginx/apps/` 下即可被主配置 include：
+前端由 nginx 托管 `public/`，`/api` 反代到后端端口（默认 3001）。后端默认只监听
+`127.0.0.1`，避免绕过 nginx 直接暴露 API；只有确需外部直连后端时才应显式调整 `HOST`。
+放在 swizzin 的 `/etc/nginx/apps/` 下即可被主配置 include：
 
 ```nginx
 location /mp/ {
