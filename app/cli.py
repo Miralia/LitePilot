@@ -1028,7 +1028,7 @@ def config_describe(key: str, show_secrets: bool) -> None:
 def _api_token_headers() -> Dict[str, str]:
     """构造携带 API_TOKEN 的请求头，供 CLI 调用需要鉴权的接口。"""
     token = getattr(settings, "API_TOKEN", "") or ""
-    return {"Authorization": f"Bearer {token}"} if token else {}
+    return {"X-API-KEY": token} if token else {}
 
 
 @cli.group(context_settings=CONTEXT_SETTINGS)
@@ -1041,7 +1041,7 @@ def scheduler_list() -> None:
     """列出调度任务"""
     response = _http_request(
         "GET",
-        "/api/v1/dashboard/schedule",
+        "/api/v2/dashboard/schedule",
         headers=_api_token_headers(),
         runtime=_backend_runtime(),
     )
@@ -1062,7 +1062,7 @@ def scheduler_run(job_id: str) -> None:
     """立即执行某个调度任务"""
     response = _http_request(
         "GET",
-        "/api/v1/system/runscheduler",
+        "/api/v2/system/runscheduler",
         params={"jobid": job_id},
         headers=_api_token_headers(),
         runtime=_backend_runtime(),
