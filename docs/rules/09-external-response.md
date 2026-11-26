@@ -119,7 +119,7 @@ When calling TMDB or Bangumi via the module layer:
 
 - Always check the module return for `None` before using the result — modules return `None` when the backend is not configured or the request fails.
 - Cache responses using `FileCache` / `AsyncFileCache` where the result is stable and repeated requests would be expensive.
-- Return domain objects (`MediaInfo`, `TmdbEpisode`, `MediaPerson`, etc.) from modules, never raw API response dicts.
+- Return domain objects (`MediaInfo`, `TmdbEpisode`, `TmdbSeason`, etc.) from modules, never raw API response dicts.
 
 ---
 
@@ -129,4 +129,4 @@ Webhook payloads arrive at `app/api/endpoints/webhook.py` and are dispatched via
 
 Do not add webhook-specific business logic directly in the endpoint. The endpoint parses the payload and fires the event; the chain handles the response.
 
-*Last Updated: 2026-05-25*
+*Last Updated: 2026-11-26*

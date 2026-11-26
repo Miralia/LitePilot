@@ -23,7 +23,6 @@ class TMDb(object):
     def __init__(self, session=None, language=None):
         self._api_key = settings.TMDB_API_KEY
         self._language = language or settings.TMDB_LOCALE or "en-US"
-        self._session_id = None
         self._session = session
         self._wait_on_rate_limit = True
         self._proxies = settings.PROXY
@@ -113,20 +112,6 @@ class TMDb(object):
     @language.setter
     def language(self, language):
         self._language = language
-
-    @property
-    def has_session(self):
-        return True if self._session_id else False
-
-    @property
-    def session_id(self):
-        if not self._session_id:
-            raise TMDbException("Must Authenticate to create a session run Authentication(username, password)")
-        return self._session_id
-
-    @session_id.setter
-    def session_id(self, session_id):
-        self._session_id = session_id
 
     @property
     def wait_on_rate_limit(self):

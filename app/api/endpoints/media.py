@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Any, List, Optional, Union
+from typing import Annotated, Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -187,7 +187,7 @@ async def recognize_file2(
     return await recognize_file(path, source)
 
 
-@router.get("/search", summary="搜索媒体/人物信息", response_model=List[dict])
+@router.get("/search", summary="搜索媒体信息", response_model=List[dict])
 async def search(
     title: str,
     type: Optional[str] = "media",
@@ -197,50 +197,29 @@ async def search(
     _: schemas.TokenPayload = Depends(verify_token),
 ) -> Any:
     """
-    模糊搜索媒体、合集或人物信息列表。
+    模糊搜索可用于入库识别的媒体信息列表。
 
     :param title: 搜索关键词
-    :param type: 搜索类型，支持 media、collection、person
+    :param type: 搜索类型，仅支持 media
     :param page: 页码
     :param count: 每页数量
     :param source: 请求级搜索数据源
     :param _: Token校验
     :return: 搜索结果列表
     """
+    if type != "media":
+        raise HTTPException(status_code=400, detail=f"不支持的搜索类型：{type}，仅支持媒体搜索")
 
     source = _validate_active_media_source(source)
-
-    def __get_source(obj: Union[schemas.MediaInfo, schemas.MediaPerson, dict]):
-        """
-        获取对象属性
-        """
-        if isinstance(obj, dict):
-            return obj.get("source")
-        return obj.source
-
-    media_chain = MediaChain()
-    if type == "media":
-        _, medias = await media_chain.async_search(title=title, source=source)
-        result = [media.to_dict() for media in medias] if medias else []
-    elif type == "collection":
-        collections = await media_chain.async_search_collections(
-            name=title, source=source
-        )
-        result = (
-            [collection.to_dict() for collection in collections] if collections else []
-        )
-    else:  # person
-        persons = await media_chain.async_search_persons(name=title, source=source)
-        result = [person.model_dump() for person in persons] if persons else []
-
+    _, medias = await MediaChain().async_search(title=title, source=source)
+    result = [media.to_dict() for media in medias] if medias else []
     if not result:
         return []
 
     # 排序和分页
     setting_order = settings.SEARCH_SOURCE.split(",") if settings.SEARCH_SOURCE else []
     sort_order = {source: index for index, source in enumerate(setting_order)}
-
-    sorted_result = sorted(result, key=lambda x: sort_order.get(__get_source(x), 4))
+    sorted_result = sorted(result, key=lambda item: sort_order.get(item.get("source"), 4))
     return sorted_result[(page - 1) * count : page * count]
 
 

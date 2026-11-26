@@ -285,52 +285,6 @@ export interface MediaInfo {
   episode_group?: string
 }
 
-// TMDB人物信息
-export interface Person {
-  // 来源：活跃来源为 themoviedb、bangumi，历史数据可能为 douban
-  source?: string
-  // ID
-  id?: number
-  // 名称
-  name?: string
-  // 角色
-  character?: string
-  // 性别
-  gender?: number | string
-  // 生日
-  birthday?: string
-  // 详情
-  biography?: string
-  // images large/normal：Bangumi 图片尺寸兼容字段
-  images?: { [key: string]: string }
-  // themoviedb
-  // themoviedb图片
-  profile_path?: string
-  // 原名
-  original_name?: string
-  // 演员ID
-  credit_id?: string
-  // 别名
-  also_known_as?: string[]
-  // 卒日
-  deathday?: string
-  // IMDB ID
-  imdb_id?: string
-  // 部门
-  known_for_department?: string
-  // 出生地
-  place_of_birth?: string
-  // 热度
-  popularity?: number
-  // bangumi
-  // 类型
-  type?: number | string
-  // 角色
-  career?: string[]
-  // 关系
-  relation?: string
-}
-
 // 渲染结构
 export interface RenderProps {
   component: string

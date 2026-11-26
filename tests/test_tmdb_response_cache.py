@@ -340,10 +340,7 @@ def test_tmdb_api_close_closes_all_clients():
         tmdb_api.tv,
         tmdb_api.season_obj,
         tmdb_api.episode_obj,
-        tmdb_api.discover,
         tmdb_api.trending,
-        tmdb_api.person,
-        tmdb_api.collection,
     ]
     for client in clients:
         client.close = Mock()

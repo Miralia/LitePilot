@@ -793,7 +793,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         self, title: str, source: Optional[str] = None
     ) -> Tuple[Optional[MetaBase], List[MediaInfo]]:
         """
-        搜索媒体/人物信息
+        搜索媒体信息
 
         :param title: 搜索内容
         :param source: 请求级搜索数据源
@@ -1555,7 +1555,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             self, title: str, source: Optional[str] = None
     ) -> Tuple[Optional[MetaBase], List[MediaInfo]]:
         """
-        搜索媒体/人物信息（异步版本）
+        搜索媒体信息（异步版本）
 
         :param title: 搜索内容
         :param source: 请求级搜索数据源

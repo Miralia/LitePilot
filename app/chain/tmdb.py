@@ -4,16 +4,12 @@ from typing import Optional, List
 from app import schemas
 from app.chain import ChainBase
 from app.core.context import MediaInfo
-from app.schemas import MediaType
 
 
 class TmdbChain(ChainBase):
     """
     TheMovieDB处理链，单例运行
     """
-
-
-
 
     def tmdb_seasons(self, tmdbid: int) -> List[schemas.TmdbSeason]:
         """
@@ -38,26 +34,6 @@ class TmdbChain(ChainBase):
         """
         return self.run_module("tmdb_episodes", tmdbid=tmdbid, season=season, episode_group=episode_group)
 
-
-
-
-
-    def movie_credits(self, tmdbid: int, page: Optional[int] = 1) -> Optional[List[schemas.MediaPerson]]:
-        """
-        根据TMDBID查询电影演职人员
-        :param tmdbid:  TMDBID
-        :param page:  页码
-        """
-        return self.run_module("tmdb_movie_credits", tmdbid=tmdbid, page=page)
-
-    def tv_credits(self, tmdbid: int, page: Optional[int] = 1) -> Optional[List[schemas.MediaPerson]]:
-        """
-        根据TMDBID查询电视剧演职人员
-        :param tmdbid:  TMDBID
-        :param page:  页码
-        """
-        return self.run_module("tmdb_tv_credits", tmdbid=tmdbid, page=page)
-
     def tmdb_trending(self, page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
         """
         TMDB流行趋势（登录页壁纸来源）
@@ -65,21 +41,6 @@ class TmdbChain(ChainBase):
         :return: TMDB信息列表
         """
         return self.run_module("tmdb_trending", page=page)
-
-    def person_detail(self, person_id: int) -> Optional[schemas.MediaPerson]:
-        """
-        根据TMDBID查询演职员详情
-        :param person_id:  人物ID
-        """
-        return self.run_module("tmdb_person_detail", person_id=person_id)
-
-    def person_credits(self, person_id: int, page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
-        """
-        根据人物ID查询人物参演作品
-        :param person_id:  人物ID
-        :param page:  页码
-        """
-        return self.run_module("tmdb_person_credits", person_id=person_id, page=page)
 
     def get_random_wallpager(self) -> Optional[str]:
         """
@@ -102,9 +63,6 @@ class TmdbChain(ChainBase):
         if infos:
             return [info.backdrop_path for info in infos if info and info.backdrop_path][:num]
         return []
-
-
-
 
     async def async_tmdb_seasons(self, tmdbid: int) -> List[schemas.TmdbSeason]:
         """
@@ -130,42 +88,6 @@ class TmdbChain(ChainBase):
         """
         return await self.async_run_module("async_tmdb_episodes", tmdbid=tmdbid, season=season,
                                            episode_group=episode_group)
-
-
-
-
-
-    async def async_movie_credits(self, tmdbid: int, page: Optional[int] = 1) -> Optional[List[schemas.MediaPerson]]:
-        """
-        根据TMDBID查询电影演职人员（异步版本）
-        :param tmdbid:  TMDBID
-        :param page:  页码
-        """
-        return await self.async_run_module("async_tmdb_movie_credits", tmdbid=tmdbid, page=page)
-
-    async def async_tv_credits(self, tmdbid: int, page: Optional[int] = 1) -> Optional[List[schemas.MediaPerson]]:
-        """
-        根据TMDBID查询电视剧演职人员（异步版本）
-        :param tmdbid:  TMDBID
-        :param page:  页码
-        """
-        return await self.async_run_module("async_tmdb_tv_credits", tmdbid=tmdbid, page=page)
-
-    async def async_person_detail(self, person_id: int) -> Optional[schemas.MediaPerson]:
-        """
-        根据TMDBID查询演职员详情（异步版本）
-        :param person_id:  人物ID
-        """
-        return await self.async_run_module("async_tmdb_person_detail", person_id=person_id)
-
-    async def async_person_credits(self, person_id: int, page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
-        """
-        根据人物ID查询人物参演作品（异步版本）
-        :param person_id:  人物ID
-        :param page:  页码
-        """
-        return await self.async_run_module("async_tmdb_person_credits", person_id=person_id, page=page)
-
 
     async def async_tmdb_trending(self, page: Optional[int] = 1) -> Optional[List[MediaInfo]]:
         """

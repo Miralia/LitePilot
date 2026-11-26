@@ -7,7 +7,7 @@ from app.log import logger
 from app.schemas.types import MediaType
 from app.utils.string import StringUtils
 from app.utils.zhconv import convert as zhconv_convert
-from .tmdbv3api import TMDb, Search, Movie, TV, Season, Episode, Discover, Trending, Person, Collection
+from .tmdbv3api import TMDb, Search, Movie, TV, Season, Episode, Trending
 from .tmdbv3api.exceptions import TMDbException
 
 
@@ -25,10 +25,7 @@ class TmdbApi:
         self.tv = TV(language=language)
         self.season_obj = Season(language=language)
         self.episode_obj = Episode(language=language)
-        self.discover = Discover(language=language)
         self.trending = Trending(language=language)
-        self.person = Person(language=language)
-        self.collection = Collection(language=language)
 
     def search_multiis(self, title: str) -> List[dict]:
         """
@@ -77,40 +74,6 @@ class TmdbApi:
                 tv['media_type'] = MediaType.TV
                 ret_infos.append(tv)
         return ret_infos
-
-    def search_persons(self, name: str) -> List[dict]:
-        """
-        查询模糊匹配的所有人物TMDB信息
-        """
-        if not name:
-            return []
-        return self.search.people(term=name) or []
-
-    def search_collections(self, name: str) -> List[dict]:
-        """
-        查询模糊匹配的所有合集TMDB信息
-        """
-        if not name:
-            return []
-        collections = self.search.collections(term=name) or []
-        for collection in collections:
-            collection['media_type'] = MediaType.COLLECTION
-            collection['collection_id'] = collection.get("id")
-        return collections
-
-    def get_collection(self, collection_id: int) -> List[dict]:
-        """
-        根据合集ID查询合集详情
-        """
-        if not collection_id:
-            return []
-        try:
-            return self.collection.details(collection_id=collection_id)
-        except TMDbException as err:
-            logger.error(f"连接TMDB出错：{str(err)}")
-        except Exception as e:
-            logger.error(f"连接TMDB出错：{str(e)}")
-        return []
 
     @staticmethod
     def __compare_names(file_name: str, tmdb_names: list) -> bool:
@@ -1179,44 +1142,6 @@ class TmdbApi:
             logger.error(str(e))
             return {}
 
-    def discover_movies(self, params: dict) -> List[dict]:
-        """
-        发现电影
-        :param params: 参数
-        :return:
-        """
-        if not self.discover:
-            return []
-        try:
-            logger.debug(f"正在发现电影：{params}...")
-            tmdbinfo = self.discover.discover_movies(tuple(params.items()))
-            if tmdbinfo:
-                for info in tmdbinfo:
-                    info['media_type'] = MediaType.MOVIE
-            return tmdbinfo or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    def discover_tvs(self, params: dict) -> List[dict]:
-        """
-        发现电视剧
-        :param params: 参数
-        :return:
-        """
-        if not self.discover:
-            return []
-        try:
-            logger.debug(f"正在发现电视剧：{params}...")
-            tmdbinfo = self.discover.discover_tv_shows(tuple(params.items()))
-            if tmdbinfo:
-                for info in tmdbinfo:
-                    info['media_type'] = MediaType.TV
-            return tmdbinfo or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
     @staticmethod
     def _normalize_trending_infos(infos: Optional[List[dict]]) -> List[dict]:
         """
@@ -1304,92 +1229,6 @@ class TmdbApi:
             logger.error(str(e))
             return {}
 
-    def get_movie_similar(self, tmdbid: int) -> List[dict]:
-        """
-        获取电影的相似电影
-        """
-        if not self.movie:
-            return []
-        try:
-            logger.debug(f"正在获取相似电影：{tmdbid}...")
-            return self.movie.similar(movie_id=tmdbid) or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    def get_tv_similar(self, tmdbid: int) -> List[dict]:
-        """
-        获取电视剧的相似电视剧
-        """
-        if not self.tv:
-            return []
-        try:
-            logger.debug(f"正在获取相似电视剧：{tmdbid}...")
-            return self.tv.similar(tv_id=tmdbid) or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    def get_movie_recommend(self, tmdbid: int) -> List[dict]:
-        """
-        获取电影的推荐电影
-        """
-        if not self.movie:
-            return []
-        try:
-            logger.debug(f"正在获取推荐电影：{tmdbid}...")
-            return self.movie.recommendations(movie_id=tmdbid) or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    def get_tv_recommend(self, tmdbid: int) -> List[dict]:
-        """
-        获取电视剧的推荐电视剧
-        """
-        if not self.tv:
-            return []
-        try:
-            logger.debug(f"正在获取推荐电视剧：{tmdbid}...")
-            return self.tv.recommendations(tv_id=tmdbid) or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    def get_movie_credits(self, tmdbid: int, page: Optional[int] = 1, count: Optional[int] = 24) -> List[dict]:
-        """
-        获取电影的演职员列表
-        """
-        if not self.movie:
-            return []
-        try:
-            logger.debug(f"正在获取电影演职人员：{tmdbid}...")
-            info = self.movie.credits(movie_id=tmdbid) or {}
-            cast = info.get('cast') or []
-            if cast:
-                return cast[(page - 1) * count: page * count]
-            return []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    def get_tv_credits(self, tmdbid: int, page: Optional[int] = 1, count: Optional[int] = 24) -> List[dict]:
-        """
-        获取电视剧的演职员列表
-        """
-        if not self.tv:
-            return []
-        try:
-            logger.debug(f"正在获取电视剧演职人员：{tmdbid}...")
-            info = self.tv.credits(tv_id=tmdbid) or {}
-            cast = info.get('cast') or []
-            if cast:
-                return cast[(page - 1) * count: page * count]
-            return []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
     def get_tv_group_seasons(self, group_id: str) -> List[dict]:
         """
         获取电视剧剧集组季集列表
@@ -1426,66 +1265,10 @@ class TmdbApi:
                 return group_season
         return {}
 
-    def get_person_detail(self, person_id: int) -> dict:
-        """
-        获取人物详情
-        {
-            "adult": false,
-            "also_known_as": [
-                "Michael Chen",
-                "Chen He",
-                "陈赫"
-            ],
-            "biography": "陈赫，xxx",
-            "birthday": "1985-11-09",
-            "deathday": null,
-            "gender": 2,
-            "homepage": "https://movie.douban.com/celebrity/1313841/",
-            "id": 1397016,
-            "imdb_id": "nm4369305",
-            "known_for_department": "Acting",
-            "name": "Chen He",
-            "place_of_birth": "Fuzhou，Fujian Province，China",
-            "popularity": 9.228,
-            "profile_path": "/2Bk39zVuoHUNHtpZ7LVg7OgkDd4.jpg"
-        }
-        """
-        if not self.person:
-            return {}
-        try:
-            logger.debug(f"正在获取人物详情：{person_id}...")
-            return self.person.details(person_id=person_id) or {}
-        except Exception as e:
-            logger.error(str(e))
-            return {}
-
-    def get_person_credits(self, person_id: int, page: Optional[int] = 1, count: Optional[int] = 24) -> List[dict]:
-        """
-        获取人物参演作品
-        """
-        if not self.person:
-            return []
-        try:
-            logger.debug(f"正在获取人物参演作品：{person_id}...")
-            movies = self.person.movie_credits(person_id=person_id) or {}
-            tvs = self.person.tv_credits(person_id=person_id) or {}
-            cast = (movies.get('cast') or []) + (tvs.get('cast') or [])
-            if cast:
-                # 按年份降序排列
-                cast = sorted(cast, key=lambda x: x.get('release_date') or x.get('first_air_date') or '1900-01-01',
-                              reverse=True)
-                return cast[(page - 1) * count: page * count]
-            return []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
     def clear_cache(self):
         """
         清除缓存
         """
-        self.discover.discover_movies.cache_clear()
-        self.discover.discover_tv_shows.cache_clear()
         self.tmdb.cache_clear()
 
     # 私有异步方法
@@ -1758,78 +1541,6 @@ class TmdbApi:
                 ret_infos.append(tv)
         return ret_infos
 
-    async def async_discover_movies(
-            self, params: dict, raise_exception: bool = False
-    ) -> List[dict]:
-        """
-        发现电影（异步版本）
-        """
-        if not params:
-            return []
-        try:
-            items = await self.discover.async_discover_movies(params_tuple=tuple(params.items())) or []
-            for item in items:
-                item['media_type'] = MediaType.MOVIE
-            return items
-        except Exception as e:
-            logger.error(f"获取电影发现失败：{str(e)}")
-            if raise_exception:
-                raise
-            return []
-
-    async def async_discover_tvs(
-            self, params: dict, raise_exception: bool = False
-    ) -> List[dict]:
-        """
-        发现电视剧（异步版本）
-        """
-        if not params:
-            return []
-        try:
-            items = await self.discover.async_discover_tv_shows(params_tuple=tuple(params.items())) or []
-            for item in items:
-                item['media_type'] = MediaType.TV
-            return items
-        except Exception as e:
-            logger.error(f"获取电视剧发现失败：{str(e)}")
-            if raise_exception:
-                raise
-            return []
-
-    async def async_search_persons(self, name: str) -> List[dict]:
-        """
-        查询模糊匹配的所有人物TMDB信息（异步版本）
-        """
-        if not name:
-            return []
-        return await self.search.async_people(term=name) or []
-
-    async def async_search_collections(self, name: str) -> List[dict]:
-        """
-        查询模糊匹配的所有合集TMDB信息（异步版本）
-        """
-        if not name:
-            return []
-        collections = await self.search.async_collections(term=name) or []
-        for collection in collections:
-            collection['media_type'] = MediaType.COLLECTION
-            collection['collection_id'] = collection.get("id")
-        return collections
-
-    async def async_get_collection(self, collection_id: int) -> List[dict]:
-        """
-        根据合集ID查询合集详情（异步版本）
-        """
-        if not collection_id:
-            return []
-        try:
-            return await self.collection.async_details(collection_id=collection_id)
-        except TMDbException as err:
-            logger.error(f"连接TMDB出错：{str(err)}")
-        except Exception as e:
-            logger.error(f"连接TMDB出错：{str(e)}")
-        return []
-
     async def async_match(self, name: str,
                           mtype: MediaType,
                           year: Optional[str] = None,
@@ -2072,93 +1783,6 @@ class TmdbApi:
             logger.error(str(e))
             return {}
 
-    async def async_get_movie_similar(self, tmdbid: int) -> List[dict]:
-        """
-        获取电影的相似电影（异步版本）
-        """
-        if not self.movie:
-            return []
-        try:
-            logger.debug(f"正在获取相似电影：{tmdbid}...")
-            return await self.movie.async_similar(movie_id=tmdbid) or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    async def async_get_tv_similar(self, tmdbid: int) -> List[dict]:
-        """
-        获取电视剧的相似电视剧（异步版本）
-        """
-        if not self.tv:
-            return []
-        try:
-            logger.debug(f"正在获取相似电视剧：{tmdbid}...")
-            return await self.tv.async_similar(tv_id=tmdbid) or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    async def async_get_movie_recommend(self, tmdbid: int) -> List[dict]:
-        """
-        获取电影的推荐电影（异步版本）
-        """
-        if not self.movie:
-            return []
-        try:
-            logger.debug(f"正在获取推荐电影：{tmdbid}...")
-            return await self.movie.async_recommendations(movie_id=tmdbid) or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    async def async_get_tv_recommend(self, tmdbid: int) -> List[dict]:
-        """
-        获取电视剧的推荐电视剧（异步版本）
-        """
-        if not self.tv:
-            return []
-        try:
-            logger.debug(f"正在获取推荐电视剧：{tmdbid}...")
-            return await self.tv.async_recommendations(tv_id=tmdbid) or []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    async def async_get_movie_credits(self, tmdbid: int,
-                                      page: Optional[int] = 1, count: Optional[int] = 24) -> List[dict]:
-        """
-        获取电影的演职员列表（异步版本）
-        """
-        if not self.movie:
-            return []
-        try:
-            logger.debug(f"正在获取电影演职人员：{tmdbid}...")
-            info = await self.movie.async_credits(movie_id=tmdbid) or {}
-            cast = info.get('cast') or []
-            if cast:
-                return cast[(page - 1) * count: page * count]
-            return []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
-    async def async_get_tv_credits(self, tmdbid: int, page: Optional[int] = 1, count: Optional[int] = 24) -> List[dict]:
-        """
-        获取电视剧的演职员列表（异步版本）
-        """
-        if not self.tv:
-            return []
-        try:
-            logger.debug(f"正在获取电视剧演职人员：{tmdbid}...")
-            info = await self.tv.async_credits(tv_id=tmdbid) or {}
-            cast = info.get('cast') or []
-            if cast:
-                return cast[(page - 1) * count: page * count]
-            return []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
     async def async_get_tv_group_seasons(self, group_id: str) -> List[dict]:
         """
         获取电视剧剧集组季集列表（异步版本）
@@ -2195,41 +1819,6 @@ class TmdbApi:
                 return group_season
         return {}
 
-    async def async_get_person_detail(self, person_id: int) -> dict:
-        """
-        获取人物详情（异步版本）
-        """
-        if not self.person:
-            return {}
-        try:
-            logger.debug(f"正在获取人物详情：{person_id}...")
-            return await self.person.async_details(person_id=person_id) or {}
-        except Exception as e:
-            logger.error(str(e))
-            return {}
-
-    async def async_get_person_credits(self, person_id: int,
-                                       page: Optional[int] = 1, count: Optional[int] = 24) -> List[dict]:
-        """
-        获取人物参演作品（异步版本）
-        """
-        if not self.person:
-            return []
-        try:
-            logger.debug(f"正在获取人物参演作品：{person_id}...")
-            movies = await self.person.async_movie_credits(person_id=person_id) or {}
-            tvs = await self.person.async_tv_credits(person_id=person_id) or {}
-            cast = (movies.get('cast') or []) + (tvs.get('cast') or [])
-            if cast:
-                # 按年份降序排列
-                cast = sorted(cast, key=lambda x: x.get('release_date') or x.get('first_air_date') or '1900-01-01',
-                              reverse=True)
-                return cast[(page - 1) * count: page * count]
-            return []
-        except Exception as e:
-            logger.error(str(e))
-            return []
-
     def close(self):
         """
         关闭连接
@@ -2241,10 +1830,7 @@ class TmdbApi:
             self.tv,
             self.season_obj,
             self.episode_obj,
-            self.discover,
             self.trending,
-            self.person,
-            self.collection,
         ):
             if client:
                 client.close()

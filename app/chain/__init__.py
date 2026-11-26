@@ -32,7 +32,6 @@ from app.schemas import (
     Notification,
     WebhookEventInfo,
     TmdbEpisode,
-    MediaPerson,
     FileItem,
     TransferDirectoryConf,
     MessageResponse,
@@ -225,7 +224,6 @@ class ChainBase(metaclass=ABCMeta):
             return all(value is None for value in ret)
         else:
             return ret is None
-
 
     def __handle_system_error(
             self, err: Exception, module_id: str, module_name: str, method: str, **kwargs
@@ -758,55 +756,6 @@ class ChainBase(metaclass=ABCMeta):
             "async_search_medias", meta=meta, source=source
         )
 
-    def search_persons(
-        self, name: str, source: Optional[str] = None
-    ) -> Optional[List[MediaPerson]]:
-        """
-        搜索人物信息
-        :param name:  人物名称
-        :param source: 请求级搜索数据源
-        :return: 人物信息列表
-        """
-        return self.run_module("search_persons", name=name, source=source)
-
-    async def async_search_persons(
-        self, name: str, source: Optional[str] = None
-    ) -> Optional[List[MediaPerson]]:
-        """
-        搜索人物信息（异步版本）
-        :param name:  人物名称
-        :param source: 请求级搜索数据源
-        :return: 人物信息列表
-        """
-        return await self.async_run_module(
-            "async_search_persons", name=name, source=source
-        )
-
-    def search_collections(
-        self, name: str, source: Optional[str] = None
-    ) -> Optional[List[MediaInfo]]:
-        """
-        搜索集合信息
-        :param name:  集合名称
-        :param source: 请求级搜索数据源
-        :return: 合集信息列表
-        """
-        return self.run_module("search_collections", name=name, source=source)
-
-    async def async_search_collections(
-        self, name: str, source: Optional[str] = None
-    ) -> Optional[List[MediaInfo]]:
-        """
-        搜索集合信息（异步版本）
-        :param name:  集合名称
-        :param source: 请求级搜索数据源
-        :return: 合集信息列表
-        """
-        return await self.async_run_module(
-            "async_search_collections", name=name, source=source
-        )
-
-
     def list_torrents(
             self,
             status: TorrentStatus = None,
@@ -907,7 +856,6 @@ class ChainBase(metaclass=ABCMeta):
             delete_file=delete_file,
             downloader=downloader,
         )
-
 
     def stop_torrents(
             self, hashs: Union[list, str], downloader: Optional[str] = None

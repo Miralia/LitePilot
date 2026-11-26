@@ -128,7 +128,7 @@
 |---|---|
 | AniList 集成 | 模块、链、接口、`anilist_info`/`anilist_id` 字段、三表列（含迁移 `c3a7f1e9d8b4`）、前端来源与文案 |
 | 未引用模块 | `helper/{nfo,notification,twofa,downloader,rss,package}.py`、`core/auth.py`、`chain/{tvdb,douban,bangumi}.py`、`schemas/{download,monitoring}.py`、`utils/{debounce,web}.py` |
-| 无调用接口 | douban/bangumi 全部浏览接口、tmdb 的 seasons/similar/recommend/collection/credits/person |
+| 无调用接口 | douban/bangumi 浏览、推荐、人物详情接口，tmdb 的 discover/similar/recommend/collection/credits/person 与非媒体搜索 |
 | 枚举与配置 | 11 个无事件的事件类型、9 个无引用的 `SystemConfigKey`、62 个前后端均无引用的 `ConfigModel` 字段 |
 | CLI | 依赖已删 MCP 的 `tool` 命令组；`scheduler` 改为走现存 HTTP 接口 |
 | 功能收敛 | doctor 去掉插件日志分流、安装向导收敛为 qBittorrent + Emby、消息渠道去掉 WebAgent |

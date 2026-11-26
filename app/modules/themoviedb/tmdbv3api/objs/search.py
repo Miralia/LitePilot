@@ -8,53 +8,10 @@ except ImportError:
 
 class Search(TMDb):
     _urls = {
-        "companies": "/search/company",
-        "collections": "/search/collection",
-        "keywords": "/search/keyword",
         "movies": "/search/movie",
         "multi": "/search/multi",
-        "people": "/search/person",
         "tv_shows": "/search/tv",
     }
-
-    def companies(self, term, page=1):
-        """
-        Search for companies.
-        :param term: str
-        :param page: int
-        :return:
-        """
-        return self._request_obj(
-            self._urls["companies"],
-            params="query=%s&page=%s" % (quote(term), page),
-            key="results"
-        )
-
-    def collections(self, term, page=1):
-        """
-        Search for collections.
-        :param term: str
-        :param page: int
-        :return:
-        """
-        return self._request_obj(
-            self._urls["collections"],
-            params="query=%s&page=%s" % (quote(term), page),
-            key="results"
-        )
-
-    def keywords(self, term, page=1):
-        """
-        Search for keywords.
-        :param term: str
-        :param page: int
-        :return:
-        """
-        return self._request_obj(
-            self._urls["keywords"],
-            params="query=%s&page=%s" % (quote(term), page),
-            key="results"
-        )
 
     def movies(self, term, adult=None, region=None, year=None, release_year=None, page=1):
         """
@@ -103,26 +60,6 @@ class Search(TMDb):
             key="results"
         )
 
-    def people(self, term, adult=None, region=None, page=1):
-        """
-        Search for people.
-        :param term: str
-        :param adult: bool
-        :param region: str
-        :param page: int
-        :return:
-        """
-        params = "query=%s&page=%s" % (quote(term), page)
-        if adult is not None:
-            params += "&include_adult=%s" % "true" if adult else "false"
-        if region is not None:
-            params += "&region=%s" % quote(region)
-        return self._request_obj(
-            self._urls["people"],
-            params=params,
-            key="results"
-        )
-
     def tv_shows(self, term, adult=None, release_year=None, page=1):
         """
         Search for a TV show.
@@ -144,64 +81,6 @@ class Search(TMDb):
         )
 
     # 异步版本方法
-    async def async_companies(self, term, page=1):
-        """
-        Search for companies.（异步版本）
-        :param term: str
-        :param page: int
-        :return:
-        """
-        return await self._async_request_obj(
-            self._urls["companies"],
-            params="query=%s&page=%s" % (quote(term), page),
-            key="results"
-        )
-
-    async def async_collections(self, term, page=1):
-        """
-        Search for collections.（异步版本）
-        :param term: str
-        :param page: int
-        :return:
-        """
-        return await self._async_request_obj(
-            self._urls["collections"],
-            params="query=%s&page=%s" % (quote(term), page),
-            key="results"
-        )
-
-    async def async_keywords(self, term, page=1):
-        """
-        Search for keywords.（异步版本）
-        :param term: str
-        :param page: int
-        :return:
-        """
-        return await self._async_request_obj(
-            self._urls["keywords"],
-            params="query=%s&page=%s" % (quote(term), page),
-            key="results"
-        )
-
-    async def async_people(self, term, adult=None, region=None, page=1):
-        """
-        Search for people.（异步版本）
-        :param term: str
-        :param adult: bool
-        :param region: str
-        :param page: int
-        :return:
-        """
-        params = "query=%s&page=%s" % (quote(term), page)
-        if adult is not None:
-            params += "&include_adult=%s" % "true" if adult else "false"
-        if region is not None:
-            params += "&region=%s" % quote(region)
-        return await self._async_request_obj(
-            self._urls["people"],
-            params=params,
-            key="results"
-        )
 
     async def async_multi(self, term, adult=None, region=None, page=1):
         """
