@@ -1,3 +1,5 @@
+import io
+import json
 import pickle
 import traceback
 from math import ceil
@@ -12,9 +14,48 @@ from app.schemas.types import MediaType
 from app.utils.singleton import WeakSingleton
 
 lock = RLock()
-PERSISTENCE_VERSION = 1
+PERSISTENCE_VERSION = 2
 PERSISTENCE_REGION = "recognize"
 PERSISTENCE_KEY = "tmdb"
+
+
+class _RestrictedUnpickler(pickle.Unpickler):
+    """只允许还原旧版 TMDB 缓存所需的 MediaType 枚举。"""
+
+    def find_class(self, module: str, name: str):
+        """拒绝除 MediaType 之外的一切全局对象引用。"""
+        if module == MediaType.__module__ and name == MediaType.__name__:
+            return MediaType
+        raise pickle.UnpicklingError(f"禁止反序列化对象：{module}.{name}")
+
+
+def _load_persisted_payload(content: bytes) -> tuple[object, bool]:
+    """读取新版 JSON 缓存，或以受限方式兼容旧版 pickle 缓存。"""
+    try:
+        return json.loads(content.decode("utf-8")), False
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return _RestrictedUnpickler(io.BytesIO(content)).load(), True
+
+
+def _json_cache_value(value: dict) -> dict:
+    """将缓存值转换为 JSON 可持久化结构。"""
+    normalized = dict(value)
+    media_type = normalized.get("type")
+    if isinstance(media_type, MediaType):
+        normalized["type"] = media_type.value
+    return normalized
+
+
+def _runtime_cache_value(value: dict) -> dict:
+    """将持久化缓存值恢复为识别链需要的运行时结构。"""
+    normalized = dict(value)
+    media_type = normalized.get("type")
+    if media_type is not None and not isinstance(media_type, MediaType):
+        try:
+            normalized["type"] = MediaType(media_type)
+        except (TypeError, ValueError):
+            pass
+    return normalized
 
 
 class TmdbCache(metaclass=WeakSingleton):
@@ -57,11 +98,13 @@ class TmdbCache(metaclass=WeakSingleton):
                     self._dirty = True
             if not content:
                 return
-            payload = pickle.loads(content)
+            payload, migrated_from_pickle = _load_persisted_payload(content)
+            if migrated_from_pickle:
+                self._dirty = True
             now = time()
             if (
                     isinstance(payload, dict)
-                    and payload.get("version") == PERSISTENCE_VERSION
+                    and payload.get("version") in (1, PERSISTENCE_VERSION)
                     and isinstance(payload.get("items"), dict)
             ):
                 items = payload["items"]
@@ -84,6 +127,7 @@ class TmdbCache(metaclass=WeakSingleton):
                 if not isinstance(value, dict) or not isinstance(expires_at, (int, float)):
                     self._dirty = True
                     continue
+                value = _runtime_cache_value(value)
                 remaining_ttl = expires_at - now
                 if remaining_ttl <= 0:
                     self._dirty = True
@@ -244,7 +288,7 @@ class TmdbCache(metaclass=WeakSingleton):
                 if expires_at <= now or not value.get("id"):
                     continue
                 persisted_items[key] = {
-                    "value": value,
+                    "value": _json_cache_value(value),
                     "expires_at": expires_at,
                 }
 
@@ -259,7 +303,11 @@ class TmdbCache(metaclass=WeakSingleton):
                     }
                     self._file_cache.set(
                         PERSISTENCE_KEY,
-                        pickle.dumps(payload, pickle.HIGHEST_PROTOCOL),
+                        json.dumps(
+                            payload,
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ).encode("utf-8"),
                         region=PERSISTENCE_REGION,
                     )
                 else:

@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import json
 import pickle
 from unittest.mock import Mock
 
@@ -209,7 +210,7 @@ def test_tmdb_cache_persists_individual_expiration_with_file_cache(monkeypatch):
 
     cache.save()
 
-    payload = pickle.loads(file_cache.content)
+    payload = json.loads(file_cache.content.decode("utf-8"))
     assert file_cache.set_calls == [(
         tmdb_cache_module.PERSISTENCE_KEY,
         tmdb_cache_module.PERSISTENCE_REGION,
@@ -265,6 +266,97 @@ def test_tmdb_cache_migrates_legacy_file_to_global_file_cache(monkeypatch):
         cache.region,
         tmdb_cache_module.settings.TEMP_PATH.name,
     )]
+
+
+def test_tmdb_cache_persists_json_payload_with_json_compatible_media_type(monkeypatch):
+    """TMDB 识别缓存新格式必须使用 JSON，不再写入 pickle 字节流。"""
+    file_cache = _FileCacheStub()
+    runtime_cache = _TTLCacheStub()
+    cache = _build_initialized_tmdb_cache(
+        monkeypatch=monkeypatch,
+        file_cache=file_cache,
+        runtime_cache=runtime_cache,
+    )
+    runtime_cache.data = {
+        "recognized": {
+            "id": 1,
+            "type": MediaType.MOVIE,
+            "title": "有效",
+            "year": "2024",
+        }
+    }
+    cache._expires_at = {"recognized": 1060}
+    cache._dirty = True
+
+    cache.save()
+
+    payload = json.loads(file_cache.content.decode("utf-8"))
+    assert payload == {
+        "version": tmdb_cache_module.PERSISTENCE_VERSION,
+        "items": {
+            "recognized": {
+                "value": {
+                    "id": 1,
+                    "type": MediaType.MOVIE.value,
+                    "title": "有效",
+                    "year": "2024",
+                },
+                "expires_at": 1060,
+            }
+        },
+    }
+
+
+def test_tmdb_cache_restores_json_media_type_as_enum(monkeypatch):
+    """JSON 持久化格式恢复后仍应向识别链传入 MediaType 枚举。"""
+    payload = {
+        "version": tmdb_cache_module.PERSISTENCE_VERSION,
+        "items": {
+            "fresh": {
+                "value": {
+                    "id": 1,
+                    "type": MediaType.TV.value,
+                    "title": "有效",
+                },
+                "expires_at": 1030,
+            }
+        },
+    }
+    file_cache = _FileCacheStub(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+    runtime_cache = _TTLCacheStub()
+
+    cache = _build_initialized_tmdb_cache(
+        monkeypatch=monkeypatch,
+        file_cache=file_cache,
+        runtime_cache=runtime_cache,
+    )
+
+    assert runtime_cache.data["fresh"]["type"] is MediaType.TV
+    assert cache._dirty is False
+
+
+def test_tmdb_cache_legacy_pickle_migration_cannot_execute_payload(monkeypatch, tmp_path):
+    """旧 pickle 缓存只能迁移白名单数据结构，不得执行其中嵌入的恶意 reduce。"""
+    marker = tmp_path / "pickle-executed"
+
+    class EvilPayload:
+        """构造仅在反序列化执行时才会创建标记文件的测试 payload。"""
+
+        def __reduce__(self):
+            import os
+            return os.system, (f"touch {marker}",)
+
+    file_cache = _FileCacheStub(pickle.dumps({"evil": EvilPayload()}))
+    runtime_cache = _TTLCacheStub()
+
+    _build_initialized_tmdb_cache(
+        monkeypatch=monkeypatch,
+        file_cache=file_cache,
+        runtime_cache=runtime_cache,
+    )
+
+    assert not marker.exists()
+    assert runtime_cache.data == {}
 
 
 def test_tmdb_cache_endpoint_returns_management_statistics(monkeypatch):
