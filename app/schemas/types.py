@@ -137,8 +137,6 @@ class SystemConfigKey(Enum):
 
 # 处理进度Key字典
 class ProgressKey(Enum):
-    # 搜索
-    Search = "search"
     # 整理
     FileTransfer = "filetransfer"
     # 批量重命名
