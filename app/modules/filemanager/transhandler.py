@@ -1075,18 +1075,18 @@ class TransHandler:
         season = meta.season
         episode = meta.episode
         part = meta.part
-        logger.warning(f"正在删除目标目录中其它版本的文件：{path.parent}")
-        # 获取父目录
+        # 获取父目录。新入库时目标季目录通常尚不存在，这不是异常。
         parent_item = storage_oper.get_item(path.parent)
         if not parent_item:
-            logger.warning(f"目录 {path.parent} 不存在")
+            logger.debug(f"目录 {path.parent} 不存在，无需清理其它版本")
             return False
         # 检索媒体文件
         media_files = storage_oper.list(parent_item)
         if not media_files:
             logger.info(f"目录 {path.parent} 中没有文件")
             return False
-        # 删除文件
+        # 删除文件。只有确认存在候选后才输出高级别审计日志，避免批量新入库刷出误报。
+        cleanup_warning_written = False
         for media_file in media_files:
             media_path = Path(media_file.path)
             if media_path == path:
@@ -1104,6 +1104,9 @@ class TransHandler:
             # 相同 Part 的文件才删除，避免误删多 Part 文件 (issue #5862)
             if part and filemeta.part and filemeta.part != part:
                 continue
+            if not cleanup_warning_written:
+                logger.warning(f"正在删除目标目录中其它版本的文件：{path.parent}")
+                cleanup_warning_written = True
             logger.info(f"正在删除文件：{media_file.name}")
             storage_oper.delete(media_file)
         return True
