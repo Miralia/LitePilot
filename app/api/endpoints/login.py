@@ -80,17 +80,6 @@ def login_access_token(
     )
 
 
-@router.get("/wallpaper", summary="登录页面电影海报", response_model=schemas.Response)
-def wallpaper() -> Any:
-    """
-    获取登录页面电影海报
-    """
-    url = WallpaperHelper().get_wallpaper()
-    if url:
-        return schemas.Response(success=True, data=url)
-    return schemas.Response(success=False)
-
-
 @router.get("/wallpapers", summary="登录页面电影海报列表", response_model=List[str])
 def wallpapers() -> Any:
     """

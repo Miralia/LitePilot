@@ -1,4 +1,3 @@
-import random
 from typing import Optional, List
 
 from app import schemas
@@ -41,19 +40,6 @@ class TmdbChain(ChainBase):
         :return: TMDB信息列表
         """
         return self.run_module("tmdb_trending", page=page)
-
-    def get_random_wallpaper(self) -> Optional[str]:
-        """
-        获取随机壁纸，缓存1个小时
-        """
-        infos = self.tmdb_trending()
-        if infos:
-            # 随机一个电影
-            while True:
-                info = random.choice(infos)
-                if info and info.backdrop_path:
-                    return info.backdrop_path
-        return None
 
     def get_trending_wallpapers(self, num: Optional[int] = 10) -> List[str]:
         """

@@ -20,20 +20,6 @@ class WallpaperHelper(metaclass=Singleton):
     壁纸帮助类
     """
 
-    def get_wallpaper(self) -> Optional[str]:
-        """
-        获取登录页面壁纸
-        """
-        if settings.WALLPAPER == "bing":
-            return self.get_bing_wallpaper()
-        elif settings.WALLPAPER == "mediaserver":
-            return self.get_mediaserver_wallpaper()
-        elif settings.WALLPAPER == "customize":
-            return self.get_customize_wallpaper()
-        elif settings.WALLPAPER == "tmdb":
-            return self.get_tmdb_wallpaper()
-        return ''
-
     def get_wallpapers(self, num: int = 10) -> List[str]:
         """
         获取登录页面壁纸列表
@@ -48,36 +34,12 @@ class WallpaperHelper(metaclass=Singleton):
             return self.get_tmdb_wallpapers(num)
         return []
 
-    @cached(maxsize=1, ttl=3600)
-    def get_tmdb_wallpaper(self) -> Optional[str]:
-        """
-        获取TMDB每日壁纸
-        """
-        return TmdbChain().get_random_wallpaper()
-
     @cached(maxsize=1, ttl=3600, skip_empty=True)
     def get_tmdb_wallpapers(self, num: int = 10) -> List[str]:
         """
         获取7天的TMDB每日壁纸
         """
         return TmdbChain().get_trending_wallpapers(num)
-
-    @cached(maxsize=1, ttl=3600)
-    def get_bing_wallpaper(self) -> Optional[str]:
-        """
-        获取Bing每日壁纸
-        """
-        url = "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1"
-        resp = RequestUtils(timeout=5).get_res(url)
-        if resp and resp.status_code == 200:
-            try:
-                result = resp.json()
-                if isinstance(result, dict):
-                    for image in result.get('images') or []:
-                        return f"https://cn.bing.com{image.get('url')}" if 'url' in image else ''
-            except Exception as err:
-                logger.warning(f"解析Bing每日壁纸响应失败：{err}")
-        return None
 
     @cached(maxsize=1, ttl=3600, skip_empty=True)
     def get_bing_wallpapers(self, num: int = 7) -> List[str]:
@@ -95,29 +57,12 @@ class WallpaperHelper(metaclass=Singleton):
                 logger.warning(f"解析Bing壁纸列表响应失败：{err}")
         return []
 
-    @cached(maxsize=1, ttl=3600)
-    def get_mediaserver_wallpaper(self) -> Optional[str]:
-        """
-        获取媒体服务器壁纸
-        """
-        return MediaServerChain().get_latest_wallpaper()
-
     @cached(maxsize=1, ttl=3600, skip_empty=True)
     def get_mediaserver_wallpapers(self, num: int = 10) -> List[str]:
         """
         获取媒体服务器壁纸列表
         """
         return MediaServerChain().get_latest_wallpapers(count=num)
-
-    @cached(maxsize=1, ttl=3600)
-    def get_customize_wallpaper(self) -> Optional[str]:
-        """
-        获取自定义壁纸api壁纸
-        """
-        wallpaper_list = self.get_customize_wallpapers()
-        if wallpaper_list:
-            return wallpaper_list[0]
-        return None
 
     @cached(maxsize=1, ttl=3600, skip_empty=True)
     def get_customize_wallpapers(self) -> List[str]:
