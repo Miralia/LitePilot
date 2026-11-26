@@ -64,6 +64,7 @@ def test_season_delete_removes_torrent_once(monkeypatch) -> None:
     chain.downloadhis.get_files_by_hash.return_value = []
     chain._cleanup_residual_source = MagicMock()
     chain._torrent_exists = MagicMock(return_value=True)
+    chain._obtain_notify_image = MagicMock(return_value=None)
     # 下载器仍报告全部 12 个文件（元数据未变），但磁盘上已全部不存在
     chain.list_torrents = MagicMock(
         return_value=[_FakeTorrent(TORRENT_HASH, "/dl/Sayonara.Lara.S01")]
