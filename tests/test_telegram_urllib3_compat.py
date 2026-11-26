@@ -110,3 +110,12 @@ def test_telegram_module_imports_when_urllib3_header_alias_missing(monkeypatch):
 
     assert telegram_module.Telegram
     assert hasattr(fields, "format_header_param")
+
+
+def test_startup_lifecycle_does_not_duplicate_urllib3_compat_patch():
+    """urllib3 兼容只在 Telegram 模块导入边界执行一次，启动层不保留重复 monkeypatch。"""
+    import inspect
+
+    from app.startup import lifecycle
+
+    assert "format_header_param" not in inspect.getsource(lifecycle)

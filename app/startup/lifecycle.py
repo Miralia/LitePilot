@@ -5,19 +5,6 @@ from typing import Callable
 
 from fastapi import FastAPI
 
-# urllib3-future 覆盖 urllib3 命名空间后删除了 format_header_param，导致 telebot 崩溃，需在加载模块前打补丁
-try:
-    import urllib3.fields as _urllib3_fields
-
-    if not hasattr(_urllib3_fields, "format_header_param") and hasattr(
-        _urllib3_fields, "format_header_param_rfc2231"
-    ):
-        _urllib3_fields.format_header_param = (
-            _urllib3_fields.format_header_param_rfc2231
-        )
-except Exception:
-    pass
-
 from app.chain.system import SystemChain
 from app.core.config import global_vars, settings
 from app.log import logger, LoggerManager
