@@ -53,9 +53,10 @@ jobs:
         run: |
           # tests/run.py 以 pytest 跑 tests 全量；tests/conftest.py 在收集前把 CONFIG_DIR
           # 指向临时库并建表；CI 额外生成覆盖率报告，便于后续补测和回归分析。
+          set -o pipefail
           python -m coverage erase
-          python -m coverage run tests/run.py
-          python -m coverage report
+          python -m coverage run tests/run.py 2>&1 | tee pytest-output.log
+          python -m coverage report 2>&1 | tee coverage-report.txt
           python -m coverage json
           python -m coverage xml
 
@@ -65,6 +66,8 @@ jobs:
         with:
           name: coverage-report
           path: |
+            pytest-output.log
+            coverage-report.txt
             coverage.xml
             coverage.json
           retention-days: 7
