@@ -777,3 +777,55 @@ def test_process_image_warning_redacts_sensitive_url_params(telegram, monkeypatc
     assert warnings
     assert "secret-key" not in warnings[0]
     assert "api_key=<redacted>" in warnings[0]
+
+
+def test_register_commands_uses_consistent_bot_reference_during_stop_race():
+    """停止线程并发清空 _bot 时，命令注册不得在两次属性读取之间崩溃。"""
+    class FakeBot:
+        def __init__(self):
+            self.deleted = False
+            self.commands = None
+
+        def delete_my_commands(self):
+            self.deleted = True
+
+        def set_my_commands(self, commands):
+            self.commands = commands
+
+    fake_bot = FakeBot()
+
+    class RacingTelegram(Telegram):
+        _bot_reads = 0
+
+        @property
+        def _bot(self):  # pylint: disable=invalid-name
+            type(self)._bot_reads += 1
+            return fake_bot if type(self)._bot_reads == 1 else None
+
+        @_bot.setter
+        def _bot(self, _value):  # pylint: disable=invalid-name
+            pass
+
+    client = object.__new__(RacingTelegram)
+    client._bot_reads = 0
+
+    client.register_commands({"/version": {"description": "版本"}})
+
+    assert fake_bot.deleted
+    assert fake_bot.commands
+
+
+def test_answer_callback_error_log_redacts_bot_token(telegram, monkeypatch):
+    """Telegram API 网络异常日志不得泄露 bot token。"""
+    errors = []
+    monkeypatch.setattr("app.modules.telegram.telegram.logger.error", errors.append)
+    telegram.bot.answer_callback_query.side_effect = Exception(
+        "Max retries exceeded with url: /bot123456789:abcDEF-secret_token/answerCallbackQuery"
+    )
+
+    result = telegram.answer_callback_query(1, "ok")
+
+    assert result is False
+    assert errors
+    assert "abcDEF-secret_token" not in errors[0]
+    assert "/bot<redacted>/answerCallbackQuery" in errors[0]

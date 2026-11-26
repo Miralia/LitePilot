@@ -834,3 +834,17 @@ def test_redact_sensitive_url_params_masks_embedded_credentials():
     assert "access_token=<redacted>" in redacted
     assert "tag=abc" in redacted
     assert "safe=1" in redacted
+
+
+def test_redact_sensitive_url_params_masks_telegram_bot_token_path():
+    """requests 异常中的 Telegram bot token 路径必须脱敏。"""
+    message = (
+        "HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded "
+        "with url: /bot123456789:abcDEF-secret_token/getUpdates?timeout=3"
+    )
+
+    redacted = SecurityUtils.redact_sensitive_url_params(message)
+
+    assert "abcDEF-secret_token" not in redacted
+    assert "/bot<redacted>/getUpdates" in redacted
+    assert "timeout=3" in redacted

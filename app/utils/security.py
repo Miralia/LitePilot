@@ -107,6 +107,10 @@ class SecurityUtils:
         r"""([?&#](?:api[_-]?key|token|access[_-]?token|auth[_-]?token|password|passwd|secret|signature|sig|mp_sig|key)=)[^\s&#,;\)\]\}"']+""",
         re.IGNORECASE,
     )
+    _TELEGRAM_BOT_TOKEN_PATH_PATTERN = re.compile(
+        r"(/bot)\d+:[A-Za-z0-9_-]{8,}",
+        re.IGNORECASE,
+    )
 
     @staticmethod
     def is_safe_path(base_path: Path, user_path: Path,
@@ -762,14 +766,18 @@ class SecurityUtils:
     @staticmethod
     def redact_sensitive_url_params(value: str) -> str:
         """
-        脱敏文本中 URL query 或签名片段里的常见凭据参数。
+        脱敏文本中 URL query、签名片段或 Telegram bot 路径里的常见凭据。
 
         请求异常通常把完整 URL 拼进异常消息；日志只需要保留主机、路径和普通
         参数用于诊断，不能保留可重放的 API key、token 或签名。
         """
-        return SecurityUtils._SENSITIVE_URL_QUERY_PATTERN.sub(
+        redacted = SecurityUtils._SENSITIVE_URL_QUERY_PATTERN.sub(
             lambda match: f"{match.group(1)}<redacted>",
             value or "",
+        )
+        return SecurityUtils._TELEGRAM_BOT_TOKEN_PATH_PATTERN.sub(
+            r"\1<redacted>",
+            redacted,
         )
 
     @staticmethod

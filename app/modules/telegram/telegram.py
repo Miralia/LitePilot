@@ -59,6 +59,11 @@ _TELEGRAM_CONNECT_TIMEOUT_SECONDS = 5
 apihelper.CONNECT_TIMEOUT = _TELEGRAM_CONNECT_TIMEOUT_SECONDS
 
 
+def _redacted_error_message(error: BaseException) -> str:
+    """生成不携带 Telegram bot token 或 URL query 凭据的异常文本。"""
+    return SecurityUtils.redact_sensitive_url_params(str(error))
+
+
 class Telegram:
     """
     Telegram 消息客户端，负责发送、接收和转发 Telegram 消息。
@@ -189,7 +194,7 @@ class Telegram:
                     self._dispatch_channel_message(callback_json)
 
                 except Exception as err:
-                    logger.error(f"处理按钮回调失败：{str(err)}")
+                    logger.error(f"处理按钮回调失败：{_redacted_error_message(err)}")
                     _bot.answer_callback_query(call.id, "处理失败，请重试")
 
             def run_polling():
@@ -203,7 +208,7 @@ class Telegram:
                         logger_level=None,
                     )
                 except Exception as err:
-                    logger.error(f"Telegram消息接收服务异常：{str(err)}")
+                    logger.error(f"Telegram消息接收服务异常：{_redacted_error_message(err)}")
 
             def bootstrap_polling():
                 """先完成 bot 元数据探测，再按原生命周期启动长轮询。"""
@@ -214,7 +219,7 @@ class Telegram:
                     self._bot_username = bot_info.username
                     logger.info(f"Telegram bot用户名: @{self._bot_username}")
                 except Exception as err:
-                    logger.error(f"获取bot信息失败: {err}")
+                    logger.error(f"获取bot信息失败: {_redacted_error_message(err)}")
                     self._bot_username = None
 
                 # getMe 首次连接可能达到已收紧的 connect timeout。若在等待期间
@@ -346,7 +351,7 @@ class Telegram:
                 payload = json.loads(payload)
             return payload if isinstance(payload, dict) else None
         except Exception as e:
-            logger.error(f"序列化Telegram消息失败: {e}")
+            logger.error(f"序列化Telegram消息失败: {_redacted_error_message(e)}")
             return None
 
     def _update_user_chat_mapping(
@@ -474,7 +479,7 @@ class Telegram:
                         if self._bot:
                             self._bot.send_chat_action(chat_id, "typing")
                     except Exception as e:
-                        logger.debug(f"发送typing状态失败: {e}")
+                        logger.debug(f"发送typing状态失败: {_redacted_error_message(e)}")
                     # Telegram 客户端约 5-6 秒后会隐藏 typing，需要周期性续发。
                     stop_event.wait(self._typing_interval_seconds)
             finally:
@@ -606,7 +611,7 @@ class Telegram:
             return {"success": False}
 
         except Exception as msg_e:
-            logger.error(f"发送消息失败：{msg_e}")
+            logger.error(f"发送消息失败：{_redacted_error_message(msg_e)}")
             return {"success": False}
 
     def _determine_target_chat_id(self, userid: Optional[str] = None) -> str:
@@ -664,7 +669,7 @@ class Telegram:
             )
             return True
         except Exception as e:
-            logger.error(f"回应回调查询失败：{str(e)}")
+            logger.error(f"回应回调查询失败：{_redacted_error_message(e)}")
             return False
 
     def __send_request(
@@ -695,7 +700,7 @@ class Telegram:
             sent_idx = set()
             return self.__send_long_message(image, caption, sent_idx, **kwargs)
         except Exception as e:
-            logger.error(f"发送Telegram消息失败: {e}")
+            logger.error(f"发送Telegram消息失败: {_redacted_error_message(e)}")
             return None
 
     @staticmethod
@@ -815,12 +820,13 @@ class Telegram:
         """
         注册菜单命令
         """
-        if not self._bot:
+        bot = self._bot
+        if not bot:
             return
-        # 设置bot命令
+        # 设置bot命令；先捕获引用，避免停止流程在两次属性读取之间清空 _bot。
         if commands:
-            self._bot.delete_my_commands()
-            self._bot.set_my_commands(
+            bot.delete_my_commands()
+            bot.set_my_commands(
                 commands=[
                     BotCommand(cmd[1:], str(desc.get("description")))
                     for cmd, desc in commands.items()
@@ -831,10 +837,11 @@ class Telegram:
         """
         清理菜单命令
         """
-        if not self._bot:
+        bot = self._bot
+        if not bot:
             return
-        # 清理菜单命令
-        self._bot.delete_my_commands()
+        # 清理菜单命令；同样使用单次捕获，避免停止竞态读到 None。
+        bot.delete_my_commands()
 
     def stop(self) -> None:
         """
