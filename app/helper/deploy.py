@@ -49,6 +49,7 @@ NGINX_SITE_TEMPLATE = """\
 location ~ ^{prefix_regex}api/v1/system/(message$|progress/|logging$) {{
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     default_type text/event-stream;
     add_header Cache-Control "no-cache, no-transform";
     add_header X-Accel-Buffering no;
@@ -72,6 +73,7 @@ location ~ ^{prefix_regex}api/v1/system/(message$|progress/|logging$) {{
 location {prefix}api/ {{
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     # API query 可能携带 token；外层访问日志关闭，后端访问日志已脱敏。
     access_log off;
     proxy_pass http://127.0.0.1:{backend_port}/api/;
@@ -89,6 +91,7 @@ location {prefix}api/ {{
 location = {prefix}index.html {{
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     alias {public_dir}/index.html;
     add_header Cache-Control "no-cache, must-revalidate";
 }}
@@ -96,6 +99,7 @@ location = {prefix}index.html {{
 location = {prefix}service-worker.js {{
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     alias {public_dir}/service-worker.js;
     add_header Cache-Control "no-cache, must-revalidate";
 }}
@@ -103,6 +107,7 @@ location = {prefix}service-worker.js {{
 location = {prefix}manifest.webmanifest {{
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     alias {public_dir}/manifest.webmanifest;
     default_type application/manifest+json;
     add_header Cache-Control "no-cache, must-revalidate";
@@ -111,6 +116,7 @@ location = {prefix}manifest.webmanifest {{
 location = {prefix}version.txt {{
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     alias {public_dir}/version.txt;
     default_type text/plain;
     add_header Cache-Control "no-cache, must-revalidate";
@@ -120,6 +126,7 @@ location = {prefix}version.txt {{
 location {prefix}assets/ {{
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     alias {public_dir}/assets/;
     add_header Cache-Control "public, max-age=31536000, immutable";
 }}
@@ -127,6 +134,7 @@ location {prefix}assets/ {{
 location {prefix} {{
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     alias {public_dir}/;
     try_files $uri $uri/ {prefix}index.html;
 }}

@@ -90,3 +90,4 @@ def test_render_nginx_site_adds_baseline_security_headers_to_every_leaf_location
 
     assert text.count("add_header X-Content-Type-Options nosniff always;") == 8
     assert text.count('add_header Referrer-Policy "strict-origin-when-cross-origin" always;') == 8
+    assert text.count('add_header Strict-Transport-Security "max-age=31536000" always;') == 8

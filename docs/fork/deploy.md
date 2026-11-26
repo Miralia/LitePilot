@@ -50,12 +50,14 @@ CONFIG_DIR=/var/lib/moviepilot ./moviepilot start
 location /mp/ {
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     alias /opt/moviepilot/public/;
     try_files $uri $uri/ /mp/index.html;
 }
 location /mp/api/ {
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     # API query 可能携带 token；外层访问日志关闭，后端访问日志已脱敏。
     access_log off;
     proxy_pass http://127.0.0.1:3001/api/;
@@ -70,6 +72,7 @@ location /mp/api/ {
 location ~ ^/mp/api/v1/system/(message$|progress/|logging$) {
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     rewrite ^/mp/api/(.*)$ /api/$1 break;
     proxy_pass http://127.0.0.1:3001;
     proxy_http_version 1.1;
