@@ -34,6 +34,7 @@ from app.helper.thread import ThreadHelper  # noqa: E402
 from app.log import logger  # noqa: E402
 from app.schemas.types import EventType  # noqa: E402
 from app.utils.common import retry  # noqa: E402
+from app.utils.security import SecurityUtils  # noqa: E402
 
 
 TELEGRAM_PARSE_MODE_MARKDOWN = "MarkdownV2"
@@ -706,7 +707,8 @@ class Telegram:
             return None
         image = ImageHelper().fetch_image(image_url)
         if not image:
-            logger.warning(f"图片获取失败: {image_url}，仅发送文本消息")
+            redacted_url = SecurityUtils.redact_sensitive_url_params(image_url)
+            logger.warning(f"图片获取失败: {redacted_url}，仅发送文本消息")
         return image
 
     @retry(RetryException, logger=logger)

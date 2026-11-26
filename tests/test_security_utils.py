@@ -817,3 +817,20 @@ def test_async_evaluation_returns_same_diagnosis():
     assert not diag.allowed
     assert diag.reason is UrlSafetyReason.NON_GLOBAL_DNS_RESULT
     assert diag.ips == ["198.18.16.96"]
+
+
+def test_redact_sensitive_url_params_masks_embedded_credentials():
+    """日志文本中的常见 API 查询凭据必须脱敏，且保留普通 query 便于诊断。"""
+    message = (
+        "GET https://emby.local:8096/Items/1/Images/Primary"
+        "?tag=abc&api_key=emby-secret&access_token=token-secret&safe=1"
+    )
+
+    redacted = SecurityUtils.redact_sensitive_url_params(message)
+
+    assert "emby-secret" not in redacted
+    assert "token-secret" not in redacted
+    assert "api_key=<redacted>" in redacted
+    assert "access_token=<redacted>" in redacted
+    assert "tag=abc" in redacted
+    assert "safe=1" in redacted

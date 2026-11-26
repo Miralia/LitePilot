@@ -98,3 +98,39 @@ def test_request_utils_raises_retry_error_when_retry_still_fails():
 
     assert len(session.calls) == 2
     assert session.close_count == 1
+
+
+def test_request_utils_error_log_redacts_sensitive_query_params(monkeypatch):
+    """同步请求异常日志不得泄露 URL query 中的媒体服务器或 API 凭据。"""
+    error = requests.exceptions.ConnectionError(
+        "Max retries exceeded with url: /Items/1?api_key=emby-secret&access_token=token-secret"
+    )
+    session = _FakeSession([error])
+    messages = []
+    monkeypatch.setattr("app.utils.http.logger.debug", lambda message: messages.append(message))
+
+    result = RequestUtils(session=session).post_res("https://emby.local/Items/1", data={})
+
+    assert result is None
+    assert messages
+    joined = "\n".join(messages)
+    assert "emby-secret" not in joined
+    assert "token-secret" not in joined
+    assert "api_key=<redacted>" in joined
+    assert "access_token=<redacted>" in joined
+
+
+def test_request_utils_empty_error_log_redacts_fallback_url(monkeypatch):
+    """异常对象没有消息时，兜底拼接的请求 URL 也必须先脱敏。"""
+    session = _FakeSession([requests.exceptions.RequestException()])
+    messages = []
+    monkeypatch.setattr("app.utils.http.logger.debug", lambda message: messages.append(message))
+
+    result = RequestUtils(session=session).post_res(
+        "https://emby.local/Items/1?api_key=fallback-secret", data={}
+    )
+
+    assert result is None
+    joined = "\n".join(messages)
+    assert "fallback-secret" not in joined
+    assert "api_key=<redacted>" in joined

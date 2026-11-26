@@ -21,6 +21,7 @@ from app.helper.coverstyle import create_style_static_2
 from app.schemas.mediaserver import MediaServerLibrary, MediaServerPlayItem
 from app.schemas.types import MediaType
 from app.utils.http import RequestUtils
+from app.utils.security import SecurityUtils
 
 # 霞鹜真楷（LXGW ZhenKai）固定字体来源
 ZH_FONT_URL = (
@@ -98,7 +99,8 @@ class MediaCoverChain(ChainBase):
             logger.error(f"下载封面素材失败：{err}")
             return None
         if not response or response.status_code != 200 or not response.content:
-            logger.error(f"下载封面素材失败：{image_url}")
+            redacted_url = SecurityUtils.redact_sensitive_url_params(image_url)
+            logger.error(f"下载封面素材失败：{redacted_url}")
             return None
         return response.content
 

@@ -171,3 +171,33 @@ def test_create_style_static_2_returns_none_on_bad_input(tmp_path):
         )
         is None
     )
+
+def test_latest_source_image_error_log_redacts_api_key(monkeypatch):
+    """封面素材下载失败时，日志不得泄露 Emby 图片 URL 中的 api_key。"""
+    chain = object.__new__(MediaCoverChain)
+    image_url = "https://emby.local/Items/1/Images/Backdrop/0?tag=abc&api_key=emby-secret"
+    monkeypatch.setattr(
+        MediaCoverChain,
+        "_pick_library_image",
+        lambda _self, _server, _library: image_url,
+    )
+
+    class FakeResponse:
+        status_code = 500
+        content = b""
+
+    class FakeRequestUtils:
+        def __init__(self, **_kwargs):
+            pass
+
+        def get_res(self, _url):
+            return FakeResponse()
+
+    errors = []
+    monkeypatch.setattr("app.chain.mediacover.RequestUtils", FakeRequestUtils)
+    monkeypatch.setattr("app.chain.mediacover.logger.error", lambda message: errors.append(message))
+
+    assert chain._latest_source_image("emby", MediaServerLibrary(name="剧集")) is None
+    assert errors
+    assert "emby-secret" not in "\n".join(errors)
+    assert "api_key=<redacted>" in "\n".join(errors)

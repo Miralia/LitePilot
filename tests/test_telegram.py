@@ -760,3 +760,20 @@ def test_telegram_module_post_message_passes_active_fields_to_client():
         link="https://example.com/#/history",
         buttons=buttons,
     )
+
+
+def test_process_image_warning_redacts_sensitive_url_params(telegram, monkeypatch):
+    """图片获取失败时不得把 Emby 图片 URL 中的 api_key 写入日志。"""
+    telegram_image_url = "https://emby.example.com/Items/1/Images/Backdrop?tag=abc&api_key=secret-key"
+    warnings = []
+    telegram.bot.stop_polling()
+    telegram._polling_thread.join(timeout=1)
+    monkeypatch.setattr("app.modules.telegram.telegram.logger.warning", warnings.append)
+    with patch("app.modules.telegram.telegram.ImageHelper") as image_cls:
+        image_cls.return_value.fetch_image.return_value = None
+        image = Telegram._Telegram__process_image(telegram_image_url)
+
+    assert image is None
+    assert warnings
+    assert "secret-key" not in warnings[0]
+    assert "api_key=<redacted>" in warnings[0]

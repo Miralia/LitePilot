@@ -154,3 +154,32 @@ def test_no_proxy_configured_skips_breaker_logic(monkeypatch):
 
     assert result == "ok"
     assert calls == [True]
+
+
+def test_stream_error_logs_redact_sensitive_query_params(monkeypatch):
+    """异步流式请求异常日志不得泄露 URL query 中的 API 凭据。"""
+
+    class FailingStream:
+        async def __aenter__(self):
+            raise httpx.ReadError("stream failed for /Items/1?api_key=stream-secret")
+
+        async def __aexit__(self, *_args):
+            return None
+
+    class FakeClient:
+        def stream(self, *_args, **_kwargs):
+            return FailingStream()
+
+    messages = []
+    monkeypatch.setattr("app.utils.http.logger.debug", lambda message: messages.append(message))
+
+    async def consume():
+        async with AsyncRequestUtils(client=FakeClient()).get_stream(
+            "https://emby.local/Items/1?api_key=stream-secret"
+        ) as response:
+            return response
+
+    assert asyncio.run(consume()) is None
+    joined = "\n".join(messages)
+    assert "stream-secret" not in joined
+    assert "api_key=<redacted>" in joined

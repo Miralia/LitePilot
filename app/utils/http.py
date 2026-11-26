@@ -15,6 +15,7 @@ from urllib.parse import unquote, quote
 
 from app.core.config import settings
 from app.log import logger
+from app.utils.security import SecurityUtils
 
 urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -228,6 +229,17 @@ async def aclose_shared_async_transports() -> None:
         if isinstance(result, BaseException):
             logger.debug(f"关闭共享 AsyncHTTPTransport 失败: {result!r}")
 
+def _redacted_request_error(error: BaseException, url: str, method: str) -> str:
+    """生成不含 URL 凭据的请求错误日志文本。"""
+    raw_message = str(error) or f"未知网络错误 (URL: {url}, Method: {method.upper()})"
+    return SecurityUtils.redact_sensitive_url_params(raw_message)
+
+
+def _redacted_exception_repr(error: BaseException) -> str:
+    """生成不含 URL 凭据的异常 repr 日志文本。"""
+    return SecurityUtils.redact_sensitive_url_params(repr(error))
+
+
 def _url_decode_if_latin(original: str) -> str:
     """
     解码URL编码的字符串，只解码文本，二进制数据保持不变
@@ -371,36 +383,24 @@ class RequestUtils:
                 self._session is not None
                 and method_upper in _REQUESTS_RETRY_IDEMPOTENT_METHODS
             ):
-                logger.debug(f"keep-alive 连接已失效，同步幂等请求重试一次: {e!r}")
+                logger.debug(f"keep-alive 连接已失效，同步幂等请求重试一次: {_redacted_exception_repr(e)}")
                 try:
                     self._session.close()
                     return req_method(method, url, **kwargs)
                 except requests.exceptions.RequestException as retry_error:
-                    error_msg = (
-                        str(retry_error)
-                        if str(retry_error)
-                        else f"未知网络错误 (URL: {url}, Method: {method_upper})"
-                    )
+                    error_msg = _redacted_request_error(retry_error, url, method_upper)
                     logger.debug(f"重试后同步请求仍失败: {error_msg}")
                     if raise_exception:
                         raise
                     return None
-            error_msg = (
-                str(e)
-                if str(e)
-                else f"未知网络错误 (URL: {url}, Method: {method_upper})"
-            )
+            error_msg = _redacted_request_error(e, url, method_upper)
             logger.debug(f"同步请求失败(不重试): {error_msg}")
             if raise_exception:
                 raise
             return None
         except requests.exceptions.RequestException as e:
             # 获取更详细的错误信息
-            error_msg = (
-                str(e)
-                if str(e)
-                else f"未知网络错误 (URL: {url}, Method: {method_upper})"
-            )
+            error_msg = _redacted_request_error(e, url, method_upper)
             logger.debug(f"请求失败: {error_msg}")
             if raise_exception:
                 raise
@@ -725,7 +725,7 @@ class AsyncRequestUtils:
                 True, cookies_dict, method, url, True, **kwargs
             )
         except _H2_TUNNEL_BREAK_ERRORS as e:
-            logger.debug(f"h2 代理连接层失败，熔断 {url} 所在 host 并降级 h1 重试: {e!r}")
+            logger.debug(f"h2 代理连接层失败，熔断 {SecurityUtils.redact_sensitive_url_params(url)} 所在 host 并降级 h1 重试: {_redacted_exception_repr(e)}")
             _trip_h2_proxy_breaker(self._proxies, url)
             return await self._dispatch_request(
                 False, cookies_dict, method, url, raise_exception, **kwargs
@@ -735,7 +735,7 @@ class AsyncRequestUtils:
             # 恢复调用方原本的 raise_exception 语义
             if raise_exception:
                 raise
-            error_msg = str(e) or f"未知网络错误 (URL: {url}, Method: {method.upper()})"
+            error_msg = _redacted_request_error(e, url, method)
             logger.debug(f"异步请求失败: {error_msg}")
             return None
 
@@ -812,27 +812,25 @@ class AsyncRequestUtils:
             return await client.request(method, url, **kwargs)
         except stale_conn_errs as e:
             if is_idempotent:
-                logger.debug(f"keep-alive 连接已失效，幂等方法重试一次: {e!r}")
+                logger.debug(f"keep-alive 连接已失效，幂等方法重试一次: {_redacted_exception_repr(e)}")
                 try:
                     return await client.request(method, url, **kwargs)
                 except httpx.RequestError as e2:
-                    error_msg = (
-                        str(e2) or f"未知网络错误 (URL: {url}, Method: {method_upper})"
-                    )
+                    error_msg = _redacted_request_error(e2, url, method_upper)
                     logger.debug(f"重试后异步请求仍失败: {error_msg}")
                     if raise_exception:
                         raise
                     return None
             # 非幂等方法（POST/PUT/PATCH/DELETE 等）不重试以避免重复副作用，
             # 但仍记录调试日志，避免静默失败掩盖问题
-            error_msg = str(e) or f"未知网络错误 (URL: {url}, Method: {method_upper})"
+            error_msg = _redacted_request_error(e, url, method_upper)
             logger.debug(f"异步请求失败(非幂等不重试): {error_msg}")
             if raise_exception:
                 raise
             return None
         except httpx.RequestError as e:
             # 获取更详细的错误信息
-            error_msg = str(e) or f"未知网络错误 (URL: {url}, Method: {method_upper})"
+            error_msg = _redacted_request_error(e, url, method_upper)
             logger.debug(f"异步请求失败: {error_msg}")
             if raise_exception:
                 raise
@@ -986,19 +984,19 @@ class AsyncRequestUtils:
                     client.stream("GET", url, params=params, **kwargs)
                 )
             except stale_conn_errs as e:
-                logger.debug(f"流式 keep-alive 连接已失效，重试一次: {e!r}")
+                logger.debug(f"流式 keep-alive 连接已失效，重试一次: {_redacted_exception_repr(e)}")
                 try:
                     response = await stack.enter_async_context(
                         client.stream("GET", url, params=params, **kwargs)
                     )
                 except httpx.RequestError as e2:
-                    logger.debug(f"重试后异步流式请求仍失败: {e2!r}")
+                    logger.debug(f"重试后异步流式请求仍失败: {_redacted_exception_repr(e2)}")
                     if raise_exception:
                         raise
                     yield None
                     return
             except httpx.RequestError as e:
-                logger.debug(f"异步流式请求失败: {e!r}")
+                logger.debug(f"异步流式请求失败: {_redacted_exception_repr(e)}")
                 if raise_exception:
                     raise
                 yield None

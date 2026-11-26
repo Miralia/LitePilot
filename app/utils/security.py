@@ -1,6 +1,7 @@
 import asyncio
 import hmac
 import ipaddress
+import re
 import socket
 import threading
 from dataclasses import dataclass, field
@@ -102,6 +103,10 @@ def _resolve_addrinfo_to_ips(
 
 class SecurityUtils:
     _SIGNED_URL_PURPOSE = "image-proxy"
+    _SENSITIVE_URL_QUERY_PATTERN = re.compile(
+        r"""([?&#](?:api[_-]?key|token|access[_-]?token|auth[_-]?token|password|passwd|secret|signature|sig|mp_sig|key)=)[^\s&#,;\)\]\}"']+""",
+        re.IGNORECASE,
+    )
 
     @staticmethod
     def is_safe_path(base_path: Path, user_path: Path,
@@ -752,6 +757,19 @@ class SecurityUtils:
             host=hostname,
             ips=[str(addr) for addr in matched_addresses],
             matched_private_ranges=[str(net) for net in matched_networks],
+        )
+
+    @staticmethod
+    def redact_sensitive_url_params(value: str) -> str:
+        """
+        脱敏文本中 URL query 或签名片段里的常见凭据参数。
+
+        请求异常通常把完整 URL 拼进异常消息；日志只需要保留主机、路径和普通
+        参数用于诊断，不能保留可重放的 API key、token 或签名。
+        """
+        return SecurityUtils._SENSITIVE_URL_QUERY_PATTERN.sub(
+            lambda match: f"{match.group(1)}<redacted>",
+            value or "",
         )
 
     @staticmethod

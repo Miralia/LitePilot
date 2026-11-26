@@ -217,7 +217,8 @@ class ImageHelper(metaclass=Singleton):
         params = self._get_request_params(url, proxy)
         response = RequestUtils(**params).get_res(url=url)
         if response is None or response.status_code != 200:
-            logger.warning(f"Failed to fetch image from URL: {url}")
+            redacted_url = SecurityUtils.redact_sensitive_url_params(url)
+            logger.warning(f"Failed to fetch image from URL: {redacted_url}")
             return None
 
         content = response.content
@@ -272,7 +273,8 @@ class ImageHelper(metaclass=Singleton):
         params = self._get_request_params(url, proxy)
         response = await AsyncRequestUtils(**params).get_res(url=url)
         if response is None or response.status_code != 200:
-            logger.warning(f"Failed to fetch image from URL: {url}")
+            redacted_url = SecurityUtils.redact_sensitive_url_params(url)
+            logger.warning(f"Failed to fetch image from URL: {redacted_url}")
             return None
 
         content = response.content
