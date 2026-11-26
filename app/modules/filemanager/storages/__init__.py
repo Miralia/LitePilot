@@ -2,8 +2,6 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path, PurePosixPath
 from typing import Optional, List, Dict, Callable, Union
 
-from tqdm import tqdm
-
 from app import schemas
 from app.helper.progress import ProgressHelper
 from app.helper.storage import StorageHelper
@@ -15,7 +13,6 @@ def transfer_process(path: str) -> Callable[[int | float], None]:
     """
     传输进度回调
     """
-    pbar = tqdm(total=100, desc="进度", unit="%")
     progress = ProgressHelper(HashUtils.md5(path))
     progress.start()
 
@@ -24,14 +21,10 @@ def transfer_process(path: str) -> Callable[[int | float], None]:
         更新进度百分比
         """
         percent_value = round(percent, 2) if isinstance(percent, float) else percent
-        pbar.n = percent_value
-        # 更新进度
-        pbar.refresh()
         progress.update(value=percent_value, text=f"{path} 进度：{percent_value}%")
         # 完成时结束
         if percent_value >= 100:
             progress.end()
-            pbar.close()
 
     return update_progress
 

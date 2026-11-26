@@ -1,5 +1,7 @@
 """活动存储能力边界回归测试。"""
 
+from pathlib import Path
+
 from app.api.endpoints.storage import router
 from app.chain.storage import StorageChain
 from app.modules.filemanager import FileManagerModule
@@ -40,3 +42,12 @@ def test_fileitem_does_not_expose_removed_cloud_drive_fields() -> None:
     assert "pickcode" not in FileItem.model_fields
     assert "drive_id" not in FileItem.model_fields
     assert "url" not in FileItem.model_fields
+
+
+def test_storage_transfer_progress_does_not_use_terminal_progress_bar():
+    """服务端传输进度只经 ProgressHelper 上报，不保留 tqdm 终端进度条依赖。"""
+    storage_source = Path("app/modules/filemanager/storages/__init__.py").read_text()
+    requirements = Path("requirements.in").read_text()
+
+    assert "tqdm" not in storage_source
+    assert "tqdm" not in requirements
