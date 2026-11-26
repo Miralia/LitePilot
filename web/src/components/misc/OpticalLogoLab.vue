@@ -146,6 +146,8 @@ const POST_PROCESS_MSAA_SAMPLES = 4
 const IDLE_RENDER_INTERVAL = 1000 / 60 - 0.75
 const AUTO_REPLAY_MIN_MS = 12_000
 const AUTO_REPLAY_MAX_MS = 18_000
+const RUNTIME_IDLE_TIMEOUT_MS = 1200
+const RUNTIME_FALLBACK_DELAY_MS = 350
 const CRUISE_REST_PITCH = -0.025
 const CRUISE_REST_YAW = -0.12
 const STEADY_ROTATION_SPEED = 0.3
@@ -375,9 +377,7 @@ const MATTE_LOGO_PIECES: readonly MattePieceDefinition[] = [
   },
 ]
 
-const STATIC_LOGO_PATHS = LOGO_PIECES.map(
-  ({ points }) => `M ${points.map(([x, y]) => `${x} ${y}`).join(' L ')} Z`,
-)
+const STATIC_LOGO_PATHS = LOGO_PIECES.map(({ points }) => `M ${points.map(([x, y]) => `${x} ${y}`).join(' L ')} Z`)
 
 const ASSEMBLE_OFFSETS = [
   { x: -0.7, y: 0.42, z: -0.78, rotation: 0.34 },
@@ -476,13 +476,16 @@ function isStaticMotionMode(value: unknown): value is StaticMotionMode {
 
 let THREE: ThreeApi | null = null
 let gsapApi: GsapApi | null = null
-let EffectComposerClass: typeof import('three/examples/jsm/postprocessing/EffectComposer.js').EffectComposer | null = null
+let EffectComposerClass: typeof import('three/examples/jsm/postprocessing/EffectComposer.js').EffectComposer | null =
+  null
 let RenderPassClass: typeof import('three/examples/jsm/postprocessing/RenderPass.js').RenderPass | null = null
 let ShaderPassClass: typeof import('three/examples/jsm/postprocessing/ShaderPass.js').ShaderPass | null = null
-let UnrealBloomPassClass: typeof import('three/examples/jsm/postprocessing/UnrealBloomPass.js').UnrealBloomPass | null = null
+let UnrealBloomPassClass: typeof import('three/examples/jsm/postprocessing/UnrealBloomPass.js').UnrealBloomPass | null =
+  null
 let SMAAPassClass: typeof import('three/examples/jsm/postprocessing/SMAAPass.js').SMAAPass | null = null
 let OutputPassClass: typeof import('three/examples/jsm/postprocessing/OutputPass.js').OutputPass | null = null
-let RoomEnvironmentClass: typeof import('three/examples/jsm/environments/RoomEnvironment.js').RoomEnvironment | null = null
+let RoomEnvironmentClass: typeof import('three/examples/jsm/environments/RoomEnvironment.js').RoomEnvironment | null =
+  null
 
 let renderer: ThreeWebGLRenderer | null = null
 let composer: EffectComposerInstance | null = null
@@ -548,6 +551,7 @@ let cardElement: HTMLElement | null = null
 let idleTaskId: number | null = null
 let firstPaintFrameId: number | null = null
 let initializeFrameId: number | null = null
+let initializeIdleTaskId: number | null = null
 let generation = 0
 let isIntersecting = true
 let isDocumentVisible = true
@@ -821,9 +825,7 @@ function readPersistedState(): PersistedState {
     const persistedLogoSize = Number(parsed.logoSize)
     return {
       bag: Array.isArray(parsed.bag) ? parsed.bag.filter(item => parseCombination(item)) : [],
-      lastCombination: parseCombination(parsed.lastCombination)?.material
-        ? parsed.lastCombination
-        : undefined,
+      lastCombination: parseCombination(parsed.lastCombination)?.material ? parsed.lastCombination : undefined,
       lightIntensity: Number.isFinite(persistedLightIntensity)
         ? Math.min(100, Math.max(0, persistedLightIntensity))
         : fallback.lightIntensity,
@@ -992,11 +994,7 @@ function getThemeColors() {
     { lightness: 0.025, saturationScale: 1.04 },
   ] as const
   const tones = toneAdjustments.map(({ lightness, saturationScale }) =>
-    new T.Color().setHSL(
-      hsl.h,
-      T.MathUtils.clamp(hsl.s * saturationScale, 0, 0.96),
-      baseLightness + lightness,
-    ),
+    new T.Color().setHSL(hsl.h, T.MathUtils.clamp(hsl.s * saturationScale, 0, 0.96), baseLightness + lightness),
   )
   return { onSurface, primary, surface, tones }
 }
@@ -1182,9 +1180,7 @@ function createMaterialLibrary() {
       core: LOGO_PIECES.map((_, index) => createCoreMaterial(mode, index)),
       face: LOGO_PIECES.map((_, index) => createPhysicalMaterial(mode, index, false)),
       facets: MATTE_LOGO_PIECES.map((piece, index) =>
-        mode === 'matte'
-          ? piece.facets.map(facet => createPhysicalMaterial(mode, index, false, facet.lightness))
-          : [],
+        mode === 'matte' ? piece.facets.map(facet => createPhysicalMaterial(mode, index, false, facet.lightness)) : [],
       ),
       side: LOGO_PIECES.map((_, index) => createPhysicalMaterial(mode, index, true)),
     },
@@ -1685,6 +1681,7 @@ function scheduleAutonomousTurn(now: number) {
 }
 
 function renderTick(time: number, deltaMs: number) {
+  if (selectedMaterial.value === 'prismatic') return
   if (!renderer || !composer || !scene || !camera || !isReady.value || !isIntersecting || !isDocumentVisible) return
   const maximumDpr = preferredRenderDpr()
   if (currentDpr > maximumDpr) {
@@ -1959,7 +1956,28 @@ function handleStaticMotionSelection(mode: StaticMotionMode) {
 }
 
 function handleMaterialSelection(mode: LogoStyle) {
-  if (!gsapApi || !isReady.value || mode === selectedMaterial.value) return
+  if (mode === selectedMaterial.value || phase.value === 'loading') return
+
+  if (!gsapApi || !renderer || !scene || !camera || !materialRigs) {
+    void unlockAudioFromGesture()
+    killMotionTimelines()
+    resetEntrancePose()
+    selectedMaterial.value = mode
+    persistCurrentSelection()
+    playMaterialSound(mode)
+    if (mode === 'prismatic') {
+      isReady.value = true
+      phase.value = 'idle'
+      return
+    }
+
+    isReady.value = false
+    phase.value = 'loading'
+    void initializeScene()
+    return
+  }
+
+  if (!isReady.value) return
   void unlockAudioFromGesture()
   killMotionTimelines()
   resetEntrancePose()
@@ -2096,7 +2114,14 @@ function trackAudioSource<T extends AudioScheduledSourceNode>(source: T) {
   return source
 }
 
-function playTone(frequency: number, duration: number, gainValue: number, delay = 0, type: OscillatorType = 'sine', end?: number) {
+function playTone(
+  frequency: number,
+  duration: number,
+  gainValue: number,
+  delay = 0,
+  type: OscillatorType = 'sine',
+  end?: number,
+) {
   if (!audioContext || !audioMaster) return
   const start = audioContext.currentTime + delay
   const oscillator = trackAudioSource(audioContext.createOscillator())
@@ -2205,7 +2230,11 @@ function updateDragAudio() {
   const speed = Math.min(1, Math.abs(dragState.velocityYaw) * 0.32 + Math.abs(dragState.velocityPitch) * 0.4)
   const now = audioContext.currentTime
   const { profile } = dragAudio
-  dragAudio.gain.gain.setTargetAtTime(isDragging.value ? profile.gainBase + speed * profile.gainRange : 0.0001, now, 0.045)
+  dragAudio.gain.gain.setTargetAtTime(
+    isDragging.value ? profile.gainBase + speed * profile.gainRange : 0.0001,
+    now,
+    0.045,
+  )
   dragAudio.filter.frequency.setTargetAtTime(profile.baseFilter + speed * profile.filterRange, now, 0.05)
   dragAudio.oscillator.frequency.setTargetAtTime(profile.baseFrequency + speed * profile.frequencyRange, now, 0.045)
   dragAudio.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, dragState.velocityYaw * 0.18)), now, 0.06)
@@ -2272,7 +2301,11 @@ function handleCardPointerLeave() {
 }
 
 function isFormInput(element: Element | null) {
-  return element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement ||
+    element instanceof HTMLSelectElement
+  )
 }
 
 function handleCardFocusIn(event: FocusEvent) {
@@ -2447,8 +2480,7 @@ function handleVisibilityChange() {
   if (!isDocumentVisible) {
     pauseAutomaticReplay()
     suspendAudioForInvisibility()
-  }
-  else {
+  } else {
     lastRenderTime = 0
     highRefreshUntil = performance.now() + 500
     reducedMotionRenderPending = true
@@ -2461,8 +2493,7 @@ function handleIntersection(entries: IntersectionObserverEntry[]) {
   if (!isIntersecting) {
     pauseAutomaticReplay()
     suspendAudioForInvisibility()
-  }
-  else {
+  } else {
     lastRenderTime = 0
     highRefreshUntil = performance.now() + 500
     reducedMotionRenderPending = true
@@ -2554,7 +2585,8 @@ async function prewarmRemainingMaterials() {
   const T = requireThree()
   try {
     for (const mode of MATERIAL_MODES) {
-      if (prewarmedMaterials.has(mode) || token !== generation || !renderer || !scene || !camera || !materialRigs) continue
+      if (prewarmedMaterials.has(mode) || token !== generation || !renderer || !scene || !camera || !materialRigs)
+        continue
       const rig = materialRigs[mode]
       const prewarmGroup = new T.Group()
       pieceRigs.forEach((piece, index) => {
@@ -2581,28 +2613,46 @@ async function prewarmRemainingMaterials() {
   }
 }
 
+type IdleCapableWindow = typeof window & {
+  cancelIdleCallback?: (handle: number) => void
+  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
+}
+
+function scheduleBrowserIdleTask(callback: () => void, timeout: number, fallbackDelay: number) {
+  const idleWindow = window as IdleCapableWindow
+  if (typeof idleWindow.requestIdleCallback === 'function') {
+    return idleWindow.requestIdleCallback(callback, { timeout })
+  }
+
+  return window.setTimeout(callback, fallbackDelay)
+}
+
+function cancelBrowserIdleTask(handle: number) {
+  const idleWindow = window as IdleCapableWindow
+  if (typeof idleWindow.cancelIdleCallback === 'function') idleWindow.cancelIdleCallback(handle)
+  else window.clearTimeout(handle)
+}
+
 function scheduleMaterialPrewarm() {
   if (idleTaskId !== null || isPrewarming || prewarmedMaterials.size === MATERIAL_MODES.length) return
-  const idleWindow = window as typeof window & {
-    requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
-  }
-  if (typeof idleWindow.requestIdleCallback === 'function') {
-    idleTaskId = idleWindow.requestIdleCallback(
-      () => {
-        idleTaskId = null
-        void prewarmRemainingMaterials()
-      },
-      { timeout: 1800 },
-    )
-  } else {
-    idleTaskId = window.setTimeout(() => {
+  idleTaskId = scheduleBrowserIdleTask(
+    () => {
       idleTaskId = null
       void prewarmRemainingMaterials()
-    }, 900)
-  }
+    },
+    1800,
+    900,
+  )
 }
 
 async function initializeScene() {
+  const initialMaterial = selectedMaterial.value
+  if (initialMaterial === 'prismatic') {
+    isReady.value = true
+    phase.value = 'idle'
+    return
+  }
+
   const token = ++generation
   const canvas = canvasRef.value
   if (!canvas) return
@@ -2633,7 +2683,7 @@ async function initializeScene() {
     updateThemeMaterials()
     await renderer.compileAsync(scene, camera)
     if (token !== generation) return
-    if (selectedMaterial.value !== 'prismatic') prewarmedMaterials.add(selectedMaterial.value)
+    prewarmedMaterials.add(initialMaterial)
     isReady.value = true
     phase.value = 'idle'
     gsapApi?.ticker.remove(renderTick)
@@ -2769,7 +2819,14 @@ onMounted(async () => {
     firstPaintFrameId = null
     initializeFrameId = window.requestAnimationFrame(() => {
       initializeFrameId = null
-      if (rootRef.value) void initializeScene()
+      initializeIdleTaskId = scheduleBrowserIdleTask(
+        () => {
+          initializeIdleTaskId = null
+          if (rootRef.value) void initializeScene()
+        },
+        RUNTIME_IDLE_TIMEOUT_MS,
+        RUNTIME_FALLBACK_DELAY_MS,
+      )
     })
   })
 })
@@ -2778,6 +2835,7 @@ onBeforeUnmount(() => {
   generation += 1
   if (firstPaintFrameId !== null) window.cancelAnimationFrame(firstPaintFrameId)
   if (initializeFrameId !== null) window.cancelAnimationFrame(initializeFrameId)
+  if (initializeIdleTaskId !== null) cancelBrowserIdleTask(initializeIdleTaskId)
   resizeObserver?.disconnect()
   intersectionObserver?.disconnect()
   reducedMotionQuery?.removeEventListener('change', handleReducedMotionChange)
@@ -2789,11 +2847,7 @@ onBeforeUnmount(() => {
   cardElement?.removeEventListener('focusout', handleCardFocusOut)
   canvasRef.value?.removeEventListener('webglcontextlost', handleContextLost)
   canvasRef.value?.removeEventListener('webglcontextrestored', handleContextRestored)
-  if (idleTaskId !== null) {
-    const idleWindow = window as typeof window & { cancelIdleCallback?: (handle: number) => void }
-    if (typeof idleWindow.cancelIdleCallback === 'function') idleWindow.cancelIdleCallback(idleTaskId)
-    else window.clearTimeout(idleTaskId)
-  }
+  if (idleTaskId !== null) cancelBrowserIdleTask(idleTaskId)
   clearCardVisuals()
   stopAllAudio()
   void audioContext?.close().catch(() => undefined)
@@ -2840,19 +2894,28 @@ onBeforeUnmount(() => {
           />
         </span>
       </span>
-      <svg
-        class="optical-logo-lab__fallback"
-        viewBox="0 0 192 192"
-        aria-hidden="true"
-        focusable="false"
-      >
+      <svg class="optical-logo-lab__fallback" viewBox="0 0 192 192" aria-hidden="true" focusable="false">
         <defs>
-          <linearGradient id="optical-logo-fallback-fill" x1="24" y1="22" x2="168" y2="170" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="optical-logo-fallback-fill"
+            x1="24"
+            y1="22"
+            x2="168"
+            y2="170"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop offset="0" stop-color="rgb(var(--v-theme-on-surface))" stop-opacity="0.74" />
             <stop offset="0.46" stop-color="rgb(var(--v-theme-primary))" />
             <stop offset="1" stop-color="rgb(var(--v-theme-primary))" stop-opacity="0.5" />
           </linearGradient>
-          <radialGradient id="optical-logo-fallback-specular" cx="0" cy="0" r="1" gradientTransform="translate(76 58) rotate(50) scale(86 64)" gradientUnits="userSpaceOnUse">
+          <radialGradient
+            id="optical-logo-fallback-specular"
+            cx="0"
+            cy="0"
+            r="1"
+            gradientTransform="translate(76 58) rotate(50) scale(86 64)"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stop-color="#ffffff" stop-opacity="0.72" />
             <stop offset="0.42" stop-color="#ffffff" stop-opacity="0.16" />
             <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
@@ -2943,11 +3006,7 @@ onBeforeUnmount(() => {
           track-color="on-surface"
           :track-size="2"
         />
-        <output
-          class="optical-logo-lab__size-value"
-          for="optical-logo-size"
-          :aria-label="text.logoSize"
-        >
+        <output class="optical-logo-lab__size-value" for="optical-logo-size" :aria-label="text.logoSize">
           {{ logoSize }}
         </output>
       </div>
@@ -3039,10 +3098,7 @@ onBeforeUnmount(() => {
             </template>
           </VTooltip>
 
-          <VTooltip
-            :text="unifiedThemeFamily ? text.useSplitPalette : text.useUnifiedPalette"
-            location="top"
-          >
+          <VTooltip :text="unifiedThemeFamily ? text.useSplitPalette : text.useUnifiedPalette" location="top">
             <template #activator="{ props: tooltipProps }">
               <button
                 v-bind="tooltipProps"
@@ -3160,9 +3216,7 @@ onBeforeUnmount(() => {
   position: absolute;
   display: block;
   block-size: var(--optical-logo-size, 144px);
-  filter:
-    drop-shadow(0 9px 15px rgba(16, 8, 38, 0.26))
-    drop-shadow(0 0 14px rgba(var(--v-theme-primary), 0.2));
+  filter: drop-shadow(0 9px 15px rgba(16, 8, 38, 0.26)) drop-shadow(0 0 14px rgba(var(--v-theme-primary), 0.2));
   inline-size: var(--optical-logo-size, 144px);
   inset: 50% auto auto 50%;
   opacity: 0;
@@ -3187,15 +3241,25 @@ onBeforeUnmount(() => {
   transform: translate(-50%, -50%) scale(0.96);
 }
 
+.optical-logo-lab--loading .optical-logo-lab__fallback,
 .optical-logo-lab--fallback .optical-logo-lab__fallback {
   opacity: 0.92;
   transform: translate(-50%, -50%) scale(1);
 }
 
+.optical-logo-lab--loading.optical-logo-lab--prismatic .optical-logo-lab__fallback {
+  opacity: 0;
+}
+
 .optical-logo-lab__status {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.84), rgba(var(--v-theme-primary), 0.36) 38%, transparent 74%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.84),
+    rgba(var(--v-theme-primary), 0.36) 38%,
+    transparent 74%
+  );
   block-size: 14px;
   filter: blur(5px);
   inline-size: 14px;
@@ -3224,9 +3288,7 @@ onBeforeUnmount(() => {
   align-items: center;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.055), transparent 48%),
-    rgba(var(--v-theme-surface), 0.16);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.055), transparent 48%), rgba(var(--v-theme-surface), 0.16);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 8px 24px rgba(var(--app-shadow-rgb, 0, 0, 0), 0.08);
@@ -3243,8 +3305,7 @@ onBeforeUnmount(() => {
   &:focus-within {
     border-color: rgba(var(--v-theme-primary), 0.28);
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.075), transparent 48%),
-      rgba(var(--v-theme-surface), 0.26);
+      linear-gradient(135deg, rgba(255, 255, 255, 0.075), transparent 48%), rgba(var(--v-theme-surface), 0.26);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 10px 28px rgba(var(--app-shadow-rgb, 0, 0, 0), 0.12);
@@ -3361,18 +3422,24 @@ onBeforeUnmount(() => {
 }
 
 .optical-logo-lab__swatch--chrome > span {
-  background: linear-gradient(135deg, #424956, #f8fbff 34%, #7e8796 52%, rgba(var(--v-theme-primary), 0.48) 72%, #373d47);
+  background: linear-gradient(
+    135deg,
+    #424956,
+    #f8fbff 34%,
+    #7e8796 52%,
+    rgba(var(--v-theme-primary), 0.48) 72%,
+    #373d47
+  );
 }
 
 .optical-logo-lab__swatch--energy > span {
-  background:
-    radial-gradient(
-      circle,
-      rgb(var(--v-theme-on-surface)) 0 8%,
-      rgb(var(--v-theme-primary)) 28%,
-      rgba(var(--v-theme-primary), 0.54) 54%,
-      rgba(var(--v-theme-surface), 0.96) 76%
-    );
+  background: radial-gradient(
+    circle,
+    rgb(var(--v-theme-on-surface)) 0 8%,
+    rgb(var(--v-theme-primary)) 28%,
+    rgba(var(--v-theme-primary), 0.54) 54%,
+    rgba(var(--v-theme-surface), 0.96) 76%
+  );
   box-shadow: inset 0 0 7px rgba(255, 255, 255, 0.58);
 }
 
