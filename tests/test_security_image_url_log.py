@@ -91,7 +91,7 @@ class IsSafeImageUrlLogTest(IsolatedAsyncioTestCase):
             return_value=signed_clean_url,
         ), patch.object(
             security_module.logger,
-            "warn",
+            "warning",
             side_effect=warns.append,
         ):
             allowed = await SecurityUtils.is_safe_image_url_async(
@@ -222,7 +222,7 @@ class IsSafeImageUrlLogTest(IsolatedAsyncioTestCase):
             return_value=None,
         ), patch.object(
             security_module.logger,
-            "warn",
+            "warning",
             side_effect=warns.append,
         ):
             for i in range(5):
@@ -272,7 +272,7 @@ class IsSafeImageUrlLogTest(IsolatedAsyncioTestCase):
             return_value=None,
         ), patch.object(
             security_module.logger,
-            "warn",
+            "warning",
             side_effect=warns.append,
         ):
             await SecurityUtils.is_safe_image_url_async(

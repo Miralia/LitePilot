@@ -877,7 +877,7 @@ class TestMediaScrapeEvents(unittest.TestCase):
         fileitem = schemas.FileItem(path="/movies/movie.mkv", name="movie.mkv", type="file", storage="local")
         mock_recognize.return_value = None
 
-        with patch('app.chain.media.logger.warn') as mock_logger:
+        with patch('app.chain.media.logger.warning') as mock_logger:
             self.media_chain.scrape_metadata(
                 fileitem=fileitem
             )
