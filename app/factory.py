@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.apiv2_utils import OPENAPI_V2_PATH, V2ResponseMiddleware
 from app.core.config import settings
+from app.core.security_middleware import AuthorizationVaryMiddleware
 from app.startup.lifecycle import lifespan
 from version import APP_VERSION
 
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     _app.add_middleware(V2ResponseMiddleware)
+    _app.add_middleware(AuthorizationVaryMiddleware)
 
     return _app
 
