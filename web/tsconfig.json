@@ -39,8 +39,7 @@
     "themeConfig.ts",
     "auto-imports.d.ts",
     "components.d.ts",
-    "src/service-worker.ts",
-    "public/service.js"
+    "src/service-worker.ts"
   ],
   "exclude": ["dist", "node_modules", "src/@iconify/*"]
 }

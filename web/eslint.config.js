@@ -18,7 +18,7 @@ const browserFiles = [
   `examples/**/src/**/*.{${managedScriptExtensions},vue}`,
 ]
 
-const nodeFiles = ['**/*.config.{js,mjs,cjs,ts,mts,cts}', 'public/service.js', 'scripts/**/*.{js,mjs,cjs,ts,mts,cts}']
+const nodeFiles = ['**/*.config.{js,mjs,cjs,ts,mts,cts}', 'scripts/**/*.{js,mjs,cjs,ts,mts,cts}']
 
 // TypeScript 关闭核心 no-undef；显式禁止浏览器域中的 Node-only globals，保证 JS、TS 与 Vue 使用同一运行时边界。
 const browserGlobalNames = new Set(Object.keys(globals.browser))
