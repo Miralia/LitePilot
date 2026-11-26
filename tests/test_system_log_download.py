@@ -126,6 +126,46 @@ async def test_logging_sse_drains_burst_lines(monkeypatch, isolated_log_path):
         await stream.aclose()
 
 
+@pytest.mark.asyncio
+async def test_logging_sse_follows_rotated_log_file(monkeypatch, isolated_log_path):
+    """实时日志 SSE 必须在滚动后继续读取新文件，不能无限跟随已重命名的旧 inode。"""
+    log_file = isolated_log_path / "moviepilot.log"
+    log_file.write_text("seed\n", encoding="utf-8")
+    original_sleep = asyncio.sleep
+
+    async def fast_sleep(delay):
+        """压缩 endpoint 内部轮询等待，避免测试依赖真实秒级时钟。"""
+        await original_sleep(min(delay, 0.01))
+
+    async def is_disconnected():
+        """测试期间保持 SSE 客户端连接。"""
+        return False
+
+    monkeypatch.setattr(asyncio, "sleep", fast_sleep)
+    response = await system_endpoint.get_logging(
+        request=SimpleNamespace(is_disconnected=is_disconnected),
+        length=10,
+        logfile="moviepilot.log",
+        _=SimpleNamespace(id=1, name="admin", is_superuser=True),
+    )
+    stream = response.body_iterator
+
+    async def read_frame() -> str:
+        """有界读取下一帧，防止生成器静默停顿时测试挂死。"""
+        return await asyncio.wait_for(stream.__anext__(), 1)
+
+    try:
+        assert await read_frame() == "data: seed\n\n"
+        await original_sleep(0.1)
+
+        log_file.rename(isolated_log_path / "moviepilot.log.1")
+        log_file.write_text("rotated\n", encoding="utf-8")
+
+        assert await read_frame() == "data: rotated\n\n"
+    finally:
+        await stream.aclose()
+
+
 def test_download_moviepilot_logs_packages_latest_ten_log_files(isolated_log_path):
     """传入 moviepilot 时下载主程序滚动日志，最多打包 10 个文件。"""
     for index in range(12):

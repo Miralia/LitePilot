@@ -1,6 +1,7 @@
 import asyncio
 import io
 import json
+import os
 import re
 import zipfile
 from collections import deque
@@ -752,9 +753,8 @@ async def get_logging(
             file_stat = await log_path.stat()
             file_size = file_stat.st_size
 
-            async with aiofiles.open(
-                log_path, mode="r", encoding="utf-8", errors="replace"
-            ) as f:
+            f = await aiofiles.open(log_path, mode="r", encoding="utf-8", errors="replace")
+            try:
                 # 优化大文件读取策略
                 if file_size > 100 * 1024:
                     # 只读取最后100KB的内容
@@ -789,9 +789,25 @@ async def get_logging(
                         line = line.strip()
                         if line:
                             yield f"data: {line}\n\n"
-                    else:
-                        # 没有新内容，短暂等待
-                        await asyncio.sleep(0.5)
+                        continue
+
+                    # 滚动日志会先重命名当前文件再创建新文件。旧句柄读到 EOF 后切换到
+                    # 新路径开头，既能读完旧文件尾部，也不会漏掉新文件的首批写入。
+                    try:
+                        path_stat = await log_path.stat()
+                    except FileNotFoundError:
+                        path_stat = None
+                    if path_stat is not None:
+                        current_stat = os.fstat(f.fileno())
+                        if (path_stat.st_dev, path_stat.st_ino) != (current_stat.st_dev, current_stat.st_ino):
+                            await f.close()
+                            f = await aiofiles.open(log_path, mode="r", encoding="utf-8", errors="replace")
+                            continue
+
+                    # 没有新内容，短暂等待
+                    await asyncio.sleep(0.5)
+            finally:
+                await f.close()
         except asyncio.CancelledError:
             return
         except Exception as err:
