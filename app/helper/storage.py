@@ -49,26 +49,6 @@ class StorageHelper:
                     break
         SystemConfigOper().set(SystemConfigKey.Storages, [s.model_dump() for s in storagies])
 
-    def add_storage(self, storage: str, name: str, conf: dict):
-        """
-        添加存储配置
-        """
-        storagies = self.get_storagies()
-        if not storagies:
-            storagies = [
-                schemas.StorageConf(
-                    type=storage,
-                    name=name,
-                    config=conf
-                )
-            ]
-        else:
-            storagies.append(schemas.StorageConf(
-                type=storage,
-                name=name,
-                config=conf
-            ))
-        SystemConfigOper().set(SystemConfigKey.Storages, [s.model_dump() for s in storagies])
 
     def reset_storage(self, storage: str):
         """

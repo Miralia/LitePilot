@@ -56,21 +56,6 @@ def load_conf(
     return model()
 
 
-def save_conf(
-    key: SystemConfigKey,
-    conf: BaseModel,
-    config_oper: Optional[SystemConfigOper] = None,
-) -> None:
-    """
-    保存结构化配置。
-
-    :param key: 配置键
-    :param conf: 配置对象
-    :param config_oper: 配置操作器，默认新建
-    """
-    (config_oper or SystemConfigOper()).set(key, conf.model_dump())
-
-
 def download_file_sync_conf() -> DownloadFileSyncConf:
     """
     读取下载文件同步配置。
