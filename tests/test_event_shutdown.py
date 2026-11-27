@@ -1,5 +1,6 @@
 """事件总线停止生命周期测试。"""
 
+import asyncio
 import threading
 import time
 
@@ -53,4 +54,27 @@ def test_event_consumer_restart_ignores_stop_sentinel_left_by_busy_generation(mo
     restarted_thread = manager._EventManager__consumer_threads[-1]
 
     assert restarted_thread.is_alive()
+    manager.stop()
+
+
+def test_async_handler_failure_to_schedule_does_not_kill_consumer(monkeypatch):
+    """事件循环不可用只能丢弃该异步处理器调用，不能杀死事件消费者线程。"""
+    from app.core.config import global_vars
+
+    manager = make_isolated_manager()
+
+    async def async_handler(_event):
+        return None
+
+    closed_loop = asyncio.new_event_loop()
+    closed_loop.close()
+    monkeypatch.setattr(global_vars, "CURRENT_EVENT_LOOP", closed_loop)
+    manager.add_event_listener(EventType.ConfigChanged, async_handler)
+    manager.start()
+    consumer_thread = manager._EventManager__consumer_threads[-1]
+
+    manager.send_event(EventType.ConfigChanged)
+    consumer_thread.join(0.2)
+
+    assert consumer_thread.is_alive()
     manager.stop()

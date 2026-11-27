@@ -320,15 +320,45 @@ class EventManager(metaclass=Singleton):
                                    event_data=event_data_copy,
                                    priority=event.priority)
             if inspect.iscoroutinefunction(handler):
-                # 对于异步函数，直接在事件循环中运行
-                asyncio.run_coroutine_threadsafe(
-                    self.__safe_invoke_handler_async(handler, isolated_event),
-                    global_vars.loop
-                )
+                # 对于异步函数，直接在应用事件循环中运行
+                self.__schedule_async_handler(handler, isolated_event)
             else:
                 # 对于同步函数，在线程池中运行
                 self.__executor.submit(self.__safe_invoke_handler, handler, isolated_event)
 
+
+    def __schedule_async_handler(self, handler: Callable, event: Event):
+        """
+        将异步处理器调度到应用事件循环；循环不可用时保留消费者线程并记录诊断。
+        :param handler: 异步处理器
+        :param event: 事件对象
+        """
+        coroutine = self.__safe_invoke_handler_async(handler, event)
+        target_loop = global_vars.CURRENT_EVENT_LOOP
+        if not target_loop or target_loop.is_closed() or not target_loop.is_running():
+            coroutine.close()
+            logger.error(f"事件循环不可用，无法调度异步事件处理器：{self.__get_handler_identifier(handler)}")
+            return
+
+        try:
+            future = asyncio.run_coroutine_threadsafe(coroutine, target_loop)
+        except RuntimeError as err:
+            coroutine.close()
+            logger.error(f"异步事件处理器调度失败：{self.__get_handler_identifier(handler)} - {err}")
+            return
+        future.add_done_callback(self.__log_async_handler_failure)
+
+    @staticmethod
+    def __log_async_handler_failure(future):
+        """
+        观察异步事件处理器 Future，避免基础设施异常在后台静默丢失。
+        """
+        if future.cancelled():
+            return
+        try:
+            future.result()
+        except Exception as err:
+            logger.error(f"异步事件处理器执行失败：{err} - {traceback.format_exc()}")
 
     def __safe_invoke_handler(self, handler: Callable, event: Event):
         """
