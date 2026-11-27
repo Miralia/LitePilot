@@ -372,6 +372,7 @@ class DownloadFileSyncChain(ChainBase):
         total = 0
         synced = 0
         limit_reached = False
+        listed_hashes = {}
         for downloader_conf in downloaders:
             if limit_reached:
                 break
@@ -383,6 +384,17 @@ class DownloadFileSyncChain(ChainBase):
                 downloader=downloader_name,
                 include_all_tags=True,
             )
+            if torrents is None:
+                continue
+            active_hashes = {
+                str(torrent.hash)
+                for torrent in torrents
+                if getattr(torrent, "hash", None)
+            }
+            # 只有确认空列表，或列表中至少存在一个有效 hash，才能作为清理证据；
+            # 非空但全部缺 hash 属于下载器/API 异常数据，不能据此清空索引。
+            if not torrents or active_hashes:
+                listed_hashes[downloader_name] = active_hashes
             if not torrents:
                 continue
             for torrent in torrents:
@@ -406,6 +418,15 @@ class DownloadFileSyncChain(ChainBase):
                     logger.error(
                         f"下载文件同步失败：{downloader_name} - {torrent.hash} - {err}"
                     )
+        pruned = 0
+        if getattr(conf, "prune_missing", False) and listed_hashes:
+            downloadhis = DownloadHistoryOper()
+            for downloader_name, active_hashes in listed_hashes.items():
+                pruned += downloadhis.delete_files_missing_for_downloader(
+                    downloader=downloader_name,
+                    active_hashes=active_hashes,
+                )
         logger.info(
             f"下载文件同步完成，本次处理 {synced} 个种子、新增 {total} 条文件记录"
+            + (f"、清理失效记录 {pruned} 条" if getattr(conf, "prune_missing", False) else "")
         )

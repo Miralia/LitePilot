@@ -258,6 +258,57 @@ class DownloadFiles(Base):
 
     @classmethod
     @db_update
+    def delete_missing_for_downloader(
+        cls,
+        db: Session,
+        downloader: str,
+        active_hashes: set[str],
+        hash_batch_size: int = 200,
+    ) -> int:
+        """
+        删除指定下载器中已不再存在的种子文件记录。
+
+        清理必须限定下载器：不同下载器可能重复使用相同 hash 或保存路径，
+        无下载器归属的历史行也不能在没有来源证据时被误删。
+
+        :param db: 数据库会话
+        :param downloader: 已成功列出任务的下载器名称
+        :param active_hashes: 当前仍存在于该下载器中的种子 Hash
+        :param hash_batch_size: 每批删除的 hash 数，避免 SQL 参数过多
+        :return: 删除的文件记录数
+        """
+        normalized_active = {
+            str(value).lower()
+            for value in active_hashes or set()
+            if value
+        }
+        hash_rows = (
+            db.query(cls.download_hash)
+            .filter(cls.downloader == downloader)
+            .distinct()
+            .all()
+        )
+        missing_hashes = sorted({
+            str(row[0])
+            for row in hash_rows
+            if row[0] and str(row[0]).lower() not in normalized_active
+        })
+        deleted = 0
+        batch_size = max(1, int(hash_batch_size or 200))
+        for index in range(0, len(missing_hashes), batch_size):
+            batch = missing_hashes[index:index + batch_size]
+            deleted += (
+                db.query(cls)
+                .filter(
+                    cls.downloader == downloader,
+                    cls.download_hash.in_(batch),
+                )
+                .delete(synchronize_session=False)
+            )
+        return deleted
+
+    @classmethod
+    @db_update
     def delete_orphans(
         cls,
         db: Session,

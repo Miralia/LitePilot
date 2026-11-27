@@ -594,3 +594,14 @@ def test_qbittorrent_login_honors_global_tls_opt_out(monkeypatch):
 
     assert downloader._Qbittorrent__login_qbittorrent() is not None  # pylint: disable=protected-access
     assert captured["VERIFY_WEBUI_CERTIFICATE"] is False
+
+
+def test_list_torrents_returns_none_when_named_downloader_query_fails():
+    """指定下载器查询失败时必须与确认空列表区分，避免调用方误清空本地索引。"""
+    server = MagicMock()
+    server.get_torrents.return_value = ([], True)
+    module = QbittorrentModule.__new__(QbittorrentModule)
+    module.get_instance = MagicMock(return_value=server)
+    module.normalize_return_path = MagicMock(side_effect=lambda path, _name: str(path))
+
+    assert module.list_torrents(downloader="qb", include_all_tags=True) is None

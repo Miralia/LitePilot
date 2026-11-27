@@ -79,6 +79,24 @@ class DownloadHistoryOper(DbOper):
         """
         return DownloadFiles.delete_by_fullpath(self._db, fullpath, download_hash)
 
+    def delete_files_missing_for_downloader(
+        self,
+        downloader: str,
+        active_hashes: set[str],
+    ) -> int:
+        """
+        删除指定下载器中已不再存在的种子文件记录。
+
+        :param downloader: 已成功列出任务的下载器名称
+        :param active_hashes: 当前仍存在于该下载器中的种子 Hash
+        :return: 删除的文件记录数
+        """
+        return DownloadFiles.delete_missing_for_downloader(
+            self._db,
+            downloader=downloader,
+            active_hashes=active_hashes,
+        )
+
     def backfill_savepath(self, download_hash: str, save_path: str) -> int:
         """
         回填种子的保存根目录并补齐相对路径记录

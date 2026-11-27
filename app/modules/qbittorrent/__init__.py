@@ -192,7 +192,11 @@ class QbittorrentModule(_ModuleBase, _DownloaderBase[Qbittorrent]):
         if hashs:
             # 按Hash获取
             for name, server in servers.items():
-                torrents, _ = server.get_torrents(ids=hashs, tags=query_tags) or []
+                torrents, error = server.get_torrents(ids=hashs, tags=query_tags) or ([], False)
+                if error:
+                    if downloader:
+                        return None
+                    continue
                 try:
                     for torrent_info in torrents:
                         ret_torrents.append(__build_torrent(name, torrent_info))
@@ -202,7 +206,11 @@ class QbittorrentModule(_ModuleBase, _DownloaderBase[Qbittorrent]):
         elif query_status == TorrentQueryStatus.TRANSFER:
             # 获取已完成且未整理的
             for name, server in servers.items():
-                torrents = server.get_completed_torrents(tags=query_tags) or []
+                torrents = server.get_completed_torrents(tags=query_tags)
+                if torrents is None:
+                    if downloader:
+                        return None
+                    continue
                 try:
                     for torrent_info in torrents:
                         tags = torrent_info.get("tags") or []
@@ -215,7 +223,11 @@ class QbittorrentModule(_ModuleBase, _DownloaderBase[Qbittorrent]):
         elif query_status == TorrentQueryStatus.DOWNLOADING:
             # 获取正在下载的任务
             for name, server in servers.items():
-                torrents = server.get_downloading_torrents(tags=query_tags) or []
+                torrents = server.get_downloading_torrents(tags=query_tags)
+                if torrents is None:
+                    if downloader:
+                        return None
+                    continue
                 try:
                     for torrent_info in torrents:
                         ret_torrents.append(__build_torrent(name, torrent_info))
@@ -229,7 +241,11 @@ class QbittorrentModule(_ModuleBase, _DownloaderBase[Qbittorrent]):
         ):
             # 获取完整任务列表，由 LitePilot 统一归一实际下载器状态。
             for name, server in servers.items():
-                torrents, _ = server.get_torrents(tags=query_tags) or []
+                torrents, error = server.get_torrents(tags=query_tags) or ([], False)
+                if error:
+                    if downloader:
+                        return None
+                    continue
                 try:
                     for torrent_info in torrents:
                         torrent_state = self.__normalize_torrent_state(torrent_info.get('state'))
