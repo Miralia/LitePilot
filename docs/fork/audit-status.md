@@ -18,6 +18,7 @@
 | `app/core/meta/wordlist.py` | 已审计。配置读取、分词应用和异常降级路径未发现可红测复现的高置信缺陷。 |
 | `app/core/meta/customization.py` | 已审计。修复无效自定义占位符正则中断识别链路的问题；坏规则现在只跳过本次匹配、按规则缓存失败结果并记录 warning，避免每次识别重复编译。 |
 | `app/core/meta/infopath.py` | 已审计。父目录标题合并、清空空降标题字段和文件/目录语义未发现高置信缺陷；补齐公开函数中文 docstring。 |
+| `app/core/meta/metavideo.py` | 已审计第 0 集作为剧集证据的边界。`E00 PartA` 现在保留 Part 标记，避免多 Part 文件在版本清理中被误并。 |
 | `app/core/meta/streamingplatform.py` | 按数据表快速审计。加载逻辑与静态映射未发现高置信缺陷。 |
 
 ### 刮削与媒体探测
@@ -65,6 +66,8 @@
 |---|---|
 | `app/chain/mediacover.py` | 已审计字体缓存外部响应与本地写入边界。字体验证、原子发布、损坏缓存自愈和 I/O 失败降级均有回归覆盖。 |
 | `app/chain/system.py` | 已审计交互重启收据与失败反馈边界。无效收据会清理，通知发送失败保留有效收据重试，底层重启失败会撤回收据并告知用户。 |
+| `app/helper/format.py` | 已审计手动集数定位、指定集数和偏移边界。`E00` 可匹配并参与偏移，范围型指定集数按数值边界过滤，非法输入产生清晰错误。 |
+| `app/chain/transfer.py` | 已审计手动整理自定义格式与历史重试错误边界。非法格式返回可展示失败，自动重新整理识别失败不再访问空媒体类型。 |
 
 ## 本轮修复与回归测试
 
@@ -94,6 +97,7 @@
 | `ec281eac` | 测试中的 `os.stat` 桩对未登记路径委托真实 stat，避免后台日志线程竞态噪声 | `tests/test_system_utils.py` |
 | `758199a3` | 模块链泛型容器注解按容器类型校验，不再因 `list[...]` 抛出 `TypeError` | `tests/test_object.py::test_check_signature_matches_generic_container_origin` |
 | `8ad87f50` | 多季转移历史重新整理不再崩溃，也不会错误强制为起始单季 | `tests/test_transfer_history_retransfer.py::test_manual_transfer_from_multi_season_history_does_not_crash_or_force_single_season` |
+| `4f885257` | 自动重新整理识别失败返回可展示失败；`E00` 保留 Part、模板匹配与偏移；范围/非法指定集数不再穿透整理链 | `tests/test_transfer_history_retransfer.py::test_redo_transfer_history_unrecognized_media_returns_failure`、`tests/test_format_parser_security.py`、`tests/test_metainfo.py::test_video_parser_preserves_part_after_episode_zero`、`tests/test_transfer_job_manager.py::test_do_transfer_invalid_episode_detail_returns_failure` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -156,7 +160,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1695 passed, 2 warnings` |
+| `python tests/run.py` | `1702 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -166,6 +170,6 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `8ad87f5008e1116886dd027735d37afa1ade42a9`。升级前备份为 `/root/litepilot-pre-8ad87f50-20261127162017.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
+生产环境已部署并核验 `4f885257d28c035617cb6b193354b095d879e79c`。升级前备份为 `/root/litepilot-pre-4f885257-20261127163853.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
 
-核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/system/ping` 直连与 nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=0 advisory=1`。
+核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/system/ping` 直连与 nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。唯一 warn 是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复已在当前版本中，本次重启后没有新增同类错误。
