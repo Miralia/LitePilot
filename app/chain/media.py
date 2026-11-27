@@ -28,7 +28,6 @@ from app.utils.mixins import ConfigReloadMixin
 from app.utils.singleton import Singleton
 from app.utils.string import StringUtils
 
-recognize_lock = Lock()
 scraping_lock = Lock()
 
 current_umask = os.umask(0)

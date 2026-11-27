@@ -2538,7 +2538,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         """
         shared_roots: set[str] = set()
         media_type_dirs = {mtype.value for mtype in MediaType}
-        media_categories = None
 
         for dir_info in DirectoryHelper().get_download_dirs():
             if not dir_info.download_path:
@@ -2550,20 +2549,14 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
 
             shared_roots.add(download_root.as_posix())
             relative_parts = file_path.relative_to(download_root).parts
-            current_root = download_root
-            part_index = 0
-            media_type = dir_info.media_type
 
             if (
                     not dir_info.media_type
                     and dir_info.download_type_folder
-                    and len(relative_parts) > part_index
-                    and relative_parts[part_index] in media_type_dirs
+                    and relative_parts
+                    and relative_parts[0] in media_type_dirs
             ):
-                current_root = current_root / relative_parts[part_index]
-                shared_roots.add(current_root.as_posix())
-                media_type = relative_parts[part_index]
-                part_index += 1
+                shared_roots.add((download_root / relative_parts[0]).as_posix())
 
             # 二级分类已取消，不再按类别进入子目录
         return shared_roots

@@ -42,15 +42,11 @@ LOG_ERROR_PATTERNS = (
     re.compile(r"\b(error|critical|exception)\b", re.IGNORECASE),
     re.compile(r"数据库更新失败"),
 )
-LOG_RECORD_PATTERN = re.compile(
-    r"(?:【(?:DEBUG|INFO|WARNING|ERROR|CRITICAL)】|(?:DEBUG|INFO|WARNING|ERROR|CRITICAL):)"
-)
 LOG_TIMESTAMP_PATTERN = re.compile(
     r"(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})"
 )
 LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_LOOKBACK_HOURS = 24
-CONSOLE_LOGGER_PATTERN = re.compile(r"\[([^\]]+)]")
 SENSITIVE_PATTERNS = (
     re.compile(r"(?i)(api[_-]?token|token|password|secret|cookie)(\s*[:=]\s*)[^\s&]+"),
     re.compile(r"\bghp_[A-Za-z0-9]{20,}\b"),

@@ -12,9 +12,7 @@ from typing import List
 
 import pytz
 from apscheduler.executors.pool import ThreadPoolExecutor
-from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
 
 from app import schemas

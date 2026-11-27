@@ -1070,7 +1070,6 @@ class TransHandler:
         mediainfo: MediaInfo,
         target_path: Path,
         need_type_folder: Optional[bool] = False,
-        need_category_folder: Optional[bool] = False,
     ):
         """
         获取目标路径
@@ -1085,14 +1084,12 @@ class TransHandler:
         mediainfo: MediaInfo,
         target_dir: TransferDirectoryConf,
         need_type_folder: Optional[bool] = None,
-        need_category_folder: Optional[bool] = None,
     ) -> Path:
         """
         根据设置并装媒体库目录
         :param mediainfo: 媒体信息
         :param target_dir: 媒体库根目录
         :param need_type_folder: 是否需要按媒体类型创建目录
-        :param need_category_folder: 是否需要按媒体类别创建目录
         """
         if need_type_folder is None:
             need_type_folder = target_dir.library_type_folder

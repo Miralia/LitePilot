@@ -441,8 +441,7 @@ class FileManagerModule(_ModuleBase):
             need_scrape = target_directory.scraping if scrape is None else scrape
             # 拼装媒体库一、二级子目录
             target_path = handler.get_dest_dir(mediainfo=mediainfo, target_dir=target_directory,
-                                               need_type_folder=library_type_folder,
-                                               need_category_folder=None)
+                                               need_type_folder=library_type_folder)
         elif target_path:
             need_scrape = scrape or False
             need_rename = True
@@ -450,8 +449,7 @@ class FileManagerModule(_ModuleBase):
             overwrite_mode = "never"
             # 手动整理的场景，有自定义目标路径
             target_path = handler.get_dest_path(mediainfo=mediainfo, target_path=target_path,
-                                                need_type_folder=library_type_folder,
-                                                need_category_folder=None)
+                                                need_type_folder=library_type_folder)
         else:
             # 未找到有效的媒体库目录
             logger.error(

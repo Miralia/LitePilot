@@ -21,3 +21,22 @@ def test_dead_transfer_schema_to_dict_helpers_are_removed():
     """Pydantic 传输模型使用 model_dump/直接字段访问，不保留无人调用的 to_dict。"""
     assert not hasattr(TransferTask, "to_dict")
     assert not hasattr(TransferInfo, "to_dict")
+
+
+def test_dead_category_folder_parameters_are_removed():
+    """二级分类能力取消后，目标路径计算不应保留恒为空的类别目录参数。"""
+    import inspect
+
+    from app.modules.filemanager.transhandler import TransHandler
+
+    assert "need_category_folder" not in inspect.signature(TransHandler.get_dest_path).parameters
+    assert "need_category_folder" not in inspect.signature(TransHandler.get_dest_dir).parameters
+
+
+def test_dead_message_source_lookup_is_removed():
+    """消息 source 字段是渠道名而非唯一消息标识，无调用方的存在性查询不应保留。"""
+    from app.db.message_oper import MessageOper
+    from app.db.models.message import Message
+
+    assert not hasattr(Message, "exists_by_source")
+    assert not hasattr(MessageOper, "exists_by_source")
