@@ -58,6 +58,13 @@
 | `app/startup/routers_initializer.py` | 已审计。v1/v2 路由注册和 OpenAPI 配置无本地状态，未发现高置信缺陷。 |
 | `app/startup/__init__.py` | 已审计。空包初始化文件。 |
 
+### 生产稳定性补充审计
+
+| 文件 | 审计结论 |
+|---|---|
+| `app/chain/mediacover.py` | 已审计字体缓存外部响应与本地写入边界。字体验证、原子发布、损坏缓存自愈和 I/O 失败降级均有回归覆盖。 |
+| `app/chain/system.py` | 已审计交互重启收据与失败反馈边界。无效收据会清理，通知发送失败保留有效收据重试，底层重启失败会撤回收据并告知用户。 |
+
 ## 本轮修复与回归测试
 
 | 提交 | 修复 | 回归测试 |
@@ -74,6 +81,10 @@
 | `dedf30cc` | 原生 Emby int 0 季集号不再导致联动删除降级为整剧/整季定位 | `tests/test_mediaserverdel_season_delete.py::test_query_history_preserves_numeric_episode_zero`、`tests/test_mediaserverdel_notify_image.py::test_notify_image_preserves_numeric_episode_zero` |
 | `7b2b715a` | NFO 公共链路标注对齐 UTF-8 bytes 事实契约 | `tests/test_tmdb_scraper.py::test_nfo_public_contract_is_utf8_bytes` |
 | `f357eab0` | webhook 解析边界把原生数字季集号规范化为字符串并保留 0 | `tests/test_webhook_event_scope.py::test_emby_webhook_normalizes_numeric_episode_zero_ids_to_strings` |
+| `278f97d8` | 字体下载必须通过 sfnt 魔数校验，写入使用同目录临时文件原子发布 | `tests/test_media_cover_generator.py::test_font_response_must_have_sfnt_magic`、`test_font_write_failure_leaves_no_corrupt_final_file` |
+| `bc080cd6` | 既有损坏字体缓存会识别并重新下载，缓存删除/临时文件清理失败不进入调度异常路径 | `tests/test_media_cover_generator.py::test_existing_corrupt_font_is_replaced_by_valid_download`、`test_corrupt_font_unlink_failure_is_graceful` |
+| `a1f22097` | 结构无效的重启完成通知收据会被清理，有效收据发送失败保留重试且异常不进入启动任务 | `tests/test_system_restart.py::test_restart_finish_discards_structurally_invalid_receipt`、`test_restart_finish_keeps_valid_receipt_when_notification_fails` |
+| `0a043ea4` | 交互命令底层重启失败时撤回完成通知收据并明确通知失败 | `tests/test_system_restart.py::test_command_restart_failure_retracts_receipt_and_notifies` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -102,11 +113,6 @@
    风险：重写时无法判断这是必要行为还是历史残留。  
    未修原因：删除字段属于行为裁剪而非缺陷修复。建议重写时确认媒体信息展示/重命名是否真正需要该值。
 
-5. **重启完成通知依赖内部缓存文件，异常缓存可能导致每次启动重复失败**
-
-   位置：`app/chain/system.py::restart_finish` 与 `app/startup/lifecycle.py::init_extra` 的调用关系。  
-   风险：理论上损坏缓存会让重启收尾任务反复失败。  
-   未修原因：缓存由系统内部写入且损坏概率低；修复点在非必审文件，当前不扩大范围。重写时应把重启通知设计为幂等、可校验的持久状态。
 
 ## 明确跳过的视觉体系与风险评估
 
@@ -141,7 +147,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1669 passed, 2 warnings` |
+| `python tests/run.py` | `1686 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -151,4 +157,4 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `f357eab0f0c59189e50a15c27ff405c79deaf802`。核验结果：`litepilot.service` active，nginx 前缀 `/litepilot/`、API 代理与 `service-worker.js` 均返回 200，Doctor `error=0 warn=0`，最近日志未发现 traceback、exception 或 error。
+生产环境已部署并核验 `0a043ea464fb3e8c3c40f6cb4d117cb105520ed0`。升级前一致性备份为 `/root/litepilot-pre-0a043ea4-20261127153147.tar.gz`。核验结果：`litepilot.service` active，nginx 前缀 `/litepilot/`、API 代理与 `service-worker.js` 均返回 200，字体缓存魔数有效，SQLite `integrity_check` 为 `ok`，Doctor `error=0 warn=0`，本次重启后的 systemd 日志未发现 traceback、exception 或 error。
