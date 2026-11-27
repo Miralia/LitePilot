@@ -102,3 +102,39 @@ def test_async_send_event_returns_queued_event_instance():
     assert event.event_type is EventType.ConfigChanged
     assert event.event_data == {"key": {"a"}}
     assert event.priority == 4
+
+
+def test_event_priority_none_uses_default_without_breaking_heap_comparison():
+    """显式空优先级应按默认值入队，不能在后续入队时触发类型比较错误。"""
+    manager = make_isolated_manager()
+
+    first = manager.send_event(EventType.ConfigChanged, priority=None)
+    second = manager.send_event(EventType.ConfigChanged, priority=1)
+    urgent = manager.send_event(EventType.ConfigChanged, priority=0)
+
+    assert first is not None
+    assert second is not None
+    assert urgent is not None
+    assert first.priority == 10
+    assert second.priority == 1
+    assert urgent.priority == 0
+
+
+def test_event_preserves_explicit_falsy_event_data():
+    """显式传入的 falsy 事件负载属于合法契约，只有缺省 None 才能归一为字典。"""
+    manager = make_isolated_manager()
+    empty_list = []
+
+    false_event = manager.send_event(EventType.ConfigChanged, False)
+    zero_event = manager.send_event(EventType.ConfigChanged, 0)
+    list_event = manager.send_event(EventType.ConfigChanged, empty_list)
+    default_event = manager.send_event(EventType.ConfigChanged)
+
+    assert false_event is not None
+    assert zero_event is not None
+    assert list_event is not None
+    assert default_event is not None
+    assert false_event.event_data is False
+    assert zero_event.event_data == 0
+    assert list_event.event_data is empty_list
+    assert default_event.event_data == {}

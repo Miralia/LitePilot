@@ -35,8 +35,8 @@ class Event:
         """
         self.event_id = str(uuid.uuid4())  # 事件ID
         self.event_type = event_type  # 事件类型
-        self.event_data = event_data or {}  # 事件数据
-        self.priority = priority  # 事件优先级
+        self.event_data = event_data if event_data is not None else {}  # 事件数据
+        self.priority = priority if priority is not None else DEFAULT_EVENT_PRIORITY  # 事件优先级
 
     def __repr__(self) -> str:
         """
