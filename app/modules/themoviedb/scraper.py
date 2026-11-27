@@ -59,10 +59,10 @@ class TmdbScraper:
                     seasoninfo = self.default_tmdb.get_tv_season_detail(
                         mediainfo.tmdb_id, season=season
                     )
-                if episode:
+                if episode is not None:
                     # 集元数据文件
                     episodeinfo = self.__get_episode_detail(
-                        seasoninfo, meta.begin_episode
+                        seasoninfo, episode
                     )
                     doc = self.__gen_tv_episode_nfo_file(
                         episodeinfo=episodeinfo,
@@ -98,7 +98,7 @@ class TmdbScraper:
         images = {}
         if season is not None:
             # 只需要季集的图片
-            if episode:
+            if episode is not None:
                 # 集的图片
                 if mediainfo.episode_group:
                     seasoninfo = self.original_tmdb(mediainfo).get_tv_group_detail(
