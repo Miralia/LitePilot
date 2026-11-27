@@ -33,6 +33,12 @@ const storages = ref<StorageConf[]>([])
 // 提示框
 const $toast = useToast()
 
+// 用户主动保存失败必须可见，同时保留完整异常到控制台便于诊断。
+function reportSaveError(error: unknown) {
+  console.error(error)
+  $toast.error(error instanceof Error ? error.message : t('common.error'))
+}
+
 // 数据源
 const sourceItems = [
   { 'title': 'TheMovieDb', 'value': 'themoviedb' },
@@ -143,7 +149,7 @@ async function saveStorages() {
     if (result.success) $toast.success(t('setting.directory.storageSaveSuccess'))
     else $toast.error(t('setting.directory.storageSaveFailed'))
   } catch (error) {
-    console.error(error)
+    reportSaveError(error)
   }
 }
 
@@ -171,7 +177,7 @@ async function saveDirectories() {
       $toast.success(t('setting.directory.directorySaveSuccess'))
     } else $toast.error(t('setting.directory.directorySaveFailed'))
   } catch (error) {
-    console.error(error)
+    reportSaveError(error)
   }
 }
 
@@ -241,7 +247,7 @@ async function saveSystemSettings(value: any) {
       $toast.success(t('setting.directory.organizeSaveSuccess'))
     } else $toast.error(t('setting.directory.organizeSaveFailed'))
   } catch (error) {
-    console.error(error)
+    reportSaveError(error)
   }
 }
 

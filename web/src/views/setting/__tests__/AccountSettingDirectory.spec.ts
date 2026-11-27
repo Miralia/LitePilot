@@ -114,4 +114,26 @@ describe('mounted local disk empty directory cleanup setting', () => {
     })
     expect(mocks.toastSuccess).toHaveBeenCalledWith('整理选项设置保存成功')
   })
+  it.each([
+    ['存储', 'system/setting/Storages'],
+    ['目录', 'system/setting/Directories'],
+    ['整理 & 刮削', 'system/env'],
+  ])('reports network failures when saving %s settings', async (cardTitle, endpoint) => {
+    mockSettings(true)
+    mocks.apiPost.mockImplementation((calledEndpoint: string) => {
+      if (calledEndpoint === endpoint) return Promise.reject(new Error('network failed'))
+      return Promise.resolve({ success: true })
+    })
+    await renderDirectorySettings()
+
+    const card = screen.getByText(cardTitle, { selector: '.v-card-title' }).closest('.v-card')
+    expect(card).not.toBeNull()
+    await fireEvent.click(within(card as HTMLElement).getByRole('button', { name: '保存' }))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith('network failed')
+    })
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
+
 })
