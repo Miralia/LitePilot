@@ -9,11 +9,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   close: vi.fn(),
   openSharedDialog: vi.fn(),
+  toastError: vi.fn(),
   updateProps: vi.fn(),
 }))
 
 vi.mock('@/composables/useSharedDialog', () => ({
   openSharedDialog: (...args: unknown[]) => mocks.openSharedDialog(...args),
+}))
+
+vi.mock('vue-toastification', () => ({
+  useToast: () => ({ error: mocks.toastError }),
 }))
 
 vi.mock('vuetify', async importOriginal => {
@@ -120,6 +125,7 @@ describe('FileToolbar mkdir', () => {
 
     expect(wrapper.emitted('loading')).toEqual([[true], [false]])
     expect(wrapper.emitted('foldercreated')).toBeUndefined()
+    expect(mocks.toastError).toHaveBeenCalledWith('目录已存在')
     expect(mocks.close).not.toHaveBeenCalled()
   })
 
@@ -133,6 +139,7 @@ describe('FileToolbar mkdir', () => {
 
     expect(wrapper.emitted('loading')).toEqual([[true], [false]])
     expect(wrapper.emitted('foldercreated')).toBeUndefined()
+    expect(mocks.toastError).toHaveBeenCalledWith('network failed')
     expect(mocks.close).not.toHaveBeenCalled()
   })
 
@@ -146,12 +153,26 @@ describe('FileToolbar mkdir', () => {
     expect(request).toHaveBeenCalledWith({
       data: { name: 'downloads', path: '/downloads/', storage: 'local', type: 'dir' },
       method: 'post',
-      url: '/storage/mkdir?name=Season 01',
+      url: '/storage/mkdir?name=Season%2001',
     })
     expect(wrapper.emitted('loading')).toEqual([[true], [false]])
     expect(wrapper.emitted('foldercreated')).toEqual([[]])
     expect(mocks.close).toHaveBeenCalledOnce()
     expect(mocks.updateProps).toHaveBeenCalledWith({ name: 'Season 01' })
+  })
+
+  it('encodes folder names before placing them in the mkdir query string', async () => {
+    const request = vi.fn().mockResolvedValue({ success: true })
+    const wrapper = mountToolbar(request)
+
+    await openDialogAndCreate(wrapper, 'Season 01&全#')
+    await flushPromises()
+
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/storage/mkdir?name=Season%2001%26%E5%85%A8%23',
+      }),
+    )
   })
 
   it('closes an open shared dialog when unmounted', () => {

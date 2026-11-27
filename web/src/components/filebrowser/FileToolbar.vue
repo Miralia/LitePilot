@@ -2,9 +2,17 @@
 import type { AxiosRequestConfig, AxiosInstance } from 'axios'
 import type { ApiResponse, EndPoints, FileItem } from '@/api/types'
 import { useDisplay } from 'vuetify'
+import { useI18n } from 'vue-i18n'
+import { useToast } from 'vue-toastification'
 import { openSharedDialog } from '@/composables/useSharedDialog'
 
 const FileNewFolderDialog = defineAsyncComponent(() => import('../dialog/FileNewFolderDialog.vue'))
+
+// 国际化
+const { t } = useI18n()
+
+// 提示框
+const $toast = useToast()
 
 // 显示器宽度
 const display = useDisplay()
@@ -103,7 +111,7 @@ function goUp() {
 async function mkdir() {
   emit('loading', true)
   try {
-    const url = inProps.endpoints?.mkdir.url.replace(/{name}/g, newFolderName.value)
+    const url = inProps.endpoints?.mkdir.url.replace(/{name}/g, encodeURIComponent(newFolderName.value))
 
     const config: AxiosRequestConfig<FileItem> = {
       url,
@@ -113,6 +121,7 @@ async function mkdir() {
 
     const result = await inProps.axios.request<unknown, ApiResponse<unknown>>(config)
     if (!result?.success) {
+      $toast.error(result?.message || t('common.error'))
       return
     }
 
@@ -122,6 +131,7 @@ async function mkdir() {
     emit('foldercreated')
   } catch (error) {
     console.error('创建目录失败:', error)
+    $toast.error(error instanceof Error ? error.message : t('common.error'))
   } finally {
     emit('loading', false)
   }
