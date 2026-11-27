@@ -79,15 +79,20 @@ function getMobileSchedulerStatusText(scheduler: ScheduleInfo) {
   return getDisplayedSchedulerStatusText(scheduler)
 }
 
-/** 执行指定定时服务，并在短延迟后刷新列表。 */
-function runCommand(id: string) {
+/** 执行指定定时服务，并在提交成功后短延迟刷新列表。 */
+async function runCommand(id: string) {
   try {
-    // 异步提交
-    api.get('system/runscheduler', {
+    const result = (await api.get('system/runscheduler', {
       params: {
         jobid: id,
       },
-    })
+    })) as { message?: string, success?: boolean }
+
+    if (!result.success) {
+      $toast.error(result.message || t('setting.scheduler.executeFailed'))
+      return
+    }
+
     $toast.success(t('setting.scheduler.executeSuccess'))
     // 1秒后刷新数据
     setTimeout(() => {
@@ -95,6 +100,7 @@ function runCommand(id: string) {
     }, 1000)
   } catch (e) {
     console.error(e)
+    $toast.error(t('setting.scheduler.executeFailed'))
   }
 }
 

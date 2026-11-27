@@ -1019,5 +1019,7 @@ def run_scheduler(jobid: str, _: User = Depends(get_current_active_superuser)):
     """
     if not jobid:
         return schemas.Response(success=False, message="命令不能为空！")
-    Scheduler().start(jobid)
+    accepted = Scheduler().start(jobid)
+    if not accepted:
+        return schemas.Response(success=False, message="定时服务不存在或正在运行！")
     return schemas.Response(success=True)

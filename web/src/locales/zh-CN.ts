@@ -924,6 +924,7 @@ export default {
       running: '正在运行',
       waiting: '等待',
       executeSuccess: '定时作业执行请求提交成功！',
+      executeFailed: '定时作业执行请求提交失败',
       mobileWaitingAfter: '{time}之后',
       mobileNoNextRun: '暂无排期',
     },

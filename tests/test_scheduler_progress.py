@@ -144,6 +144,34 @@ def test_scheduler_runs_async_job_from_current_event_loop(monkeypatch):
     assert progress.status == "success"
 
 
+def test_scheduler_start_rejects_unknown_job():
+    """手动触发不存在的定时服务时应明确返回未接受。"""
+    job_id = f"test-start-unknown-{uuid4()}"
+    scheduler = object.__new__(Scheduler)
+    scheduler._lock = threading.RLock()
+    scheduler._jobs = {}
+
+    assert scheduler.start(job_id) is False
+
+
+def test_scheduler_start_rejects_running_job():
+    """定时服务运行中时不得重复触发，也不应被 API 误报为提交成功。"""
+    job_id = f"test-start-running-{uuid4()}"
+    scheduler = _build_scheduler(job_id, lambda: None)
+    scheduler._jobs[job_id]["running"] = True
+
+    assert scheduler.start(job_id) is False
+    assert scheduler._jobs[job_id]["running"] is True
+
+
+def test_scheduler_start_accepts_registered_job():
+    """已注册且空闲的定时服务手动触发时应明确返回已接受。"""
+    job_id = f"test-start-registered-{uuid4()}"
+    scheduler = _build_scheduler(job_id, lambda: None)
+
+    assert scheduler.start(job_id) is True
+
+
 def test_scheduler_returns_none_for_unknown_job():
     """未注册且无历史进度的定时服务应返回空。"""
     job_id = f"test-unknown-{uuid4()}"

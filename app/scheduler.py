@@ -722,9 +722,9 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
         finally:
             self.__finish_job(job_id=job_id, success=success, error=error)
 
-    def start(self, job_id: str, *args, **kwargs) -> None:
+    def start(self, job_id: str, *args, **kwargs) -> bool:
         """
-        启动定时服务
+        启动定时服务，返回是否已接受本次执行请求。
         """
 
         def __start_coro(coro) -> bool:
@@ -751,7 +751,7 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
         # 获取定时任务
         job = self.__prepare_job(job_id)
         if not job:
-            return
+            return False
         success = True
         error = None
         deferred_finish = False
@@ -761,7 +761,9 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                 kwargs = dict(job.get("kwargs") or {})
             func = job.get("func")
             if not func:
-                return
+                success = False
+                error = "定时服务函数不存在"
+                return False
             if self.__supports_progress_callback(func) and "progress_callback" not in kwargs:
                 kwargs["progress_callback"] = self.__build_progress_callback(
                     job_id=job_id, job=job
@@ -789,6 +791,8 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
             if not deferred_finish:
                 # 运行结束
                 self.__finish_job(job_id=job_id, success=success, error=error)
+
+        return True
 
 
 
