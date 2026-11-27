@@ -351,8 +351,10 @@ def _update_args_db(args: tuple, kwargs: dict, db: Session) -> Tuple[tuple, dict
     elif args:
         if args[0] is None:
             args = (db, *args[1:])
-        else:
+        elif len(args) > 1 and args[1] is None:
             args = (args[0], db, *args[2:])
+        else:
+            args = (args[0], db, *args[1:])
     return args, kwargs
 
 
@@ -365,8 +367,10 @@ def _update_args_async_db(args: tuple, kwargs: dict, db: AsyncSession) -> Tuple[
     elif args:
         if args[0] is None:
             args = (db, *args[1:])
-        else:
+        elif len(args) > 1 and args[1] is None:
             args = (args[0], db, *args[2:])
+        else:
+            args = (args[0], db, *args[1:])
     return args, kwargs
 
 
