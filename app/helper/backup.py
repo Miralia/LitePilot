@@ -86,11 +86,12 @@ def _create_sqlite_snapshot(source: Path, snapshot: Path) -> None:
 
 
 def _is_litepilot_backup_archive(path: Path) -> bool:
-    """识别 LitePilot 备份产物，避免历史归档被递归打进新备份。"""
-    is_tar_gzip = path.suffixes[-2:] == [".tar", ".gz"] or path.suffix == ".tgz"
-    if not is_tar_gzip:
-        return False
+    """按内容识别 LitePilot 备份产物，避免历史归档被递归打进新备份。"""
     try:
+        # 备份始终写 gzip tar；先读魔数，避免为普通文本配置付出 tar 解析开销。
+        with path.open("rb") as probe:
+            if probe.read(2) != b"\x1f\x8b":
+                return False
         with tarfile.open(path, "r:*") as tar:
             # 清单始终由本工具第一个写入；只读取首个成员，避免为识别而解压大文件内容。
             member = tar.next()

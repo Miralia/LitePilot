@@ -318,3 +318,16 @@ def test_create_backup_excludes_derived_fonts_and_removed_plugin_artifacts(tmp_p
     assert "plugins_backup/mediacovergenerator/__init__.py" not in names
     assert "app.env" in names
     assert "user.db" in names
+
+
+def test_create_backup_excludes_misnamed_litepilot_backup_artifacts(tmp_path):
+    """备份内容识别不得依赖扩展名，误命名为 .zip 的历史归档也不能递归膨胀。"""
+    config = _make_config(tmp_path)
+
+    first = create_backup(archive=config / "pre-deploy.zip", config_dir=config)
+    second = create_backup(archive=config / "backup-next.tar.gz", config_dir=config)
+
+    assert first.archive.exists()
+    with tarfile.open(second.archive, "r:gz") as tar:
+        names = {member.name for member in tar.getmembers()}
+    assert "pre-deploy.zip" not in names
