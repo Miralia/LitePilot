@@ -25,6 +25,13 @@ from app.utils.string import StringUtils
 router = APIRouter()
 
 
+def _is_single_path_name(name: str) -> bool:
+    """判断输入是否为跨存储可安全处理的单个文件或目录名称。"""
+    return bool(name) and name not in {".", ".."} and not any(
+        separator in name for separator in ("/", "\\", "\x00")
+    )
+
+
 @router.post("/save/{name}", summary="保存存储配置", response_model=schemas.Response)
 def save(name: str, conf: dict, _: User = Depends(get_current_active_superuser)) -> Any:
     """
@@ -82,8 +89,8 @@ def mkdir(
     :param name: 目录名称
     :param _: token
     """
-    if not name:
-        return schemas.Response(success=False)
+    if not _is_single_path_name(name):
+        return schemas.Response(success=False, message="目录名称无效")
     result = StorageChain().create_folder(fileitem, name)
     if result:
         return schemas.Response(success=True)
@@ -153,6 +160,8 @@ def rename(
     """
     if not new_name:
         return schemas.Response(success=False, message="新名称为空")
+    if not _is_single_path_name(new_name):
+        return schemas.Response(success=False, message="新名称无效")
 
     # 重命名目录内文件
     if recursive:
