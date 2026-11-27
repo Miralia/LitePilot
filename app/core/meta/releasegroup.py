@@ -45,6 +45,9 @@ _GROUP_BOUNDARIES = frozenset("[]【】￡@&/\\ \t")
 # 候选组名的边界：出现在 - @ [ ￡ 【 & 之后，且到结尾或分隔符为止
 _CANDIDATE_TAIL = re.compile(r"(?<=[-@\[￡【&])([^@.\s\]\[】&/]{2,40})(?=$|[@.\s\]\[】&])", re.I)
 
+# 制作组规则统一在这个边界模板中预编译校验，避免单独合法、组合后非法的规则进入识别路径
+_GROUPS_RE_TEMPLATE = r"(?<=[-@\[￡【&])(?:(?:%s))(?=$|[@.\s\]\[】&])"
+
 
 def is_regex_pattern(value: str) -> bool:
     """
@@ -203,14 +206,24 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
                 logger.debug(f"跳过超长组名（疑似多组拼接）：{cleaned[:48]}...")
                 continue
             if cleaned.startswith("re:"):
-                # 显式声明为正则片段
-                escaped.append(cleaned[3:])
+                # 显式声明为正则片段；空片段会匹配空串，必须丢弃
+                pattern = cleaned[3:].strip()
+                if not pattern:
+                    continue
             elif is_regex_pattern(cleaned):
                 # 内置表搬过来的条目本身就是正则（如 FF(?:(?:A|WE)B|...)），保持原样
-                escaped.append(cleaned)
+                pattern = cleaned
             else:
                 # 用户手写的纯组名按字面量转义，保证 `VCB-Studio`、`SubsPlus+` 精确匹配
                 escaped.append(_std_re.escape(cleaned))
+                continue
+            try:
+                re.compile(_GROUPS_RE_TEMPLATE % pattern, re.I)
+            except re.error as err:
+                # 词表可由用户编辑；单条坏正则不能拖垮其它有效制作组
+                logger.warning(f"跳过无效制作组正则：{err}")
+                continue
+            escaped.append(pattern)
         self.__cached_rule = "|".join(escaped)
         return self.__cached_rule
 
@@ -220,7 +233,7 @@ class ReleaseGroupsMatcher(metaclass=Singleton):
         """
         groups_re = self.__groups_re_cache.get(groups)
         if not groups_re:
-            groups_re = re.compile(r"(?<=[-@\[￡【&])(?:(?:%s))(?=$|[@.\s\]\[】&])" % groups, re.I)
+            groups_re = re.compile(_GROUPS_RE_TEMPLATE % groups, re.I)
             self.__groups_re_cache[groups] = groups_re
         return groups_re
 

@@ -42,6 +42,7 @@ def should_use_parent_title_for_file_stem(
 
 
 def clear_parsed_title_for_parent_merge(meta: MetaBase) -> None:
+    """清空文件名误判出的标题字段，允许父目录标题后续合并。"""
     meta.cn_name = None
     meta.en_name = None
     meta.original_name = None

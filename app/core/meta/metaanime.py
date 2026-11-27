@@ -338,7 +338,7 @@ class MetaAnime(MetaBase):
         if match and match.span()[1] < len(title) - 1:
             title = ANIME_PREFIX_RE.sub("", title)
         elif match:
-            title = title[:title.rfind("[")]
+            title = title[:match.start()].strip()
         # 截掉分类标签
         #
         # 分类标签在发布名里总是独立占一个括号（``[动画]``、``[TV]``），

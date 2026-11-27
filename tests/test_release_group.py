@@ -25,3 +25,15 @@ def test_custom_release_group_matches_multiple_adjacent_groups():
         )
 
     assert "DMG&VCB-Studio" == release_group
+
+
+def test_invalid_custom_group_regex_is_skipped_without_breaking_valid_groups():
+    """无效 re: 条目应跳过，不能让其它有效制作组规则整体失效。"""
+    matcher = ReleaseGroupsMatcher()
+
+    with patch.object(
+        matcher.systemconfig,
+        "get",
+        return_value=["re:(", "VCB-Studio"],
+    ):
+        assert matcher.match_list(title="[VCB-Studio] Show [01]") == ["VCB-Studio"]

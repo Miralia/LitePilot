@@ -450,3 +450,10 @@ def test_metainfopath_movie_collection_parent_does_not_override_file_title():
         meta = MetaInfoPath(Path(f"{collection}/{file_name}"))
         assert meta.name == expected_name
         assert meta.year == expected_year
+
+
+def test_anime_trailing_category_marker_does_not_corrupt_title():
+    """无括号结尾的“新番”等分类标记应整体移除，不能误删片名最后一个字。"""
+    meta = MetaAnime(title="进击的巨人 新番")
+
+    assert meta.cn_name == "进击的巨人"

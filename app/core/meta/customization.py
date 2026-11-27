@@ -1,6 +1,7 @@
 import regex as re
 
 from app.db.systemconfig_oper import SystemConfigOper
+from app.log import logger
 from app.schemas.types import SystemConfigKey
 from app.utils.singleton import Singleton
 
@@ -53,7 +54,12 @@ class CustomizationMatcher(metaclass=Singleton):
         customization_re = self._customization_re_cache.get(self.customization)
         if not customization_re:
             # 配置每次读取、编译结果按规则缓存，兼顾实时生效和高频识别性能。
-            customization_re = re.compile(r"%s" % self.customization)
+            try:
+                customization_re = re.compile(r"%s" % self.customization)
+            except re.error as err:
+                # 用户可编辑该规则；坏正则不能阻断整条识别链路
+                logger.warning(f"自定义占位符规则无效，已跳过本次匹配：{err}")
+                return ""
             self._customization_re_cache[self.customization] = customization_re
         # 处理重复多次的情况，保留先后顺序（按添加自定义占位符的顺序）
         unique_customization = {}
