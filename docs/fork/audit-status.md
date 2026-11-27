@@ -16,7 +16,7 @@
 | `app/core/meta/metaanime.py` | 已审计。修复无括号尾部分类标记导致片名最后一个字被误删的问题。 |
 | `app/core/meta/releasegroup.py` | 已审计。修复用户词表中单条无效 `re:` 正则会使整个制作组规则失效的问题；无效条目现在跳过，纯文本组名仍按字面量匹配。 |
 | `app/core/meta/wordlist.py` | 已审计。配置读取、分词应用和异常降级路径未发现可红测复现的高置信缺陷。 |
-| `app/core/meta/customization.py` | 已审计。修复无效自定义占位符正则中断识别链路的问题；坏规则现在只跳过本次匹配并记录 warning。 |
+| `app/core/meta/customization.py` | 已审计。修复无效自定义占位符正则中断识别链路的问题；坏规则现在只跳过本次匹配、按规则缓存失败结果并记录 warning，避免每次识别重复编译。 |
 | `app/core/meta/infopath.py` | 已审计。父目录标题合并、清空空降标题字段和文件/目录语义未发现高置信缺陷；补齐公开函数中文 docstring。 |
 | `app/core/meta/streamingplatform.py` | 按数据表快速审计。加载逻辑与静态映射未发现高置信缺陷。 |
 
@@ -26,7 +26,7 @@
 |---|---|
 | `app/modules/themoviedb/scraper.py` | 已审计。修复第 0 集被真值判断降级为季元数据/季图片的问题，并修复显式目标集号被 `meta.begin_episode` 覆盖的问题。 |
 | `app/helper/mediainfo.py` | 已审计。外部 `mediainfo` 调用使用固定参数、无 shell 拼接、30 秒超时，工具缺失和异常输出均降级为 `None`；未发现高置信缺陷。 |
-| `app/helper/scraper.py` | 已审计。通用 NFO 生成、CDATA、图片扩展名归一化和空输入降级未发现高置信缺陷。 |
+| `app/helper/scraper.py` | 已审计。通用 NFO 生成、CDATA、图片扩展名归一化和空输入降级未发现高置信缺陷；公共链路标注已对齐既有 UTF-8 bytes 契约。 |
 
 ### 快照、事件与模块基础设施
 
@@ -43,7 +43,7 @@
 | `app/chain/dashboard.py` | 已审计。仅转发统计与下载器信息，无本地状态；未发现高置信缺陷。 |
 | `app/chain/webhook.py` | 已审计。解析失败返回、解析成功才广播 `WebhookMessage`；事件模型本身为后台 best-effort 语义。 |
 | `app/api/endpoints/tmdb.py` | 已审计。识别缓存管理接口要求超级管理员；删除只作用于运行时缓存键并通过缓存层持久化，不把 `cache_key` 直接拼成文件路径。 |
-| `app/api/endpoints/webhook.py` | 已审计。GET/POST 均要求 API token；请求立即返回，解析与分发由 FastAPI 后台任务执行。未改变既有 at-most-once 语义。 |
+| `app/api/endpoints/webhook.py` | 已审计。GET/POST 均要求 API token；请求立即返回，解析与分发由 FastAPI 后台任务执行。未改变既有 at-most-once 语义。原生 Emby 数字季集号现在在解析边界规范化为字符串，Season/Episode 0 不再丢失身份。 |
 
 ### 数据库与启动生命周期
 
@@ -68,8 +68,14 @@
 | `10e8809c` | 第 0 集生成集 NFO 与集剧照 | `tests/test_tmdb_scraper.py::test_episode_zero_generates_episode_nfo_not_season_nfo`、`test_episode_zero_generates_episode_thumbnail` |
 | `10e8809c` | NFO 使用显式目标集号 | `tests/test_tmdb_scraper.py::test_episode_nfo_detail_follows_explicit_episode_number` |
 | `83c43bda` | 快照缓存 key 不能越出快照目录 | `tests/test_monitor_snapshot_semantics.py::test_snapshot_storage_name_cannot_escape_cache_directory` |
+| `118045e1` | 无效自定义正则按规则缓存失败结果 | `tests/test_customization_matcher.py::test_invalid_customization_regex_is_cached_per_rule` |
+| `9614730e` | 单文件删除失败不再中断整个临时/缓存清理 | `tests/test_system_utils.py`、`tests/test_cache_system.py` 清理容错用例 |
+| `4fa11aef` | 文件缓存 region/key 不能逃逸缓存根目录，图片 URL 派生 key 中性化 `..` 段 | `tests/test_cache_system.py::test_file_backend_rejects_cache_key_path_traversal`、`tests/test_system_image_proxy.py::test_image_cache_path_cannot_escape_cache_root` |
+| `dedf30cc` | 原生 Emby int 0 季集号不再导致联动删除降级为整剧/整季定位 | `tests/test_mediaserverdel_season_delete.py::test_query_history_preserves_numeric_episode_zero`、`tests/test_mediaserverdel_notify_image.py::test_notify_image_preserves_numeric_episode_zero` |
+| `7b2b715a` | NFO 公共链路标注对齐 UTF-8 bytes 事实契约 | `tests/test_tmdb_scraper.py::test_nfo_public_contract_is_utf8_bytes` |
+| `f357eab0` | webhook 解析边界把原生数字季集号规范化为字符串并保留 0 | `tests/test_webhook_event_scope.py::test_emby_webhook_normalizes_numeric_episode_zero_ids_to_strings` |
 
-定向验证：上述相关测试 `53 passed`；相关 Python 文件 pylint `10.00/10`。
+定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
 ## 审计期间发现但选择不修的问题
 
@@ -90,17 +96,14 @@
    风险：进程退出、后台任务异常或事件消费者停止时，媒体服务器删除/播放事件可能丢失。  
    未修原因：引入持久化队列或重放机制是新架构能力，不属于审计修复。重写时应明确 webhook 交付等级，并考虑事件确认、去重和重放。
 
-4. **NFO 生成接口标注为 `Optional[str]`，实际返回 UTF-8 `bytes`**  
-   位置：`app/modules/themoviedb/scraper.py`、`app/helper/scraper.py`。  
-   风险：类型标注与真实契约不一致，可能误导重写。  
-   未修原因：下游 `_save_file` 明确兼容 `bytes` 与 `str`，且 Bangumi/TMDB 当前均遵循 bytes 事实契约；在收尾阶段仅修正标注不会改变运行行为，但可能引起跨模块类型契约连锁调整。重写时应统一规定 NFO 在内存中是 bytes 还是 str。
+4. **`display_width` 被探测但几乎无下游消费者**
 
-5. **`display_width` 被探测但几乎无下游消费者**  
    位置：`app/helper/mediainfo.py`。  
    风险：重写时无法判断这是必要行为还是历史残留。  
    未修原因：删除字段属于行为裁剪而非缺陷修复。建议重写时确认媒体信息展示/重命名是否真正需要该值。
 
-6. **重启完成通知依赖内部缓存文件，异常缓存可能导致每次启动重复失败**  
+5. **重启完成通知依赖内部缓存文件，异常缓存可能导致每次启动重复失败**
+
    位置：`app/chain/system.py::restart_finish` 与 `app/startup/lifecycle.py::init_extra` 的调用关系。  
    风险：理论上损坏缓存会让重启收尾任务反复失败。  
    未修原因：缓存由系统内部写入且损坏概率低；修复点在非必审文件，当前不扩大范围。重写时应把重启通知设计为幂等、可校验的持久状态。
@@ -138,9 +141,14 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1655 passed, 2 warnings` |
+| `python tests/run.py` | `1669 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
 
 前端没有出现需要归因于跳过视觉体系的既有失败。
+
+
+## 当前生产基线
+
+生产环境已部署并核验 `f357eab0f0c59189e50a15c27ff405c79deaf802`。核验结果：`litepilot.service` active，nginx 前缀 `/litepilot/`、API 代理与 `service-worker.js` 均返回 200，Doctor `error=0 warn=0`，最近日志未发现 traceback、exception 或 error。
