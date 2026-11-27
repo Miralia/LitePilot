@@ -109,7 +109,7 @@ const HistoryTableStub = defineComponent({
       return h('section', { 'aria-label': '整理历史桌面列表' }, [
         h('output', { 'aria-label': '整理历史排序结果' }, JSON.stringify(sortResults)),
         ...props.items.map(item =>
-          h('article', { 'data-history-id': item.id }, [h('span', item.title), slots['item.actions']?.({ item })]),
+          h('article', { 'data-history-id': item.id }, [h('span', item.title), slots['item.status']?.({ item }), slots['item.actions']?.({ item })]),
         ),
         h(
           'button',
@@ -381,6 +381,20 @@ describe('TransferHistoryView', () => {
     expect(requests).toEqual([{ count: 50, page: 1, title: '科幻' }])
   })
 
+  it('marks successful records with cleanup warnings as partially completed on desktop', async () => {
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === 'system/setting/public/Storages') return Promise.resolve(storageResponse())
+      return Promise.resolve(historyResponse([
+        createHistory(1, '桌面部分完成', { errmsg: '源文件删除失败，移动未完全完成', status: true }),
+      ]))
+    })
+
+    await renderHistory()
+
+    expect(await screen.findByText('桌面部分完成')).toBeInTheDocument()
+    expect(screen.getByText('部分完成')).toBeInTheDocument()
+  })
+
   it('prevents an older desktop request from replacing a newer route search', async () => {
     const oldRequest = createDeferred<ReturnType<typeof historyResponse>>()
     const newRequest = createDeferred<ReturnType<typeof historyResponse>>()
@@ -526,6 +540,21 @@ describe('TransferHistoryView', () => {
     runDynamicAction('transferHistory.actions.exitBatchMode')
     await nextTick()
     expect(screen.getByRole('button', { name: '批量选择' })).toBeInTheDocument()
+  })
+
+  it('marks successful records with cleanup warnings as partially completed on mobile', async () => {
+    mocks.desktop = false
+    const warning = '源文件删除失败，移动未完全完成'
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === 'system/setting/public/Storages') return Promise.resolve(storageResponse())
+      return Promise.resolve(historyResponse([createHistory(1, '部分完成记录', { errmsg: warning, status: true })]))
+    })
+
+    await renderHistory()
+    await fireEvent.click(screen.getByRole('button', { name: '加载下一页' }))
+
+    expect(await screen.findByText('部分完成')).toBeInTheDocument()
+    expect(screen.getByText(warning)).toBeInTheDocument()
   })
 
   it('prevents a mobile request invalidated by a route reset from appending stale records', async () => {

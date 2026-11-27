@@ -925,13 +925,20 @@ function getHistoryStorageName(storage?: string) {
   return storageDict.value[storage] || fallbackNames[storage] || storage
 }
 
+// 判断成功记录是否带有部分完成警告。
+function hasPartialCompletionWarning(item: TransferHistory) {
+  return Boolean(item.status && item.errmsg)
+}
+
 // 获取移动端卡片状态对应的主题色。
 function getHistoryStatusColor(item: TransferHistory) {
+  if (hasPartialCompletionWarning(item)) return 'warning'
   return item.status ? 'success' : 'error'
 }
 
 // 获取移动端卡片状态文本。
 function getHistoryStatusText(item: TransferHistory) {
+  if (hasPartialCompletionWarning(item)) return t('transferHistory.status.partial')
   return item.status ? t('transferHistory.status.success') : t('transferHistory.status.failed')
 }
 
@@ -1313,7 +1320,12 @@ onUnmounted(() => {
         </VChip>
       </template>
       <template #item.status="{ item }">
-        <VChip v-if="item?.status" color="success" size="small"> {{ t('transferHistory.status.success') }} </VChip>
+        <VTooltip v-if="item?.status && item?.errmsg" :text="item.errmsg">
+          <template #activator="{ props }">
+            <VChip v-bind="props" color="warning" size="small"> {{ t('transferHistory.status.partial') }} </VChip>
+          </template>
+        </VTooltip>
+        <VChip v-else-if="item?.status" color="success" size="small"> {{ t('transferHistory.status.success') }} </VChip>
         <VTooltip v-else :text="item?.errmsg">
           <template #activator="{ props }">
             <VChip v-bind="props" color="error" size="small"> {{ t('transferHistory.status.failed') }} </VChip>
@@ -1400,7 +1412,12 @@ onUnmounted(() => {
         </VChip>
       </template>
       <template #item.status="{ item }">
-        <VChip v-if="item?.status" color="success" size="small"> {{ t('transferHistory.status.success') }} </VChip>
+        <VTooltip v-if="item?.status && item?.errmsg" :text="item.errmsg">
+          <template #activator="{ props }">
+            <VChip v-bind="props" color="warning" size="small"> {{ t('transferHistory.status.partial') }} </VChip>
+          </template>
+        </VTooltip>
+        <VChip v-else-if="item?.status" color="success" size="small"> {{ t('transferHistory.status.success') }} </VChip>
         <VTooltip v-else :text="item?.errmsg">
           <template #activator="{ props }">
             <VChip v-bind="props" color="error" size="small"> {{ t('transferHistory.status.failed') }} </VChip>
@@ -1648,8 +1665,12 @@ onUnmounted(() => {
               </div>
             </button>
 
-            <div v-if="!item?.status && item?.errmsg" class="transfer-history-mobile-record__error">
-              <VIcon icon="mdi-alert-circle" size="18" />
+            <div
+              v-if="item?.errmsg"
+              class="transfer-history-mobile-record__error"
+              :class="{ 'transfer-history-mobile-record__error--warning': item.status }"
+            >
+              <VIcon :icon="item.status ? 'mdi-alert-outline' : 'mdi-alert-circle'" size="18" />
               {{ item.errmsg }}
             </div>
           </article>
@@ -2020,6 +2041,12 @@ onUnmounted(() => {
   overflow-wrap: anywhere;
   padding-block: 0.65rem;
   padding-inline: 0.75rem;
+}
+
+.transfer-history-mobile-record__error--warning {
+  border-color: rgba(var(--v-theme-warning), 0.24);
+  background: rgba(var(--v-theme-warning), 0.1);
+  color: rgb(var(--v-theme-warning));
 }
 
 html[data-theme='transparent'] .transfer-history-mobile-page,

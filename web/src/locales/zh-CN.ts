@@ -1161,6 +1161,7 @@ export default {
     },
     status: {
       success: '成功',
+      partial: '部分完成',
       failed: '失败',
     },
     noData: '没有数据',
