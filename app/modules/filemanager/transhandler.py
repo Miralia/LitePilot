@@ -691,7 +691,8 @@ class TransHandler:
                         # 删除源文件；删除失败时整理目标已经落盘，不能按失败回滚，但必须明确提示移动未完全完成
                         if source_oper.delete(fileitem):
                             return new_item, ""
-                        return new_item, f"{fileitem.path} 已上传，但源文件删除失败，移动未完全完成"
+                        return new_item, (f"{fileitem.path} 已上传到媒体库，但源文件删除失败，源文件仍保留，移动未完全完成；"
+                                        "请检查源存储权限，并在确认无需保种后手动清理")
                     else:
                         return None, f"{fileitem.path} 上传 {target_storage} 失败"
                 else:
@@ -721,7 +722,8 @@ class TransHandler:
                         # 删除源文件；删除失败时目标已经落盘，不能按失败回滚，但必须明确提示移动未完全完成
                         if not source_oper.delete(fileitem):
                             return __get_targetitem(target_file), (
-                                f"{fileitem.path} 已移动到本地媒体库，但源文件删除失败，移动未完全完成"
+                                f"{fileitem.path} 已复制到本地媒体库，但源文件删除失败，源文件仍保留，移动未完全完成；"
+                                "请检查源存储权限，并在确认无需保种后手动清理"
                             )
                     return __get_targetitem(target_file), ""
                 else:

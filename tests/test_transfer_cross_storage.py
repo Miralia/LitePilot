@@ -173,6 +173,8 @@ def test_local_to_remote_move_reports_source_delete_failure(tmp_path):
 
     assert new_item == uploaded_item
     assert "源文件删除失败" in errmsg
+    assert "源文件仍保留" in errmsg
+    assert "确认无需保种后手动清理" in errmsg
 
 
 def test_remote_to_local_move_reports_source_delete_failure(tmp_path, monkeypatch):
@@ -217,6 +219,8 @@ def test_remote_to_local_move_reports_source_delete_failure(tmp_path, monkeypatc
 
     assert new_item is not None
     assert "源文件删除失败" in errmsg
+    assert "源文件仍保留" in errmsg
+    assert "确认无需保种后手动清理" in errmsg
 
 
 def test_successful_transfer_warning_is_exposed_in_transferinfo(tmp_path, monkeypatch):
