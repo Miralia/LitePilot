@@ -26,9 +26,10 @@
 
 | 文件 | 审计结论 |
 |---|---|
-| `app/modules/themoviedb/scraper.py` | 已审计。修复第 0 集被真值判断降级为季元数据/季图片的问题，并修复显式目标集号被 `meta.begin_episode` 覆盖的问题。 |
+| `app/modules/themoviedb/scraper.py` | 已审计。修复第 0 集被真值判断降级为季元数据/季图片的问题，并修复显式目标集号被 `meta.begin_episode` 覆盖的问题；外部简介中的 CDATA 终止符与 XML 1.0 非法控制字符不再使 NFO 序列化失败或不可解析。 |
 | `app/helper/mediainfo.py` | 已审计。外部 `mediainfo` 调用使用固定参数、无 shell 拼接、30 秒超时，工具缺失和异常输出均降级为 `None`；未发现高置信缺陷。 |
-| `app/helper/scraper.py` | 已审计。通用 NFO 生成、CDATA、图片扩展名归一化和空输入降级未发现高置信缺陷；公共链路标注已对齐既有 UTF-8 bytes 契约。 |
+| `app/helper/scraper.py` | 已审计。通用 NFO 生成、图片扩展名归一化和空输入降级未发现其它高置信缺陷；公共链路标注已对齐既有 UTF-8 bytes 契约。外部简介中的 CDATA 终止符与 XML 1.0 非法控制字符现在统一清理/拆分。 |
+| `app/utils/dom.py` | 已审计。XML 文本统一过滤 XML 1.0 非法字符；`]]>` 拆到相邻 CDATA 节点边界，解析后保留原文语义。 |
 | `app/chain/media.py` | 已审计电视剧单集刮削身份边界。重新识别单集时保留原媒体类型、统一数据源、TMDB/Bangumi/豆瓣兼容 ID 与剧集组，Bangumi 条目不再被改写为空 TMDB 请求。 |
 
 ### 快照、事件与模块基础设施
@@ -110,6 +111,7 @@
 | `0df25e7f` | 畸形动漫标题导致 `anitopy` 崩溃时降级到通用解析结果，保留标题、集号与媒体类型 | `tests/test_metainfo.py::test_anime_parser_degrades_to_video_parser_when_anitopy_crashes` |
 | `f59d7838` | 媒体服务器删除多集文件时能命中 `E01-E02` 形式的连续集历史 | `tests/test_mediaserverdel_season_delete.py::test_query_history_matches_multi_episode_range` |
 | `69fc6892` | nginx 代理后的登录限流使用真实客户端 IP，直连伪造 XFF 不能轮换限流身份 | `tests/test_login_mfa_methods.py::test_login_throttle_uses_forwarded_client_behind_loopback_proxy`、`test_login_throttle_ignores_forwarded_header_for_direct_client` |
+| `a10bac00` | 外部元数据中的 CDATA 终止符和 XML 1.0 非法控制字符不再破坏 NFO 序列化 | `tests/test_scraper_xml.py::test_metadata_nfo_preserves_cdata_terminator_and_strips_invalid_control_chars` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -172,7 +174,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1710 passed, 2 warnings` |
+| `python tests/run.py` | `1711 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -182,6 +184,6 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `69fc6892a9c5b851dd94c463b979c915c89317fb`。升级前备份为 `/root/litepilot-pre-login-throttle-20261127173822.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和通过 SQLite 在线备份 API 生成的一致性快照。
+生产环境已部署并核验 `a10bac002f957b7598fbe14238158500d7e832f2`。升级前备份为 `/root/litepilot-pre-nfo-xml-20261127175109.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和通过 SQLite 在线备份 API 生成的一致性快照。
 
-核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/api/v1/system/ping` 后端直连与 `/litepilot/api/v1/system/ping` nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。唯一 warn 是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复已在当前版本中，本次重启后没有新增同类错误。
+核验结果：`litepilot.service` active；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/api/v1/system/ping` 后端直连与 `/litepilot/api/v1/system/ping` nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。唯一 warn 是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复已在当前版本中，本次重启后没有新增同类错误。
