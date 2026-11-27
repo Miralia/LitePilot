@@ -20,6 +20,7 @@
 | `app/core/meta/infopath.py` | 已审计。父目录标题合并、清空空降标题字段和文件/目录语义未发现高置信缺陷；补齐公开函数中文 docstring。 |
 | `app/core/meta/metavideo.py` | 已审计第 0 集作为剧集证据的边界。`E00 PartA` 现在保留 Part 标记，避免多 Part 文件在版本清理中被误并。 |
 | `app/core/meta/streamingplatform.py` | 按数据表快速审计。加载逻辑与静态映射未发现高置信缺陷。 |
+| `app/core/metainfo.py` | 已审计显式媒体标签的季集范围计数。`s=0` 与 `e=0-1` 中的零值不再被误判为缺失，倒序范围自动交换行为保持兼容。 |
 
 ### 刮削与媒体探测
 
@@ -28,6 +29,7 @@
 | `app/modules/themoviedb/scraper.py` | 已审计。修复第 0 集被真值判断降级为季元数据/季图片的问题，并修复显式目标集号被 `meta.begin_episode` 覆盖的问题。 |
 | `app/helper/mediainfo.py` | 已审计。外部 `mediainfo` 调用使用固定参数、无 shell 拼接、30 秒超时，工具缺失和异常输出均降级为 `None`；未发现高置信缺陷。 |
 | `app/helper/scraper.py` | 已审计。通用 NFO 生成、CDATA、图片扩展名归一化和空输入降级未发现高置信缺陷；公共链路标注已对齐既有 UTF-8 bytes 契约。 |
+| `app/chain/media.py` | 已审计电视剧单集刮削身份边界。重新识别单集时保留原媒体类型、统一数据源、TMDB/Bangumi/豆瓣兼容 ID 与剧集组，Bangumi 条目不再被改写为空 TMDB 请求。 |
 
 ### 快照、事件与模块基础设施
 
@@ -67,7 +69,7 @@
 | `app/chain/mediacover.py` | 已审计字体缓存外部响应与本地写入边界。字体验证、原子发布、损坏缓存自愈和 I/O 失败降级均有回归覆盖。 |
 | `app/chain/system.py` | 已审计交互重启收据与失败反馈边界。无效收据会清理，通知发送失败保留有效收据重试，底层重启失败会撤回收据并告知用户。 |
 | `app/helper/format.py` | 已审计手动集数定位、指定集数和偏移边界。`E00` 可匹配并参与偏移，范围型指定集数按数值边界过滤，非法输入产生清晰错误。 |
-| `app/chain/transfer.py` | 已审计手动整理自定义格式与历史重试错误边界。非法格式返回可展示失败，自动重新整理识别失败不再访问空媒体类型。 |
+| `app/chain/transfer.py` | 已审计手动整理自定义格式、历史重试错误与入库通知聚合边界。非法格式返回可展示失败，自动重新整理识别失败不再访问空媒体类型；通知聚合键复用统一媒体身份解析，不同 TMDB/Bangumi 条目不会在去重窗口内互相覆盖。 |
 | `app/db/transferhistory_oper.py` | 已审计整理历史媒体身份持久化。成功历史现在与失败历史一致保留 `episode_group`，非默认剧集组重新整理不会回退到默认集数映射。 |
 
 ## 本轮修复与回归测试
@@ -100,6 +102,9 @@
 | `8ad87f50` | 多季转移历史重新整理不再崩溃，也不会错误强制为起始单季 | `tests/test_transfer_history_retransfer.py::test_manual_transfer_from_multi_season_history_does_not_crash_or_force_single_season` |
 | `4f885257` | 自动重新整理识别失败返回可展示失败；`E00` 保留 Part、模板匹配与偏移；范围/非法指定集数不再穿透整理链 | `tests/test_transfer_history_retransfer.py::test_redo_transfer_history_unrecognized_media_returns_failure`、`tests/test_format_parser_security.py`、`tests/test_metainfo.py::test_video_parser_preserves_part_after_episode_zero`、`tests/test_transfer_job_manager.py::test_do_transfer_invalid_episode_detail_returns_failure` |
 | `5f3f0fd2` | 成功整理历史保留 `episode_group`，非默认剧集组重新整理不会回退到默认集数映射 | `tests/test_transfer_history_warnings.py::test_success_history_preserves_episode_group` |
+| `ec6ecbc3` | 电视剧单集刮削重新识别时保留统一媒体来源与全部兼容 ID | `tests/test_mediascrape.py::test_tv_episode_scrape_preserves_bangumi_identity` |
+| `ade1536c` | 显式媒体标签中的第 0 季/集参与范围总数计算 | `tests/test_metainfo.py::test_find_metainfo_episode_zero_range_totals` |
+| `55a80b95` | 入库通知聚合键复用统一媒体身份解析，不同媒体不再共用空 `media_id` 键 | `tests/test_transfer_job_manager.py::test_notify_key_uses_compatible_media_identity` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -162,7 +167,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1703 passed, 2 warnings` |
+| `python tests/run.py` | `1706 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -172,6 +177,6 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `5f3f0fd20439b2b66e7772d6e98655a3ab334bf3`。升级前备份为 `/root/litepilot-pre-episode-group-20261127164631.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
+生产环境已部署并核验 `55a80b953eae2f00545fd01baaf03388fc44cd93`。升级前备份为 `/root/litepilot-pre-55a80b95-online-20261127170332.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和通过 SQLite 在线备份 API 生成的一致性快照。
 
-核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/system/ping` 直连与 nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。唯一 warn 是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复已在当前版本中，本次重启后没有新增同类错误。
+核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/api/v1/system/ping` 后端直连与 `/litepilot/api/v1/system/ping` nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。唯一 warn 是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复已在当前版本中，本次重启后没有新增同类错误。
