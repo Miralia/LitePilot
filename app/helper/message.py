@@ -183,7 +183,7 @@ class TemplateContextBuilder:
             return
 
         episode_data = {"episode_title": None, "episode_date": None}
-        if meta.begin_episode and episodes:
+        if meta.begin_episode is not None and episodes:
             for episode in episodes:
                 if episode.episode_number == meta.begin_episode:
                     episode_data.update({

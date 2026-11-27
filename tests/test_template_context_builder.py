@@ -142,3 +142,19 @@ def test_build_preserves_special_season_context() -> None:
     assert context["season"] == "0"
     assert context["season_fmt"] == "S00"
     assert context["season_year"] == "2024"
+
+
+def test_build_preserves_episode_zero_details() -> None:
+    """通知模板应能匹配 TMDB 第 0 集的标题与播出日期。"""
+    meta = _build_fake_meta()
+    meta.begin_episode = 0
+
+    context = TemplateContextBuilder().build(
+        meta=meta,
+        episodes_info=[
+            TmdbEpisode(episode_number=0, name="第零集", air_date="2024-01-01"),
+        ],
+    )
+
+    assert context["episode_title"] == "第零集"
+    assert context["episode_date"] == "2024-01-01"
