@@ -293,10 +293,11 @@ class TransHandler:
                     return result
 
                 logger.info(f"文件夹 {fileitem.path} 整理成功")
-                # 返回整理后的路径
+                # 返回整理后的路径；跨存储移动可能已落盘但源清理失败，警告仍需进入通知上下文
                 self.__update_result(
                     result=result,
                     success=True,
+                    message=errmsg or None,
                     fileitem=fileitem,
                     target_item=new_diritem,
                     target_diritem=new_diritem,
@@ -551,6 +552,7 @@ class TransHandler:
                 self.__update_result(
                     result=result,
                     success=True,
+                    message=err_msg or None,
                     fileitem=fileitem,
                     target_item=new_item,
                     target_diritem=target_diritem,
@@ -686,9 +688,10 @@ class TransHandler:
                         target_fileitem, filepath, target_file.name
                     )
                     if new_item:
-                        # 删除源文件
-                        source_oper.delete(fileitem)
-                        return new_item, ""
+                        # 删除源文件；删除失败时整理目标已经落盘，不能按失败回滚，但必须明确提示移动未完全完成
+                        if source_oper.delete(fileitem):
+                            return new_item, ""
+                        return new_item, f"{fileitem.path} 已上传，但源文件删除失败，移动未完全完成"
                     else:
                         return None, f"{fileitem.path} 上传 {target_storage} 失败"
                 else:
@@ -715,8 +718,11 @@ class TransHandler:
                         target_file.unlink(missing_ok=True)
                         return None, f"{fileitem.path} 移动到本地媒体库失败：{move_message}"
                     if transfer_type == "move":
-                        # 删除源文件
-                        source_oper.delete(fileitem)
+                        # 删除源文件；删除失败时目标已经落盘，不能按失败回滚，但必须明确提示移动未完全完成
+                        if not source_oper.delete(fileitem):
+                            return __get_targetitem(target_file), (
+                                f"{fileitem.path} 已移动到本地媒体库，但源文件删除失败，移动未完全完成"
+                            )
                     return __get_targetitem(target_file), ""
                 else:
                     return None, f"{fileitem.path} {fileitem.storage} 下载失败"
@@ -896,6 +902,7 @@ class TransHandler:
         :param transfer_type: 整理方式
         """
         file_list: List[FileItem] = source_oper.list(fileitem)
+        warnings = []
         # 整理文件
         for item in file_list:
             if item.type == "dir":
@@ -912,6 +919,8 @@ class TransHandler:
                 )
                 if not state:
                     return False, errmsg
+                if errmsg:
+                    warnings.append(errmsg)
             else:
                 # 整理文件
                 new_file = target_path / item.name
@@ -925,13 +934,15 @@ class TransHandler:
                 )
                 if not new_item:
                     return False, errmsg
+                if errmsg:
+                    warnings.append(errmsg)
                 self.__update_result(
                     result=result,
                     file_list=[item.path],
                     file_list_new=[new_item.path],
                 )
-        # 返回成功
-        return True, ""
+        # 返回成功，并保留各文件的部分完成警告
+        return True, "；".join(warnings)
 
     def __transfer_file(
         self,
