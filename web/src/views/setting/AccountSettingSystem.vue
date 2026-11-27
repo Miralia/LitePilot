@@ -12,6 +12,7 @@ import { useI18n } from 'vue-i18n'
 import { downloaderOptions, mediaServerOptions } from '@/api/constants'
 import { useDisplay } from 'vuetify'
 import { useSilentSettingRefresh } from '@/composables/useSilentSettingRefresh'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 const display = useDisplay()
 const isAdvancedDialogFullscreen = computed(() => !display.mdAndUp.value)
@@ -221,7 +222,10 @@ async function saveDownloaderSetting() {
 
     await loadDownloaderSetting()
   } catch (error) {
-    console.error(error)
+    if (!isRequestCancellation(error)) {
+      console.error(error)
+      $toast.error(t('setting.system.downloaderSaveFailed'))
+    }
   }
 }
 
@@ -260,7 +264,10 @@ async function saveMediaServerSetting() {
 
     await loadMediaServerSetting()
   } catch (error) {
-    console.error(error)
+    if (!isRequestCancellation(error)) {
+      console.error(error)
+      $toast.error(t('setting.system.mediaServerSaveFailed'))
+    }
   }
 }
 
@@ -294,7 +301,14 @@ async function saveSystemSetting(value: { [key: string]: any }) {
       return false
     }
   } catch (error) {
-    console.error(error)
+    if (!isRequestCancellation(error)) {
+      console.error(error)
+      $toast.error(
+        t('setting.system.saveFailed', {
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      )
+    }
   }
   return false
 }
@@ -498,8 +512,10 @@ async function saveScrapingSwitchs() {
       return false
     }
   } catch (error) {
-    console.error(error)
-    $toast.error(t('setting.system.scrapingSwitchSaveError'))
+    if (!isRequestCancellation(error)) {
+      console.error(error)
+      $toast.error(t('setting.system.scrapingSwitchSaveError'))
+    }
     return false
   }
 }

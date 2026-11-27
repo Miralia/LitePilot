@@ -8,6 +8,7 @@ import { notificationSwitchDict } from '@/api/constants'
 import { useTheme } from 'vuetify'
 import { useSilentSettingRefresh } from '@/composables/useSilentSettingRefresh'
 import { openSharedDialog } from '@/composables/useSharedDialog'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 // 国际化
 const { t } = useI18n()
@@ -252,6 +253,7 @@ async function saveNotificationSetting() {
       $toast.success(t('setting.notification.saveSuccess'))
     } else $toast.error(t('setting.notification.saveFailed'))
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('setting.notification.saveFailed'))
   }
@@ -265,7 +267,9 @@ async function saveNotificationTime() {
       $toast.success(t('setting.notification.timeSaveSuccess'))
     } else $toast.error(t('setting.notification.timeSaveFailed'))
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
+    $toast.error(t('setting.notification.timeSaveFailed'))
   }
 }
 
@@ -307,7 +311,9 @@ async function saveNotificationSwitchs() {
     if (result.success) $toast.success(t('setting.notification.switchSaveSuccess'))
     else $toast.error(t('setting.notification.switchSaveFailed'))
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
+    $toast.error(t('setting.notification.switchSaveFailed'))
   }
 }
 
