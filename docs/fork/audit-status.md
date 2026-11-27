@@ -68,6 +68,7 @@
 | `app/chain/system.py` | 已审计交互重启收据与失败反馈边界。无效收据会清理，通知发送失败保留有效收据重试，底层重启失败会撤回收据并告知用户。 |
 | `app/helper/format.py` | 已审计手动集数定位、指定集数和偏移边界。`E00` 可匹配并参与偏移，范围型指定集数按数值边界过滤，非法输入产生清晰错误。 |
 | `app/chain/transfer.py` | 已审计手动整理自定义格式与历史重试错误边界。非法格式返回可展示失败，自动重新整理识别失败不再访问空媒体类型。 |
+| `app/db/transferhistory_oper.py` | 已审计整理历史媒体身份持久化。成功历史现在与失败历史一致保留 `episode_group`，非默认剧集组重新整理不会回退到默认集数映射。 |
 
 ## 本轮修复与回归测试
 
@@ -98,6 +99,7 @@
 | `758199a3` | 模块链泛型容器注解按容器类型校验，不再因 `list[...]` 抛出 `TypeError` | `tests/test_object.py::test_check_signature_matches_generic_container_origin` |
 | `8ad87f50` | 多季转移历史重新整理不再崩溃，也不会错误强制为起始单季 | `tests/test_transfer_history_retransfer.py::test_manual_transfer_from_multi_season_history_does_not_crash_or_force_single_season` |
 | `4f885257` | 自动重新整理识别失败返回可展示失败；`E00` 保留 Part、模板匹配与偏移；范围/非法指定集数不再穿透整理链 | `tests/test_transfer_history_retransfer.py::test_redo_transfer_history_unrecognized_media_returns_failure`、`tests/test_format_parser_security.py`、`tests/test_metainfo.py::test_video_parser_preserves_part_after_episode_zero`、`tests/test_transfer_job_manager.py::test_do_transfer_invalid_episode_detail_returns_failure` |
+| `5f3f0fd2` | 成功整理历史保留 `episode_group`，非默认剧集组重新整理不会回退到默认集数映射 | `tests/test_transfer_history_warnings.py::test_success_history_preserves_episode_group` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -160,7 +162,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1702 passed, 2 warnings` |
+| `python tests/run.py` | `1703 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -170,6 +172,6 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `4f885257d28c035617cb6b193354b095d879e79c`。升级前备份为 `/root/litepilot-pre-4f885257-20261127163853.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
+生产环境已部署并核验 `5f3f0fd20439b2b66e7772d6e98655a3ab334bf3`。升级前备份为 `/root/litepilot-pre-episode-group-20261127164631.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
 
 核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/system/ping` 直连与 nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。唯一 warn 是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复已在当前版本中，本次重启后没有新增同类错误。
