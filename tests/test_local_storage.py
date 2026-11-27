@@ -191,3 +191,25 @@ def test_create_folder_makes_new_dir_writable_for_other_users(tmp_path: Path) ->
 
     assert item is not None
     assert (tmp_path / "Season 1").stat().st_mode & 0o777 == 0o777
+
+
+def test_delete_directory_reports_removal_failure(tmp_path: Path, monkeypatch) -> None:
+    """目录内容删除失败时必须返回失败，不能把残留文件误报为删除成功。"""
+    storage = _make_storage()
+    target = tmp_path / "delete-target"
+    target.mkdir()
+    blocked_file = target / "blocked.mkv"
+    blocked_file.write_bytes(b"media")
+    real_unlink = os.unlink
+
+    def fail_blocked_file(path, *args, **kwargs):
+        if Path(path).name == blocked_file.name:
+            raise PermissionError("simulated delete failure")
+        return real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "unlink", fail_blocked_file)
+
+    result = storage.delete(schemas.FileItem(path=target.as_posix(), type="dir"))
+
+    assert result is False
+    assert blocked_file.exists()

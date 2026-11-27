@@ -232,7 +232,7 @@ class LocalStorage(StorageBase):
             if path_obj.is_file() or path_obj.is_symlink():
                 path_obj.unlink()
             else:
-                shutil.rmtree(path_obj, ignore_errors=True)
+                shutil.rmtree(path_obj)
         except Exception as e:
             logger.error(f"【本地】删除文件失败：{e}")
             return False
