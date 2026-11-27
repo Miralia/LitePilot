@@ -35,3 +35,20 @@ def test_check_method():
     assert not ObjectUtils.check_method(not_implemented_function_with_call)
     assert not ObjectUtils.check_method(multiple_lines_async_def)
     assert ObjectUtils.check_method(empty_function)
+
+
+def test_check_signature_matches_runtime_type():
+    """模块链只在结果类型与下一处理器入参一致时传递结果。"""
+    def target(value: int):
+        return value
+
+    assert ObjectUtils.check_signature(target, 1) is True
+    assert ObjectUtils.check_signature(target, "1") is False
+
+
+def test_check_signature_unresolved_annotation_is_unconstrained():
+    """无法解析的字符串注解不得中断模块链，应按既有语义视为无类型约束。"""
+    def target(value: "MissingRuntimeType"):
+        return value
+
+    assert ObjectUtils.check_signature(target, object()) is True

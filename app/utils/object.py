@@ -81,9 +81,9 @@ class ObjectUtils:
         if len(args) != len(parameters):
             return False
         try:
-            # 获取解析后的类型提示
+            # 获取解析后的类型提示；无法解析的注解不应中断模块链
             type_hints = get_type_hints(func)
-        except TypeError:
+        except (TypeError, NameError, SyntaxError):
             type_hints = {}
         for arg, (param_name, param) in zip(args, parameters.items()):
             # 优先使用解析后的类型提示
@@ -93,18 +93,10 @@ class ObjectUtils:
                 param_annotation = param.annotation
                 if param_annotation is inspect.Parameter.empty:
                     continue
-                # 处理字符串类型的注解
+                # get_type_hints 已统一解析字符串注解；仍无法解析时按无类型约束处理
                 if isinstance(param_annotation, str):
-                    # 尝试解析字符串为实际类型
-                    module = inspect.getmodule(func)
-                    global_vars = module.__dict__ if module else globals()
-                    try:
-                        param_type = eval(param_annotation, global_vars)
-                    except Exception as err:
-                        print(str(err))
-                        continue
-                else:
-                    param_type = param_annotation
+                    continue
+                param_type = param_annotation
             if param_type is None:
                 continue
             if not isinstance(arg, param_type):
