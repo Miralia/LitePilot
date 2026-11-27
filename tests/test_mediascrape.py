@@ -920,6 +920,46 @@ def test_tv_episode_zero_scrape_continues_recognition():
 
     chain.recognize_media.assert_called_once_with(
         meta=file_meta,
+        mtype=mediainfo.type,
+        source=mediainfo.source,
+        mediaid=mediainfo.media_id,
         tmdbid=1,
+        doubanid=mediainfo.douban_id,
+        bangumiid=mediainfo.bangumi_id,
+        episode_group=None,
+    )
+
+
+def test_tv_episode_scrape_preserves_bangumi_identity():
+    """单集刮削重新识别时必须保留 Bangumi 身份，不能只剩空 TMDB ID。"""
+    chain = object.__new__(MediaChain)
+    file_meta = MagicMock()
+    file_meta.begin_episode = 1
+    mediainfo = MediaInfo(
+        type=MediaType.TV,
+        title="Bangumi Show",
+        source="bangumi",
+        media_id="456",
+        bangumi_id=456,
+    )
+    chain.recognize_media = MagicMock(return_value=None)
+
+    with patch("app.chain.media.MetaInfoPath", return_value=file_meta):
+        chain._handle_tv_episode_file(
+            fileitem=MagicMock(),
+            filepath=Path("/tmp/S01E01.mkv"),
+            mediainfo=mediainfo,
+            parent=MagicMock(),
+            overwrite=False,
+        )
+
+    chain.recognize_media.assert_called_once_with(
+        meta=file_meta,
+        mtype=MediaType.TV,
+        source="bangumi",
+        mediaid="456",
+        tmdbid=None,
+        doubanid=None,
+        bangumiid=456,
         episode_group=None,
     )

@@ -1295,7 +1295,12 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
 
         file_mediainfo = self.recognize_media(
             meta=file_meta,
+            mtype=mediainfo.type,
+            source=mediainfo.source,
+            mediaid=mediainfo.media_id,
             tmdbid=mediainfo.tmdb_id,
+            doubanid=mediainfo.douban_id,
+            bangumiid=mediainfo.bangumi_id,
             episode_group=mediainfo.episode_group,
         )
         if not file_mediainfo:
