@@ -607,3 +607,28 @@ def test_settings_config_path_uses_install_marker(monkeypatch, tmp_path):
     instance.__dict__["CONFIG_DIR"] = None
 
     assert instance.CONFIG_PATH == marked_config
+
+
+def test_clear_continues_after_file_delete_failure_and_reports_error(tmp_path, monkeypatch):
+    """单个文件删除失败不能阻止后续过期文件清理，结束后仍要报告失败。"""
+    first = tmp_path / "first.old"
+    second = tmp_path / "second.old"
+    first.write_text("first")
+    second.write_text("second")
+    old_time = 1
+    os.utime(first, (old_time, old_time))
+    os.utime(second, (old_time, old_time))
+    real_unlink = Path.unlink
+
+    def flaky_unlink(path, *args, **kwargs):
+        if path == first:
+            raise PermissionError("denied")
+        return real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", flaky_unlink)
+
+    with pytest.raises(OSError, match="清理"):
+        SystemUtils.clear(tmp_path, days=1)
+
+    assert first.exists()
+    assert not second.exists()

@@ -2,6 +2,9 @@ import asyncio
 import os
 import threading
 import time
+from unittest.mock import MagicMock
+
+import pytest
 
 from app.core.cache import (
     AsyncFileBackend,
@@ -742,3 +745,98 @@ def test_file_backend_items_skip_directories(tmp_path):
     (tmp_path / "region" / "empty_dir").mkdir()
 
     assert list(cache.items(region="region")) == [("nested/value", b"value")]
+
+
+def test_clear_temp_isolates_independent_cache_tree_failures(monkeypatch, tmp_path):
+    """临时目录清理失败不能跳过图片缓存和包缓存清理。"""
+    from app.startup import modules_initializer
+
+    calls = []
+
+    def fake_clear(path, days):
+        calls.append((path, days))
+        if path == modules_initializer.settings.TEMP_PATH:
+            raise PermissionError("denied")
+
+    monkeypatch.setattr(modules_initializer.settings, "TEMP_FILE_DAYS", 3)
+    monkeypatch.setattr(modules_initializer.settings, "GLOBAL_IMAGE_CACHE_DAYS", 7)
+    monkeypatch.setattr(modules_initializer.SystemUtils, "clear", staticmethod(fake_clear))
+    package_cache = MagicMock()
+    monkeypatch.setattr(modules_initializer, "clear_package_tool_cache", package_cache)
+
+    modules_initializer.clear_temp()
+
+    assert calls == [
+        (modules_initializer.settings.TEMP_PATH, 3),
+        (modules_initializer.settings.CACHE_PATH / "images", 7),
+    ]
+    package_cache.assert_called_once_with()
+
+
+def test_file_backend_rejects_cache_key_path_traversal(tmp_path):
+    """文件缓存允许嵌套 key，但必须拒绝越出缓存根目录的 key。"""
+    cache = FileBackend(base=tmp_path)
+
+    with pytest.raises(ValueError, match="缓存路径"):
+        cache.set("../../escape", b"bad", region="images")
+
+    assert not (tmp_path / "escape").exists()
+    assert not (tmp_path.parent / "escape").exists()
+
+
+def test_file_backend_rejects_region_path_traversal(tmp_path):
+    """region 同样参与路径拼接，不能用 ../ 越出缓存根目录。"""
+    cache = FileBackend(base=tmp_path)
+
+    with pytest.raises(ValueError, match="缓存路径"):
+        cache.set("key", b"bad", region="../escape")
+
+    assert not (tmp_path.parent / "escape" / "key").exists()
+
+
+def test_async_file_backend_rejects_cache_key_path_traversal(tmp_path):
+    """异步文件缓存与同步后端使用相同路径边界。"""
+
+    async def run():
+        cache = AsyncFileBackend(base=tmp_path)
+        with pytest.raises(ValueError, match="缓存路径"):
+            await cache.set("..\\escape", b"bad", region="images")
+
+    asyncio.run(run())
+    assert not (tmp_path / "escape").exists()
+
+
+def test_file_backend_rejects_region_traversal_in_clear(tmp_path):
+    """清理缓存 region 不能越界删除缓存根目录之外的目录。"""
+    cache = FileBackend(base=tmp_path / "cache")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "keep").write_text("keep")
+
+    with pytest.raises(ValueError, match="缓存路径"):
+        cache.clear(region="../outside")
+
+    assert (outside / "keep").exists()
+
+
+def test_async_file_backend_rejects_region_traversal_in_clear(tmp_path):
+    """异步清理缓存 region 使用同样的越界拒绝语义。"""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "keep").write_text("keep")
+
+    async def run():
+        cache = AsyncFileBackend(base=tmp_path / "cache")
+        with pytest.raises(ValueError, match="缓存路径"):
+            await cache.clear(region="../outside")
+
+    asyncio.run(run())
+    assert (outside / "keep").exists()
+
+
+def test_file_backend_rejects_windows_drive_cache_key(tmp_path):
+    """缓存 key 不能携带 Windows drive 前缀，避免跨平台路径语义越界。"""
+    cache = FileBackend(base=tmp_path)
+
+    with pytest.raises(ValueError, match="缓存路径"):
+        cache.set("C:escape", b"bad", region="images")

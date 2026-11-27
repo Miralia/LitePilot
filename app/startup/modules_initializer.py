@@ -18,10 +18,17 @@ def clear_temp():
     """
     清理临时文件和图片缓存
     """
-    # 清理临时目录中3天前的文件
-    SystemUtils.clear(settings.TEMP_PATH, days=settings.TEMP_FILE_DAYS)
-    # 清理图片缓存目录中7天前的文件
-    SystemUtils.clear(settings.CACHE_PATH / "images", days=settings.GLOBAL_IMAGE_CACHE_DAYS)
+    cleanup_targets = (
+        # 清理临时目录中3天前的文件
+        (settings.TEMP_PATH, settings.TEMP_FILE_DAYS),
+        # 清理图片缓存目录中7天前的文件
+        (settings.CACHE_PATH / "images", settings.GLOBAL_IMAGE_CACHE_DAYS),
+    )
+    for cache_path, days in cleanup_targets:
+        try:
+            SystemUtils.clear(cache_path, days=days)
+        except Exception as err:
+            logger.warning("清理缓存目录失败：%s - %s", cache_path, err)
     # 清理 pip/uv 包下载缓存，不接管整个 .cache 目录。
     clear_package_tool_cache()
 

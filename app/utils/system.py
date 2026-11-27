@@ -758,14 +758,26 @@ class SystemUtils:
         """
         if not temp_path.exists():
             return
+        errors = []
         # 遍历目录及子目录中的所有文件和文件夹
         for file in temp_path.rglob('*'):
-            # 如果是文件并且符合时间条件，则删除
-            if file.is_file() and (
-                    datetime.datetime.now() - datetime.datetime.fromtimestamp(file.stat().st_mtime)).days > days:
-                file.unlink()
+            try:
+                # 如果是文件并且符合时间条件，则删除
+                if file.is_file() and (
+                        datetime.datetime.now() - datetime.datetime.fromtimestamp(file.stat().st_mtime)).days > days:
+                    file.unlink()
+            except OSError as err:
+                errors.append((file, err))
         # 删除空的文件夹
         for folder in sorted(temp_path.rglob('*'), reverse=True):
-            # 确保是空文件夹
-            if folder.is_dir() and not any(folder.iterdir()):
-                folder.rmdir()
+            try:
+                # 确保是空文件夹
+                if folder.is_dir() and not any(folder.iterdir()):
+                    folder.rmdir()
+            except OSError as err:
+                errors.append((folder, err))
+        if errors:
+            first_path, first_error = errors[0]
+            raise OSError(
+                f"清理{temp_path}时{len(errors)}个条目失败，首个失败：{first_path} - {first_error}"
+            ) from first_error
