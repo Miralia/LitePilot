@@ -50,3 +50,25 @@ def test_dead_sync_transfer_history_search_is_removed():
     assert not hasattr(TransferHistory, "list_by_title")
     assert not hasattr(TransferHistory, "count_by_title")
     assert not hasattr(TransferHistoryOper, "get_by_title")
+
+
+def test_dead_scheduler_multiprocess_branch_is_removed():
+    """当前所有调度任务都在进程内执行，不保留无生产者的 multiprocessing 分支。"""
+    import inspect
+
+    import app.scheduler as scheduler_module
+    from app.scheduler import Scheduler
+
+    assert not hasattr(scheduler_module, "multiprocessing")
+    assert "run_in_process" not in inspect.getsource(Scheduler.start)
+
+
+def test_dead_config_model_delete_wrappers_are_removed():
+    """配置删除由 Oper 统一处理，不保留无调用的模型实例删除包装。"""
+    from app.db.models.systemconfig import SystemConfig
+    from app.db.models.userconfig import UserConfig
+    from app.db.systemconfig_oper import SystemConfigOper
+
+    assert not hasattr(SystemConfig, "delete_by_key")
+    assert not hasattr(UserConfig, "delete_by_key")
+    assert not hasattr(SystemConfigOper, "increment")

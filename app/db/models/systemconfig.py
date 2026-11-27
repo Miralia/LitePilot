@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, JSON, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, Base, async_db_query, get_id_column
+from app.db import db_query, Base, async_db_query, get_id_column
 
 
 class SystemConfig(Base):
@@ -25,10 +25,3 @@ class SystemConfig(Base):
     async def async_get_by_key(cls, db: AsyncSession, key: str):
         result = await db.execute(select(cls).where(cls.key == key))
         return result.scalar_one_or_none()
-
-    @db_update
-    def delete_by_key(self, db: Session, key: str):
-        systemconfig = self.get_by_key(db, key)
-        if systemconfig:
-            systemconfig.delete(db, systemconfig.id)
-        return True

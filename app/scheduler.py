@@ -3,7 +3,6 @@ import gc
 import hashlib
 import inspect
 import json
-import multiprocessing
 import threading
 import traceback
 from datetime import datetime, timedelta
@@ -766,16 +765,9 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                 kwargs["progress_callback"] = self.__build_progress_callback(
                     job_id=job_id, job=job
                 )
-            # 是否多进程运行
-            run_in_process = job.get("run_in_process", False)
             if inspect.iscoroutinefunction(func):
                 # 协程函数
                 deferred_finish = __start_coro(func(*args, **kwargs))
-            elif run_in_process:
-                # 多进程运行
-                p = multiprocessing.Process(target=func, args=args, kwargs=kwargs)
-                p.start()
-                p.join()
             else:
                 # 普通函数
                 result = func(*args, **kwargs)

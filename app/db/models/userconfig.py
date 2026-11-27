@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, UniqueConstraint, JSON
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, get_id_column, Base
+from app.db import db_query, get_id_column, Base
 
 
 class UserConfig(Base):
@@ -28,10 +28,3 @@ class UserConfig(Base):
                  .filter(cls.username == username) \
                  .filter(cls.key == key) \
                  .first()
-
-    @db_update
-    def delete_by_key(self, db: Session, username: str, key: str):
-        userconfig = self.get_by_key(db=db, username=username, key=key)
-        if userconfig:
-            userconfig.delete(db=db, rid=userconfig.id)
-        return True
