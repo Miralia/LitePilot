@@ -602,6 +602,34 @@ describe('TransferHistoryView', () => {
     expect(getDynamicMenuItems()?.some(item => item.titleKey === 'transferHistory.actions.batchDelete')).toBe(true)
   })
 
+
+
+  it('ignores route cancellation during a single deletion request', async () => {
+    const item = createHistory(1, '取消删除')
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === 'system/setting/public/Storages') return Promise.resolve(storageResponse())
+      return Promise.resolve(historyResponse([item]))
+    })
+    let rejectDelete!: (error: unknown) => void
+    mocks.apiDelete.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectDelete = reject
+        }),
+    )
+
+    await renderHistory()
+    expect(await screen.findByText('取消删除')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: '删除' }))
+    const deletion = getDialogCall().events.delete(false, false)
+    await waitFor(() => expect(mocks.apiDelete).toHaveBeenCalled())
+    rejectDelete({ code: 'ERR_CANCELED' })
+    await deletion
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
   it('shows the existing toast-style feedback when a single deletion request throws', async () => {
     const item = createHistory(1, '异常删除')
     mocks.apiGet.mockImplementation((path: string) => {

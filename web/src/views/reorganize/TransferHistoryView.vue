@@ -18,6 +18,7 @@ import { useGlobalSettingsStore, useUserStore } from '@/stores'
 import { openSharedDialog } from '@/composables/useSharedDialog'
 import { buildUserPermissionContext, hasPermission } from '@/utils/permission'
 import { getDisplayImageUrl } from '@/utils/imageUtils'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 import noImage from '@images/no-image.jpeg'
 
 const TransferHistoryDeleteDialog = defineAsyncComponent(
@@ -682,6 +683,7 @@ async function remove(item: TransferHistory, deleteSrc: boolean, deleteDest: boo
     }
     return true
   } catch (error) {
+    if (isRequestCancellation(error)) return false
     console.error(error)
     if (notifyError) {
       $toast.error(t('transferHistory.deleteRequestFailed'))
