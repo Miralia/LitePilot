@@ -11,7 +11,7 @@ class SystemConfig(Base):
     """
     id = get_id_column()
     # 主键
-    key = Column(String, index=True)
+    key = Column(String, index=True, unique=True)
     # 值
     value = Column(JSON)
 
