@@ -171,6 +171,12 @@ function closeProgressDialog() {
   progressDialogController = null
 }
 
+// 将用户主动操作的异常转换为可见反馈，同时保留控制台诊断信息。
+function reportActionError(error: unknown) {
+  console.error(error)
+  $toast.error(error instanceof Error ? error.message : t('common.error'))
+}
+
 // 弹出菜单
 const dropdownItems = ref<{ [key: string]: any }[]>([])
 
@@ -434,8 +440,7 @@ async function download(item: FileItem) {
       }, 60000)
     }
   } catch (error) {
-    console.error(error)
-    $toast.error(error instanceof Error ? error.message : t('common.error'))
+    reportActionError(error)
   }
 }
 
@@ -523,7 +528,7 @@ async function get_recommend_name() {
       $toast.error(result.message)
     }
   } catch (error) {
-    console.error(error)
+    reportActionError(error)
   }
   renameLoading.value = false
   renameDialogController?.updateProps({ loading: false, name: newName.value })
@@ -567,8 +572,7 @@ async function rename() {
     renameDialogController = null
     emit('renamed')
   } catch (error) {
-    console.error(error)
-    $toast.error(error instanceof Error ? error.message : t('common.error'))
+    reportActionError(error)
   } finally {
     if (recursive) stopLoadingProgress()
     closeProgressDialog()
@@ -717,7 +721,7 @@ async function recognize(path: string) {
     }
   } catch (error) {
     closeProgressDialog()
-    console.error(error)
+    reportActionError(error)
   }
 }
 
@@ -734,7 +738,7 @@ async function scrape(item: FileItem, options: ManualScrapeOptions) {
     if (!result.success) $toast.error(result.message)
     else $toast.success(t('file.scrapeCompleted', { path: item.path }))
   } catch (error) {
-    console.error(error)
+    reportActionError(error)
   }
 }
 

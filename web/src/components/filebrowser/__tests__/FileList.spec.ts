@@ -753,4 +753,56 @@ describe('FileList dialogs, download and lifecycle', () => {
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('network down'))
   })
 
+  it('reports recognize request failures after closing the progress dialog', async () => {
+    const file = createItem({ name: 'movie.mkv', path: '/media/movie.mkv', type: 'file' })
+    const request = vi.fn().mockResolvedValue([file])
+    mocks.apiGet.mockRejectedValueOnce(new Error('network down'))
+    await renderList(request, { item: file })
+    await screen.findByText('movie.mkv')
+
+    await fireEvent.click(getSlotIconButton('mdi-text-recognition'))
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('network down'))
+  })
+
+  it('reports a failed scrape request and continues the remaining selected items', async () => {
+    const first = createItem({ name: 'first.mkv', path: '/media/first.mkv' })
+    const second = createItem({ name: 'second.mkv', path: '/media/second.mkv' })
+    const request = vi.fn().mockResolvedValue([first, second])
+    mocks.apiPost.mockRejectedValueOnce(new Error('network down')).mockResolvedValueOnce({ success: true })
+    await renderList(request)
+    await screen.findByText('first.mkv')
+
+    await fireEvent.click(getIconButton('mdi-select'))
+    await fireEvent.click(screen.getByText('first.mkv').closest('[role="button"]') as Element)
+    await fireEvent.click(screen.getByText('second.mkv').closest('[role="button"]') as Element)
+    await fireEvent.click(getIconButton('mdi-auto-fix'))
+    const scrapeEvents = mocks.openSharedDialog.mock.calls.at(-1)?.[2] as Record<
+      string,
+      (options: Record<string, unknown>) => Promise<void>
+    >
+    await scrapeEvents.scrape({ season: 2 })
+
+    expect(mocks.toastError).toHaveBeenCalledWith('network down')
+    expect(mocks.apiPost).toHaveBeenCalledTimes(2)
+    expect(mocks.toastSuccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports automatic rename recognition failures', async () => {
+    const controller = { close: vi.fn(), id: 1, updateProps: vi.fn() }
+    mocks.openSharedDialog.mockReturnValue(controller)
+    const request = vi.fn().mockResolvedValue([createItem({ name: 'rename.mkv' })])
+    mocks.apiGet.mockRejectedValueOnce(new Error('network down'))
+    await renderList(request)
+    await screen.findByText('rename.mkv')
+
+    const row = screen.getByText('rename.mkv').closest('[role="button"]') as Element
+    await fireEvent.click(row.querySelector('[data-icon="mdi-rename"]')?.closest('button') as Element)
+    const renameEvents = mocks.openSharedDialog.mock.calls.at(-1)?.[2] as Record<string, () => Promise<void>>
+    await renameEvents['auto-name']?.()
+
+    expect(mocks.toastError).toHaveBeenCalledWith('network down')
+    expect(controller.updateProps).toHaveBeenCalledWith(expect.objectContaining({ loading: false }))
+  })
+
 })
