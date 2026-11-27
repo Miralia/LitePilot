@@ -84,7 +84,7 @@
   - [x] 4.2 旧实例迁移（`moviepilot migrate`，含迁移前自动备份用于回滚）
   - [x] 4.3 部署文档 `docs/fork/deploy.md`（目录约定、nginx 反代、升级流程）
   - [x] 4.4 移除已随智能体删除的 `moviepilot agent` 命令与 LLM 安装向导
-- [ ] 阶段 5：验证、静态检查、冒烟与文档同步
+- [x] 阶段 5：验证、静态检查、冒烟与文档同步（收敛审计状态见 [audit-status.md](audit-status.md)）
 
 ## 站点移除方式（阶段 2.1）
 
