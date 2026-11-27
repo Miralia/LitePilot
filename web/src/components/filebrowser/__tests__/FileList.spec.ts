@@ -805,4 +805,32 @@ describe('FileList dialogs, download and lifecycle', () => {
     expect(controller.updateProps).toHaveBeenCalledWith(expect.objectContaining({ loading: false }))
   })
 
+  it('uses the selected item canonical path for automatic rename recognition', async () => {
+    const controller = { close: vi.fn(), id: 1, updateProps: vi.fn() }
+    mocks.openSharedDialog.mockReturnValue(controller)
+    const nested = createItem({
+      name: 'ep1.mkv',
+      path: '/media/show/Season 1/ep1.mkv',
+      type: 'file',
+    })
+    const request = vi.fn().mockResolvedValue([nested])
+    mocks.apiGet.mockResolvedValueOnce({ data: { name: 'renamed.mkv' }, success: true })
+    await renderList(request, {
+      item: createItem({ name: 'show', path: '/media/show/', type: 'dir' }),
+    })
+    await screen.findByText('ep1.mkv')
+
+    const row = screen.getByText('ep1.mkv').closest('[role="button"]') as Element
+    await fireEvent.click(row.querySelector('[data-icon="mdi-rename"]')?.closest('button') as Element)
+    const renameEvents = mocks.openSharedDialog.mock.calls.at(-1)?.[2] as Record<string, () => Promise<void>>
+    await renameEvents['auto-name']?.()
+
+    expect(mocks.apiGet).toHaveBeenCalledWith('transfer/name', {
+      params: {
+        path: '/media/show/Season 1/ep1.mkv',
+        filetype: 'file',
+      },
+    })
+  })
+
 })

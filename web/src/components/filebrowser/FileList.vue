@@ -518,7 +518,7 @@ async function get_recommend_name() {
   try {
     const result: { [key: string]: any } = await api.get('transfer/name', {
       params: {
-        path: `${inProps.item.path}${currentItem.value?.name}`,
+        path: currentItem.value?.path ?? `${inProps.item.path}${currentItem.value?.name}`,
         filetype: currentItem.value?.type ?? 'file',
       },
     })
