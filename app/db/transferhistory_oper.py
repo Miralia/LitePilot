@@ -71,13 +71,6 @@ class TransferHistoryOper(DbOper):
             self._db, title=title, status=status
         )
 
-    def get_by_title(self, title: str) -> List[TransferHistory]:
-        """
-        按标题查询转移记录
-        :param title: 数据key
-        """
-        return TransferHistory.list_by_title(self._db, title)
-
     def get_by_src(
             self, src: str, storage: Optional[str] = None
     ) -> Optional[TransferHistory]:

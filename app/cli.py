@@ -9,7 +9,7 @@ import tempfile
 import time
 from collections import deque
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, get_args, get_origin
+from typing import Any, Dict, Optional, get_args, get_origin
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import ProxyHandler, Request, build_opener, urlopen
@@ -470,34 +470,6 @@ def _follow_file(path: Path) -> None:
                 click.echo(line.rstrip("\n"))
                 continue
             time.sleep(0.5)
-
-
-def _print_json(value: Any) -> None:
-    click.echo(json.dumps(value, ensure_ascii=False, indent=2))
-
-
-
-
-
-
-
-
-
-
-
-
-def _normalize_type(schema: Optional[Dict[str, Any]]) -> str:
-    schema = schema or {}
-    if schema.get("type"):
-        return str(schema["type"])
-    for item in schema.get("anyOf", []):
-        if item and item.get("type") and item.get("type") != "null":
-            return str(item["type"])
-    return "string"
-
-
-
-
 
 
 def _ensure_local_api_token() -> bool:

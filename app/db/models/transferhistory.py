@@ -81,33 +81,6 @@ class TransferHistory(Base):
     )
 
     @classmethod
-    @db_query
-    def list_by_title(cls, db: Session, title: str, page: Optional[int] = 1, count: Optional[int] = 30,
-                      status: bool = None, wildcard: bool = False):
-        if wildcard:
-            text_filter = or_(
-                _text_like(cls.title, title, wildcard=True),
-                _text_like(cls.src, title, wildcard=True),
-                _text_like(cls.dest, title, wildcard=True),
-            )
-        else:
-            text_filter = or_(
-                _text_like(cls.title, f'%{title}%'),
-                _text_like(cls.src, f'%{title}%'),
-                _text_like(cls.dest, f'%{title}%'),
-            )
-        query = db.query(cls).filter(text_filter)
-        if status is not None:
-            query = query.filter(cls.status == status)
-        query = query.order_by(cls.date.desc())
-
-        # 当count为负数时，不限制页数查询所有
-        if count >= 0:
-            query = query.offset((page - 1) * count).limit(count)
-
-        return query.all()
-
-    @classmethod
     @async_db_query
     async def async_list_by_title(cls, db: AsyncSession, title: str, page: Optional[int] = 1, count: Optional[int] = 30,
                                   status: bool = None, wildcard: bool = False):
@@ -397,26 +370,6 @@ class TransferHistory(Base):
                 select(func.count(cls.id))
             )
         return result.scalar()
-
-    @classmethod
-    @db_query
-    def count_by_title(cls, db: Session, title: str, status: bool = None, wildcard: bool = False):
-        if wildcard:
-            text_filter = or_(
-                _text_like(cls.title, title, wildcard=True),
-                _text_like(cls.src, title, wildcard=True),
-                _text_like(cls.dest, title, wildcard=True),
-            )
-        else:
-            text_filter = or_(
-                _text_like(cls.title, f'%{title}%'),
-                _text_like(cls.src, f'%{title}%'),
-                _text_like(cls.dest, f'%{title}%'),
-            )
-        query = db.query(func.count(cls.id)).filter(text_filter)
-        if status is not None:
-            query = query.filter(cls.status == status)
-        return query.first()[0]
 
     @classmethod
     @async_db_query

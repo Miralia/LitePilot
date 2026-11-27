@@ -103,3 +103,11 @@ def test_scheduler_run_prefers_runtime_token_over_changed_config():
 
     assert result.exit_code == 0, result.output
     assert captured["headers"] == {"X-API-KEY": "running-service-token"}
+
+
+def test_obsolete_cli_output_and_schema_helpers_are_removed():
+    """CLI 使用结构化 Doctor formatter 与 Pydantic 类型标注，不保留旧 schema 辅助函数。"""
+    module = load_cli_module()
+
+    assert not hasattr(module, "_print_json")
+    assert not hasattr(module, "_normalize_type")

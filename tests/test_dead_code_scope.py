@@ -40,3 +40,13 @@ def test_dead_message_source_lookup_is_removed():
 
     assert not hasattr(Message, "exists_by_source")
     assert not hasattr(MessageOper, "exists_by_source")
+
+
+def test_dead_sync_transfer_history_search_is_removed():
+    """整理历史搜索 API 已异步化，不保留仅被测试自引用的同步查询链。"""
+    from app.db.models.transferhistory import TransferHistory
+    from app.db.transferhistory_oper import TransferHistoryOper
+
+    assert not hasattr(TransferHistory, "list_by_title")
+    assert not hasattr(TransferHistory, "count_by_title")
+    assert not hasattr(TransferHistoryOper, "get_by_title")
