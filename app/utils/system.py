@@ -78,18 +78,6 @@ class SystemUtils:
     _URL_WITH_USERINFO_PATTERN = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*://[^\s]+)")
 
     @staticmethod
-    def execute(cmd: str) -> str:
-        """
-        执行命令，获得返回结果
-        """
-        try:
-            with os.popen(cmd) as p:
-                return p.readline().strip()
-        except Exception as err:
-            print(str(err))
-            return ""
-
-    @staticmethod
     def redact_url_userinfo(value: str) -> str:
         """
         脱敏 URL 中的 userinfo，避免命令输出泄露镜像源或代理凭据。

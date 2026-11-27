@@ -40,6 +40,7 @@ def test_dead_security_wrappers_and_system_utilities_are_removed():
         "list_sub_files",
         "is_hardlink",
         "generate_user_unique_id",
+        "execute",
     ):
         assert not hasattr(system.SystemUtils, name)
 
