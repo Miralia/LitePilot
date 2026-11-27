@@ -247,6 +247,7 @@ class TransferHistoryOper(DbOper):
             image=mediainfo.get_poster_image(),
             downloader=downloader,
             download_hash=download_hash,
+            episode_group=mediainfo.episode_group,
             status=1,
             errmsg=transferinfo.message,
             files=transferinfo.file_list
