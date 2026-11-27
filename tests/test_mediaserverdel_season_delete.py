@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -191,3 +192,33 @@ def test_query_history_preserves_numeric_episode_zero() -> None:
     first_query = chain.transferhis.get_by.call_args_list[0].kwargs
     assert first_query["season"] == "S00"
     assert first_query["episode"] == "E00"
+
+
+def test_query_history_matches_multi_episode_range() -> None:
+    """删除多集文件的首个 Emby 条目时，应命中 E01-E02 形式的整理历史。"""
+    chain = MediaServerDelChain()
+    history = SimpleNamespace(
+        seasons="S01",
+        episodes="E01-E02",
+        dest="/library/Show/Season 1/Show S01E01-E02.mkv",
+    )
+
+    def get_by(**kwargs):
+        if kwargs.get("episode") is not None:
+            return []
+        if kwargs.get("season") == "S01":
+            return [history]
+        return []
+
+    chain.transferhis = SimpleNamespace(get_by=get_by)
+
+    _, histories = chain._query_history(
+        media_type="Episode",
+        media_name="Show",
+        media_path=history.dest,
+        tmdb_id=123,
+        season_num="1",
+        episode_num="1",
+    )
+
+    assert histories == [history]

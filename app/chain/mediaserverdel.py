@@ -1,3 +1,4 @@
+import re
 import time
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -135,15 +136,57 @@ class MediaServerDelChain(ChainBase):
             return f"剧集 {media_name} S{season}E{episode} {tmdb_id}", histories
         # dest 精确匹配失败时按季集降级：tmdbid+季+集已能唯一定位，
         # 后续以「媒体库文件是否真的不存在」过滤，不会误删仍存在的内容
-        return (
-            f"剧集 {media_name} S{season}E{episode} {tmdb_id}",
-            self.transferhis.get_by(
-                tmdbid=tmdb_id,
-                mtype=mtype.value,
-                season=f"S{season}",
-                episode=f"E{episode}",
-            ),
+        exact_histories = self.transferhis.get_by(
+            tmdbid=tmdb_id,
+            mtype=mtype.value,
+            season=f"S{season}",
+            episode=f"E{episode}",
         )
+        if exact_histories:
+            return f"剧集 {media_name} S{season}E{episode} {tmdb_id}", exact_histories
+
+        season_histories = self.transferhis.get_by(
+            tmdbid=tmdb_id,
+            mtype=mtype.value,
+            season=f"S{season}",
+        )
+        range_histories = [
+            history for history in season_histories
+            if self._episode_matches_history(getattr(history, "episodes", None), episode)
+        ]
+        if range_histories:
+            for candidate in dict.fromkeys((media_path, plus_candidate)):
+                if not candidate:
+                    continue
+                dest_histories = [
+                    history for history in range_histories
+                    if getattr(history, "dest", None) == candidate
+                ]
+                if dest_histories:
+                    return f"剧集 {media_name} S{season}E{episode} {tmdb_id}", dest_histories
+        return f"剧集 {media_name} S{season}E{episode} {tmdb_id}", range_histories
+
+    @staticmethod
+    def _episode_matches_history(episodes: Optional[str], episode: Optional[str]) -> bool:
+        """
+        判断历史记录的单集或连续集范围是否包含删除事件给出的集号。
+
+        只接受 ``E01`` 与 ``E01-E02`` 这两种明确格式；早期并集写法存在
+        位数歧义，不能安全反解，仍由精确匹配路径兼容。
+        """
+        if episodes is None or episode is None or not str(episode).isdigit():
+            return False
+        normalized_episode = int(str(episode))
+        normalized_episodes = str(episodes).strip().upper()
+        if normalized_episodes == f"E{str(episode).rjust(2, '0')}":
+            return True
+        match = re.fullmatch(r"E(\d{1,4})-E(\d{1,4})", normalized_episodes)
+        if not match:
+            return False
+        begin_episode, end_episode = int(match.group(1)), int(match.group(2))
+        if begin_episode > end_episode:
+            begin_episode, end_episode = end_episode, begin_episode
+        return begin_episode <= normalized_episode <= end_episode
 
     @staticmethod
     def _restore_plus_signs(media_path: str) -> str:
@@ -163,9 +206,7 @@ class MediaServerDelChain(ChainBase):
         """
         if not media_path or "+" in media_path:
             return media_path
-        import re as _re  # pylint: disable=import-outside-toplevel
-
-        return _re.sub(r"(?<=[A-Za-z0-9]) (?=[A-Za-z0-9])(?=\S*[A-Z])", "+", media_path)
+        return re.sub(r"(?<=[A-Za-z0-9]) (?=[A-Za-z0-9])(?=\S*[A-Z])", "+", media_path)
 
     def _delete_source(
         self,
