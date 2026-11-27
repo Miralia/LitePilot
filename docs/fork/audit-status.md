@@ -85,6 +85,7 @@
 | `bc080cd6` | 既有损坏字体缓存会识别并重新下载，缓存删除/临时文件清理失败不进入调度异常路径 | `tests/test_media_cover_generator.py::test_existing_corrupt_font_is_replaced_by_valid_download`、`test_corrupt_font_unlink_failure_is_graceful` |
 | `a1f22097` | 结构无效的重启完成通知收据会被清理，有效收据发送失败保留重试且异常不进入启动任务 | `tests/test_system_restart.py::test_restart_finish_discards_structurally_invalid_receipt`、`test_restart_finish_keeps_valid_receipt_when_notification_fails` |
 | `0a043ea4` | 交互命令底层重启失败时撤回完成通知收据并明确通知失败 | `tests/test_system_restart.py::test_command_restart_failure_retracts_receipt_and_notifies` |
+| `aa8be901` | Doctor 完整读取当前活跃滚动日志，时间窗内错误不再因短尾部窗口漏报；说明不再伪装覆盖轮转归档 | `tests/test_doctor.py::test_doctor_log_window_is_not_truncated_to_short_tail` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -147,7 +148,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1686 passed, 2 warnings` |
+| `python tests/run.py` | `1687 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -157,4 +158,4 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `0a043ea464fb3e8c3c40f6cb4d117cb105520ed0`。升级前一致性备份为 `/root/litepilot-pre-0a043ea4-20261127153147.tar.gz`。核验结果：`litepilot.service` active，nginx 前缀 `/litepilot/`、API 代理与 `service-worker.js` 均返回 200，字体缓存魔数有效，SQLite `integrity_check` 为 `ok`，Doctor `error=0 warn=0`，本次重启后的 systemd 日志未发现 traceback、exception 或 error。
+生产环境已部署并核验 `aa8be901eff79197e2b24aa15450c3e0a0a2b190`。升级前一致性备份为 `/root/litepilot-pre-aa8be901-20261127153932.tar.gz`。核验结果：`litepilot.service` active，nginx 前缀 `/litepilot/`、API 代理与 `service-worker.js` 均返回 200，字体缓存魔数有效，SQLite `integrity_check` 为 `ok`，本次重启后的 systemd 日志错误计数为 0。Doctor `error=0 warn=1`；该 warn 是完整日志扫描如实发现的 05:26 Telegram 命令注册竞态，对应修复 `7cce26d7` 已包含在当前版本，不是本次重启后的新增错误。
