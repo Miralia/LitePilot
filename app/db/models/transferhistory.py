@@ -30,7 +30,7 @@ class TransferHistory(Base):
     # 源文件项
     src_fileitem = Column(JSON, default=dict)
     # 目标路径
-    dest = Column(String)
+    dest = Column(String, index=True)
     # 目标存储
     dest_storage = Column(String)
     # 目标文件项
