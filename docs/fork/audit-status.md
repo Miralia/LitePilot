@@ -71,6 +71,7 @@
 | `app/helper/format.py` | 已审计手动集数定位、指定集数和偏移边界。`E00` 可匹配并参与偏移，范围型指定集数按数值边界过滤，非法输入产生清晰错误。 |
 | `app/chain/transfer.py` | 已审计手动整理自定义格式、历史重试错误与入库通知聚合边界。非法格式返回可展示失败，自动重新整理识别失败不再访问空媒体类型；通知聚合键复用统一媒体身份解析，不同 TMDB/Bangumi 条目不会在去重窗口内互相覆盖。 |
 | `app/db/transferhistory_oper.py` | 已审计整理历史媒体身份持久化。成功历史现在与失败历史一致保留 `episode_group`，非默认剧集组重新整理不会回退到默认集数映射。 |
+| `app/chain/mediaserverdel.py` | 已审计媒体服务器联动删除的历史定位边界。精确单集匹配优先；无精确记录时，`E01-E02` 等多集历史现在能按包含关系命中，避免媒体库文件已删除但本地历史与源文件清理被跳过。 |
 
 ## 本轮修复与回归测试
 
@@ -106,6 +107,7 @@
 | `ade1536c` | 显式媒体标签中的第 0 季/集参与范围总数计算 | `tests/test_metainfo.py::test_find_metainfo_episode_zero_range_totals` |
 | `55a80b95` | 入库通知聚合键复用统一媒体身份解析，不同媒体不再共用空 `media_id` 键 | `tests/test_transfer_job_manager.py::test_notify_key_uses_compatible_media_identity` |
 | `0df25e7f` | 畸形动漫标题导致 `anitopy` 崩溃时降级到通用解析结果，保留标题、集号与媒体类型 | `tests/test_metainfo.py::test_anime_parser_degrades_to_video_parser_when_anitopy_crashes` |
+| `f59d7838` | 媒体服务器删除多集文件时能命中 `E01-E02` 形式的连续集历史 | `tests/test_mediaserverdel_season_delete.py::test_query_history_matches_multi_episode_range` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -168,7 +170,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1707 passed, 2 warnings` |
+| `python tests/run.py` | `1708 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -178,6 +180,6 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `0df25e7f33cea738f829a6090cf9c372f90b6434`。升级前备份为 `/root/litepilot-pre-0df25e7f-20261127172052.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和通过 SQLite 在线备份 API 生成的一致性快照。
+生产环境已部署并核验 `f59d783846248ad4d7a6b50176ba8c41946f351f`。升级前备份为 `/root/litepilot-pre-range-delete-20261127173106.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和通过 SQLite 在线备份 API 生成的一致性快照。
 
 核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/api/v1/system/ping` 后端直连与 `/litepilot/api/v1/system/ping` nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。唯一 warn 是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复已在当前版本中，本次重启后没有新增同类错误。
