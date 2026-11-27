@@ -91,6 +91,7 @@
 | `ac3ee57e` | 搜索、动漫解析和手动刮削链路保留第 0 集，不再把整数 0 当作缺失 | `tests/test_media_search_zero_episode.py`、`tests/test_metainfo.py::test_anime_parser_preserves_numeric_episode_zero`、`tests/test_mediascrape.py::test_tv_episode_zero_scrape_continues_recognition` |
 | `e981e4bd` | 通知模板能匹配 TMDB 第 0 集标题与播出日期 | `tests/test_template_context_builder.py::test_build_preserves_episode_zero_details` |
 | `ec281eac` | 测试中的 `os.stat` 桩对未登记路径委托真实 stat，避免后台日志线程竞态噪声 | `tests/test_system_utils.py` |
+| `758199a3` | 模块链泛型容器注解按容器类型校验，不再因 `list[...]` 抛出 `TypeError` | `tests/test_object.py::test_check_signature_matches_generic_container_origin` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -153,7 +154,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1693 passed, 2 warnings` |
+| `python tests/run.py` | `1694 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -163,8 +164,6 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `ec281eac01751de6a6b63a49b1fb1b1daa4b8ca6`。升级前备份为 `/root/litepilot-pre-ec281eac-20261127160107.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
+生产环境已部署并核验 `758199a36ea1ddbd553968cba1161a6109990a44`。升级前备份为 `/root/litepilot-pre-758199a3-20261127161231.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
 
-核验结果：`litepilot.service` active；nginx `/litepilot/` 与 `service-worker.js` 均为 200；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。`/system/ping` 在后端直连与 nginx 代理下均返回 401，这是登录认证边界生效，证明 API 可达，不是启动失败。
-
-Doctor 的 `warn=1` 仍是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复 `7cce26d7` 已包含在当前版本；本次重启后没有新增同类错误。
+核验结果：`litepilot.service` active；nginx `/litepilot/` 与 `service-worker.js` 均为 200；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0。此前 Doctor 的 Telegram warn 为已修复历史日志，不是本次新增错误。
