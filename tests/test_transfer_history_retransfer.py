@@ -476,3 +476,47 @@ def test_manual_transfer_from_history_keeps_legacy_douban_context(monkeypatch):
     assert captured["media_source"] == "douban"
     assert captured["media_id"] == "200"
     assert captured["doubanid"] == "200"
+
+
+def test_manual_transfer_from_multi_season_history_does_not_crash_or_force_single_season(monkeypatch):
+    """多季包历史不是单个季号，重新整理时不得 500 或误强制为开始季。"""
+    history = SimpleNamespace(
+        status=0,
+        mode="copy",
+        src_fileitem={"storage": "local", "path": "/downloads/show", "name": "show", "type": "dir"},
+        dest_fileitem=None,
+        downloader=None,
+        download_hash=None,
+        type="电视剧",
+        tmdbid="100",
+        doubanid=None,
+        bangumiid=None,
+        media_source="themoviedb",
+        media_id="100",
+        seasons="S01-S02",
+        episodes=None,
+        episode_group=None,
+    )
+    captured = {}
+
+    def fake_get(_db, logid):
+        assert logid == 1
+        return history
+
+    class FakeTransferChain:
+        def manual_transfer(self, **kwargs):
+            captured.update(kwargs)
+            return True, ""
+
+    monkeypatch.setattr("app.api.endpoints.transfer.TransferHistory.get", fake_get)
+    monkeypatch.setattr("app.api.endpoints.transfer.TransferChain", FakeTransferChain)
+
+    resp = manual_transfer(
+        transer_item=ManualTransferItem(logid=1, from_history=True),
+        background=True,
+        db=object(),
+        _="token",
+    )
+
+    assert resp.success is True
+    assert captured["season"] is None

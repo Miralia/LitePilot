@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends
@@ -27,6 +28,18 @@ from app.schemas import (
 )
 
 router = APIRouter()
+
+_SINGLE_HISTORY_SEASON_RE = re.compile(r"^S?(\d+)$", re.IGNORECASE)
+
+
+def _parse_single_history_season(value) -> Optional[int]:
+    """
+    解析历史记录中的单季编号；多季区间和异常 Legacy 值不作为强制季号。
+    """
+    if value is None:
+        return None
+    match = _SINGLE_HISTORY_SEASON_RE.fullmatch(str(value).strip())
+    return int(match.group(1)) if match else None
 
 
 @router.get("/name", summary="查询整理后的名称", response_model=schemas.Response)
@@ -249,11 +262,9 @@ def manual_transfer(
             transer_item.media_id = (
                 history.media_id or transer_item.media_id
             )
-            transer_item.season = (
-                int(str(history.seasons).replace("S", ""))
-                if history.seasons
-                else transer_item.season
-            )
+            history_season = _parse_single_history_season(history.seasons)
+            if history_season is not None:
+                transer_item.season = history_season
             transer_item.episode_group = (
                 history.episode_group or transer_item.episode_group
             )
