@@ -157,10 +157,15 @@ def test_redact_url_userinfo_tolerates_malformed_ipv6_url():
 
 
 def _fake_stat_with_devs(dev_by_path):
-    """构造按路径返回指定 st_dev 的 os.stat 桩。"""
+    """构造按路径返回指定 st_dev 的 os.stat 桩，未登记路径仍走真实 stat。"""
+    real_stat = os.stat
+
     def _fake_stat(path, *args, **kwargs):
+        key = str(path)
+        if key not in dev_by_path:
+            return real_stat(path, *args, **kwargs)
         result = MagicMock()
-        result.st_dev = dev_by_path[str(path)]
+        result.st_dev = dev_by_path[key]
         return result
     return _fake_stat
 
@@ -289,7 +294,7 @@ def test_space_usage_opt_in_does_not_read_fsid_outside_linux(system_platform):
             patch.object(SystemUtils, "_get_btrfs_fsid") as fsid_mock, \
             patch.object(SystemUtils, "total_space", return_value=2.0), \
             patch.object(SystemUtils, "free_space", return_value=1.0), \
-            patch("app.utils.system.os.stat", return_value=MagicMock(st_dev=38)):
+            patch("app.utils.system.os.stat", side_effect=_fake_stat_with_devs({str(path): 38})):
         total, free = SystemUtils.space_usage([path], btrfs_fsid_dedup=True)
 
     assert total == 2.0
