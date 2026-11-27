@@ -143,17 +143,18 @@ def test_cleanup_removes_expired_rows_in_batches(db_session_factory):
     assert report["tables"]["message"]["deleted"] == 3
     assert report["tables"]["message"]["batches"] == 3
     assert report["tables"]["downloadhistory"]["deleted"] == 2
-    assert report["tables"]["downloadfiles"]["deleted"] == 3
+    assert "downloadfiles" not in report["tables"]
     assert report["tables"]["transferhistory"]["deleted"] == 1
 
     with db_session_factory() as db:
         assert db.query(Message).count() == 1
         assert db.query(DownloadHistory).count() == 1
-        assert db.query(DownloadFiles).count() == 1
+        assert db.query(DownloadFiles).count() == 4
         assert db.query(TransferHistory).count() == 1
 
-        keep_download_file = db.query(DownloadFiles).first()
-        assert keep_download_file.download_hash == "hash-keep"
+        remaining_hashes = {row.download_hash for row in db.query(DownloadFiles).all()}
+        assert "hash-keep" in remaining_hashes
+        assert "hash-orphan" in remaining_hashes
 
 
 def test_transferhistory_keeps_boundary_records(db_session_factory):
@@ -268,8 +269,29 @@ def test_cleanup_skips_table_when_retention_days_is_zero(db_session_factory):
         report = _build_scheduler_chain().cleanup(batch_size=10)
 
     assert report["tables"]["downloadhistory"]["skipped"]
-    assert report["tables"]["downloadfiles"]["skipped"]
+    assert "downloadfiles" not in report["tables"]
 
     with db_session_factory() as db:
         assert db.query(DownloadHistory).count() == 1
+        assert db.query(DownloadFiles).count() == 1
+
+
+def test_cleanup_preserves_download_file_indexes_without_download_history(db_session_factory):
+    """外部添加的种子没有下载历史父记录，数据清理不得误删其文件索引。"""
+    with db_session_factory() as db:
+        db.add(
+            DownloadFiles(
+                download_hash="external-active",
+                fullpath="/downloads/external/file.mkv",
+                savepath="/downloads/external",
+                filepath="file.mkv",
+            )
+        )
+        db.commit()
+
+    with _cleanup_settings(), patch("app.scheduler.SessionFactory", db_session_factory):
+        report = _build_scheduler_chain().cleanup(batch_size=10)
+
+    assert report["total_deleted"] == 0
+    with db_session_factory() as db:
         assert db.query(DownloadFiles).count() == 1

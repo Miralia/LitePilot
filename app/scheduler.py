@@ -25,7 +25,7 @@ from app.chain.mediacover import MediaCoverChain
 from app.chain.transfer import TransferChain
 from app.core.config import settings, global_vars
 from app.db import SessionFactory
-from app.db.models.downloadhistory import DownloadHistory, DownloadFiles
+from app.db.models.downloadhistory import DownloadHistory
 from app.db.models.message import Message
 from app.db.models.transferhistory import TransferHistory
 from app.db.systemconfig_oper import SystemConfigOper
@@ -197,15 +197,6 @@ class SchedulerChain(ChainBase):
                 "handler": lambda db: DownloadHistory.delete_before(
                     db=db,
                     before_time=download_history_cutoff,
-                    limit=batch_size,
-                ),
-            },
-            {
-                "name": "downloadfiles",
-                "retention_days": download_history_days,
-                "cutoff": "follow-parent-history",
-                "handler": lambda db: DownloadFiles.delete_orphans(
-                    db=db,
                     limit=batch_size,
                 ),
             },

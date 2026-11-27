@@ -248,8 +248,9 @@ onMounted(loadAll)
           <VCheckbox
             v-model="conf.prune_missing"
             :label="t('setting.builtin.pruneMissing')"
+            :hint="t('setting.builtin.pruneMissingHint')"
+            persistent-hint
             :disabled="!conf.enabled"
-            hide-details
           />
         </VCol>
       </VRow>

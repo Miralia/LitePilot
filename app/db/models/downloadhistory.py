@@ -306,36 +306,3 @@ class DownloadFiles(Base):
                 .delete(synchronize_session=False)
             )
         return deleted
-
-    @classmethod
-    @db_update
-    def delete_orphans(
-        cls,
-        db: Session,
-        limit: Optional[int] = 500,
-    ) -> int:
-        """
-        分批删除已找不到父下载历史的文件记录。
-
-        downloadfiles 没有时间字段，无法安全地按时间直接裁剪，
-        因此只清理明确失去父记录的孤儿数据。
-        """
-        ids = [
-            row[0]
-            for row in db.query(cls.id)
-            .outerjoin(
-                DownloadHistory,
-                DownloadHistory.download_hash == cls.download_hash,
-            )
-            .filter(DownloadHistory.id.is_(None))
-            .order_by(cls.id.asc())
-            .limit(limit)
-            .all()
-        ]
-        if not ids:
-            return 0
-        return (
-            db.query(cls)
-            .filter(cls.id.in_(ids))
-            .delete(synchronize_session=False)
-        )
