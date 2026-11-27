@@ -91,23 +91,43 @@ class SystemChain(ChainBase):
         """
         # 重启消息
         restart_channel = self.load_cache(self._restart_file)
-        if restart_channel:
-            # 发送重启完成msg
-            if not isinstance(restart_channel, dict):
+        if restart_channel is None:
+            return
+        if not isinstance(restart_channel, dict):
+            try:
                 restart_channel = json.loads(restart_channel)
+            except (TypeError, json.JSONDecodeError):
+                restart_channel = None
+        if isinstance(restart_channel, dict):
             channel = next(
                 (channel for channel in MessageChannel.__members__.values() if
                  channel.value == restart_channel.get('channel')), None)
             userid = restart_channel.get('userid')
+        else:
+            channel = None
+            userid = None
+        valid_userid = (
+            isinstance(userid, str) and bool(userid)
+        ) or (
+            isinstance(userid, int) and not isinstance(userid, bool)
+        )
+        if channel is None or not valid_userid:
+            logger.warning("重启完成通知缓存无效，已清理")
+            self.remove_cache(self._restart_file)
+            return
 
-            # 版本号
-            title = self.__get_version_message()
+        # 发送重启完成msg
+        title = self.__get_version_message()
+        try:
             self.post_message(Notification(
                 channel=channel,
                 title=f"系统已重启完成！\n{title}",
                 userid=userid,
                 save_history=False))
-            self.remove_cache(self._restart_file)
+        except Exception as err:
+            logger.error(f"发送重启完成通知失败：{err}")
+            return
+        self.remove_cache(self._restart_file)
 
     @staticmethod
     def get_server_local_version():

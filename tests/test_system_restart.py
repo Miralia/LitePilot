@@ -2,6 +2,9 @@
 
 from unittest.mock import MagicMock
 
+import pytest
+
+from app.chain.system import SystemChain
 from app.helper.system import SystemHelper
 
 
@@ -53,3 +56,47 @@ def test_systemd_restart_helper_uses_standard_no_block_argument_order(monkeypatc
     [(helper_code, _description)] = captured
     assert "'systemctl', '--no-block', 'restart', \"litepilot.service\"" in helper_code
     assert "shell" not in helper_code
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        False,
+        [],
+        [1],
+        "not-json",
+        {},
+        {"channel": "Telegram"},
+        {"userid": "user-1"},
+        {"channel": "Missing", "userid": "user-1"},
+        {"channel": "Telegram", "userid": ""},
+        {"channel": "Telegram", "userid": {}},
+        {"channel": "Telegram", "userid": 1.5},
+    ],
+)
+def test_restart_finish_discards_structurally_invalid_receipt(monkeypatch, payload):
+    """无法定位有效接收人的重启收据必须清除，不能每次启动重复失败或误投递。"""
+    chain = object.__new__(SystemChain)
+    post_message = MagicMock()
+    remove_cache = MagicMock()
+    chain.load_cache = lambda _filename: payload
+    chain.post_message = post_message
+    chain.remove_cache = remove_cache
+
+    chain.restart_finish()
+
+    post_message.assert_not_called()
+    remove_cache.assert_called_once_with("__system_restart__")
+
+
+def test_restart_finish_keeps_valid_receipt_when_notification_fails(monkeypatch):
+    """结构有效但通知发送失败时保留收据，维持下次启动重试的既有语义。"""
+    chain = object.__new__(SystemChain)
+    remove_cache = MagicMock()
+    chain.load_cache = lambda _filename: {"channel": "Telegram", "userid": "user-1"}
+    chain.post_message = MagicMock(side_effect=RuntimeError("notification down"))
+    chain.remove_cache = remove_cache
+
+    chain.restart_finish()
+
+    remove_cache.assert_not_called()
