@@ -73,3 +73,18 @@ def test_proxy_returns_none_without_any_proxy(monkeypatch) -> None:
     settings = Settings(PROXY_HOST=None)
 
     assert settings.PROXY is None
+
+def test_proxy_server_error_log_redacts_userinfo_password(monkeypatch) -> None:
+    """代理解析失败日志不得泄露代理 URL userinfo 中的密码。"""
+    errors = []
+    secret = "proxy-test-password"
+    proxy_url = f"http://user:{secret}@proxy.example:badport"
+    monkeypatch.setattr("app.core.config.logger.error", errors.append)
+
+    settings = Settings(PROXY_HOST=proxy_url)
+
+    assert settings.PROXY_SERVER == {"server": proxy_url}
+    assert errors
+    assert all(secret not in message for message in errors)
+    assert any("http://proxy.example:badport" in message for message in errors)
+

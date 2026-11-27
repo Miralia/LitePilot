@@ -100,7 +100,22 @@ class SystemUtils:
             while candidate and candidate[-1] in ".,;:)":
                 trailing = candidate[-1] + trailing
                 candidate = candidate[:-1]
-            parsed = urllib.parse.urlsplit(candidate)
+            try:
+                parsed = urllib.parse.urlsplit(candidate)
+            except ValueError:
+                scheme, separator, rest = candidate.partition("://")
+                if not separator:
+                    return match.group(1)
+                authority_end = len(rest)
+                for delimiter in "/?#":
+                    delimiter_index = rest.find(delimiter)
+                    if delimiter_index >= 0:
+                        authority_end = min(authority_end, delimiter_index)
+                authority = rest[:authority_end]
+                if "@" not in authority:
+                    return match.group(1)
+                host = authority.rsplit("@", 1)[-1]
+                return f"{scheme}://{host}{rest[authority_end:]}{trailing}"
             if not parsed.username and not parsed.password:
                 return match.group(1)
             host = parsed.netloc.rsplit("@", 1)[-1]

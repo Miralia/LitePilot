@@ -831,7 +831,9 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
                     proxy["password"] = parsed.password
                 return proxy
             except Exception as err:
-                logger.error(f"解析代理服务器地址 '{self.PROXY_HOST}' 时出错: {err}")
+                safe_proxy_host = SystemUtils.redact_url_userinfo(self.PROXY_HOST)
+                safe_error = SystemUtils.redact_url_userinfo(str(err))
+                logger.error(f"解析代理服务器地址 '{safe_proxy_host}' 时出错: {safe_error}")
                 return {"server": self.PROXY_HOST}
         return None
 

@@ -145,6 +145,17 @@ def test_execute_with_subprocess_redacts_unknown_error_userinfo_and_invalid_port
     assert "user:pass" not in message
 
 
+def test_redact_url_userinfo_tolerates_malformed_ipv6_url():
+    """脱敏 malformed URL 时不能二次抛出解析异常，也不能保留 userinfo。"""
+    redacted = SystemUtils.redact_url_userinfo(
+        "Proxy failed: http://user:proxy-secret@[::1, retrying"
+    )
+
+    assert "proxy-secret" not in redacted
+    assert "user@" not in redacted
+    assert "retrying" in redacted
+
+
 def _fake_stat_with_devs(dev_by_path):
     """构造按路径返回指定 st_dev 的 os.stat 桩。"""
     def _fake_stat(path, *args, **kwargs):
