@@ -491,3 +491,12 @@ def test_find_metainfo_episode_zero_range_totals():
     assert episode_info["begin_episode"] == 0
     assert episode_info["end_episode"] == 1
     assert episode_info["total_episode"] == 2
+
+
+def test_anime_parser_degrades_to_video_parser_when_anitopy_crashes():
+    """anitopy 无法处理未闭合括号时，应降级到通用解析结果而不是返回空元数据。"""
+    meta = MetaInfo("Show - 01 (8")
+
+    assert meta.name == "Show"
+    assert meta.begin_episode == 1
+    assert meta.type == MediaType.TV

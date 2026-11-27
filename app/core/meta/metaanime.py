@@ -11,6 +11,8 @@
 """
 import re
 import traceback
+from dataclasses import fields
+from typing import Optional
 
 import anitopy
 
@@ -68,9 +70,10 @@ class MetaAnime(MetaBase):
             return
         original_title = title
         try:
-            info = anitopy.parse(title)
+            info = self.__safe_anitopy_parse(title)
             prepared_title = self.__prepare_title(title)
-            info = anitopy.parse(prepared_title) or info
+            if prepared_title != title:
+                info = self.__safe_anitopy_parse(prepared_title) or info
             if info:
                 self.__apply_title(info, prepared_title)
                 self.__apply_year(info)
@@ -86,11 +89,42 @@ class MetaAnime(MetaBase):
                 self.init_subtitle(self.org_string)
                 if not self._subtitle_flag and self.subtitle:
                     self.init_subtitle(self.subtitle)
+            else:
+                self.__apply_video_fallback(original_title)
             if not self.type:
                 self.type = MediaType.TV
             self.finalize()
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"解析动漫信息失败：{err} - {traceback.format_exc()}")
+
+    @staticmethod
+    def __safe_anitopy_parse(title: str) -> Optional[dict]:
+        """
+        调用 anitopy 并把第三方解析器内部异常隔离为无结果。
+        """
+        try:
+            return anitopy.parse(title)
+        except Exception as err:  # pylint: disable=broad-except
+            logger.warning(f"anitopy 解析失败，按通用影视标题降级：{err}")
+            return None
+
+    def __apply_video_fallback(self, original_title: str) -> None:
+        """
+        在动漫专用解析不可用时复制通用影视解析结果。
+
+        anitopy 对部分畸形括号会直接抛出内部 AttributeError。此时通用解析器
+        仍通常能识别标题、季集与技术字段，保留这些结果比返回空元数据更安全。
+        """
+        video = MetaVideo(original_title, self.subtitle, self.isfile)
+        for meta_field in fields(MetaBase):
+            if not hasattr(video, meta_field.name):
+                continue
+            value = getattr(video, meta_field.name)
+            if isinstance(value, list):
+                value = list(value)
+            elif isinstance(value, dict):
+                value = dict(value)
+            setattr(self, meta_field.name, value)
 
     def __apply_title(self, info: dict, prepared_title: str) -> None:
         """
