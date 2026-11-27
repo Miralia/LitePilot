@@ -44,6 +44,7 @@
 | `app/chain/webhook.py` | 已审计。解析失败返回、解析成功才广播 `WebhookMessage`；事件模型本身为后台 best-effort 语义。 |
 | `app/api/endpoints/tmdb.py` | 已审计。识别缓存管理接口要求超级管理员；删除只作用于运行时缓存键并通过缓存层持久化，不把 `cache_key` 直接拼成文件路径。 |
 | `app/api/endpoints/webhook.py` | 已审计。GET/POST 均要求 API token；请求立即返回，解析与分发由 FastAPI 后台任务执行。未改变既有 at-most-once 语义。原生 Emby 数字季集号现在在解析边界规范化为字符串，Season/Episode 0 不再丢失身份。 |
+| `app/api/endpoints/transfer.py` | 已审计转移历史重新整理的季号解析边界。多季历史 `S01-S02` 不再触发 API 500，也不会被错误强制为单季；只有明确的单季值才作为季号覆盖。 |
 
 ### 数据库与启动生命周期
 
@@ -92,6 +93,7 @@
 | `e981e4bd` | 通知模板能匹配 TMDB 第 0 集标题与播出日期 | `tests/test_template_context_builder.py::test_build_preserves_episode_zero_details` |
 | `ec281eac` | 测试中的 `os.stat` 桩对未登记路径委托真实 stat，避免后台日志线程竞态噪声 | `tests/test_system_utils.py` |
 | `758199a3` | 模块链泛型容器注解按容器类型校验，不再因 `list[...]` 抛出 `TypeError` | `tests/test_object.py::test_check_signature_matches_generic_container_origin` |
+| `8ad87f50` | 多季转移历史重新整理不再崩溃，也不会错误强制为起始单季 | `tests/test_transfer_history_retransfer.py::test_manual_transfer_from_multi_season_history_does_not_crash_or_force_single_season` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -154,7 +156,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1694 passed, 2 warnings` |
+| `python tests/run.py` | `1695 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -164,6 +166,6 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `758199a36ea1ddbd553968cba1161a6109990a44`。升级前备份为 `/root/litepilot-pre-758199a3-20261127161231.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
+生产环境已部署并核验 `8ad87f5008e1116886dd027735d37afa1ade42a9`。升级前备份为 `/root/litepilot-pre-8ad87f50-20261127162017.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
 
-核验结果：`litepilot.service` active；nginx `/litepilot/` 与 `service-worker.js` 均为 200；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0。此前 Doctor 的 Telegram warn 为已修复历史日志，不是本次新增错误。
+核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/system/ping` 直连与 nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=0 advisory=1`。
