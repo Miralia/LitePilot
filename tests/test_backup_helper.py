@@ -280,3 +280,18 @@ def test_create_backup_excludes_previous_backup_artifacts_but_keeps_user_archive
     assert "custom.tar.gz" in names
     assert "moviepilot-backup-previous.tar.gz" not in names
     assert "backup-next.tar.gz" not in names
+
+
+def test_create_backup_excludes_pre_upgrade_backup_directories(tmp_path):
+    """升级前目录副本是一次性运维产物，不得递归打入后续配置备份。"""
+    config = _make_config(tmp_path)
+    leftover = config / "backup-pre-upgrade-20261127041959"
+    leftover.mkdir()
+    (leftover / "large-copy.db").write_bytes(b"old-copy")
+
+    result = create_backup(archive=tmp_path / "backup.tar.gz", config_dir=config)
+
+    with tarfile.open(result.archive, "r:gz") as tar:
+        names = {member.name for member in tar.getmembers()}
+    assert "backup-pre-upgrade-20261127041959/large-copy.db" not in names
+    assert "app.env" in names

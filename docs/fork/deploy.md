@@ -94,7 +94,7 @@ location ~ ^/mp/api/v1/system/(message$|progress/|logging$) {
 
 ## 备份与恢复
 
-备份对象是配置目录（含 SQLite 数据库），日志与缓存等可重建内容自动排除。
+备份对象是配置目录（含 SQLite 数据库），日志、缓存等可重建内容与升级前目录副本自动排除。
 
 ```bash
 # 备份（默认写到配置目录同级）

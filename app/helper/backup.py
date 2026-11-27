@@ -29,6 +29,8 @@ MANIFEST_NAME = "moviepilot-backup.json"
 BACKUP_FORMAT_VERSION = 1
 # 备份时排除的目录：均为可重建的缓存与运行期临时数据
 EXCLUDE_DIRS = {"temp", "cache", ".cache", "logs"}
+# 历史升级前目录副本是一次性运维回滚产物，迁移配置时不随正文递归打包
+EXCLUDE_OPERATIONAL_BACKUP_PREFIX = "backup-pre-upgrade-"
 # 备份包与敏感配置文件只允许所有者读写，避免数据库/env 凭据被本机其它账户读取
 SENSITIVE_FILE_MODE = 0o600
 SENSITIVE_CONFIG_FILES = (
@@ -121,7 +123,10 @@ def _iter_backup_files(config_dir: Path, archive: Optional[Path] = None) -> List
         relative = path.relative_to(config_dir)
         if archive_relative is not None and relative == archive_relative:
             continue
-        if relative.parts and relative.parts[0] in EXCLUDE_DIRS:
+        if relative.parts and (
+            relative.parts[0] in EXCLUDE_DIRS
+            or relative.parts[0].startswith(EXCLUDE_OPERATIONAL_BACKUP_PREFIX)
+        ):
             continue
         if len(relative.parts) == 1 and relative.name in SQLITE_BACKUP_FILES:
             continue
