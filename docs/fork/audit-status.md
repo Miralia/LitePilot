@@ -48,6 +48,7 @@
 | `app/api/endpoints/tmdb.py` | 已审计。识别缓存管理接口要求超级管理员；删除只作用于运行时缓存键并通过缓存层持久化，不把 `cache_key` 直接拼成文件路径。 |
 | `app/api/endpoints/webhook.py` | 已审计。GET/POST 均要求 API token；请求立即返回，解析与分发由 FastAPI 后台任务执行。未改变既有 at-most-once 语义。原生 Emby 数字季集号现在在解析边界规范化为字符串，Season/Episode 0 不再丢失身份。 |
 | `app/api/endpoints/transfer.py` | 已审计转移历史重新整理的季号解析边界。多季历史 `S01-S02` 不再触发 API 500，也不会被错误强制为单季；只有明确的单季值才作为季号覆盖。 |
+| `app/api/endpoints/login.py` | 已审计登录限流来源地址边界。仅当直连 peer 是本机反向代理时信任 `X-Forwarded-For`，并取链尾真实客户端；非可信直连忽略可伪造转发头。 |
 
 ### 数据库与启动生命周期
 
@@ -108,6 +109,7 @@
 | `55a80b95` | 入库通知聚合键复用统一媒体身份解析，不同媒体不再共用空 `media_id` 键 | `tests/test_transfer_job_manager.py::test_notify_key_uses_compatible_media_identity` |
 | `0df25e7f` | 畸形动漫标题导致 `anitopy` 崩溃时降级到通用解析结果，保留标题、集号与媒体类型 | `tests/test_metainfo.py::test_anime_parser_degrades_to_video_parser_when_anitopy_crashes` |
 | `f59d7838` | 媒体服务器删除多集文件时能命中 `E01-E02` 形式的连续集历史 | `tests/test_mediaserverdel_season_delete.py::test_query_history_matches_multi_episode_range` |
+| `69fc6892` | nginx 代理后的登录限流使用真实客户端 IP，直连伪造 XFF 不能轮换限流身份 | `tests/test_login_mfa_methods.py::test_login_throttle_uses_forwarded_client_behind_loopback_proxy`、`test_login_throttle_ignores_forwarded_header_for_direct_client` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -170,7 +172,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1708 passed, 2 warnings` |
+| `python tests/run.py` | `1710 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -180,6 +182,6 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `f59d783846248ad4d7a6b50176ba8c41946f351f`。升级前备份为 `/root/litepilot-pre-range-delete-20261127173106.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和通过 SQLite 在线备份 API 生成的一致性快照。
+生产环境已部署并核验 `69fc6892a9c5b851dd94c463b979c915c89317fb`。升级前备份为 `/root/litepilot-pre-login-throttle-20261127173822.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和通过 SQLite 在线备份 API 生成的一致性快照。
 
 核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/api/v1/system/ping` 后端直连与 `/litepilot/api/v1/system/ping` nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。唯一 warn 是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复已在当前版本中，本次重启后没有新增同类错误。
