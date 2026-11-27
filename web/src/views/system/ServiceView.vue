@@ -14,6 +14,7 @@ import {
   useScheduleProgress,
 } from '@/composables/useScheduleProgress'
 import { getSchedulerVisual } from '@/utils/schedulerVisual'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 // 国际化
 const { t } = useI18n()
@@ -99,6 +100,7 @@ async function runCommand(id: string) {
       loadSchedulerList()
     }, 1000)
   } catch (e) {
+    if (isRequestCancellation(e)) return
     console.error(e)
     $toast.error(t('setting.scheduler.executeFailed'))
   }

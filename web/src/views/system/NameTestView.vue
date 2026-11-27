@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useToast } from 'vue-toastification'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 import { requiredValidator } from '@/@validators'
 import api from '@/api'
 import type { Context, ActiveMediaDataSource, MediaInfo } from '@/api/types'
@@ -303,6 +304,7 @@ async function saveCustomWords() {
     if (saveResult.success) $toast.success(t('nameTest.saveWordsSuccess'))
     else $toast.error(saveResult.message || t('nameTest.saveWordsFailed'))
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('nameTest.saveWordsFailed'))
   } finally {

@@ -2,6 +2,7 @@ import NameTestView from '@/views/system/NameTestView.vue'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@tests/support/render'
+import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -230,4 +231,30 @@ describe('NameTestView media identity', () => {
 
     expect(restoredInput).toHaveValue('标题六')
   })
+
+  it('does not report a canceled custom-word save request as a failure', async () => {
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    mocks.apiGet.mockImplementation((endpoint: string) => {
+      if (endpoint === 'system/setting/CustomIdentifiers') return Promise.resolve({ data: { value: [] } })
+      return Promise.reject(new Error(`Unexpected GET ${endpoint}`))
+    })
+    mocks.apiPost.mockRejectedValue(canceled)
+    await renderWithProviders(NameTestView, {
+      initialState: {
+        globalSettings: {
+          data: { RECOGNIZE_SOURCE: 'themoviedb' },
+        },
+      },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('识别词'), 'EP <> 1')
+    await user.click(screen.getByRole('button', { name: '保存识别词' }))
+    await waitFor(() => expect(mocks.apiPost).toHaveBeenCalledWith('system/setting/CustomIdentifiers', ['EP <> 1']))
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
+
 })

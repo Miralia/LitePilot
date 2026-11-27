@@ -2,6 +2,7 @@ import ServiceView from '@/views/system/ServiceView.vue'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@tests/support/render'
+import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -121,4 +122,25 @@ describe('ServiceView scheduler execution', () => {
     })
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
+
+  it('does not report a canceled execution request as a failure', async () => {
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    let rejectRun!: (error: Error) => void
+    const runRequest = new Promise((_resolve, reject) => {
+      rejectRun = reject
+    })
+
+    await renderAndRun(runRequest)
+    rejectRun(canceled)
+    await waitFor(() => {
+      expect(mocks.apiGet).toHaveBeenCalledWith('system/runscheduler', {
+        params: { jobid: scheduler.id },
+      })
+    })
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
+
 })
