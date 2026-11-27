@@ -58,7 +58,15 @@ class SystemChain(ChainBase):
                 "userid": userid
             }, self._restart_file)
         # 重启
-        SystemHelper.restart()
+        success, message = SystemHelper.restart()
+        if not success and channel and userid:
+            self.remove_cache(self._restart_file)
+            self.post_message(Notification(
+                channel=channel,
+                source=source,
+                title=f"系统重启失败：{message or '请检查运行环境与日志'}",
+                userid=userid,
+                save_history=False))
 
 
 

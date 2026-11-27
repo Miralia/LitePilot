@@ -6,6 +6,7 @@ import pytest
 
 from app.chain.system import SystemChain
 from app.helper.system import SystemHelper
+from app.schemas.types import MessageChannel
 
 
 def test_systemd_unit_name_is_parsed_from_cgroup():
@@ -100,3 +101,24 @@ def test_restart_finish_keeps_valid_receipt_when_notification_fails(monkeypatch)
     chain.restart_finish()
 
     remove_cache.assert_not_called()
+
+
+def test_command_restart_failure_retracts_receipt_and_notifies(monkeypatch):
+    """底层重启失败时必须撤回完成通知收据，并明确告知用户重启失败。"""
+    monkeypatch.setattr(SystemHelper, "can_restart", MagicMock(return_value=True))
+    monkeypatch.setattr(
+        SystemHelper,
+        "restart",
+        MagicMock(return_value=(False, "restart failed")),
+    )
+    chain = object.__new__(SystemChain)
+    notifications = []
+    remove_cache = MagicMock()
+    chain.post_message = notifications.append
+    chain.save_cache = MagicMock()
+    chain.remove_cache = remove_cache
+
+    chain.restart(channel=MessageChannel.Telegram, userid="user-1")
+
+    remove_cache.assert_called_once_with("__system_restart__")
+    assert any("重启失败" in notification.title for notification in notifications)
