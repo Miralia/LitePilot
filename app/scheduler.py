@@ -742,8 +742,8 @@ class Scheduler(ConfigReloadMixin, metaclass=SingletonClass):
                     target_loop,
                 )
                 return True
-            asyncio.run(coro)
-            return False
+            asyncio.run(self.__run_coro_job(coro=coro, job_id=job_id, job=job))
+            return True
 
         # 获取定时任务
         job = self.__prepare_job(job_id)

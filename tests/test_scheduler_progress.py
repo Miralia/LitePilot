@@ -116,6 +116,32 @@ def test_scheduler_runs_async_job_without_running_global_loop(monkeypatch):
     assert progress.status == "success"
 
 
+def test_scheduler_sync_fallback_preserves_async_failure_result(monkeypatch):
+    """同步兜底执行异步定时服务时，标准失败结果不得被误报为成功。"""
+    job_id = f"test-async-result-failure-{uuid4()}"
+
+    async def task(progress_callback):
+        """在同步兜底路径中返回标准失败结果。"""
+        progress_callback(value=68, text="异步业务校验失败")
+        return False, "异步业务失败"
+
+    scheduler = _build_scheduler(job_id, task)
+    target_loop = asyncio.new_event_loop()
+    monkeypatch.setattr(global_vars, "CURRENT_EVENT_LOOP", target_loop)
+
+    try:
+        scheduler.start(job_id)
+    finally:
+        target_loop.close()
+
+    progress = scheduler.get_progress(job_id)
+    assert progress.enable is False
+    assert progress.value == 68
+    assert progress.status == "failed"
+    assert progress.success is False
+    assert progress.error == "异步业务失败"
+
+
 def test_scheduler_runs_async_job_from_current_event_loop(monkeypatch):
     """在异步入口中手动触发定时服务时，不应嵌套调用 `asyncio.run`。"""
     job_id = f"test-current-loop-{uuid4()}"
