@@ -1,6 +1,7 @@
 import RecognitionCachePanel from '@/components/cache/RecognitionCachePanel.vue'
 import { screen, waitFor } from '@testing-library/vue'
 import { renderWithProviders } from '@tests/support/render'
+import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -76,6 +77,18 @@ describe('RecognitionCachePanel recognition statistics', () => {
 
     expect(await screen.findByText('未识别')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
+  })
+
+
+  it('does not report a canceled initial cache load as a failure', async () => {
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    mocks.apiGet.mockRejectedValue(canceled)
+
+    await renderRecognitionCachePanel()
+    await waitFor(() => expect(mocks.apiGet).toHaveBeenCalledWith('tmdb/cache'))
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('keeps the panel TMDB-specific when settings contain a legacy recognition source', async () => {

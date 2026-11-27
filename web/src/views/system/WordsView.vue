@@ -5,6 +5,7 @@ import type { SystemSettingResponse } from '@/api/types'
 import { useI18n } from 'vue-i18n'
 import { useTheme } from 'vuetify'
 import { configureAceEditorPadding } from '@/utils/aceEditor'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 import type { Ace } from 'ace-builds'
 
 const Draggable = defineAsyncComponent(() => import('vuedraggable').then(module => module.default))
@@ -87,6 +88,10 @@ async function changeStreamingDisplay(value: string) {
       return
     }
   } catch (error) {
+    if (isRequestCancellation(error)) {
+      streamingDisplayMode.value = previous
+      return
+    }
     console.error(error)
   }
   streamingDisplayMode.value = previous
@@ -469,6 +474,7 @@ async function saveTextSection(section: TextSectionKey) {
 
     $toast.error(setting.failedMessage)
   } catch (error) {
+    if (isRequestCancellation(error)) return false
     console.error(error)
     $toast.error(setting.failedMessage)
   }
@@ -514,6 +520,7 @@ async function saveEpisodeFormatRules() {
 
     $toast.error(result.message || t('setting.words.episodeFormatRuleSaveFailed'))
   } catch (error) {
+    if (isRequestCancellation(error)) return false
     console.error(error)
     $toast.error(t('setting.words.episodeFormatRuleSaveFailed'))
   }

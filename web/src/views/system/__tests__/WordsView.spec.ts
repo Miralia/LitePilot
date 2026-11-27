@@ -3,10 +3,11 @@ import { resolve } from 'node:path'
 import { cwd } from 'node:process'
 
 import WordsView from '@/views/system/WordsView.vue'
-import { screen, waitFor } from '@testing-library/vue'
+import { fireEvent, screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@tests/support/render'
 import { defineComponent } from 'vue'
+import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -187,6 +188,24 @@ describe('WordsView editor preferences', () => {
       expect(mocks.aceSetMode).toHaveBeenLastCalledWith({ path: 'ace/mode/word_list', syntax: false })
       expect(localStorage.getItem('MP_WORDS_SYNTAX_HIGHLIGHTING')).toBe('false')
     })
+  })
+
+
+  it('does not report a canceled word-list save request as a failure', async () => {
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    mocks.apiPost.mockRejectedValue(canceled)
+    await renderWordsView()
+    await screen.findByTestId('words-ace-editor')
+
+    await fireEvent.click(screen.getAllByRole('button', { name: /自定义占位符/ })[0])
+    const textarea = await screen.findByPlaceholderText('每行输入一个占位符识别正则')
+    await fireEvent.update(textarea, 'gamma')
+    await fireEvent.click(screen.getByRole('button', { name: '保存更改' }))
+    await waitFor(() => expect(mocks.apiPost).toHaveBeenCalledWith('system/setting/Customization', ['gamma']))
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
 
   it('shows the switch only for custom identifiers', async () => {

@@ -8,6 +8,7 @@ import { useConfirm } from '@/composables/useConfirm'
 import ProgressiveCardGrid from '@/components/misc/ProgressiveCardGrid.vue'
 import { useGlobalSettingsStore } from '@/stores'
 import { getDisplayImageUrl } from '@/utils/imageUtils'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 type RecognitionStatusFilter = 'all' | 'recognized' | 'unrecognized'
 type InfiniteScrollStatus = 'ok' | 'empty' | 'loading' | 'error'
@@ -115,7 +116,7 @@ async function loadCacheData(showSuccess = false) {
     resetMobilePagination()
     if (showSuccess) $toast.success(t('setting.cache.listRefreshSuccess'))
   } catch (error) {
-    if (requestId !== cacheLoadRequestId) return
+    if (requestId !== cacheLoadRequestId || isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('setting.cache.loadFailed'))
   } finally {
@@ -140,6 +141,7 @@ async function clearAllCache() {
     await loadCacheData()
     selectedItems.value = []
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('setting.cache.clearFailed'))
   } finally {
@@ -170,6 +172,7 @@ async function deleteSelectedItems() {
     await loadCacheData()
     selectedItems.value = []
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('setting.cache.deleteSelectedFailed'))
   } finally {
@@ -185,6 +188,7 @@ async function deleteSingleItem(item: RecognitionCacheItem) {
     $toast.success(t('setting.cache.deleteSuccess'))
     await loadCacheData()
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('setting.cache.deleteFailed'))
   } finally {

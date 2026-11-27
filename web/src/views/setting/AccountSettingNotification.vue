@@ -206,6 +206,7 @@ async function openEditor(type: NotificationTemplateType) {
     editorContent.value = templateConfigs.value[type] || '{}'
     openTemplateEditorDialog(type)
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('setting.notification.templateLoadFailed'))
   }
@@ -220,6 +221,7 @@ async function saveTemplate(value = editorContent.value) {
     $toast.success(t('setting.notification.templateSaveSuccess'))
     closeTemplateEditorDialog()
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('setting.notification.templateSaveFailed'))
   }
@@ -230,6 +232,7 @@ async function loadTemplateConfigs() {
     const result: { [key: string]: any } = await api.get('system/setting/NotificationTemplates')
     templateConfigs.value = normalizeTemplateConfigs(result.data?.value)
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('setting.notification.templateLoadFailed'))
   }

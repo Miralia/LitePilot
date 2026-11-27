@@ -112,4 +112,25 @@ describe('notification settings save feedback', () => {
     expect(mocks.toastError).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
+
+  it('does not report a canceled template config load as a failure', async () => {
+    mockSettings()
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    mocks.apiGet.mockImplementation((endpoint: string) => {
+      if (endpoint === 'system/setting/NotificationTemplates') return Promise.reject(canceled)
+      if (endpoint === 'system/setting/Notifications') return { data: { value: [] } }
+      if (endpoint === 'system/setting/NotificationSwitchs') return { data: { value: [] } }
+      if (endpoint === 'system/setting/NotificationSendTime') {
+        return { data: { value: { end: '23:59', start: '00:00' } } }
+      }
+      throw new Error(`Unexpected GET ${endpoint}`)
+    })
+
+    await renderWithProviders(AccountSettingNotification)
+    await waitFor(() => expect(mocks.apiGet).toHaveBeenCalledWith('system/setting/NotificationTemplates'))
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
 })
