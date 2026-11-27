@@ -31,14 +31,16 @@ class ServiceConfigHelper:
         configs = []
         for conf in config_data:
             if not isinstance(conf, dict):
-                logger.warning(f"{config_key.value} 配置格式不正确，已跳过：{conf}")
+                logger.warning(f"{config_key.value} 配置格式不正确（类型: {type(conf).__name__}），已跳过")
                 continue
             try:
                 # 直接使用 conf_type 来实例化配置对象
                 configs.append(conf_type(**conf))
             except ValidationError as e:
-                # 单条配置存在非法值时跳过，避免影响其它服务的初始化
-                logger.error(f"{config_key.value} 配置 {conf.get('name')} 校验失败，已跳过：{e}")
+                # 单条配置存在非法值时跳过，避免影响其它服务的初始化；
+                # Pydantic 原始异常会携带 input_value，不能写入日志以免泄露服务凭据
+                safe_errors = e.errors(include_input=False, include_context=False)
+                logger.error(f"{config_key.value} 配置 {conf.get('name')} 校验失败，已跳过：{safe_errors}")
         return configs
 
     @staticmethod

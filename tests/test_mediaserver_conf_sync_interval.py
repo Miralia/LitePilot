@@ -27,3 +27,34 @@ def test_get_configs_skips_invalid_entries(monkeypatch):
     configs = ServiceConfigHelper.get_configs(SystemConfigKey.MediaServers, MediaServerConf)
 
     assert [conf.name for conf in configs] == ["good"]
+
+
+def test_get_configs_does_not_log_secret_values(monkeypatch):
+    """非法服务配置的诊断日志不得写入密码、API key 或原始输入值。"""
+    malformed_secret = "malformed-secret"
+    validation_secret = "validation-secret"
+    warnings = []
+    errors = []
+    monkeypatch.setattr("app.helper.service.logger.warning", warnings.append)
+    monkeypatch.setattr("app.helper.service.logger.error", errors.append)
+    monkeypatch.setattr(
+        "app.helper.service.SystemConfigOper.get",
+        lambda self, key: [
+            {"name": "good", "type": "emby", "enabled": True},
+            f"password={malformed_secret}",
+            {
+                "name": "bad-config",
+                "type": "emby",
+                "config": f"password={validation_secret}",
+            },
+        ],
+    )
+
+    configs = ServiceConfigHelper.get_configs(SystemConfigKey.MediaServers, MediaServerConf)
+
+    assert [conf.name for conf in configs] == ["good"]
+    logged = "\n".join(warnings + errors)
+    assert malformed_secret not in logged
+    assert validation_secret not in logged
+    assert "input_value" not in logged
+    assert "config" in logged
