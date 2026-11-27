@@ -4,9 +4,11 @@ import { fireEvent, screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { server } from '@tests/support/msw/server'
 import { renderWithProviders } from '@tests/support/render'
+import { flushPromises } from '@vue/test-utils'
 import { HttpResponse, http } from 'msw'
+import { setNavigatingState } from '@/utils/requestOptimizer'
 import { defineComponent, h, type PropType } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const API_BASE_URL = 'http://localhost/api/v1/'
 let initializationRequestCount = 0
@@ -47,6 +49,10 @@ vi.mock('vue-toastification', () => ({
     warning: mocks.toastWarning,
   }),
 }))
+
+afterEach(() => {
+  setNavigatingState(false)
+})
 
 const DialogStub = defineComponent({
   name: 'VDialog',
@@ -800,6 +806,52 @@ describe('ReorganizeDialog payloads and lifecycle', () => {
     expect(transferBodies[0]).toEqual(expect.objectContaining({ episode_format: '{season_episode}' }))
   })
 
+  it('does not report route cancellation during episode format recommendation as a failure', async () => {
+    const response = createDeferred<ApiResponse>()
+    let requestCount = 0
+    server.use(
+      http.post(new URL('transfer/episode-format/recommend', API_BASE_URL).href, async () => {
+        requestCount += 1
+        return HttpResponse.json(await response.promise)
+      }),
+    )
+    const user = userEvent.setup()
+    await renderDialog({ episodeRules: [{ name: '标准季集' }] })
+
+    await selectOption('类型', 2)
+    await user.click(screen.getByRole('button', { name: 'mdi-auto-fix' }))
+    await waitFor(() => expect(requestCount).toBe(1))
+    setNavigatingState(true)
+    response.resolve({ data: undefined, success: true })
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it('stops the remaining history transfers when an in-flight request is canceled by navigation', async () => {
+    const firstResponse = createDeferred<ApiResponse>()
+    let requestCount = 0
+    server.use(
+      http.post(new URL('transfer/manual', API_BASE_URL).href, async () => {
+        requestCount += 1
+        if (requestCount === 1) return HttpResponse.json(await firstResponse.promise)
+        return HttpResponse.json({ success: true })
+      }),
+    )
+    const user = userEvent.setup()
+    const { onDone } = await renderDialog({ items: [], logids: [41, 42] })
+
+    await user.click(screen.getByRole('button', { name: '加入整理队列' }))
+    await waitFor(() => expect(requestCount).toBe(1))
+    setNavigatingState(true)
+    firstResponse.resolve({ data: undefined, success: true })
+    await flushPromises()
+
+    expect(requestCount).toBe(1)
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
   it('emits close and submits the historical recognition preference', async () => {
     const bodies: unknown[] = []
     server.use(
@@ -968,6 +1020,29 @@ describe('ReorganizeDialog preview', () => {
     expect(screen.queryByText('总数 0')).not.toBeInTheDocument()
     expect(screen.queryByText('成功 0')).not.toBeInTheDocument()
     expect(screen.queryByText('失败 0')).not.toBeInTheDocument()
+  })
+
+  it('does not merge route cancellation into preview failures', async () => {
+    const response = createDeferred<ApiResponse>()
+    let requestCount = 0
+    server.use(
+      http.post(new URL('transfer/manual', API_BASE_URL).href, async () => {
+        requestCount += 1
+        return HttpResponse.json(await response.promise)
+      }),
+    )
+    const user = userEvent.setup()
+    await renderDialog()
+
+    await user.click(screen.getByRole('button', { name: '预览' }))
+    await waitFor(() => expect(requestCount).toBe(1))
+    setNavigatingState(true)
+    response.resolve(previewResponse([]))
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(mocks.toastWarning).not.toHaveBeenCalled()
+    expect(screen.queryByText('失败 1')).not.toBeInTheDocument()
   })
 
   it('pages through long preview results and can collapse the preview again', async () => {

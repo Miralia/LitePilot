@@ -7,6 +7,7 @@ import { useBackground } from '@/composables/useBackground'
 import { useToast } from 'vue-toastification'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 type NotificationDisplayItem =
   | { kind: 'section'; key: string; title: string; count: number }
@@ -300,6 +301,7 @@ async function clearNotifications(scope: NotificationClearScope) {
     }
     $toast.success(getClearSuccessText(scope))
   } catch (error: any) {
+    if (isRequestCancellation(error)) return
     $toast.error(error?.response?.data?.message || error?.message || t('notification.clearFailed'))
   } finally {
     clearing.value = false

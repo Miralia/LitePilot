@@ -23,6 +23,7 @@ import ProgressDialog from './ProgressDialog.vue'
 import { useI18n } from 'vue-i18n'
 import { useDisplay } from 'vuetify'
 import { useGlobalSettingsStore } from '@/stores'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 // 国际化
 const { t } = useI18n()
@@ -1037,6 +1038,7 @@ async function handleRecommendEpisodeFormat() {
         : t('dialog.reorganize.episodeFormatRecommendSuccess'),
     )
   } catch (error: any) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(error?.message || t('dialog.reorganize.episodeFormatRecommendFailed'))
   } finally {
@@ -1172,6 +1174,7 @@ async function previewTransfer() {
             mergePreviewData(mergedPreviewData, resolvePreviewResponseData(result))
           }
         } catch (err: any) {
+          if (isRequestCancellation(err)) throw err
           console.warn(`预览请求异常: ${err?.message}`)
           mergePreviewData(
             mergedPreviewData,
@@ -1203,6 +1206,7 @@ async function previewTransfer() {
 
               mergePreviewData(mergedPreviewData, resolvePreviewResponseData(result))
             } catch (err: any) {
+              if (isRequestCancellation(err)) throw err
               console.warn(`预览请求异常: ${err?.message}`)
               mergePreviewData(
                 mergedPreviewData,
@@ -1239,6 +1243,7 @@ async function previewTransfer() {
 
             mergePreviewData(mergedPreviewData, resolvePreviewResponseData(result))
           } catch (err: any) {
+            if (isRequestCancellation(err)) throw err
             console.warn(`预览请求异常: ${err?.message}`)
             mergePreviewData(
               mergedPreviewData,
@@ -1263,6 +1268,7 @@ async function previewTransfer() {
   } catch (error: any) {
     previewVisible.value = false
     resetPreviewState()
+    if (isRequestCancellation(error)) return
     $toast.error(error?.message || t('dialog.reorganize.previewRequestFailed'))
   } finally {
     previewLoading.value = false
@@ -1293,6 +1299,7 @@ async function handleTransfer(item: FileItem, background: boolean = false) {
     if (background) $toast.success(t('dialog.reorganize.successMessage', { name: item.name }))
     return true
   } catch (error: unknown) {
+    if (isRequestCancellation(error)) throw error
     console.error(error)
     if (error instanceof Error) $toast.error(error.message)
     return false
@@ -1310,6 +1317,7 @@ async function handleTransferBatch(items: FileItem[], background: boolean = fals
     if (background) $toast.success(t('dialog.reorganize.successMessage', { name: getBatchItemsLabel(items) }))
     return true
   } catch (error: unknown) {
+    if (isRequestCancellation(error)) throw error
     console.error(error)
     if (error instanceof Error) $toast.error(error.message)
     return false
@@ -1327,6 +1335,7 @@ async function handleTransferLog(logid: number, background: boolean = false) {
     if (background) $toast.success(`历史记录 ${logid} 已加入整理队列！`)
     return true
   } catch (error: unknown) {
+    if (isRequestCancellation(error)) throw error
     console.error(error)
     if (error instanceof Error) $toast.error(error.message)
     return false
@@ -1411,6 +1420,8 @@ async function transfer(background: boolean = false) {
     }
 
     if (allSucceeded) emit('done')
+  } catch (error: unknown) {
+    if (!isRequestCancellation(error)) throw error
   } finally {
     if (!background) stopLoadingProgress()
     progressDialog.value = false

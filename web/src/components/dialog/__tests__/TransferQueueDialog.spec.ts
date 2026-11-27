@@ -525,6 +525,27 @@ describe('TransferQueueDialog', () => {
     expect(mocks.progressControllers[0].stop).toHaveBeenCalledOnce()
   })
 
+  it('does not report route cancellation during DELETE as a failure', async () => {
+    const user = userEvent.setup()
+    let rejectDelete!: (error: unknown) => void
+    mocks.apiGet.mockResolvedValue(createQueue('路由取消', '/downloads/route-cancelled.mkv'))
+    mocks.apiDelete.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectDelete = reject
+        }),
+    )
+
+    await renderDialog()
+    await user.click(await screen.findByRole('button', { name: '取消任务' }))
+    await waitFor(() => expect(mocks.apiDelete).toHaveBeenCalledOnce())
+    rejectDelete({ code: 'ERR_CANCELED' })
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(mocks.apiGet).toHaveBeenCalledOnce()
+  })
+
   it('shows the existing error toast when DELETE fails and keeps the current queue visible', async () => {
     const user = userEvent.setup()
     mocks.apiGet.mockResolvedValue(createQueue('取消失败', '/downloads/cancel-failed.mkv'))

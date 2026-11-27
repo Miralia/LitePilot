@@ -4,6 +4,7 @@ import CryptoJS from 'crypto-js'
 import { useDisplay } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'vue-toastification'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 import noImage from '@images/no-image.jpeg'
 import { formatFileSize } from '@/@core/utils/formatters'
 import api from '@/api'
@@ -235,7 +236,7 @@ async function remove_queue_task(fileitem: FileItem) {
 
     void refreshTransferQueue()
   } catch (error) {
-    if (!isMounted) return
+    if (!isMounted || isRequestCancellation(error)) return
 
     console.error(error)
     toast.error(t('common.serverConnectionFailed'))
