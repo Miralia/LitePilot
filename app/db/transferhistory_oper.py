@@ -248,6 +248,7 @@ class TransferHistoryOper(DbOper):
             downloader=downloader,
             download_hash=download_hash,
             status=1,
+            errmsg=transferinfo.message,
             files=transferinfo.file_list
         )
 

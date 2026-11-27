@@ -65,7 +65,7 @@ class TransferHistory(Base):
     download_hash = Column(String, index=True)
     # 转移成功状态
     status = Column(Boolean(), default=True)
-    # 转移失败信息
+    # 转移失败或部分完成信息
     errmsg = Column(String)
     # 时间
     date = Column(String)

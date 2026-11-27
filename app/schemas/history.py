@@ -113,7 +113,7 @@ class TransferHistory(BaseModel):
     episode_group: Optional[str] = None
     # 状态 1-成功，0-失败
     status: bool = True
-    # 失败原因
+    # 失败或部分完成原因
     errmsg: Optional[str] = None
     # 日期
     date: Optional[str] = None
