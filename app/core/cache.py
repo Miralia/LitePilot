@@ -1,12 +1,13 @@
 import contextvars
 import inspect
+import re
 import shutil
 import tempfile
 import threading
 from abc import ABC, abstractmethod
 from contextlib import contextmanager, asynccontextmanager
 from functools import wraps
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Optional, Generator, AsyncGenerator, Tuple, Literal, Union
 
 import aiofiles
@@ -29,6 +30,27 @@ DEFAULT_CACHE_TTL = 365 * 24 * 60 * 60
 
 # 上下文变量来控制缓存行为
 _fresh = contextvars.ContextVar('fresh', default=False)
+
+
+def _validate_cache_relative_path(value: Any, part_name: str) -> str:
+    """校验可嵌套的缓存相对路径，拒绝绝对路径、NUL 与父目录穿越。"""
+    text = str(value or "")
+    if not text or "\x00" in text:
+        raise ValueError(f"缓存路径非法：{part_name}为空或包含 NUL")
+    windows_path = PureWindowsPath(text)
+    if Path(text).is_absolute() or windows_path.is_absolute() or windows_path.drive:
+        raise ValueError(f"缓存路径非法：{part_name}不能是绝对路径或驱动器路径")
+    if any(part == ".." for part in re.split(r"[/\\]+", text)):
+        raise ValueError(f"缓存路径非法：{part_name}不能包含父目录引用")
+    return text
+
+
+def _file_cache_path(base: Path, region: str, key: Optional[str] = None) -> Path:
+    """拼接文件缓存路径，同时保留合法的嵌套 key 语义。"""
+    path = base / _validate_cache_relative_path(region, "region")
+    if key is not None:
+        path = path / _validate_cache_relative_path(key, "key")
+    return path
 
 
 class CacheBackend(ABC):
@@ -814,7 +836,7 @@ class FileBackend(CacheBackend):
         :param region: 缓存的区
         :param kwargs: kwargs
         """
-        cache_path = self.base / region / key
+        cache_path = _file_cache_path(self.base, region, key)
         # 确保缓存目录存在
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         # 将值序列化为字符串存储
@@ -831,7 +853,7 @@ class FileBackend(CacheBackend):
         :param region: 缓存的区
         :return: 存在返回 True，否则返回 False
         """
-        cache_path = self.base / region / key
+        cache_path = _file_cache_path(self.base, region, key)
         return cache_path.exists()
 
     def get(self, key: str, region: Optional[str] = DEFAULT_CACHE_REGION) -> Optional[Any]:
@@ -842,7 +864,7 @@ class FileBackend(CacheBackend):
         :param region: 缓存的区
         :return: 返回缓存的值，如果缓存不存在返回 None
         """
-        cache_path = self.base / region / key
+        cache_path = _file_cache_path(self.base, region, key)
         if not cache_path.exists():
             return None
         with open(cache_path, 'rb') as f:
@@ -855,7 +877,7 @@ class FileBackend(CacheBackend):
         :param key: 缓存的键
         :param region: 缓存的区
         """
-        cache_path = self.base / region / key
+        cache_path = _file_cache_path(self.base, region, key)
         if cache_path.is_file():
             cache_path.unlink()
         elif cache_path.exists():
@@ -869,7 +891,7 @@ class FileBackend(CacheBackend):
         """
         if region:
             # 清理指定缓存区
-            cache_path = self.base / region
+            cache_path = _file_cache_path(self.base, region)
             if cache_path.exists():
                 for item in cache_path.iterdir():
                     if item.is_file():
@@ -891,7 +913,7 @@ class FileBackend(CacheBackend):
         :param region: 缓存的区
         :return: 返回一个字典，包含所有缓存键值对
         """
-        cache_path = self.base / region
+        cache_path = _file_cache_path(self.base, region)
         if not cache_path.exists():
             yield from ()
             return
@@ -930,7 +952,7 @@ class AsyncFileBackend(AsyncCacheBackend):
         :param region: 缓存的区
         :param kwargs: kwargs
         """
-        cache_path = AsyncPath(self.base) / region / key
+        cache_path = AsyncPath(_file_cache_path(self.base, region, key))
         # 确保缓存目录存在
         await cache_path.parent.mkdir(parents=True, exist_ok=True)
         # 保存文件
@@ -947,7 +969,7 @@ class AsyncFileBackend(AsyncCacheBackend):
         :param region: 缓存的区
         :return: 存在返回 True，否则返回 False
         """
-        cache_path = AsyncPath(self.base) / region / key
+        cache_path = AsyncPath(_file_cache_path(self.base, region, key))
         return await cache_path.exists()
 
     async def get(self, key: str, region: Optional[str] = DEFAULT_CACHE_REGION) -> Optional[Any]:
@@ -958,7 +980,7 @@ class AsyncFileBackend(AsyncCacheBackend):
         :param region: 缓存的区
         :return: 返回缓存的值，如果缓存不存在返回 None
         """
-        cache_path = AsyncPath(self.base) / region / key
+        cache_path = AsyncPath(_file_cache_path(self.base, region, key))
         if not await cache_path.exists():
             return None
         async with aiofiles.open(cache_path, 'rb') as f:
@@ -971,7 +993,7 @@ class AsyncFileBackend(AsyncCacheBackend):
         :param key: 缓存的键
         :param region: 缓存的区
         """
-        cache_path = AsyncPath(self.base) / region / key
+        cache_path = AsyncPath(_file_cache_path(self.base, region, key))
         if await cache_path.is_file():
             await cache_path.unlink()
         elif await cache_path.exists():
@@ -985,7 +1007,7 @@ class AsyncFileBackend(AsyncCacheBackend):
         """
         if region:
             # 清理指定缓存区
-            cache_path = AsyncPath(self.base) / region
+            cache_path = AsyncPath(_file_cache_path(self.base, region))
             if await cache_path.exists():
                 async for item in cache_path.iterdir():
                     if await item.is_file():
@@ -1007,7 +1029,7 @@ class AsyncFileBackend(AsyncCacheBackend):
         :param region: 缓存的区
         :return: 返回一个字典，包含所有缓存键值对
         """
-        cache_path = AsyncPath(self.base) / region
+        cache_path = AsyncPath(_file_cache_path(self.base, region))
         if not await cache_path.exists():
             return
         async for item in cache_path.rglob("*"):

@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from PIL import Image
 
 from app.api.endpoints import system as system_endpoint
+from app.core.cache import FileCache
 from app.helper.image import ImageHelper
 
 
@@ -357,3 +358,16 @@ def test_cache_img_returns_not_found_when_fetch_fails():
             )
 
     assert exc_info.value.status_code == 404
+
+
+def test_image_cache_path_cannot_escape_cache_root(tmp_path):
+    """图片 URL 中的 ../ 不能穿透图片缓存目录写入任意位置。"""
+    from app.helper.image import ImageHelper
+
+    cache_path = ImageHelper._prepare_cache_path("https://img.example/../../evil.jpg")
+    cache = FileCache(base=tmp_path)
+
+    cache.set(cache_path, b"image", region="images")
+
+    assert not (tmp_path / "evil.jpg").exists()
+    assert not (tmp_path.parent / "evil.jpg").exists()

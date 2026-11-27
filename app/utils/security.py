@@ -793,8 +793,12 @@ class SecurityUtils:
         parsed_url = urlparse(url)
         path = parsed_url.path.lstrip("/")
 
-        # 对路径中的特殊字符进行编码
-        safe_path = quote(path)
+        # 对路径中的特殊字符进行编码；quote 不会编码点号，精确父目录段必须额外中性化，
+        # 否则该字符串后续作为缓存相对路径时可能携带 ../ 语义。
+        safe_path = "/".join(
+            "%2E%2E" if segment == ".." else quote(segment)
+            for segment in path.split("/")
+        )
 
         # 如果路径过长，进行压缩处理
         if len(safe_path) > max_length:
