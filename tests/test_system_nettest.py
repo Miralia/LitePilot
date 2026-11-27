@@ -190,6 +190,51 @@ def test_nettest_blocks_unapproved_redirect():
     assert captured["calls"] == 1
 
 
+def test_nettest_redirect_warning_redacts_sensitive_url_params():
+    warnings = []
+    secret = "tmdb-test-secret-0123456789abcdef"
+
+    class FakeResponse:
+        status_code = 302
+        headers = {"location": "https://169.254.169.254/latest/meta-data/"}
+        text = ""
+
+        async def aclose(self):
+            return None
+
+    class FakeAsyncRequestUtils:
+        def __init__(self, **kwargs):
+            pass
+
+        async def get_res(self, url, allow_redirects=True):
+            return FakeResponse()
+
+    with patch.object(
+        system_endpoint,
+        "AsyncRequestUtils",
+        FakeAsyncRequestUtils,
+    ), patch.object(
+        system_endpoint.settings,
+        "TMDB_API_KEY",
+        secret,
+    ), patch.object(
+        system_endpoint.logger,
+        "warning",
+        side_effect=warnings.append,
+    ):
+        resp = asyncio.run(
+            system_endpoint.nettest(
+                target_id="tmdb_api",
+                _="token",
+            )
+        )
+
+    assert not resp.success
+    assert warnings
+    assert all(secret not in warning for warning in warnings)
+    assert any("api_key=<redacted>" in warning for warning in warnings)
+
+
 @pytest.mark.parametrize(
     "target_id,redirect_url",
     [

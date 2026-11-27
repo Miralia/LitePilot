@@ -908,7 +908,7 @@ async def nettest(
     url = target["url"]
     invalid_message = _validate_nettest_url(url)
     if invalid_message:
-        logger.warning(f"拦截不安全的网络测试地址: {url}")
+        logger.warning(f"拦截不安全的网络测试地址: {SecurityUtils.redact_sensitive_url_params(url)}")
         return schemas.Response(success=False, message=invalid_message)
     if include:
         logger.debug("nettest include 参数已忽略，改为服务端固定校验")
@@ -936,7 +936,11 @@ async def nettest(
         next_url = urljoin(current_url, location)
         if not _is_allowed_nettest_redirect(next_url, target):
             await _close_nettest_response(result)
-            logger.warning(f"拦截网络测试重定向: {current_url} -> {next_url}")
+            logger.warning(
+                "拦截网络测试重定向: "
+                f"{SecurityUtils.redact_sensitive_url_params(current_url)} -> "
+                f"{SecurityUtils.redact_sensitive_url_params(next_url)}"
+            )
             return schemas.Response(success=False, message="测试目标发生了未授权跳转")
         await _close_nettest_response(result)
         current_url = next_url
