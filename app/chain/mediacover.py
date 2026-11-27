@@ -68,7 +68,19 @@ class MediaCoverChain(ChainBase):
         """
         font_path = self.font_dir / ZH_FONT_FILENAME
         if font_path.exists():
-            return font_path
+            try:
+                with font_path.open("rb") as font_file:
+                    existing_magic = font_file.read(4)
+            except OSError:
+                existing_magic = b""
+            if existing_magic in FONT_MAGIC_PREFIXES:
+                return font_path
+            logger.warning("封面字体缓存损坏，重新下载")
+            try:
+                font_path.unlink(missing_ok=True)
+            except OSError as err:
+                logger.error(f"删除损坏的封面字体缓存失败：{err}")
+                return None
         logger.info(f"正在下载封面字体：{ZH_FONT_URL}")
         try:
             response = RequestUtils(proxies=settings.PROXY, timeout=120).get_res(ZH_FONT_URL)
@@ -93,7 +105,10 @@ class MediaCoverChain(ChainBase):
             os.replace(temp_path, font_path)
         except OSError as err:
             if temp_path:
-                temp_path.unlink(missing_ok=True)
+                try:
+                    temp_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
             logger.error(f"保存封面字体失败：{err}")
             return None
         logger.info(f"封面字体已保存：{font_path}")

@@ -303,3 +303,47 @@ def test_font_response_must_have_sfnt_magic(monkeypatch, tmp_path):
 
     assert chain._ensure_font() is None
     assert list(tmp_path.iterdir()) == []
+
+
+def test_existing_corrupt_font_is_replaced_by_valid_download(monkeypatch, tmp_path):
+    """升级前遗留的损坏字体缓存不得永久生效，应识别魔数并重新下载。"""
+    chain = object.__new__(MediaCoverChain)
+    chain.font_dir = tmp_path
+    font_path = tmp_path / "LXGWZhenKaiSlabGB-Regular.ttf"
+    font_path.write_bytes(b"<html>corrupt cache</html>")
+    valid_font = b"\x00\x01\x00\x00valid-font-tail"
+
+    class FakeResponse:
+        status_code = 200
+        content = valid_font
+
+    class FakeRequestUtils:
+        def __init__(self, **_kwargs):
+            pass
+
+        def get_res(self, _url):
+            return FakeResponse()
+
+    monkeypatch.setattr("app.chain.mediacover.RequestUtils", FakeRequestUtils)
+
+    assert chain._ensure_font() == font_path
+    assert font_path.read_bytes() == valid_font
+
+
+def test_corrupt_font_unlink_failure_is_graceful(monkeypatch, tmp_path):
+    """损坏缓存无法删除时本次封面生成降级，不向调度层抛出本地 I/O 异常。"""
+    chain = object.__new__(MediaCoverChain)
+    chain.font_dir = tmp_path
+    font_path = tmp_path / "LXGWZhenKaiSlabGB-Regular.ttf"
+    font_path.write_bytes(b"<html>corrupt cache</html>")
+    original_unlink = Path.unlink
+
+    def failing_unlink(path, *args, **kwargs):
+        if path == font_path:
+            raise OSError("permission denied")
+        return original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", failing_unlink)
+
+    assert chain._ensure_font() is None
+    assert font_path.exists()
