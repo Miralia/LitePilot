@@ -78,3 +78,27 @@ def test_async_handler_failure_to_schedule_does_not_kill_consumer(monkeypatch):
 
     assert consumer_thread.is_alive()
     manager.stop()
+
+
+def test_send_event_returns_queued_event_instance():
+    """同步发送接口应按类型契约返回已创建的事件对象。"""
+    manager = make_isolated_manager()
+
+    event = manager.send_event(EventType.ConfigChanged, {"key": {"a"}}, priority=3)
+
+    assert event is not None
+    assert event.event_type is EventType.ConfigChanged
+    assert event.event_data == {"key": {"a"}}
+    assert event.priority == 3
+
+
+def test_async_send_event_returns_queued_event_instance():
+    """异步发送接口应按类型契约返回已创建的事件对象。"""
+    manager = make_isolated_manager()
+
+    event = asyncio.run(manager.async_send_event(EventType.ConfigChanged, {"key": {"a"}}, priority=4))
+
+    assert event is not None
+    assert event.event_type is EventType.ConfigChanged
+    assert event.event_data == {"key": {"a"}}
+    assert event.priority == 4

@@ -292,13 +292,15 @@ class EventManager(metaclass=Singleton):
 
         return True
 
-    def __trigger_broadcast_event(self, event: Event):
+    def __trigger_broadcast_event(self, event: Event) -> Event:
         """
         触发广播事件，将事件插入到优先级队列中
         :param event: 要处理的事件对象
+        :return: 已入队的事件对象
         """
         logger.debug(f"Triggering broadcast event: {event}")
         self.__event_queue.put((event.priority, event))
+        return event
 
     def __dispatch_broadcast_event(self, event: Event):
         """
