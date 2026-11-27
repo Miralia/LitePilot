@@ -681,6 +681,74 @@ def _terminate_process(runtime_file: Path, timeout: int, force: bool, component_
     return {"stopped": True, "pid": process.pid}
 
 
+def _systemctl_property(unit_name: str, property_name: str) -> Optional[str]:
+    """读取 systemctl 单个属性，命令不可用或查询失败时返回空。"""
+    systemctl_bin = shutil.which("systemctl")
+    if not systemctl_bin:
+        return None
+    try:
+        result = subprocess.run(
+            [systemctl_bin, "show", unit_name, "-p", property_name, "--value"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _systemd_unit_for_current_install() -> Optional[str]:
+    """识别由当前仓库生成的系统级 systemd 服务，避免误操作同名外部服务。"""
+    unit_name = "litepilot.service"
+    if _systemctl_property(unit_name, "LoadState") != "loaded":
+        return None
+
+    working_directory = _systemctl_property(unit_name, "WorkingDirectory")
+    exec_start = _systemctl_property(unit_name, "ExecStart") or ""
+    if not working_directory:
+        return None
+    try:
+        owns_install = Path(working_directory).expanduser().resolve() == settings.ROOT_PATH.expanduser().resolve()
+    except (OSError, TypeError):
+        return None
+    if not owns_install:
+        return None
+    if not re.search(r"(?:^|\s)-m\s+app\.main(?:\s|;|$)", exec_start):
+        return None
+    return unit_name
+
+
+def _restart_systemd_service(unit_name: str, timeout: int) -> None:
+    """重启当前安装所属的 systemd 服务，并等待应用级健康检查通过。"""
+    systemctl_bin = shutil.which("systemctl")
+    if not systemctl_bin:
+        raise click.ClickException("未找到 systemctl，无法重启 systemd 服务")
+    try:
+        result = subprocess.run(
+            [systemctl_bin, "restart", unit_name],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise click.ClickException(f"systemd 服务重启失败：{exc}") from exc
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "systemctl restart 执行失败").strip()
+        raise click.ClickException(f"systemd 服务重启失败：{detail}")
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        healthy, _payload = _backend_health(timeout=2.0)
+        if healthy:
+            return
+        time.sleep(1)
+    raise click.ClickException(f"systemd 服务已重启，但在 {timeout} 秒内未通过后端健康检查")
+
+
 def _stop_backend_service(timeout: int, force: bool) -> Dict[str, Any]:
     runtime = _backend_runtime()
     process = _get_process(runtime)
@@ -781,7 +849,14 @@ def stop(timeout: int, force: bool) -> None:
 @click.option("--stop-timeout", default=30, show_default=True, help="停止服务时等待退出的秒数")
 @click.option("--force", is_flag=True, help="停止超时后强制结束进程")
 def restart(start_timeout: int, stop_timeout: int, force: bool) -> None:
-    """重启本地 LitePilot 前后端服务"""
+    """重启 LitePilot 服务"""
+    systemd_unit = _systemd_unit_for_current_install()
+    if systemd_unit:
+        _restart_systemd_service(systemd_unit, start_timeout)
+        click.echo("LitePilot systemd 服务已重启")
+        click.echo(f"Backend URL: http://{_client_host(settings.HOST)}:{settings.PORT}")
+        return
+
     _stop_frontend_service(timeout=stop_timeout, force=force)
     _stop_backend_service(timeout=stop_timeout, force=force)
     _best_effort_auto_update()

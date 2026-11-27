@@ -357,7 +357,7 @@ moviepilot start
 
 ## 服务管理命令
 
-`moviepilot start/stop/restart/status` 统一管理前后端。
+`moviepilot start/stop/restart/status` 统一管理本地前后端；原生 systemd 部署中的 `restart` 会优先委托当前仓库所属的 `litepilot.service`。
 
 启动、停止、重启与状态：
 
@@ -377,8 +377,9 @@ moviepilot version
 
 - `start` 会先启动后端，再启动前端
 - `start --safe` 会以安全模式启动后端，本次启动跳过调度器、监控和命令等后台任务，不修改用户配置
-- 如果开启了 `MOVIEPILOT_AUTO_UPDATE=release|true|dev`，`start/restart` 会在启动前尽力执行一次本地自动更新；更新失败只告警，不阻断当前启动
+- 如果开启了 `MOVIEPILOT_AUTO_UPDATE=release|true|dev`，本地 CLI 的 `start/restart` 会在启动前尽力执行一次本地自动更新；更新失败只告警，不阻断当前启动
 - 通过系统内置的重启入口触发重启时，本地 CLI 安装模式也会复用同一套前后端进程管理完成重启
+- 原生 systemd 部署中，只有 `litepilot.service` 的 `WorkingDirectory` 指向当前仓库且 `ExecStart` 启动 `app.main` 时，`restart` 才会委托 `systemctl restart` 并等待后端健康检查；该模式不启动本地前端代理，也不执行本地自动更新，前端静态产物仍由 nginx 托管
 - 前端默认监听 `NGINX_PORT`，默认值 `3000`
 - 后端默认监听 `PORT`，默认值 `3001`
 - `TRANSFER_TASK_TIMEOUT` 控制外部异步接管的运行中整理任务失活超时，单位为分钟，默认 `120`，设为 `0` 可禁用；主程序整理线程仍在直接执行的任务不受此项清理
