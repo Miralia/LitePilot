@@ -120,6 +120,21 @@ function getParentDirectoryPath(path: string) {
   return currentIndex > 0 ? chain[currentIndex - 1] : '/'
 }
 
+// 目录从父级快照消失后，递归失效其旧缓存与展开状态，避免同名目录复活旧内容。
+function invalidateDirectoryCache(path: string) {
+  const normalizedPath = normalizeDirectoryPath(path)
+
+  Object.keys(treeCache.value).forEach(cachePath => {
+    if (cachePath === normalizedPath || cachePath.startsWith(normalizedPath)) {
+      delete treeCache.value[cachePath]
+    }
+  })
+  expandedFolders.value = expandedFolders.value.filter(expandedPath => {
+    const normalizedExpandedPath = normalizeDirectoryPath(expandedPath)
+    return normalizedExpandedPath !== normalizedPath && !normalizedExpandedPath.startsWith(normalizedPath)
+  })
+}
+
 // 渲染文件夹图标
 function renderFolderIcon(isExpanded: boolean) {
   if (isExpanded) {
@@ -226,9 +241,21 @@ watch(
     if (newItems !== undefined) {
       // 过滤出目录项；空数组也是已确认的快照，必须清理旧目录缓存。
       const dirs = newItems.filter(item => item.type === 'dir')
+      const cachePath = props.currentPath || '/'
+      const previousDirs = treeCache.value[cachePath]
+      if (previousDirs !== undefined) {
+        const nextDirectoryPaths = new Set(
+          dirs.map(item => (item.path ? normalizeDirectoryPath(item.path) : '')).filter(Boolean),
+        )
+        previousDirs.forEach(item => {
+          if (item.path && !nextDirectoryPaths.has(normalizeDirectoryPath(item.path))) {
+            invalidateDirectoryCache(item.path)
+          }
+        })
+      }
 
       // 缓存当前目录内容
-      treeCache.value[props.currentPath || '/'] = dirs
+      treeCache.value[cachePath] = dirs
     }
   },
   { immediate: true },

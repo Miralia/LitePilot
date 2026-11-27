@@ -184,6 +184,28 @@ describe('FileNavigator directory tree', () => {
     expect(wrapper.text()).not.toContain('movies')
   })
 
+  it('drops stale child cache when a directory disappears and later reappears', async () => {
+    const movies = { name: 'movies', path: '/movies/', storage: 'local', type: 'dir' }
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce([{ name: 'old-child', path: '/movies/old-child/', storage: 'local', type: 'dir' }])
+      .mockResolvedValueOnce([{ name: 'new-child', path: '/movies/new-child/', storage: 'local', type: 'dir' }])
+    const wrapper = mountNavigator(request, { items: [movies] })
+
+    await wrapper.get('.folder-toggle').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('old-child')
+
+    await wrapper.setProps({ items: [] })
+    await wrapper.setProps({ items: [movies] })
+    expect(wrapper.text()).not.toContain('old-child')
+
+    await wrapper.get('.folder-toggle').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('new-child')
+    expect(request).toHaveBeenCalledTimes(2)
+  })
+
   it('clears cached directories and reloads the root when storage changes', async () => {
     const request = vi.fn().mockImplementation(({ data }: { data: FileItem }) => {
       if (data.storage === 'local') {
