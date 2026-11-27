@@ -1,7 +1,7 @@
 import asyncio
 import ipaddress
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import ANY, AsyncMock, Mock, patch
 
 import pytest
 
@@ -36,6 +36,7 @@ def test_fetch_image_allows_signed_private_url():
         url=image_url,
         proxy=None,
         use_cache=False,
+        redirect_validator=ANY,
     )
 
 
@@ -97,6 +98,7 @@ def test_fetch_image_allows_configured_private_range_after_domain_match():
         url="https://img1.doubanio.com/poster.webp",
         proxy=None,
         use_cache=False,
+        redirect_validator=ANY,
     )
 
 

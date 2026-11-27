@@ -1,6 +1,7 @@
 import io
 from pathlib import Path
-from typing import Optional, List
+from typing import Awaitable, Callable, Optional, List
+from urllib.parse import urljoin
 
 from PIL import Image
 
@@ -13,6 +14,10 @@ from app.utils.http import RequestUtils, AsyncRequestUtils
 from app.utils.ip import IpUtils
 from app.utils.security import SecurityUtils
 from app.utils.singleton import Singleton
+
+
+_IMAGE_REDIRECT_STATUS_CODES = {301, 302, 303, 307, 308}
+_IMAGE_MAX_REDIRECTS = 5
 
 
 class WallpaperHelper(metaclass=Singleton):
@@ -245,16 +250,71 @@ class ImageHelper(metaclass=Singleton):
         )
         return result[0] if result else None
 
+    @staticmethod
+    async def _close_async_response(response) -> None:
+        """安静关闭异步响应，避免重定向链占用连接。"""
+        if response is None or not hasattr(response, "aclose"):
+            return
+        try:
+            await response.aclose()
+        except Exception as err:
+            logger.debug(f"关闭图片重定向响应失败: {err}")
+
+    async def _async_request_image_response(
+        self,
+        url: str,
+        params: dict,
+        redirect_validator: Optional[Callable[[str], Awaitable[bool]]],
+    ):
+        """
+        请求图片响应；提供重定向校验器时手动逐跳校验目标。
+        """
+        request = AsyncRequestUtils(**params)
+        if redirect_validator is None:
+            return await request.get_res(url=url)
+
+        current_url = url
+        redirect_count = 0
+        while redirect_count <= _IMAGE_MAX_REDIRECTS:
+            response = await request.get_res(url=current_url, allow_redirects=False)
+            if response is None or response.status_code not in _IMAGE_REDIRECT_STATUS_CODES:
+                return response
+            location = response.headers.get("location")
+            if not location:
+                return response
+            next_url = urljoin(current_url, location)
+            await self._close_async_response(response)
+            if redirect_count >= _IMAGE_MAX_REDIRECTS:
+                logger.warning("拦截图片代理重定向：重定向次数过多")
+                return None
+            try:
+                redirect_allowed = await redirect_validator(next_url)
+            except Exception as err:
+                logger.debug(f"图片代理重定向校验失败: {err}")
+                redirect_allowed = False
+            if not redirect_allowed:
+                logger.warning(
+                    "拦截图片代理重定向: "
+                    f"{SecurityUtils.redact_sensitive_url_params(current_url)} -> "
+                    f"{SecurityUtils.redact_sensitive_url_params(next_url)}"
+                )
+                return None
+            current_url = next_url
+            redirect_count += 1
+        return None
+
     async def async_fetch_image_with_mime_type(
         self,
         url: str,
         proxy: Optional[bool] = None,
         use_cache: bool = True,
+        redirect_validator: Optional[Callable[[str], Awaitable[bool]]] = None,
     ) -> Optional[tuple[bytes, str]]:
         """
         异步获取图片及其内容识别 MIME 类型。
 
         网络响应在写入缓存前完整验证一次；缓存命中仅重新识别格式头。
+        提供重定向校验器时逐跳校验 30x 目标，避免首跳白名单被跳转绕过。
         """
         if not url:
             return None
@@ -271,7 +331,11 @@ class ImageHelper(metaclass=Singleton):
 
         # 请求远程图片
         params = self._get_request_params(url, proxy)
-        response = await AsyncRequestUtils(**params).get_res(url=url)
+        response = await self._async_request_image_response(
+            url=url,
+            params=params,
+            redirect_validator=redirect_validator,
+        )
         if response is None or response.status_code != 200:
             redacted_url = SecurityUtils.redact_sensitive_url_params(url)
             logger.warning(f"Failed to fetch image from URL: {redacted_url}")

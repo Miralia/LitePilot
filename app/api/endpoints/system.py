@@ -432,10 +432,19 @@ async def fetch_image(
     ):
         return None
 
+    async def validate_redirect_url(redirect_url: str) -> bool:
+        """使用与首跳相同的白名单和私网规则校验重定向目标。"""
+        return await SecurityUtils.is_safe_image_url_async(
+            redirect_url,
+            allowed_domains,
+            allowed_private_ranges=settings.IMAGE_PROXY_ALLOWED_PRIVATE_RANGES,
+        )
+
     image_result = await ImageHelper().async_fetch_image_with_mime_type(
         url=fetch_url,
         proxy=proxy,
         use_cache=use_cache,
+        redirect_validator=validate_redirect_url,
     )
 
     if image_result:
