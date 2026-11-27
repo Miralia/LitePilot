@@ -3,6 +3,7 @@ import api from '@/api'
 import { ApiResponse, FileItem, StorageConf, TransferDirectoryConf } from '@/api/types'
 import FileBrowser from '@/components/filebrowser/FileBrowser.vue'
 import { storageAttributes } from '@/api/constants'
+import { getDirectoryChain, getDirectoryName } from '@/utils/directoryPath'
 
 const endpoints = {
   list: {
@@ -163,17 +164,17 @@ async function loadDownloadDirectories() {
           fileid: 'root',
         },
       ]
-      // 将初始数据拆分到堆栈中
-      const paths = path.split('/').filter(Boolean)
-      paths.map((name, index) => {
-        const path = '/' + paths.slice(0, index + 1).join('/') + '/'
-        itemstack.value.push({
-          storage,
-          type: 'dir',
-          name,
-          path,
+      // 将初始数据拆分到堆栈中；Windows 盘符根不能按 POSIX 子目录拼接。
+      getDirectoryChain(path)
+        .filter(directoryPath => directoryPath !== '/')
+        .forEach(directoryPath => {
+          itemstack.value.push({
+            storage,
+            type: 'dir',
+            name: getDirectoryName(directoryPath),
+            path: directoryPath,
+          })
         })
-      })
     }
   } catch (error) {
     console.error(error)

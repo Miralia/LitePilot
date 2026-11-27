@@ -200,4 +200,29 @@ describe('FileBrowserView initialization', () => {
 
     expect(browser.props('itemstack').map((item: { path: string }) => item.path)).toEqual(['/', '/downloads/'])
   })
+
+  it('builds Windows drive breadcrumbs without treating the drive as a POSIX child', async () => {
+    mockSettings([{ name: '本地', type: 'local' }], [{ download_path: 'D:/media/movies', storage: 'local' }])
+
+    const browser = (await mountView()).getComponent(FileBrowserStub)
+
+    expect(browser.props('item')).toMatchObject({
+      name: 'movies',
+      path: 'D:/media/movies/',
+      storage: 'local',
+    })
+    expect(browser.props('itemstack').map((item: { path: string }) => item.path)).toEqual([
+      '/',
+      'D:/',
+      'D:/media/',
+      'D:/media/movies/',
+    ])
+    expect(browser.props('itemstack').map((item: { name: string }) => item.name)).toEqual([
+      '/',
+      'D:',
+      'media',
+      'movies',
+    ])
+  })
+
 })
