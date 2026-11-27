@@ -32,7 +32,7 @@ Doctor 默认执行只读检查：
 - 进程与端口：后端、前端端口监听状态，runtime 文件是否过期
 - 日志线索：后端日志、启动日志和前端日志最近 24 小时内的错误
 - 核心依赖：FastAPI、Pydantic、SQLAlchemy、Uvicorn 等是否可导入
-- 数据库：SQLite 只读打开和完整性检查；PostgreSQL 默认做配置检查
+- 数据库：SQLite 只读打开、完整性检查和 `plugin.%` 死配置数量检测；PostgreSQL 默认做配置检查
 - 前端资源：`version.txt`、`service.js` 或核心静态文件是否存在
 - 安全模式：当前是否跳过后台任务
 
@@ -46,8 +46,9 @@ Doctor 默认执行只读检查：
 
 - 清理指向已退出进程的 runtime 文件
 - 在未被系统环境变量锁定时，为缺失或过短的 `API_TOKEN` 生成合规值
+- 清理 `systemconfig` 中已确认无运行时代码读取的 `plugin.%` 上游插件配置键；报告只展示数量，不输出配置值
 
-Doctor 不会自动删除数据库、回滚迁移、修改 systemd 单元或删除用户数据。
+Doctor 不会自动删除数据库文件、回滚迁移、修改 systemd 单元或删除当前业务数据。
 
 ## 安全模式
 

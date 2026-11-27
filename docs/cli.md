@@ -398,7 +398,7 @@ moviepilot doctor --deep
 
 - `doctor` 不依赖后端服务已经启动，会直接读取配置目录、运行时文件、日志、进程、端口、依赖、数据库和前端资源
 - `--json` 输出稳定 JSON，可供脚本或 Issue 流程收集
-- `--fix` 只执行白名单安全修复，例如清理过期 runtime 文件或补齐不合法的 `API_TOKEN`
+- `--fix` 只执行白名单安全修复，例如清理过期 runtime 文件、补齐不合法的 `API_TOKEN`，或清理无运行时代码读取的 `plugin.%` 上游配置键
 - `--deep` 执行可能较慢的深度探测，例如 PostgreSQL TCP 连通性检查
 - Doctor 只分析最近 24 小时日志，并跨主日志与控制台镜像聚合相同错误
 - `summary.advisory` 单独统计不影响整体状态的建议项，核心错误仍正常参与状态聚合

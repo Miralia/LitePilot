@@ -661,6 +661,15 @@ def _check_sqlite_database(runner: DoctorRunnerProtocol) -> None:
         connection = sqlite3.connect(f"file:{db_file}?mode=ro", uri=True, timeout=3)
         try:
             result = connection.execute("PRAGMA integrity_check").fetchone()
+            systemconfig_exists = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'systemconfig'"
+            ).fetchone()
+            plugin_config_count = (
+                connection.execute(
+                    "SELECT COUNT(*) FROM systemconfig WHERE key GLOB 'plugin.*'"
+                ).fetchone()[0]
+                if systemconfig_exists else 0
+            )
         finally:
             connection.close()
     except sqlite3.Error as err:
@@ -696,6 +705,42 @@ def _check_sqlite_database(runner: DoctorRunnerProtocol) -> None:
         recommendation="无需处理。",
         context={"database": str(db_file)},
     )
+
+    if plugin_config_count:
+        fixed = False
+        detail = (
+            f"检测到 {plugin_config_count} 条 plugin.* 配置。插件体系已从 LitePilot 移除，"
+            "这些键不再被任何运行时代码读取；报告不会输出配置值。"
+        )
+        if runner.fix:
+            try:
+                connection = sqlite3.connect(db_file, timeout=3)
+                try:
+                    with connection:
+                        connection.execute(
+                            "DELETE FROM systemconfig WHERE key GLOB 'plugin.*'"
+                        )
+                    fixed = True
+                    detail += " 已按 doctor --fix 要求清理。"
+                finally:
+                    connection.close()
+            except sqlite3.Error as err:
+                detail += f" 清理失败：{err}"
+        runner.add(
+            finding_id="database.sqlite_plugin_config_residue",
+            severity=DoctorSeverity.Info,
+            status=DoctorFindingStatus.Fixed if fixed else DoctorFindingStatus.Degraded,
+            title="SQLite 中存在上游插件配置残留",
+            detail=detail,
+            recommendation=(
+                "确认不需要保留上游插件配置后，执行 `moviepilot doctor --fix` 清理；"
+                "该操作只删除 systemconfig 中 plugin.% 键。"
+            ),
+            fixable=True,
+            fixed=fixed,
+            affects_report_status=False,
+            context={"count": plugin_config_count},
+        )
 
 
 def _check_postgresql_database(runner: DoctorRunnerProtocol) -> None:

@@ -275,3 +275,61 @@ def test_doctor_ignores_errors_outside_log_window(tmp_path, monkeypatch):
     assert runner.report.find("logs.moviepilot.recent_errors") is None
     assert runner.report.find("logs.recent") is not None
     assert runner.report.status.value == "healthy"
+
+def test_doctor_detects_sqlite_plugin_config_residue_without_deleting(tmp_path, monkeypatch):
+    """doctor 默认只报告上游插件配置残留，不得在用户未要求修复时删除。"""
+    import sqlite3
+
+    monkeypatch.setattr(settings, "CONFIG_DIR", str(tmp_path))
+    db_file = tmp_path / "user.db"
+    connection = sqlite3.connect(db_file)
+    with connection:
+        connection.execute("CREATE TABLE systemconfig (id INTEGER PRIMARY KEY, key TEXT, value TEXT)")
+        connection.execute("INSERT INTO systemconfig (key, value) VALUES ('plugin.Legacy', '{}')")
+        connection.execute("INSERT INTO systemconfig (key, value) VALUES ('Plugin.Legacy', '{}')")
+        connection.execute("INSERT INTO systemconfig (key, value) VALUES ('DownloadFileSync', '{}')")
+    connection.close()
+
+    runner = DoctorRunner(fix=False)
+    checks._check_sqlite_database(runner)
+
+    finding = runner.report.find("database.sqlite_plugin_config_residue")
+    assert finding is not None
+    assert not finding.fixed
+    assert finding.fixable
+    assert finding.context["count"] == 1
+    connection = sqlite3.connect(db_file)
+    try:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM systemconfig WHERE key GLOB 'plugin.*'"
+        ).fetchone()[0] == 1
+    finally:
+        connection.close()
+
+
+def test_doctor_fix_removes_only_sqlite_plugin_config_residue(tmp_path, monkeypatch):
+    """doctor --fix 只清理 systemconfig 中的 plugin.% 死配置，保留当前业务配置。"""
+    import sqlite3
+
+    monkeypatch.setattr(settings, "CONFIG_DIR", str(tmp_path))
+    db_file = tmp_path / "user.db"
+    connection = sqlite3.connect(db_file)
+    with connection:
+        connection.execute("CREATE TABLE systemconfig (id INTEGER PRIMARY KEY, key TEXT, value TEXT)")
+        connection.execute("INSERT INTO systemconfig (key, value) VALUES ('plugin.Legacy', '{}')")
+        connection.execute("INSERT INTO systemconfig (key, value) VALUES ('Plugin.Legacy', '{}')")
+        connection.execute("INSERT INTO systemconfig (key, value) VALUES ('DownloadFileSync', '{}')")
+    connection.close()
+
+    runner = DoctorRunner(fix=True)
+    checks._check_sqlite_database(runner)
+
+    finding = runner.report.find("database.sqlite_plugin_config_residue")
+    assert finding is not None
+    assert finding.fixed
+    connection = sqlite3.connect(db_file)
+    try:
+        rows = connection.execute("SELECT key FROM systemconfig ORDER BY key").fetchall()
+    finally:
+        connection.close()
+    assert rows == [("DownloadFileSync",), ("Plugin.Legacy",)]
