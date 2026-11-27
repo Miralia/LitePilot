@@ -135,6 +135,7 @@ class DownloadFiles(Base):
 
     __table_args__ = (
         Index('ix_downloadfiles_download_hash_state', 'download_hash', 'state'),
+        Index('ix_downloadfiles_downloader_hash', 'downloader', 'download_hash'),
         Index('ix_downloadfiles_fullpath_id', 'fullpath', 'id'),
     )
 
