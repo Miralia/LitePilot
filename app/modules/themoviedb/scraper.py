@@ -263,9 +263,9 @@ class TmdbScraper:
 
         # 简介
         xplot = DomUtils.add_node(doc, root, "plot")
-        xplot.appendChild(doc.createCDATASection(mediainfo.overview or ""))
+        DomUtils.append_cdata(doc, xplot, mediainfo.overview or "")
         xoutline = DomUtils.add_node(doc, root, "outline")
-        xoutline.appendChild(doc.createCDATASection(mediainfo.overview or ""))
+        DomUtils.append_cdata(doc, xoutline, mediainfo.overview or "")
         # 导演
         for director in mediainfo.directors:
             xdirector = DomUtils.add_node(
@@ -367,9 +367,9 @@ class TmdbScraper:
         root = DomUtils.add_node(doc, doc, "season")
         # 简介
         xplot = DomUtils.add_node(doc, root, "plot")
-        xplot.appendChild(doc.createCDATASection(seasoninfo.get("overview") or ""))
+        DomUtils.append_cdata(doc, xplot, seasoninfo.get("overview") or "")
         xoutline = DomUtils.add_node(doc, root, "outline")
-        xoutline.appendChild(doc.createCDATASection(seasoninfo.get("overview") or ""))
+        DomUtils.append_cdata(doc, xoutline, seasoninfo.get("overview") or "")
         # 标题
         DomUtils.add_node(
             doc, root, "title", seasoninfo.get("name") or "季 %s" % season
@@ -415,9 +415,9 @@ class TmdbScraper:
         )
         # 简介
         xplot = DomUtils.add_node(doc, root, "plot")
-        xplot.appendChild(doc.createCDATASection(episodeinfo.get("overview") or ""))
+        DomUtils.append_cdata(doc, xplot, episodeinfo.get("overview") or "")
         xoutline = DomUtils.add_node(doc, root, "outline")
-        xoutline.appendChild(doc.createCDATASection(episodeinfo.get("overview") or ""))
+        DomUtils.append_cdata(doc, xoutline, episodeinfo.get("overview") or "")
         # 发布日期
         DomUtils.add_node(doc, root, "aired", episodeinfo.get("air_date") or "")
         # 年份

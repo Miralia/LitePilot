@@ -61,9 +61,9 @@ class MediaScraperHelper:
         DomUtils.add_node(doc, root, "rating", mediainfo.vote_average or "0")
 
         plot = DomUtils.add_node(doc, root, "plot")
-        plot.appendChild(doc.createCDATASection(mediainfo.overview or ""))
+        DomUtils.append_cdata(doc, plot, mediainfo.overview or "")
         outline = DomUtils.add_node(doc, root, "outline")
-        outline.appendChild(doc.createCDATASection(mediainfo.overview or ""))
+        DomUtils.append_cdata(doc, outline, mediainfo.overview or "")
 
         source, media_id = cls._media_identity(mediainfo)
         if source and media_id:
