@@ -13,7 +13,7 @@
 
 | 文件 | 审计结论 |
 |---|---|
-| `app/core/meta/metaanime.py` | 已审计。修复无括号尾部分类标记导致片名最后一个字被误删的问题。 |
+| `app/core/meta/metaanime.py` | 已审计。修复无括号尾部分类标记导致片名最后一个字被误删的问题；第三方解析器返回整数第 0 集时不再丢失。 |
 | `app/core/meta/releasegroup.py` | 已审计。修复用户词表中单条无效 `re:` 正则会使整个制作组规则失效的问题；无效条目现在跳过，纯文本组名仍按字面量匹配。 |
 | `app/core/meta/wordlist.py` | 已审计。配置读取、分词应用和异常降级路径未发现可红测复现的高置信缺陷。 |
 | `app/core/meta/customization.py` | 已审计。修复无效自定义占位符正则中断识别链路的问题；坏规则现在只跳过本次匹配、按规则缓存失败结果并记录 warning，避免每次识别重复编译。 |
@@ -86,6 +86,11 @@
 | `a1f22097` | 结构无效的重启完成通知收据会被清理，有效收据发送失败保留重试且异常不进入启动任务 | `tests/test_system_restart.py::test_restart_finish_discards_structurally_invalid_receipt`、`test_restart_finish_keeps_valid_receipt_when_notification_fails` |
 | `0a043ea4` | 交互命令底层重启失败时撤回完成通知收据并明确通知失败 | `tests/test_system_restart.py::test_command_restart_failure_retracts_receipt_and_notifies` |
 | `aa8be901` | Doctor 完整读取当前活跃滚动日志，时间窗内错误不再因短尾部窗口漏报；说明不再伪装覆盖轮转归档 | `tests/test_doctor.py::test_doctor_log_window_is_not_truncated_to_short_tail` |
+| `a451b5ac` | 删除无调用面的 `os.popen` shell 字符串执行残留，保留参数数组子进程路径 | `tests/test_dead_upstream_utils_scope.py` |
+| `bd5b7952` | 未解析字符串注解不再中断模块链，移除重复且不安全的 `eval` fallback | `tests/test_object.py::test_check_signature_unresolved_annotation_is_unconstrained` |
+| `ac3ee57e` | 搜索、动漫解析和手动刮削链路保留第 0 集，不再把整数 0 当作缺失 | `tests/test_media_search_zero_episode.py`、`tests/test_metainfo.py::test_anime_parser_preserves_numeric_episode_zero`、`tests/test_mediascrape.py::test_tv_episode_zero_scrape_continues_recognition` |
+| `e981e4bd` | 通知模板能匹配 TMDB 第 0 集标题与播出日期 | `tests/test_template_context_builder.py::test_build_preserves_episode_zero_details` |
+| `ec281eac` | 测试中的 `os.stat` 桩对未登记路径委托真实 stat，避免后台日志线程竞态噪声 | `tests/test_system_utils.py` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -148,7 +153,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1687 passed, 2 warnings` |
+| `python tests/run.py` | `1693 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -158,4 +163,8 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `aa8be901eff79197e2b24aa15450c3e0a0a2b190`。升级前一致性备份为 `/root/litepilot-pre-aa8be901-20261127153932.tar.gz`。核验结果：`litepilot.service` active，nginx 前缀 `/litepilot/`、API 代理与 `service-worker.js` 均返回 200，字体缓存魔数有效，SQLite `integrity_check` 为 `ok`，本次重启后的 systemd 日志错误计数为 0。Doctor `error=0 warn=1`；该 warn 是完整日志扫描如实发现的 05:26 Telegram 命令注册竞态，对应修复 `7cce26d7` 已包含在当前版本，不是本次重启后的新增错误。
+生产环境已部署并核验 `ec281eac01751de6a6b63a49b1fb1b1daa4b8ca6`。升级前备份为 `/root/litepilot-pre-ec281eac-20261127160107.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和 SQLite 一致性快照。
+
+核验结果：`litepilot.service` active；nginx `/litepilot/` 与 `service-worker.js` 均为 200；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。`/system/ping` 在后端直连与 nginx 代理下均返回 401，这是登录认证边界生效，证明 API 可达，不是启动失败。
+
+Doctor 的 `warn=1` 仍是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复 `7cce26d7` 已包含在当前版本；本次重启后没有新增同类错误。
