@@ -331,6 +331,20 @@ describe('FileList list state', () => {
     expect(screen.queryByText('文件列表加载失败')).not.toBeInTheDocument()
   })
 
+  it('clears the parent file-list snapshot when navigation starts', async () => {
+    const nextList = deferred<FileItem[]>()
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce([createItem({ name: 'entry.mkv' })])
+      .mockReturnValueOnce(nextList.promise)
+    const { emitted, rerender } = await renderList(request)
+    await screen.findByText('entry.mkv')
+
+    await rerender({ item: createItem({ name: 'other', path: '/other/', type: 'dir' }) })
+
+    expect(emitted()['items-updated']?.at(-1)).toEqual([undefined])
+  })
+
   it('isolates consecutive refreshes even when path and sort stay unchanged', async () => {
     const initial = Promise.resolve([createItem({ name: 'initial.mkv' })])
     const olderRefresh = deferred<FileItem[]>()

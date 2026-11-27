@@ -5,6 +5,7 @@ import { useDisplay } from 'vuetify'
 import type { AxiosRequestConfig, AxiosInstance } from 'axios'
 import { useI18n } from 'vue-i18n'
 import { useAvailableHeight } from '@/composables/useAvailableHeight'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 // 国际化
 const { t } = useI18n()
@@ -29,10 +30,7 @@ const props = defineProps({
     type: String,
     default: '/',
   },
-  items: {
-    type: Array as PropType<FileItem[]>,
-    default: () => [],
-  },
+  items: Array as PropType<FileItem[]>,
   endpoints: Object,
   // Axios 实例是可调用函数，运行时 prop 类型需与其实际形态一致。
   axios: {
@@ -53,6 +51,9 @@ const expandedFolders = ref<string[]>([])
 // 是否正在加载
 const loading = ref<{ [key: string]: boolean }>({})
 
+// 存储切换代际，用于丢弃切换前未完成请求的结果。
+let storageGeneration = 0
+
 // 点击目录
 function handleFolderClick(item: FileItem) {
   emit('navigate', item)
@@ -68,7 +69,7 @@ async function toggleFolder(path: string) {
     // 展开文件夹
     expandedFolders.value.push(path)
     // 如果缓存中没有此目录内容，加载它
-    if (!treeCache.value[path]) {
+    if (treeCache.value[path] === undefined) {
       await loadSubdirectories(path)
     }
   }
@@ -130,7 +131,9 @@ function renderFolderIcon(isExpanded: boolean) {
 // 加载子目录
 async function loadSubdirectories(path: string) {
   // 如果已经在加载中或已有缓存，跳过
-  if (loading.value[path] || treeCache.value[path]) return
+  if (loading.value[path] || treeCache.value[path] !== undefined) return
+
+  const generation = storageGeneration
 
   // 标记为加载中
   loading.value[path] = true
@@ -154,6 +157,7 @@ async function loadSubdirectories(path: string) {
     }
 
     const result = await props.axios?.request(config)
+    if (generation !== storageGeneration) return
     if (result && Array.isArray(result)) {
       // 过滤出目录项
       const dirs = result.filter(item => item.type === 'dir')
@@ -162,10 +166,10 @@ async function loadSubdirectories(path: string) {
       treeCache.value[path] = dirs
     }
   } catch (error) {
-    console.error('加载目录失败:', path, error)
+    if (!isRequestCancellation(error)) console.error('加载目录失败:', path, error)
   } finally {
     // 取消加载状态
-    loading.value[path] = false
+    if (generation === storageGeneration) loading.value[path] = false
   }
 }
 
@@ -173,6 +177,18 @@ async function loadSubdirectories(path: string) {
 async function loadRootDirectories() {
   await loadSubdirectories('/')
 }
+
+// 存储切换后旧缓存不再可信，必须清空并丢弃尚未完成的旧存储响应。
+watch(
+  () => props.storage,
+  () => {
+    storageGeneration += 1
+    treeCache.value = {}
+    expandedFolders.value = []
+    loading.value = {}
+    void loadRootDirectories()
+  },
+)
 
 // 监听当前路径变化，自动展开当前路径
 watch(
@@ -194,7 +210,7 @@ watch(
       }
 
       for (const path of pathsToLoad) {
-        if (!treeCache.value[path]) {
+        if (treeCache.value[path] === undefined) {
           await loadSubdirectories(path)
         }
       }
@@ -207,8 +223,8 @@ watch(
 watch(
   () => props.items,
   newItems => {
-    if (newItems) {
-      // 过滤出目录项
+    if (newItems !== undefined) {
+      // 过滤出目录项；空数组也是已确认的快照，必须清理旧目录缓存。
       const dirs = newItems.filter(item => item.type === 'dir')
 
       // 缓存当前目录内容

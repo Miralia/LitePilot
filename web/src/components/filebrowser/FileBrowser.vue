@@ -218,10 +218,10 @@ function switchDirTree(state: boolean) {
 }
 
 // 文件列表
-const fileListItems = ref<FileItem[]>([])
+const fileListItems = ref<FileItem[]>()
 
 // 文件列表数据更新
-function fileListUpdated(items: FileItem[]) {
+function fileListUpdated(items: FileItem[] | undefined) {
   fileListItems.value = items
 }
 

@@ -657,10 +657,11 @@ watch(
 watch(
   () => inProps.item,
   async () => {
-    // 清空列表；新的文件项必须重新取得空目录快照。
+    // 清空列表；新的文件项必须重新取得空目录快照，同时让父组件丢弃旧目录快照。
     items.value = []
     selected.value = []
     hasListSnapshot.value = false
+    emit('items-updated', undefined)
     // 关闭弹窗
     nameTestResult.value = undefined
     // 重置菜单

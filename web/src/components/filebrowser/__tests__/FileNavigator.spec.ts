@@ -41,7 +41,7 @@ const VirtualScrollStub = defineComponent({
 
 function mountNavigator(
   request = vi.fn().mockResolvedValue([]),
-  overrides: { currentPath?: string; items?: FileItem[] } = {},
+  overrides: { currentPath?: string; items?: FileItem[]; storage?: string } = {},
 ) {
   const axios = Object.assign(vi.fn(), { request }) as unknown as AxiosInstance
   const endpoint = { method: 'post', url: '/unused' }
@@ -59,8 +59,8 @@ function mountNavigator(
       axios,
       currentPath: '/',
       endpoints,
-      items: [],
-      storage: 'local',
+      items: overrides.items,
+      storage: overrides.storage ?? 'local',
       ...overrides,
     },
     global: {
@@ -172,6 +172,55 @@ describe('FileNavigator directory tree', () => {
         data: expect.objectContaining({ path: '/shows/' }),
       }),
     )
+  })
+
+  it('clears a cached directory when the current directory becomes empty', async () => {
+    const directory = { name: 'movies', path: '/movies/', storage: 'local', type: 'dir' }
+    const wrapper = mountNavigator(vi.fn().mockResolvedValue([]), { items: [directory] })
+    expect(wrapper.text()).toContain('movies')
+
+    await wrapper.setProps({ items: [] })
+
+    expect(wrapper.text()).not.toContain('movies')
+  })
+
+  it('clears cached directories and reloads the root when storage changes', async () => {
+    const request = vi.fn().mockImplementation(({ data }: { data: FileItem }) => {
+      if (data.storage === 'local') {
+        return [{ name: 'local-dir', path: '/local-dir/', storage: 'local', type: 'dir' }]
+      }
+      return [{ name: 'smb-dir', path: '/smb-dir/', storage: 'smb', type: 'dir' }]
+    })
+    const wrapper = mountNavigator(request)
+    await flushPromises()
+    expect(wrapper.text()).toContain('local-dir')
+
+    await wrapper.setProps({ storage: 'smb', currentPath: '/', items: [] })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('smb-dir')
+    expect(wrapper.text()).not.toContain('local-dir')
+  })
+
+  it('discards a stale storage response that arrives after switching storage', async () => {
+    let resolveLocal: ((items: FileItem[]) => void) | undefined
+    const localResponse = new Promise<FileItem[]>(resolve => {
+      resolveLocal = resolve
+    })
+    const request = vi.fn().mockImplementation(({ data }: { data: FileItem }) => {
+      if (data.storage === 'local') return localResponse
+      return Promise.resolve([{ name: 'smb-dir', path: '/smb-dir/', storage: 'smb', type: 'dir' }])
+    })
+    const wrapper = mountNavigator(request)
+    await flushPromises()
+
+    await wrapper.setProps({ storage: 'smb', currentPath: '/', items: [] })
+    await flushPromises()
+    resolveLocal?.([{ name: 'local-dir', path: '/local-dir/', storage: 'local', type: 'dir' }])
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('smb-dir')
+    expect(wrapper.text()).not.toContain('local-dir')
   })
 
   it('loads uncached canonical ancestors needed by the current path', async () => {
