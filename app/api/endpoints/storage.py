@@ -159,7 +159,7 @@ def rename(
         transferchain = TransferChain()
         media_exts = settings.RMT_MEDIAEXT + settings.RMT_SUBEXT + settings.RMT_AUDIOEXT
         # 递归修改目录内文件（智能识别命名）
-        sub_files: List[schemas.FileItem] = StorageChain().list_files(fileitem)
+        sub_files: List[schemas.FileItem] = StorageChain().list_files(fileitem, recursion=True)
         if sub_files:
             # 开始进度
             progress = ProgressHelper(ProgressKey.BatchRename)
@@ -177,7 +177,7 @@ def rename(
                     continue
                 if f".{sub_file.extension.lower()}" not in media_exts:
                     continue
-                sub_path = Path(f"{fileitem.path}{sub_file.name}")
+                sub_path = Path(sub_file.path)
                 context = MediaChain().recognize_by_path(
                     sub_path,
                     obtain_images=False,
