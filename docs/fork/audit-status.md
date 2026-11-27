@@ -13,7 +13,7 @@
 
 | 文件 | 审计结论 |
 |---|---|
-| `app/core/meta/metaanime.py` | 已审计。修复无括号尾部分类标记导致片名最后一个字被误删的问题；第三方解析器返回整数第 0 集时不再丢失。 |
+| `app/core/meta/metaanime.py` | 已审计。修复无括号尾部分类标记导致片名最后一个字被误删的问题；第三方解析器返回整数第 0 集时不再丢失；`anitopy` 遇到畸形标题崩溃时隔离第三方异常并降级到通用解析结果。 |
 | `app/core/meta/releasegroup.py` | 已审计。修复用户词表中单条无效 `re:` 正则会使整个制作组规则失效的问题；无效条目现在跳过，纯文本组名仍按字面量匹配。 |
 | `app/core/meta/wordlist.py` | 已审计。配置读取、分词应用和异常降级路径未发现可红测复现的高置信缺陷。 |
 | `app/core/meta/customization.py` | 已审计。修复无效自定义占位符正则中断识别链路的问题；坏规则现在只跳过本次匹配、按规则缓存失败结果并记录 warning，避免每次识别重复编译。 |
@@ -105,6 +105,7 @@
 | `ec6ecbc3` | 电视剧单集刮削重新识别时保留统一媒体来源与全部兼容 ID | `tests/test_mediascrape.py::test_tv_episode_scrape_preserves_bangumi_identity` |
 | `ade1536c` | 显式媒体标签中的第 0 季/集参与范围总数计算 | `tests/test_metainfo.py::test_find_metainfo_episode_zero_range_totals` |
 | `55a80b95` | 入库通知聚合键复用统一媒体身份解析，不同媒体不再共用空 `media_id` 键 | `tests/test_transfer_job_manager.py::test_notify_key_uses_compatible_media_identity` |
+| `0df25e7f` | 畸形动漫标题导致 `anitopy` 崩溃时降级到通用解析结果，保留标题、集号与媒体类型 | `tests/test_metainfo.py::test_anime_parser_degrades_to_video_parser_when_anitopy_crashes` |
 
 定向验证：首批识别/刮削/快照相关测试 `53 passed`；后续缓存、清理、webhook 与删除链回归均已单独转绿。相关 Python 文件 pylint `10.00/10`。
 
@@ -167,7 +168,7 @@
 
 | 门禁 | 结果 |
 |---|---|
-| `python tests/run.py` | `1706 passed, 2 warnings` |
+| `python tests/run.py` | `1707 passed, 2 warnings` |
 | `yarn typecheck` | 通过 |
 | `yarn test:run` | `108` 个测试文件、`783` 项测试全部通过 |
 | `pylint app/` | `10.00/10`；convention/refactor/warning/error 均为 0 |
@@ -177,6 +178,6 @@
 
 ## 当前生产基线
 
-生产环境已部署并核验 `55a80b953eae2f00545fd01baaf03388fc44cd93`。升级前备份为 `/root/litepilot-pre-55a80b95-online-20261127170332.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和通过 SQLite 在线备份 API 生成的一致性快照。
+生产环境已部署并核验 `0df25e7f33cea738f829a6090cf9c372f90b6434`。升级前备份为 `/root/litepilot-pre-0df25e7f-20261127172052.tar.gz`，权限 `0600`，包含清单、环境文件、分类配置和通过 SQLite 在线备份 API 生成的一致性快照。
 
 核验结果：`litepilot.service` active；HTTP 到 HTTPS 为既有规范化 301；HTTPS `/litepilot/` 与 `service-worker.js` 均为 200；`/api/v1/system/ping` 后端直连与 `/litepilot/api/v1/system/ping` nginx 代理均为 401，认证边界生效；SQLite `integrity_check` 为 ok；本次重启后的 systemd 错误计数为 0；Doctor 为 `error=0 warn=1 advisory=1`。唯一 warn 是 2026-11-27 05:26 的 Telegram 命令注册竞态历史日志，对应修复已在当前版本中，本次重启后没有新增同类错误。
