@@ -681,45 +681,11 @@ def _terminate_process(runtime_file: Path, timeout: int, force: bool, component_
     return {"stopped": True, "pid": process.pid}
 
 
-def _systemctl_property(unit_name: str, property_name: str) -> Optional[str]:
-    """读取 systemctl 单个属性，命令不可用或查询失败时返回空。"""
-    systemctl_bin = shutil.which("systemctl")
-    if not systemctl_bin:
-        return None
-    try:
-        result = subprocess.run(
-            [systemctl_bin, "show", unit_name, "-p", property_name, "--value"],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip() or None
-
-
 def _systemd_unit_for_current_install() -> Optional[str]:
-    """识别由当前仓库生成的系统级 systemd 服务，避免误操作同名外部服务。"""
-    unit_name = "litepilot.service"
-    if _systemctl_property(unit_name, "LoadState") != "loaded":
-        return None
+    """识别当前仓库所属的系统级 systemd 服务。"""
+    from app.helper.deploy import owned_systemd_unit
 
-    working_directory = _systemctl_property(unit_name, "WorkingDirectory")
-    exec_start = _systemctl_property(unit_name, "ExecStart") or ""
-    if not working_directory:
-        return None
-    try:
-        owns_install = Path(working_directory).expanduser().resolve() == settings.ROOT_PATH.expanduser().resolve()
-    except (OSError, TypeError):
-        return None
-    if not owns_install:
-        return None
-    if not re.search(r"(?:^|\s)-m\s+app\.main(?:\s|;|$)", exec_start):
-        return None
-    return unit_name
+    return owned_systemd_unit(settings.ROOT_PATH)
 
 
 def _restart_systemd_service(unit_name: str, timeout: int) -> None:

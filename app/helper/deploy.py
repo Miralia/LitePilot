@@ -8,6 +8,8 @@
 """
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -139,6 +141,58 @@ location {prefix} {{
     try_files $uri $uri/ {prefix}index.html;
 }}
 """
+
+
+def _systemctl_property(unit_name: str, property_name: str) -> Optional[str]:
+    """读取 systemctl 单个属性，命令不可用或查询失败时返回空。"""
+    systemctl_bin = shutil.which("systemctl")
+    if not systemctl_bin:
+        return None
+    try:
+        result = subprocess.run(
+            [systemctl_bin, "show", unit_name, "-p", property_name, "--value"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def owned_systemd_unit(root: Path) -> Optional[str]:
+    """识别由指定仓库生成的系统级 systemd 服务，避免误操作同名外部服务。"""
+    unit_name = f"{SERVICE_NAME}.service"
+    if _systemctl_property(unit_name, "LoadState") != "loaded":
+        return None
+
+    working_directory = _systemctl_property(unit_name, "WorkingDirectory")
+    exec_start = _systemctl_property(unit_name, "ExecStart") or ""
+    if not working_directory:
+        return None
+    try:
+        owns_install = Path(working_directory).expanduser().resolve() == root.expanduser().resolve()
+    except (OSError, TypeError):
+        return None
+    if not owns_install:
+        return None
+    if not re.search(r"(?:^|\s)-m\s+app\.main(?:\s|;|$)", exec_start):
+        return None
+    return unit_name
+
+
+def owned_active_systemd_unit(root: Path) -> Optional[str]:
+    """识别当前安装所属且仍占用运行生命周期的 systemd 服务。"""
+    unit_name = owned_systemd_unit(root)
+    if not unit_name:
+        return None
+    active_state = _systemctl_property(unit_name, "ActiveState")
+    if active_state in {"inactive", "failed"}:
+        return None
+    return unit_name
 
 
 def render_systemd_unit(

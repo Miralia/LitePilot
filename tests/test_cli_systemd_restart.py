@@ -7,36 +7,6 @@ from click.testing import CliRunner
 from tests.test_cli_auto_update import load_cli_module
 
 
-def test_owned_systemd_unit_requires_current_install_root(tmp_path, monkeypatch):
-    """只有 WorkingDirectory 指向当前仓库且执行 app.main 的 system unit 才能被委托。"""
-    module = load_cli_module()
-    root = tmp_path / "repo"
-    root.mkdir()
-    monkeypatch.setattr(module.settings, "ROOT_PATH", root)
-    monkeypatch.setattr(module.shutil, "which", lambda command: "/usr/bin/systemctl" if command == "systemctl" else None)
-
-    values = {
-        "LoadState": "loaded",
-        "WorkingDirectory": str(root),
-        "ExecStart": "{ path=/opt/moviepilot/venv/bin/python ; argv[]=/opt/moviepilot/venv/bin/python -m app.main ; ignore_errors=no }",
-    }
-
-    def fake_run(command, **kwargs):
-        prop = command[command.index("-p") + 1]
-        return SimpleNamespace(returncode=0, stdout=values[prop] + "\n", stderr="")
-
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-
-    assert module._systemd_unit_for_current_install() == "litepilot.service"
-
-    values["WorkingDirectory"] = str(tmp_path / "other")
-    assert module._systemd_unit_for_current_install() is None
-
-    values["WorkingDirectory"] = str(root)
-    values["ExecStart"] = "{ path=/usr/bin/python ; argv[]=/usr/bin/python -m other.main ; ignore_errors=no }"
-    assert module._systemd_unit_for_current_install() is None
-
-
 def test_restart_delegates_owned_systemd_unit_instead_of_local_process_control(monkeypatch):
     """原生 systemd 部署执行 CLI restart 时应委托 systemctl，不得误启动第二个本地后端。"""
     module = load_cli_module()

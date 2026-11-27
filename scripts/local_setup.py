@@ -2559,13 +2559,27 @@ def _services_running() -> list[str]:
     return running
 
 
+def _owned_active_systemd_unit() -> Optional[str]:
+    """按当前仓库归属识别仍在运行的系统级 systemd 服务。"""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from app.helper.deploy import owned_active_systemd_unit
+
+    return owned_active_systemd_unit(ROOT)
+
+
 def ensure_services_stopped() -> None:
     running = _services_running()
+    systemd_unit = _owned_active_systemd_unit()
+    if not running and not systemd_unit:
+        return
+
+    details = []
     if running:
-        raise RuntimeError(
-            "检测到本地服务仍在运行（%s），请先执行 `moviepilot stop` 后再更新。"
-            % ", ".join(running)
-        )
+        details.append("本地 CLI 服务 %s 仍在运行，请执行 `moviepilot stop`" % ", ".join(running))
+    if systemd_unit:
+        details.append(f"systemd 服务 {systemd_unit} 仍在运行，请执行 `systemctl stop {systemd_unit}`")
+    raise RuntimeError("检测到服务仍在运行：%s。" % "；".join(details))
 
 
 def _stop_managed_services(venv_dir: Path) -> None:
