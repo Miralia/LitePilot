@@ -149,6 +149,11 @@ export function usePWAInstall() {
     }
   }
 
+  let displayModeMediaQuery: MediaQueryList | null = null
+  const handleDisplayModeChange = (event: MediaQueryListEvent) => {
+    isInstalled.value = event.matches
+  }
+
   onMounted(() => {
     // 检查是否已安装
     isInstalled.value = checkIfInstalled()
@@ -160,15 +165,15 @@ export function usePWAInstall() {
     window.addEventListener('appinstalled', handleAppInstalled)
 
     // 监听display-mode变化
-    const mediaQuery = window.matchMedia('(display-mode: standalone)')
-    mediaQuery.addEventListener('change', e => {
-      isInstalled.value = e.matches
-    })
+    displayModeMediaQuery = window.matchMedia('(display-mode: standalone)')
+    displayModeMediaQuery.addEventListener('change', handleDisplayModeChange)
   })
 
   onUnmounted(() => {
     window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     window.removeEventListener('appinstalled', handleAppInstalled)
+    displayModeMediaQuery?.removeEventListener('change', handleDisplayModeChange)
+    displayModeMediaQuery = null
   })
 
   return {
