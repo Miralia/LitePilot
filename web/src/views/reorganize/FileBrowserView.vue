@@ -217,7 +217,6 @@ onMounted(loadDownloadDirectories)
     <FileBrowser
       v-if="operItem"
       :storages="storages"
-      :tree="false"
       :itemstack="itemstack"
       :endpoints="endpoints"
       :axios="api"
