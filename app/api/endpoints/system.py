@@ -651,6 +651,15 @@ async def get_public_setting(
     if key not in _PUBLIC_SYSTEM_CONFIG_KEYS:
         raise HTTPException(status_code=404, detail="配置项不存在")
     value = SystemConfigOper().get(_PUBLIC_SYSTEM_CONFIG_KEYS[key])
+    if (
+        key == SystemConfigKey.Storages.value
+        and not _.is_superuser
+        and isinstance(value, list)
+    ):
+        value = [
+            {**item, "config": {}} if isinstance(item, dict) else item
+            for item in value
+        ]
     return schemas.Response(success=True, data={"value": value})
 
 

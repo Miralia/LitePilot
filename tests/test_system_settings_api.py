@@ -62,3 +62,60 @@ def test_system_setting_api_preserves_empty_list():
     assert response.success is True
     assert writes == [(SystemConfigKey.CustomReleaseGroups.value, [])]
     assert len(events) == 1
+
+
+def test_public_storages_hide_connection_config_from_regular_user(monkeypatch):
+    """普通用户只能选择存储，不得读取 SMB 等存储连接配置。"""
+    storage_value = [
+        {
+            "type": "smb",
+            "name": "SMB",
+            "config": {"host": "nas", "username": "user", "password": "secret"},
+        }
+    ]
+
+    class FakeSystemConfigOper:
+        """返回存储配置的系统配置测试替身。"""
+
+        def get(self, key):
+            """返回固定存储配置。"""
+            assert key == SystemConfigKey.Storages
+            return storage_value
+
+    monkeypatch.setattr(system_endpoint, "SystemConfigOper", lambda: FakeSystemConfigOper())
+
+    response = asyncio.run(
+        system_endpoint.get_public_setting("Storages", SimpleNamespace(is_superuser=False))
+    )
+
+    assert response.success is True
+    assert response.data["value"][0]["type"] == "smb"
+    assert response.data["value"][0]["config"] == {}
+
+
+def test_public_storages_preserve_connection_config_for_superuser(monkeypatch):
+    """管理员仍读取完整配置，避免设置页回填后保存时覆盖凭据。"""
+    storage_value = [
+        {
+            "type": "smb",
+            "name": "SMB",
+            "config": {"host": "nas", "username": "user", "password": "secret"},
+        }
+    ]
+
+    class FakeSystemConfigOper:
+        """返回存储配置的系统配置测试替身。"""
+
+        def get(self, key):
+            """返回固定存储配置。"""
+            assert key == SystemConfigKey.Storages
+            return storage_value
+
+    monkeypatch.setattr(system_endpoint, "SystemConfigOper", lambda: FakeSystemConfigOper())
+
+    response = asyncio.run(
+        system_endpoint.get_public_setting("Storages", SimpleNamespace(is_superuser=True))
+    )
+
+    assert response.success is True
+    assert response.data["value"] == storage_value
