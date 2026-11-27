@@ -34,23 +34,24 @@ class SystemConfigOper(DbOper, metaclass=Singleton):
         if isinstance(key, SystemConfigKey):
             key = key.value
         with self._rlock:
-            # 旧值
-            old_value = self.__SYSTEMCONF.get(key)
-            # 更新内存(deepcopy避免内存共享)
-            self.__SYSTEMCONF[key] = copy.deepcopy(value)
             conf = SystemConfig.get_by_key(self._db, key)
+            if value is None:
+                if not conf:
+                    self.__SYSTEMCONF.pop(key, None)
+                    return None
+                conf.delete(self._db, conf.id)
+                self.__SYSTEMCONF.pop(key, None)
+                return True
             if conf:
-                if old_value != value:
-                    if value:
-                        conf.update(self._db, {"value": value})
-                    else:
-                        conf.delete(self._db, conf.id)
-                    return True
-                return None
+                if conf.value == value:
+                    self.__SYSTEMCONF[key] = copy.deepcopy(value)
+                    return None
+                conf.update(self._db, {"value": value})
             else:
                 conf = SystemConfig(key=key, value=value)
                 conf.create(self._db)
-                return True
+            self.__SYSTEMCONF[key] = copy.deepcopy(value)
+            return True
 
     async def async_set(self, key: Union[str, SystemConfigKey], value: Any) -> Optional[bool]:
         """
@@ -64,20 +65,23 @@ class SystemConfigOper(DbOper, metaclass=Singleton):
         async with self._alock:
             conf = await SystemConfig.async_get_by_key(self._db, key)
             # 确定是否需要更新数据库
-            needs_db_update = False
-            if conf:
-                if conf.value != value:
-                    needs_db_update = True
-            else:  # 记录不存在，总是需要创建/更新
+            if value is None:
+                needs_db_update = conf is not None
+            elif conf:
+                needs_db_update = conf.value != value
+            else:
                 needs_db_update = True
             if not needs_db_update:
                 # 即使数据库值相同，也要确保缓存同步
                 with self._rlock:
-                    self.__SYSTEMCONF[key] = copy.deepcopy(value)
+                    if value is None:
+                        self.__SYSTEMCONF.pop(key, None)
+                    else:
+                        self.__SYSTEMCONF[key] = copy.deepcopy(value)
                 return None
             # 执行数据库更新
             if conf:
-                if value:
+                if value is not None:
                     await conf.async_update(self._db, {"value": value})
                 else:
                     await conf.async_delete(self._db, conf.id)
@@ -86,7 +90,10 @@ class SystemConfigOper(DbOper, metaclass=Singleton):
                 await conf.async_create(self._db)
             # 数据库更新成功后，再更新缓存
             with self._rlock:
-                self.__SYSTEMCONF[key] = copy.deepcopy(value)
+                if value is None:
+                    self.__SYSTEMCONF.pop(key, None)
+                else:
+                    self.__SYSTEMCONF[key] = copy.deepcopy(value)
             return True
 
     def get(self, key: Union[str, SystemConfigKey] = None) -> Any:
