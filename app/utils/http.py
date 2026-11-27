@@ -8,16 +8,12 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import httpx
 import requests
-import urllib3
 from requests import Response, Session
-from urllib3.exceptions import InsecureRequestWarning
 from urllib.parse import unquote, quote
 
 from app.core.config import settings
 from app.log import logger
 from app.utils.security import SecurityUtils
-
-urllib3.disable_warnings(InsecureRequestWarning)
 
 class _NonClosingTransportProxy(httpx.AsyncBaseTransport):
     """
@@ -369,7 +365,7 @@ class RequestUtils:
         kwargs.setdefault("cookies", self._cookies)
         kwargs.setdefault("proxies", self._proxies)
         kwargs.setdefault("timeout", self._timeout)
-        kwargs.setdefault("verify", False)
+        kwargs.setdefault("verify", settings.OUTBOUND_TLS_VERIFY)
         kwargs.setdefault("stream", False)
         method_upper = method.upper()
         try:
@@ -579,7 +575,7 @@ class AsyncRequestUtils:
         referer: str = None,
         content_type: str = None,
         accept_type: str = None,
-        verify: Union[bool, str] = False,
+        verify: Union[bool, str, None] = None,
         follow_redirects: bool = True,
         http2: bool = True,
         max_keepalive_connections: int = _DEFAULT_MAX_KEEPALIVE_CONNECTIONS,
@@ -596,7 +592,7 @@ class AsyncRequestUtils:
         :param referer: Referer头部信息
         :param content_type: 请求的Content-Type，默认为 "application/x-www-form-urlencoded; charset=UTF-8"
         :param accept_type: Accept头部信息，默认为 "application/json"
-        :param verify: 是否校验证书
+        :param verify: 是否校验证书；None 时使用 OUTBOUND_TLS_VERIFY 的安全默认值
         :param follow_redirects: 客户端默认是否跟随重定向
         :param http2: 是否启用 HTTP/2（默认 True）。基于 TLS ALPN 协商：服务端
             支持 h2 时复用流多路复用，不支持（含明文 HTTP、老 nginx/Apache）
@@ -609,7 +605,7 @@ class AsyncRequestUtils:
         self._proxies = self._convert_proxies_for_httpx(proxies)
         self._client = client
         self._timeout = timeout or 20
-        self._verify = verify
+        self._verify = settings.OUTBOUND_TLS_VERIFY if verify is None else verify
         self._follow_redirects = follow_redirects
         self._http2 = http2
         self._max_keepalive_connections = max_keepalive_connections

@@ -7,7 +7,7 @@
 `RequestUtils` handles:
 - Proxy configuration (from `settings.PROXY_*`)
 - Timeouts
-- SSL verification settings
+- TLS certificate verification: enabled by default through `OUTBOUND_TLS_VERIFY`; only an explicit per-call or global opt-out may disable it for self-signed internal services
 - User-Agent headers
 - Retry logic
 

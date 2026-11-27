@@ -8,6 +8,7 @@ from qbittorrentapi import TorrentDictionary, TorrentFilesList
 from qbittorrentapi.client import Client
 from qbittorrentapi.transfer import TransferInfoDictionary
 
+from app.core.config import settings
 from app.log import logger
 from app.utils.string import StringUtils
 
@@ -180,7 +181,7 @@ class Qbittorrent:
                                         password=self._password,
                                         EXTRA_HEADERS={"Authorization": f"Bearer {self._apikey}"}
                                         if self.__use_api_key_auth() else None,
-                                        VERIFY_WEBUI_CERTIFICATE=False,
+                                        VERIFY_WEBUI_CERTIFICATE=settings.OUTBOUND_TLS_VERIFY,
                                         REQUESTS_ARGS={'timeout': (15, 60)})
             try:
                 if self.__use_api_key_auth():

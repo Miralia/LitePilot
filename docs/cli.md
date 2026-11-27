@@ -462,6 +462,7 @@ moviepilot config describe API_TOKEN --show-secrets
 - `config list` 显示当前配置值
 - `config keys` 显示配置项名称、类型和默认值
 - `config describe` 显示单个配置项的类型、默认值和当前值
+- 出站 HTTPS 默认校验 TLS 证书；仅在确需兼容自签名内网服务时，才通过 `OUTBOUND_TLS_VERIFY=false` 显式全局关闭
 
 ## Scheduler 命令
 

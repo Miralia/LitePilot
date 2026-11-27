@@ -168,6 +168,8 @@ class ConfigModel(BaseModel):
     # ==================== 网络代理配置 ====================
     # 网络代理服务器地址
     PROXY_HOST: Optional[str] = None
+    # 出站 HTTPS 请求是否校验 TLS 证书；仅在确需兼容自签名服务时显式关闭
+    OUTBOUND_TLS_VERIFY: bool = True
     # ==================== 媒体元数据配置 ====================
     # 媒体搜索来源 themoviedb/bangumi，多个用,分隔
     SEARCH_SOURCE: str = "themoviedb"

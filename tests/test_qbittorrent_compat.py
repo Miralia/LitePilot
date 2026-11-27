@@ -114,7 +114,7 @@ def _load_qbittorrent_modules():
 
     log_module.logger = _Logger()
     cache_module.FileCache = _FileCache
-    config_module.settings = types.SimpleNamespace(TORRENT_TAG="moviepilot-tag")
+    config_module.settings = types.SimpleNamespace(TORRENT_TAG="moviepilot-tag", OUTBOUND_TLS_VERIFY=True)
     metainfo_module.MetaInfo = _MetaInfo
     schemas_module.DownloaderInfo = object
     schemas_module.DownloaderTorrent = _DownloaderTorrent
@@ -533,3 +533,64 @@ def test_get_files_retries_until_qbittorrent_files_available():
     assert fake_client.torrents_files.call_count == 2
     fake_client.torrents_files.assert_called_with(torrent_hash="abc123")
     sleep.assert_called_once_with(1)
+
+
+def test_qbittorrent_login_verifies_tls_by_default(monkeypatch):
+    """qBittorrent HTTPS 登录默认必须校验证书，避免下载器凭据被中间人窃取。"""
+    captured = {}
+
+    class FakeClient:
+        """最小 qBittorrent 客户端测试替身。"""
+
+        def auth_log_in(self):
+            return None
+
+        def app_preferences(self):
+            return {"incomplete_files_ext": True}
+
+    def fake_client(**kwargs):
+        captured.update(kwargs)
+        return FakeClient()
+
+    downloader = Qbittorrent.__new__(Qbittorrent)
+    downloader._host = "https://qbittorrent.example.com"
+    downloader._port = 443
+    downloader._username = "admin"
+    downloader._password = "secret"
+    downloader._apikey = None
+    downloader._incomplete_files_ext = True
+    monkeypatch.setattr(qbittorrent_module.qbittorrentapi, "Client", fake_client)
+
+    assert downloader._Qbittorrent__login_qbittorrent() is not None  # pylint: disable=protected-access
+    assert captured["VERIFY_WEBUI_CERTIFICATE"] is True
+
+
+def test_qbittorrent_login_honors_global_tls_opt_out(monkeypatch):
+    """仅在全局配置显式关闭时，qBittorrent 才兼容自签名 HTTPS 服务。"""
+    captured = {}
+
+    class FakeClient:
+        """最小 qBittorrent 客户端测试替身。"""
+
+        def auth_log_in(self):
+            return None
+
+        def app_preferences(self):
+            return {"incomplete_files_ext": True}
+
+    def fake_client(**kwargs):
+        captured.update(kwargs)
+        return FakeClient()
+
+    downloader = Qbittorrent.__new__(Qbittorrent)
+    downloader._host = "https://qbittorrent.example.com"
+    downloader._port = 443
+    downloader._username = "admin"
+    downloader._password = "secret"
+    downloader._apikey = None
+    downloader._incomplete_files_ext = True
+    monkeypatch.setattr(qbittorrent_module.qbittorrentapi, "Client", fake_client)
+    monkeypatch.setattr(qbittorrent_module.settings, "OUTBOUND_TLS_VERIFY", False)
+
+    assert downloader._Qbittorrent__login_qbittorrent() is not None  # pylint: disable=protected-access
+    assert captured["VERIFY_WEBUI_CERTIFICATE"] is False
