@@ -282,6 +282,21 @@ def test_create_backup_excludes_previous_backup_artifacts_but_keeps_user_archive
     assert "backup-next.tar.gz" not in names
 
 
+def test_create_backup_excludes_operational_backups_directory(tmp_path):
+    """部署流程写入配置目录 backups/ 的历史归档是运维产物，不得递归膨胀。"""
+    config = _make_config(tmp_path)
+    backup_dir = config / "backups"
+    backup_dir.mkdir()
+    (backup_dir / "pre-deploy-manual.tar.gz").write_bytes(b"old-backup")
+
+    result = create_backup(archive=tmp_path / "backup.tar.gz", config_dir=config)
+
+    with tarfile.open(result.archive, "r:gz") as tar:
+        names = {member.name for member in tar.getmembers()}
+    assert "backups/pre-deploy-manual.tar.gz" not in names
+    assert "app.env" in names
+
+
 def test_create_backup_excludes_pre_upgrade_backup_directories(tmp_path):
     """升级前目录副本是一次性运维产物，不得递归打入后续配置备份。"""
     config = _make_config(tmp_path)
