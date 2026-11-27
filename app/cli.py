@@ -1023,9 +1023,9 @@ def config_describe(key: str, show_secrets: bool) -> None:
 
 
 
-def _api_token_headers() -> Dict[str, str]:
+def _api_token_headers(runtime: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
     """构造携带 API_TOKEN 的请求头，供 CLI 调用需要鉴权的接口。"""
-    token = getattr(settings, "API_TOKEN", "") or ""
+    token = _runtime_api_token(runtime)
     return {"X-API-KEY": token} if token else {}
 
 
@@ -1037,11 +1037,12 @@ def scheduler() -> None:
 @scheduler.command("list", context_settings=CONTEXT_SETTINGS)
 def scheduler_list() -> None:
     """列出调度任务"""
+    runtime = _backend_runtime()
     response = _http_request(
         "GET",
         "/api/v2/dashboard/schedule",
-        headers=_api_token_headers(),
-        runtime=_backend_runtime(),
+        headers=_api_token_headers(runtime),
+        runtime=runtime,
     )
     payload = response.get("json") or {}
     items = payload.get("data") if isinstance(payload, dict) else None
@@ -1058,12 +1059,13 @@ def scheduler_list() -> None:
 @click.argument("job_id")
 def scheduler_run(job_id: str) -> None:
     """立即执行某个调度任务"""
+    runtime = _backend_runtime()
     response = _http_request(
         "GET",
         "/api/v2/system/runscheduler",
         params={"jobid": job_id},
-        headers=_api_token_headers(),
-        runtime=_backend_runtime(),
+        headers=_api_token_headers(runtime),
+        runtime=runtime,
     )
     payload = response.get("json") or {}
     if isinstance(payload, dict) and payload.get("success") is False:

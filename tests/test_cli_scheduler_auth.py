@@ -85,3 +85,21 @@ def test_scheduler_run_uses_v2_uniform_response_api():
         "params": {"jobid": "transfer"},
         "headers": {"X-API-KEY": "test-api-token-16"},
     }
+
+
+def test_scheduler_run_prefers_runtime_token_over_changed_config():
+    """服务运行期间配置被修改时，CLI 仍应使用运行中服务实际持有的 token。"""
+    module = load_cli_module()
+    module.settings.API_TOKEN = "new-config-token"
+    captured = {}
+
+    def fake_http_request(method, path, **kwargs):
+        captured["headers"] = kwargs.get("headers")
+        return {"status": 200, "json": {"success": True, "message": "", "data": {}}}
+
+    with patch.object(module, "_backend_runtime", return_value={"api_token": "running-service-token"}):
+        with patch.object(module, "_http_request", side_effect=fake_http_request):
+            result = CliRunner().invoke(module.scheduler_run, ["transfer"])
+
+    assert result.exit_code == 0, result.output
+    assert captured["headers"] == {"X-API-KEY": "running-service-token"}
