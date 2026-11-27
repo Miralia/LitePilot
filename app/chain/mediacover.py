@@ -7,8 +7,10 @@
 """
 
 import base64
+import os
 from io import BytesIO
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple
 
 from app.chain import ChainBase
@@ -29,6 +31,8 @@ ZH_FONT_URL = (
     "LXGWZhenKaiSlabGB-Regular.ttf"
 )
 ZH_FONT_FILENAME = "LXGWZhenKaiSlabGB-Regular.ttf"
+# sfnt 字体文件魔数：TrueType、OpenType、TrueType Collection 与 macOS TrueType
+FONT_MAGIC_PREFIXES = (b"\x00\x01\x00\x00", b"OTTO", b"ttcf", b"true")
 # 输出画布尺寸默认值，与 1080p 媒体库封面比例一致，可由配置覆盖
 CANVAS_SIZE = (1920, 1080)
 
@@ -74,7 +78,24 @@ class MediaCoverChain(ChainBase):
         if not response or response.status_code != 200 or not response.content:
             logger.error("下载封面字体失败：响应异常")
             return None
-        font_path.write_bytes(response.content)
+        if not response.content.startswith(FONT_MAGIC_PREFIXES):
+            logger.error("下载封面字体失败：响应内容不是有效字体文件")
+            return None
+        temp_path = None
+        try:
+            with NamedTemporaryFile(
+                dir=self.font_dir,
+                prefix=f".{font_path.name}.",
+                delete=False,
+            ) as temp_file:
+                temp_path = Path(temp_file.name)
+            temp_path.write_bytes(response.content)
+            os.replace(temp_path, font_path)
+        except OSError as err:
+            if temp_path:
+                temp_path.unlink(missing_ok=True)
+            logger.error(f"保存封面字体失败：{err}")
+            return None
         logger.info(f"封面字体已保存：{font_path}")
         return font_path
 

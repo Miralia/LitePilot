@@ -249,3 +249,57 @@ def test_pick_library_image_falls_back_to_series_primary_poster(monkeypatch):
         "https://emby.example/emby/Items/series-1/Images/Primary"
         "?tag=primary-tag&api_key=api-key"
     )
+
+
+def test_font_write_failure_leaves_no_corrupt_final_file(monkeypatch, tmp_path):
+    """字体写入中断时不得留下半截最终文件，否则后续运行会永久跳过重下。"""
+    chain = object.__new__(MediaCoverChain)
+    chain.font_dir = tmp_path
+
+    class FakeResponse:
+        status_code = 200
+        content = b"truetype-font-bytes"
+
+    class FakeRequestUtils:
+        def __init__(self, **_kwargs):
+            pass
+
+        def get_res(self, _url):
+            return FakeResponse()
+
+    original_write_bytes = Path.write_bytes
+
+    def interrupted_write(path: Path, data: bytes):
+        if path.parent == tmp_path:
+            with path.open("wb") as handle:
+                handle.write(data[:4])
+            raise OSError("simulated disk write failure")
+        return original_write_bytes(path, data)
+
+    monkeypatch.setattr("app.chain.mediacover.RequestUtils", FakeRequestUtils)
+    monkeypatch.setattr(Path, "write_bytes", interrupted_write)
+
+    assert chain._ensure_font() is None
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_font_response_must_have_sfnt_magic(monkeypatch, tmp_path):
+    """200 响应也可能是代理 HTML 错误页，非字体魔数不得写入永久缓存。"""
+    chain = object.__new__(MediaCoverChain)
+    chain.font_dir = tmp_path
+
+    class FakeResponse:
+        status_code = 200
+        content = b"<html>upstream error</html>"
+
+    class FakeRequestUtils:
+        def __init__(self, **_kwargs):
+            pass
+
+        def get_res(self, _url):
+            return FakeResponse()
+
+    monkeypatch.setattr("app.chain.mediacover.RequestUtils", FakeRequestUtils)
+
+    assert chain._ensure_font() is None
+    assert list(tmp_path.iterdir()) == []
