@@ -74,3 +74,28 @@ def test_emby_webhook_does_not_hydrate_unused_playback_metadata():
         "channel",
     ):
         assert field not in schemas.WebhookEventInfo.model_fields
+
+
+def test_emby_webhook_normalizes_numeric_episode_zero_ids_to_strings():
+    """WebhookEventInfo 的季集契约是字符串，原生 int 0 也必须保留并规范化。"""
+    server = object.__new__(Emby)
+    payload = {
+        "Event": "deep.delete",
+        "Item": {
+            "Type": "Episode",
+            "SeriesName": "Show",
+            "Name": "Special",
+            "ParentIndexNumber": 0,
+            "IndexNumber": 0,
+            "Path": "/media/Show/S00/episode0.mkv",
+            "ProviderIds": {"Tmdb": "123"},
+        },
+    }
+
+    info = Emby.get_webhook_message(server, form={"data": json.dumps(payload)}, args={})
+
+    assert info is not None
+    assert info.season_id == "0"
+    assert info.episode_id == "0"
+    assert isinstance(info.season_id, str)
+    assert isinstance(info.episode_id, str)

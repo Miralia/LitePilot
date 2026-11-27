@@ -1231,8 +1231,8 @@ class Emby:
                     or message.get('Item', {}).get('Type') == 'Season':
                 eventItem.item_type = "TV"
                 if message.get('Item', {}).get('SeriesName') \
-                        and message.get('Item', {}).get('ParentIndexNumber') \
-                        and message.get('Item', {}).get('IndexNumber'):
+                        and message.get('Item', {}).get('ParentIndexNumber') is not None \
+                        and message.get('Item', {}).get('IndexNumber') is not None:
                     eventItem.item_name = "%s %s%s %s" % (
                         message.get('Item', {}).get('SeriesName'),
                         "S" + str(message.get('Item', {}).get('ParentIndexNumber')),
@@ -1244,8 +1244,10 @@ class Emby:
                         message.get('Item', {}).get('Name'))
                 else:
                     eventItem.item_name = message.get('Item', {}).get('Name')
-                eventItem.season_id = message.get('Item', {}).get('ParentIndexNumber')
-                eventItem.episode_id = message.get('Item', {}).get('IndexNumber')
+                season_id = message.get('Item', {}).get('ParentIndexNumber')
+                episode_id = message.get('Item', {}).get('IndexNumber')
+                eventItem.season_id = str(season_id) if season_id is not None else None
+                eventItem.episode_id = str(episode_id) if episode_id is not None else None
             elif message.get('Item', {}).get('Type') == 'Audio':
                 eventItem.item_type = "AUD"
                 album = message.get('Item', {}).get('Album')
@@ -1264,8 +1266,10 @@ class Emby:
             eventItem.item_name = message.get("item_name")
             eventItem.item_path = message.get("item_path")
             eventItem.tmdb_id = message.get("tmdb_id")
-            eventItem.season_id = message.get("season_id")
-            eventItem.episode_id = message.get("episode_id")
+            season_id = message.get("season_id")
+            episode_id = message.get("episode_id")
+            eventItem.season_id = str(season_id) if season_id is not None else None
+            eventItem.episode_id = str(episode_id) if episode_id is not None else None
 
         eventItem.json_object = message
 
