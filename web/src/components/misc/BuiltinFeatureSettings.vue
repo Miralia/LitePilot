@@ -10,6 +10,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/api'
 import type { DownloaderConf, MediaServerConf, MediaServerLibrary, SystemSettingResponse } from '@/api/types'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 import { useToast } from 'vue-toastification'
 
 const { t } = useI18n()
@@ -177,6 +178,7 @@ async function save() {
       $toast.error(t('setting.builtin.saveFailed'))
     }
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('setting.builtin.saveFailed'))
   } finally {

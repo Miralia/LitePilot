@@ -5,6 +5,7 @@ import { useDisplay } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 import api from '@/api'
 import type { ApiResponse } from '@/api/types'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 interface Props {
   modelValue: boolean
@@ -93,6 +94,7 @@ async function getOtpUri() {
       setOtpGenerateError(result.message || 'empty otp uri')
     }
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     setOtpGenerateError(error instanceof Error ? error.message : String(error))
   } finally {
@@ -120,6 +122,7 @@ async function judgeOtpPassword() {
       $toast.error(t('profile.otpEnableFailed', { message: result.message }))
     }
   } catch (error) {
+    if (isRequestCancellation(error)) return
     console.error(error)
     $toast.error(t('profile.otpEnableFailed', { message: error instanceof Error ? error.message : String(error) }))
   }
@@ -143,6 +146,7 @@ function disableOtp() {
           $toast.error(t('profile.otpDisableFailed', { message: result.message }))
         }
       } catch (error) {
+        if (isRequestCancellation(error)) return
         console.error(error)
         $toast.error(t('profile.otpDisableFailed', { message: error instanceof Error ? error.message : String(error) }))
       }
