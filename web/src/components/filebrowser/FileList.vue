@@ -397,8 +397,11 @@ async function batchDelete() {
 
 // 切换路径
 function changePath(item: FileItem) {
-  item.path = inProps.item.path + item.name + (item.type === 'dir' ? '/' : '')
-  emit('pathchanged', item)
+  const nextItem = { ...item }
+  if (!nextItem.path) {
+    nextItem.path = inProps.item.path + item.name + (item.type === 'dir' ? '/' : '')
+  }
+  emit('pathchanged', nextItem)
 }
 
 // 点击列表项
@@ -412,22 +415,27 @@ function listItemClick(item: FileItem) {
 
 // 新窗口中下载文件
 async function download(item: FileItem) {
-  const url = inProps.endpoints?.download.url
-  // 下载文件
-  const config: AxiosRequestConfig<FileItem> = {
-    url,
-    method: inProps.endpoints?.download.method || 'post',
-    data: item,
-    responseType: 'blob',
-  }
-  // 加载数据
-  const result: Blob = await inProps.axios.request<Blob, Blob>(config)
-  if (result) {
-    const downloadUrl = URL.createObjectURL(result)
-    window.open(downloadUrl, '_blank')
-    setTimeout(() => {
-      URL.revokeObjectURL(downloadUrl)
-    }, 60000)
+  try {
+    const url = inProps.endpoints?.download.url
+    // 下载文件
+    const config: AxiosRequestConfig<FileItem> = {
+      url,
+      method: inProps.endpoints?.download.method || 'post',
+      data: item,
+      responseType: 'blob',
+    }
+    // 加载数据
+    const result: Blob = await inProps.axios.request<Blob, Blob>(config)
+    if (result) {
+      const downloadUrl = URL.createObjectURL(result)
+      window.open(downloadUrl, '_blank')
+      setTimeout(() => {
+        URL.revokeObjectURL(downloadUrl)
+      }, 60000)
+    }
+  } catch (error) {
+    console.error(error)
+    $toast.error(error instanceof Error ? error.message : t('common.error'))
   }
 }
 

@@ -720,4 +720,37 @@ describe('FileList dialogs, download and lifecycle', () => {
     expect(progressController.close).toHaveBeenCalledOnce()
     expect(renameController.close).not.toHaveBeenCalled()
   })
+  it('emits the backend canonical path instead of reconstructing it from the parent path', async () => {
+    const windowsPartition = createItem({ name: 'C:', path: 'C:/', type: 'dir' })
+    const request = vi.fn().mockResolvedValue([windowsPartition])
+    const { emitted } = await renderList(request, {
+      item: createItem({ name: '/', path: '/', type: 'dir' }),
+    })
+    await screen.findByText('C:')
+
+    await fireEvent.click(screen.getByText('C:').closest('[role="button"]') as Element)
+
+    const pathChangedEvents = emitted().pathchanged as Array<[FileItem]> | undefined
+    expect(pathChangedEvents?.at(-1)?.[0]).toMatchObject({
+      name: 'C:',
+      path: 'C:/',
+      type: 'dir',
+    })
+  })
+
+  it('reports download request failures instead of leaving an unhandled rejection', async () => {
+    const file = createItem({ name: 'movie.mkv', path: '/media/movie.mkv', type: 'file' })
+    const request = vi.fn((config: AxiosRequestConfig) =>
+      config.url === '/storage/download'
+        ? Promise.reject(new Error('network down'))
+        : Promise.resolve([file]),
+    )
+    await renderList(request, { item: file })
+    await screen.findByText('movie.mkv')
+
+    await fireEvent.click(getSlotIconButton('mdi-download'))
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('network down'))
+  })
+
 })
