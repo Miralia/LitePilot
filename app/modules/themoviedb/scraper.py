@@ -37,9 +37,9 @@ class TmdbScraper:
         mediainfo: MediaInfo,
         season: Optional[int] = None,
         episode: Optional[int] = None,
-    ) -> Optional[str]:
+    ) -> Optional[bytes]:
         """
-        获取NFO文件内容文本
+        获取UTF-8编码的NFO文件内容
         :param meta: 元数据
         :param mediainfo: 媒体信息
         :param season: 季号

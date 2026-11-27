@@ -112,14 +112,14 @@ class MediaScraperHelper:
         mediainfo: MediaInfo,
         season: Optional[int] = None,
         episode: Optional[int] = None,
-    ) -> Optional[str]:
+    ) -> Optional[bytes]:
         """
-        根据统一媒体信息生成电影、剧集、季或单集 NFO。
+        根据统一媒体信息生成UTF-8编码的电影、剧集、季或单集 NFO。
 
         :param mediainfo: 统一媒体信息
         :param season: 季号
         :param episode: 集号
-        :return: NFO XML 文本
+        :return: UTF-8 编码的 NFO XML 内容
         """
         if not mediainfo:
             return None

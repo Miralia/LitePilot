@@ -1,4 +1,6 @@
+import inspect
 from types import SimpleNamespace
+from typing import Optional
 
 from app.core.context import MediaInfo
 from app.modules.themoviedb.scraper import TmdbScraper
@@ -78,3 +80,24 @@ def test_episode_nfo_detail_follows_explicit_episode_number():
     text = _nfo_text(nfo)
     assert "<tmdbid>1001</tmdbid>" in text
     assert "<episode>1</episode>" in text
+
+
+
+def test_nfo_public_contract_is_utf8_bytes():
+    """NFO 公共链路必须明确声明既有的 UTF-8 bytes 契约，避免重写时误按 str 实现。"""
+    from app.chain.media import MediaChain
+    from app.helper.scraper import MediaScraperHelper
+    from app.modules.bangumi import BangumiModule
+    from app.modules.themoviedb import TheMovieDbModule
+
+    functions = [
+        TmdbScraper.get_metadata_nfo,
+        MediaScraperHelper.get_metadata_nfo,
+        MediaChain.metadata_nfo,
+        BangumiModule.metadata_nfo,
+        TheMovieDbModule.metadata_nfo,
+    ]
+
+    assert [inspect.signature(function).return_annotation for function in functions] == [
+        Optional[bytes]
+    ] * len(functions)

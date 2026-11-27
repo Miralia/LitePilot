@@ -264,14 +264,14 @@ class BangumiModule(_ModuleBase):
         season: Optional[int] = None,
         episode: Optional[int] = None,
         **kwargs,
-    ) -> Optional[str]:
+    ) -> Optional[bytes]:
         """
-        生成Bangumi来源的NFO内容。
+        生成Bangumi来源的UTF-8编码NFO内容。
 
         :param mediainfo: 统一媒体信息
         :param season: 季号
         :param episode: 集号
-        :return: NFO XML文本
+        :return: UTF-8 编码的 NFO XML 内容
         """
         scrape_source = mediainfo.scrape_source or settings.SCRAP_SOURCE
         if scrape_source != "bangumi":
