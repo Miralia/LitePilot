@@ -333,3 +333,21 @@ def test_doctor_fix_removes_only_sqlite_plugin_config_residue(tmp_path, monkeypa
     finally:
         connection.close()
     assert rows == [("DownloadFileSync",), ("Plugin.Legacy",)]
+
+
+def test_doctor_log_window_is_not_truncated_to_short_tail(tmp_path, monkeypatch):
+    """时间窗内的错误不能仅因后面有大量 INFO 行就被 Doctor 漏报。"""
+    monkeypatch.setattr(settings, "CONFIG_DIR", str(tmp_path))
+    app_log = settings.LOG_PATH / "moviepilot.log"
+    app_log.parent.mkdir(parents=True, exist_ok=True)
+    error_line = f"【ERROR】{_current_log_timestamp()} - telegram.py - 命令注册失败\n"
+    noise = "".join(
+        f"【INFO】{_current_log_timestamp()} - scheduler.py - noise {index}\n"
+        for index in range(180)
+    )
+    app_log.write_text(error_line + noise, encoding="utf-8")
+
+    runner = DoctorRunner()
+    checks._check_logs(runner)
+
+    assert runner.report.find("logs.moviepilot.recent_errors") is not None

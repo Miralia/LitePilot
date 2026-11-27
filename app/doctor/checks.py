@@ -7,7 +7,6 @@ import re
 import socket
 import sqlite3
 import sys
-from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -276,16 +275,13 @@ def _backend_health_payload(port: int, timeout: float = BACKEND_HEALTH_TIMEOUT) 
     return payload if _is_moviepilot_backend_payload(payload) else None
 
 
-def _tail_lines(path: Path, max_lines: int = 120, max_bytes: int = 256 * 1024) -> list[str]:
+def _read_log_lines(path: Path) -> list[str]:
+    """读取当前活跃滚动日志；文件大小由应用滚动日志上限约束。"""
     try:
-        size = path.stat().st_size
-        with path.open("rb") as file_obj:
-            if size > max_bytes:
-                file_obj.seek(size - max_bytes)
-            text = file_obj.read().decode("utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return []
-    return list(deque((_mask_text(line) for line in text.splitlines()), maxlen=max_lines))
+    return [_mask_text(line) for line in text.splitlines()]
 
 
 def _parse_log_timestamp(line: str) -> Optional[datetime]:
@@ -847,7 +843,7 @@ def _check_logs(runner: DoctorRunnerProtocol) -> None:
         if not path.exists() or not path.is_file():
             continue
         found_any = True
-        lines = _recent_log_lines(_tail_lines(path))
+        lines = _recent_log_lines(_read_log_lines(path))
         entries.extend((path, error) for error in _find_error_lines(lines))
 
     if not found_any:
@@ -868,7 +864,7 @@ def _check_logs(runner: DoctorRunnerProtocol) -> None:
             status=DoctorFindingStatus.Ok,
             title="最近日志未发现明显错误关键词",
             detail=(
-                f"已扫描 {settings.LOG_PATH} 下最近 {LOG_LOOKBACK_HOURS} 小时的主日志与启动日志。"
+                f"已扫描 {settings.LOG_PATH} 当前活跃主日志与启动日志中最近 {LOG_LOOKBACK_HOURS} 小时的记录；轮转归档不在离线扫描范围内。"
             ),
             recommendation="如果问题仍存在，请结合具体操作时间扩大日志范围排查。",
         )
