@@ -114,16 +114,19 @@ class FormatParser(object):
         if part:
             self._part = part
         if details:
-            if re.compile("\\d{1,4}-\\d{1,4}").match(details):
+            if re.compile("\\d{1,4}-\\d{1,4}").fullmatch(details):
                 self._start_ep = details
                 self._end_ep = details
             else:
-                tmp = details.split(",")
-                if len(tmp) > 1:
-                    self._start_ep = int(tmp[0])
-                    self._end_ep = int(tmp[0]) if int(tmp[0]) > int(tmp[1]) else int(tmp[1])
-                else:
-                    self._start_ep = self._end_ep = int(tmp[0])
+                try:
+                    tmp = details.split(",")
+                    if len(tmp) > 1:
+                        self._start_ep = int(tmp[0])
+                        self._end_ep = int(tmp[0]) if int(tmp[0]) > int(tmp[1]) else int(tmp[1])
+                    else:
+                        self._start_ep = self._end_ep = int(tmp[0])
+                except (TypeError, ValueError):
+                    raise ValueError("指定集数格式无效，应为 X、X,Y 或 X-Y") from None
 
     @property
     def format(self):
@@ -149,11 +152,17 @@ class FormatParser(object):
         if not self._format:
             return True
         s, e = self.__handle_single(file)
-        if not s:
+        if s is None:
             return False
         if self._start_ep is None:
             return True
-        if self._start_ep <= s <= self._end_ep:
+        start_ep = self._start_ep
+        end_ep = self._end_ep
+        if isinstance(start_ep, str):
+            range_start, range_end = start_ep.split("-", 1)
+            start_ep = int(range_start)
+            end_ep = int(range_end)
+        if start_ep <= s <= end_ep:
             return True
         return False
 
@@ -193,14 +202,14 @@ class FormatParser(object):
                 )
         if not self._format:
             # 未填入`集数定位` 且没有`指定集数` 仅处理`集数偏移`
-            start_ep = self.__apply_episode_offset(file_meta.begin_episode) if file_meta.begin_episode else None
-            end_ep = self.__apply_episode_offset(file_meta.end_episode) if file_meta.end_episode else None
+            start_ep = self.__apply_episode_offset(file_meta.begin_episode) if file_meta.begin_episode is not None else None
+            end_ep = self.__apply_episode_offset(file_meta.end_episode) if file_meta.end_episode is not None else None
             return start_ep, end_ep, self.part
         else:
             # 有`集数定位`
             s, e = self.__handle_single(file_name)
-            start_ep = self.__apply_episode_offset(s) if s else None
-            end_ep = self.__apply_episode_offset(e) if e else None
+            start_ep = self.__apply_episode_offset(s) if s is not None else None
+            end_ep = self.__apply_episode_offset(e) if e is not None else None
             return start_ep, end_ep, self.part
 
     def __handle_single(self, file: str) -> Tuple[Optional[int], Optional[int]]:

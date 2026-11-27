@@ -2994,16 +2994,17 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             background = False
         # 自定义格式
         has_episode_format_template = bool(epformat and epformat.format)
-        formaterHandler = (
-            FormatParser(
-                eformat=epformat.format,
-                details=epformat.detail,
-                part=epformat.part,
-                offset=epformat.offset,
-            )
-            if epformat
-            else None
-        )
+        formaterHandler = None
+        if epformat:
+            try:
+                formaterHandler = FormatParser(
+                    eformat=epformat.format,
+                    details=epformat.detail,
+                    part=epformat.part,
+                    offset=epformat.offset,
+                )
+            except ValueError as err:
+                return False, f"自定义识别格式无效：{err}"
 
         # 整理屏蔽词
         transfer_exclude_words = SystemConfigOper().get(
@@ -3909,7 +3910,9 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
             )
             mediainfo = recognize_context.media_info if recognize_context else None
         if not mediainfo:
-            return False, f"未识别到媒体信息，类型：{mtype.value}，id：{mediaid}"
+            if mtype and mediaid:
+                return False, f"未识别到媒体信息，类型：{mtype.value}，id：{mediaid}"
+            return False, "未识别到媒体信息"
         # 重新执行整理
         logger.info(f"{src_path.name} 识别为：{mediainfo.title_year}")
 

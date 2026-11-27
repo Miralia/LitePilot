@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-
+from app.chain.transfer import TransferChain
 from app.api.endpoints.transfer import (
     manual_transfer,
     recommend_episode_format,
@@ -520,3 +520,27 @@ def test_manual_transfer_from_multi_season_history_does_not_crash_or_force_singl
 
     assert resp.success is True
     assert captured["season"] is None
+
+
+def test_redo_transfer_history_unrecognized_media_returns_failure(monkeypatch, tmp_path):
+    """自动重新整理识别失败时返回失败消息，不访问空媒体类型。"""
+    source = tmp_path / "missing-media"
+    source.mkdir()
+    history = SimpleNamespace(
+        src=str(source),
+        episode_group=None,
+    )
+
+    monkeypatch.setattr(
+        "app.chain.transfer.TransferHistoryOper.get",
+        lambda _oper, _logid: history,
+    )
+    monkeypatch.setattr(
+        "app.chain.transfer.MediaChain.recognize_by_path",
+        lambda *_args, **_kwargs: None,
+    )
+
+    success, message = TransferChain().redo_transfer_history(1)
+
+    assert success is False
+    assert "未识别到媒体信息" in message

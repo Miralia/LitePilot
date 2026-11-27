@@ -608,7 +608,7 @@ class MetaVideo(MetaBase):
             return
         if not self.year \
                 and self.begin_season is None \
-                and not self.begin_episode \
+                and self.begin_episode is None \
                 and not self.resource_pix \
                 and not self.resource_type:
             return

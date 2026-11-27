@@ -1222,3 +1222,19 @@ def test_notify_respects_need_notify_false():
         chain._TransferChain__default_callback(task, transferinfo)
 
     assert scheduled == [], "need_notify=False 不应通知"
+
+
+def test_do_transfer_invalid_episode_detail_returns_failure():
+    """非法指定集数应返回可展示失败，不得穿透手动整理链。"""
+    chain = make_transfer_chain()
+
+    state, errmsg = TransferChain.do_transfer(
+        chain,
+        fileitem=make_fileitem("/downloads/Show - 01.mkv"),
+        background=False,
+        manual=True,
+        epformat=EpisodeFormat(detail="abc"),
+    )
+
+    assert state is False
+    assert "自定义识别格式无效" in errmsg

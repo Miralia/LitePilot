@@ -471,3 +471,11 @@ def test_anime_trailing_category_marker_does_not_corrupt_title():
     meta = MetaAnime(title="进击的巨人 新番")
 
     assert meta.cn_name == "进击的巨人"
+
+
+def test_video_parser_preserves_part_after_episode_zero():
+    """第 0 集多 Part 文件必须保留 Part 标记，避免版本清理误并。"""
+    meta = MetaInfo("Show E00 PartA.mkv")
+
+    assert meta.begin_episode == 0
+    assert meta.part == "PartA"
