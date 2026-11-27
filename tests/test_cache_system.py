@@ -537,6 +537,89 @@ def test_redis_helper_uses_blocking_pool_settings(monkeypatch):
     helper.close()
 
 
+def test_redis_helper_success_log_redacts_url_password(monkeypatch):
+    """Redis 连接成功日志不得泄露 URL userinfo 中的密码。"""
+    infos = []
+    secret = "redis-test-password"
+
+    class FakeClient:
+        def __init__(self, connection_pool):
+            pass
+
+        def ping(self):
+            return True
+
+        def config_set(self, key, value):
+            return True
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(
+        settings,
+        "CACHE_BACKEND_URL",
+        f"redis://user:{secret}@cache:6379/2",
+    )
+    monkeypatch.setattr(
+        "app.helper.redis.redis.BlockingConnectionPool.from_url",
+        lambda *args, **kwargs: "pool",
+    )
+    monkeypatch.setattr("app.helper.redis.redis.Redis", FakeClient)
+    monkeypatch.setattr("app.helper.redis.logger.info", infos.append)
+
+    helper = RedisHelper()
+    helper.close()
+    helper._connect()
+    helper.close()
+
+    assert infos
+    assert all(secret not in message for message in infos)
+    assert any("redis://cache:6379/2" in message for message in infos)
+
+
+def test_async_redis_helper_success_log_redacts_url_password(monkeypatch):
+    """异步 Redis 连接成功日志不得泄露 URL userinfo 中的密码。"""
+    infos = []
+    secret = "async-redis-test-password"
+
+    class FakeAsyncClient:
+        def __init__(self, connection_pool):
+            pass
+
+        async def ping(self):
+            return True
+
+        async def config_set(self, key, value):
+            return True
+
+        async def close(self):
+            return None
+
+    async def run_connect():
+        helper = AsyncRedisHelper()
+        await helper.close()
+        await helper._connect()
+        await helper.close()
+
+    monkeypatch.setattr(
+        settings,
+        "CACHE_BACKEND_URL",
+        f"redis://user:{secret}@cache:6379/3",
+    )
+    monkeypatch.setattr(
+        "app.helper.redis.AsyncBlockingConnectionPool.from_url",
+        lambda *args, **kwargs: "pool",
+    )
+    monkeypatch.setattr("app.helper.redis.Redis", FakeAsyncClient)
+    monkeypatch.setattr("app.helper.redis.logger.info", infos.append)
+
+    asyncio.run(run_connect())
+
+    assert infos
+    assert all(secret not in message for message in infos)
+    assert any("redis://cache:6379/3" in message for message in infos)
+
+
 def test_redis_helper_pop_uses_atomic_getdel():
     """Redis 缓存领取必须通过单条 GETDEL 命令完成。"""
     calls = []

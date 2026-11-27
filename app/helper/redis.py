@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.log import logger
 from app.utils.mixins import ConfigReloadMixin
 from app.utils.singleton import Singleton
+from app.utils.system import SystemUtils
 
 # 默认连接参数
 _socket_timeout = 30
@@ -97,7 +98,7 @@ class RedisHelper(ConfigReloadMixin, metaclass=Singleton):
                 # 测试连接，确保Redis可用
                 client.ping()
                 self.client = client
-                logger.info(f"Successfully connected to Redis：{self.redis_url}")
+                logger.info(f"Successfully connected to Redis：{SystemUtils.redact_url_userinfo(self.redis_url)}")
                 self.set_memory_limit()
         except Exception as e:
             if client:
@@ -396,7 +397,7 @@ class AsyncRedisHelper(ConfigReloadMixin, metaclass=Singleton):
                 # 测试连接，确保Redis可用
                 await client.ping()
                 self.client = client
-                logger.info(f"Successfully connected to Redis (async)：{self.redis_url}")
+                logger.info(f"Successfully connected to Redis (async)：{SystemUtils.redact_url_userinfo(self.redis_url)}")
                 await self.set_memory_limit()
         except Exception as e:
             if client:
