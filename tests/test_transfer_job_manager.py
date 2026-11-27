@@ -1238,3 +1238,28 @@ def test_do_transfer_invalid_episode_detail_returns_failure():
 
     assert state is False
     assert "自定义识别格式无效" in errmsg
+
+
+def test_notify_key_uses_compatible_media_identity():
+    """标准识别结果即使未填 media_id 字段，也必须按兼容 ID 分开聚合通知。"""
+    chain = make_transfer_chain()
+    first_task = make_task(episode=1)
+    first_media = make_media_info()
+    first_media.source = "themoviedb"
+    first_media.media_id = None
+    first_media.tmdb_id = 12345
+    first_task.mediainfo = first_media
+
+    second_task = make_task(episode=1)
+    second_media = make_media_info()
+    second_media.source = "themoviedb"
+    second_media.media_id = None
+    second_media.tmdb_id = 67890
+    second_task.mediainfo = second_media
+
+    transferinfo = TransferInfo(success=True)
+    with patch("app.chain.transfer.NOTIFY_DEBOUNCE_SECONDS", 999):
+        chain._schedule_notify(first_task, transferinfo)
+        chain._schedule_notify(second_task, transferinfo)
+
+    assert len(chain._notify_pending) == 2

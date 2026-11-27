@@ -4092,10 +4092,7 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         :param transferinfo: 该文件的整理结果
         """
         try:
-            key = (
-                task.mediainfo.media_id if task.mediainfo else None,
-                task.mediainfo.source if task.mediainfo else None,
-            )
+            key = resolve_media_identity(media=task.mediainfo)
         except AttributeError:
             key = (None, None)
 
