@@ -79,6 +79,46 @@ function isFolderExpanded(path: string) {
   return expandedFolders.value.includes(path)
 }
 
+// 目录路径在树缓存中统一使用末尾斜杠形式，与后端 canonical path 保持一致。
+function normalizeDirectoryPath(path: string) {
+  if (!path) return '/'
+  return path.endsWith('/') ? path : `${path}/`
+}
+
+// 获取目录路径根；POSIX 根为 /，Windows 盘符根保留盘符。
+function getDirectoryRoot(path: string) {
+  return path.match(/^[A-Za-z]:\//)?.[0] ?? '/'
+}
+
+// 生成从根到当前目录的 canonical 目录链。
+function getDirectoryChain(path: string) {
+  const normalizedPath = normalizeDirectoryPath(path)
+  const root = getDirectoryRoot(normalizedPath)
+  const chain = [root]
+  let currentPath = root
+
+  normalizedPath
+    .slice(root.length)
+    .split('/')
+    .filter(part => part)
+    .forEach(part => {
+      currentPath = `${currentPath}${part}/`
+      chain.push(currentPath)
+    })
+
+  return chain
+}
+
+// 获取 canonical 目录的父目录；存储根和盘符根的父级统一为 /。
+function getParentDirectoryPath(path: string) {
+  const normalizedPath = normalizeDirectoryPath(path)
+  if (normalizedPath === '/') return '/'
+
+  const chain = getDirectoryChain(normalizedPath)
+  const currentIndex = chain.lastIndexOf(normalizedPath)
+  return currentIndex > 0 ? chain[currentIndex - 1] : '/'
+}
+
 // 渲染文件夹图标
 function renderFolderIcon(isExpanded: boolean) {
   if (isExpanded) {
@@ -142,27 +182,20 @@ watch(
 
     // 如果当前路径不是根目录，自动展开父目录
     if (newPath !== '/') {
-      const parts = newPath.split('/').filter(p => p)
-      let currentPath = ''
+      const pathsToLoad = new Set<string>(['/'])
 
-      // 展开到当前路径的每一层
-      for (const part of parts) {
-        currentPath += '/' + part
-
-        // 如果该路径未展开，则展开它
-        if (!expandedFolders.value.includes(currentPath)) {
+      // 展开到当前路径的每一层，路径键保持后端使用的末尾斜杠形式。
+      for (const currentPath of getDirectoryChain(newPath)) {
+        if (currentPath !== '/' && !expandedFolders.value.includes(currentPath)) {
           expandedFolders.value.push(currentPath)
-
-          // 确保子目录已加载
-          if (!treeCache.value[currentPath]) {
-            await loadSubdirectories(currentPath)
-          }
         }
+        pathsToLoad.add(getParentDirectoryPath(currentPath))
+        pathsToLoad.add(currentPath)
+      }
 
-        // 如果有上一级目录，确保它已加载
-        const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/'
-        if (!treeCache.value[parentPath]) {
-          await loadSubdirectories(parentPath)
+      for (const path of pathsToLoad) {
+        if (!treeCache.value[path]) {
+          await loadSubdirectories(path)
         }
       }
     }

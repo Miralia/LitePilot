@@ -1,6 +1,7 @@
 import type { EndPoints, FileItem } from '@/api/types'
 import FileList from '@/components/filebrowser/FileList.vue'
 import { fireEvent, screen, waitFor } from '@testing-library/vue'
+import { flushPromises } from '@vue/test-utils'
 import { renderWithProviders } from '@tests/support/render'
 import type { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { defineComponent, nextTick } from 'vue'
@@ -277,6 +278,59 @@ describe('FileList list state', () => {
     expect(getRequestConfig(axios, 1).data).toMatchObject({ fileid: 'folder-b' })
   })
 
+  it('shows a retryable error instead of an empty directory when the initial list request fails', async () => {
+    const request = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce([createItem({ name: 'recovered.mkv' })])
+    await renderList(request)
+
+    expect(await screen.findByText('文件列表加载失败')).toBeInTheDocument()
+    expect(screen.queryByText('空目录')).not.toBeInTheDocument()
+
+    await fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    expect(await screen.findByText('recovered.mkv')).toBeInTheDocument()
+    expect(screen.queryByText('文件列表加载失败')).not.toBeInTheDocument()
+  })
+
+  it('keeps existing entries visible and retryable when a refresh fails', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce([createItem({ name: 'existing.mkv' })])
+      .mockRejectedValueOnce(new Error('network down'))
+    await renderList(request)
+    await screen.findByText('existing.mkv')
+
+    await fireEvent.click(getSlotIconButton('mdi-refresh'))
+
+    expect(await screen.findByText('文件列表加载失败')).toBeInTheDocument()
+    expect(screen.getByText('existing.mkv')).toBeInTheDocument()
+    expect(screen.queryByText('空目录')).not.toBeInTheDocument()
+  })
+
+  it('does not enter the list failure state when the request is canceled', async () => {
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    const request = vi.fn().mockRejectedValue(canceled)
+    await renderList(request)
+    await flushPromises()
+
+    expect(screen.queryByText('文件列表加载失败')).not.toBeInTheDocument()
+    expect(screen.queryByText('空目录')).not.toBeInTheDocument()
+  })
+
+  it('does not reuse an empty-directory snapshot across navigation when the next request is canceled', async () => {
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    const request = vi.fn().mockResolvedValueOnce([]).mockRejectedValueOnce(canceled)
+    const { rerender } = await renderList(request)
+    expect(await screen.findByText('空目录')).toBeInTheDocument()
+
+    await rerender({ item: createItem({ name: 'other', path: '/other/', type: 'dir' }) })
+    await flushPromises()
+
+    expect(screen.queryByText('空目录')).not.toBeInTheDocument()
+    expect(screen.queryByText('文件列表加载失败')).not.toBeInTheDocument()
+  })
+
   it('isolates consecutive refreshes even when path and sort stay unchanged', async () => {
     const initial = Promise.resolve([createItem({ name: 'initial.mkv' })])
     const olderRefresh = deferred<FileItem[]>()
@@ -415,6 +469,23 @@ describe('FileList destructive operations', () => {
     expect(emitted().loading?.at(-1)).toEqual([false])
   })
 
+  it('does not report a canceled delete request as a user-visible failure', async () => {
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    const request = vi.fn((config: AxiosRequestConfig) => {
+      if (config.url === '/storage/delete') return Promise.reject(canceled)
+      return Promise.resolve([createItem({ name: 'cancel-delete.mkv' })])
+    })
+    const { emitted } = await renderList(request)
+    await screen.findByText('cancel-delete.mkv')
+
+    await fireEvent.click(getIconButton('mdi-delete-outline'))
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(emitted().filedeleted).toBeUndefined()
+    expect(emitted().loading?.at(-1)).toEqual([false])
+  })
+
   it('emits one success event, refreshes once and closes loading after a successful single delete', async () => {
     const item = createItem({ name: 'deleted.mkv', path: '/media/deleted.mkv' })
     let listCount = 0
@@ -434,6 +505,24 @@ describe('FileList destructive operations', () => {
     expect(request.mock.calls.filter(([config]) => config.url === '/storage/delete')).toHaveLength(1)
     expect(emitted().filedeleted).toHaveLength(1)
     expect(emitted().loading?.at(-1)).toEqual([false])
+  })
+
+  it('does not report a canceled batch delete request as a user-visible failure', async () => {
+    const item = createItem({ name: 'cancel-batch.mkv', path: '/media/cancel-batch.mkv' })
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    const request = vi.fn((config: AxiosRequestConfig) => {
+      if (config.url === '/storage/delete') return Promise.reject(canceled)
+      return Promise.resolve([item])
+    })
+    await renderList(request)
+    await screen.findByText('cancel-batch.mkv')
+
+    await fireEvent.click(getIconButton('mdi-select'))
+    await fireEvent.click(screen.getByText('cancel-batch.mkv').closest('[role="button"]') as Element)
+    await fireEvent.click(getIconButton('mdi-delete-outline'))
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('deduplicates batch selection, refreshes once, summarizes failures and keeps failed items selected', async () => {
@@ -751,6 +840,21 @@ describe('FileList dialogs, download and lifecycle', () => {
     await fireEvent.click(getSlotIconButton('mdi-download'))
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('network down'))
+  })
+
+  it('does not report a canceled download request as a user-visible failure', async () => {
+    const file = createItem({ name: 'movie.mkv', path: '/media/movie.mkv', type: 'file' })
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    const request = vi.fn((config: AxiosRequestConfig) =>
+      config.url === '/storage/download' ? Promise.reject(canceled) : Promise.resolve([file]),
+    )
+    await renderList(request, { item: file })
+    await screen.findByText('movie.mkv')
+
+    await fireEvent.click(getSlotIconButton('mdi-download'))
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('reports recognize request failures after closing the progress dialog', async () => {

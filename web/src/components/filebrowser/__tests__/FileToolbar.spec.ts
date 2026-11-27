@@ -143,6 +143,20 @@ describe('FileToolbar mkdir', () => {
     expect(mocks.close).not.toHaveBeenCalled()
   })
 
+  it('does not report a canceled creation request as a user-visible failure', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    const request = vi.fn().mockRejectedValue(canceled)
+    const wrapper = mountToolbar(request)
+
+    await expect(openDialogAndCreate(wrapper)).resolves.toBeUndefined()
+    await flushPromises()
+
+    expect(wrapper.emitted('loading')).toEqual([[true], [false]])
+    expect(wrapper.emitted('foldercreated')).toBeUndefined()
+    expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
   it('submits the current directory and closes only after a successful creation', async () => {
     const request = vi.fn().mockResolvedValue({ success: true })
     const wrapper = mountToolbar(request)

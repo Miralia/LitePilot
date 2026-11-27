@@ -10,6 +10,7 @@ import { useTheme } from 'vuetify'
 import { storageAttributes } from '@/api/constants'
 import { useSilentSettingRefresh } from '@/composables/useSilentSettingRefresh'
 import { configureAceEditorPadding } from '@/utils/aceEditor'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 const { t } = useI18n()
 const { global: globalTheme } = useTheme()
@@ -35,6 +36,8 @@ const $toast = useToast()
 
 // 用户主动保存失败必须可见，同时保留完整异常到控制台便于诊断。
 function reportSaveError(error: unknown) {
+  if (isRequestCancellation(error)) return
+
   console.error(error)
   $toast.error(error instanceof Error ? error.message : t('common.error'))
 }

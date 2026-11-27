@@ -3,6 +3,7 @@ import router from '@/router'
 import { useAuthStore, useUserStore } from '@/stores'
 import { initializeRequestOptimizer } from '@/utils/requestOptimizer'
 import { useGlobalOfflineStatus } from '@/composables/useOfflineStatus'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 // 创建axios实例
 const api = axios.create({
@@ -50,6 +51,10 @@ api.interceptors.response.use(
   },
   async (error: AxiosError) => {
     if (!error.response) {
+      if (isRequestCancellation(error)) {
+        return Promise.reject(error)
+      }
+
       const requestConfig = error.config as ConnectionAwareRequestConfig | undefined
       const failureReason = resolveConnectionFailureReason(error)
 

@@ -13,6 +13,7 @@ import { usePWA } from '@/composables/usePWA'
 import { useAvailableHeight } from '@/composables/useAvailableHeight'
 import { useKeepAliveRefresh, type KeepAliveRefreshContext } from '@/composables/useKeepAliveRefresh'
 import { openSharedDialog } from '@/composables/useSharedDialog'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 const FileRenameDialog = defineAsyncComponent(() => import('../dialog/FileRenameDialog.vue'))
 const MediaInfoDialog = defineAsyncComponent(() => import('../dialog/MediaInfoDialog.vue'))
@@ -76,6 +77,10 @@ const selectMode = ref(false)
 
 // 是否正在加载
 const loading = ref(true)
+
+// 文件列表加载是否失败；空目录只能由成功响应确认。
+const loadFailed = ref(false)
+const hasListSnapshot = ref(false)
 
 // 重命名loading
 const renameLoading = ref(false)
@@ -173,6 +178,8 @@ function closeProgressDialog() {
 
 // 将用户主动操作的异常转换为可见反馈，同时保留控制台诊断信息。
 function reportActionError(error: unknown) {
+  if (isRequestCancellation(error)) return
+
   console.error(error)
   $toast.error(error instanceof Error ? error.message : t('common.error'))
 }
@@ -274,6 +281,8 @@ async function list_files(context: KeepAliveRefreshContext = {}) {
     emit('loading', true)
   }
 
+  loadFailed.value = false
+
   try {
     // 参数
     const url = inProps.endpoints?.list.url.replace(/{sort}/g, inProps.sort || 'name')
@@ -289,12 +298,17 @@ async function list_files(context: KeepAliveRefreshContext = {}) {
     if (requestSeed !== listRequestSeed) return
 
     items.value = data
+    hasListSnapshot.value = true
+    loadFailed.value = false
     syncSelectedItems(data)
 
     // 通知父组件文件列表更新
     emit('items-updated', items.value)
   } catch (error) {
+    if (isRequestCancellation(error) || requestSeed !== listRequestSeed) return
+
     console.error(error)
+    loadFailed.value = true
   } finally {
     if (!silentRefresh) {
       emit('loading', false)
@@ -340,8 +354,7 @@ async function deleteItem(item: FileItem, confirm: boolean = true) {
     await list_files()
     return true
   } catch (error) {
-    console.error(error)
-    $toast.error(error instanceof Error ? error.message : t('common.error'))
+    reportActionError(error)
     return false
   } finally {
     emit('loading', false)
@@ -367,6 +380,7 @@ async function batchDelete() {
   try {
     const selectedItems = dedupeFileItems(selected.value)
     const failedItems: FileItem[] = []
+    let requestCanceled = false
 
     // 删除选中的项目
     for (const [index, item] of selectedItems.entries()) {
@@ -377,11 +391,16 @@ async function batchDelete() {
         const result = await requestDeleteItem(item)
         if (!result.success) failedItems.push(item)
       } catch (error) {
+        if (isRequestCancellation(error)) {
+          requestCanceled = true
+          break
+        }
         console.error(error)
         failedItems.push(item)
       }
     }
 
+    if (requestCanceled) return
     if (failedItems.length) {
       selected.value = failedItems
       $toast.error(`${t('common.error')}: ${failedItems.map(item => item.name).join(', ')}`)
@@ -638,9 +657,10 @@ watch(
 watch(
   () => inProps.item,
   async () => {
-    // 清空列表
+    // 清空列表；新的文件项必须重新取得空目录快照。
     items.value = []
     selected.value = []
+    hasListSnapshot.value = false
     // 关闭弹窗
     nameTestResult.value = undefined
     // 重置菜单
@@ -879,6 +899,14 @@ onUnmounted(() => {
           <VIcon color="primary" :icon="selectMode ? 'mdi-selection-remove' : 'mdi-select'" />
         </IconBtn>
       </div>
+      <VAlert v-if="loadFailed && items.length > 0" type="warning" variant="tonal" density="compact" class="ma-3 flex-grow-0">
+        <div class="d-flex align-center gap-3">
+          <span class="flex-grow-1">{{ t('file.loadFailed') }}</span>
+          <VBtn color="warning" variant="text" size="small" @click="list_files">
+            {{ t('common.retry') }}
+          </VBtn>
+        </div>
+      </VAlert>
       <LoadingBanner v-if="loading" />
       <!-- 文件详情 -->
       <VCardText v-else-if="isFile && !isImage && items.length > 0" class="text-center break-all">
@@ -898,6 +926,16 @@ onUnmounted(() => {
       <!-- 图片 -->
       <VCardText v-else-if="isFile && isImage && items.length > 0" class="grow d-flex justify-center align-center">
         <VImg :src="currentImgLink" max-width="100%" max-height="100%" />
+      </VCardText>
+      <!-- 加载失败且没有可保留内容时显示可重试错误态 -->
+      <VCardText v-else-if="loadFailed && items.length === 0" class="grow d-flex justify-center align-center py-5">
+        <div class="text-center">
+          <VIcon icon="mdi-cloud-alert-outline" color="warning" size="36" />
+          <div class="text-body-1 text-high-emphasis mt-3">{{ t('file.loadFailed') }}</div>
+          <VBtn class="mt-3" color="primary" variant="tonal" size="small" @click="list_files">
+            {{ t('common.retry') }}
+          </VBtn>
+        </div>
       </VCardText>
       <!-- 目录和文件列表 -->
       <VCardText v-else-if="dirs.length || files.length" class="p-0 flex-grow-1 overflow-hidden">
@@ -979,7 +1017,10 @@ onUnmounted(() => {
       <VCardText v-else-if="filter" class="grow d-flex justify-center align-center grey--text py-5">
         {{ t('file.noFiles') }}
       </VCardText>
-      <VCardText v-else-if="!loading" class="grow d-flex justify-center align-center grey--text py-5">
+      <VCardText
+        v-else-if="!loading && !loadFailed && hasListSnapshot"
+        class="grow d-flex justify-center align-center grey--text py-5"
+      >
         {{ t('file.emptyDirectory') }}
       </VCardText>
     </VCard>

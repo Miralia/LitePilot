@@ -1,5 +1,6 @@
 import AccountSettingDirectory from '@/views/setting/AccountSettingDirectory.vue'
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue'
+import { flushPromises } from '@vue/test-utils'
 import { renderWithProviders } from '@tests/support/render'
 import { defineComponent } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -133,6 +134,24 @@ describe('mounted local disk empty directory cleanup setting', () => {
     await waitFor(() => {
       expect(mocks.toastError).toHaveBeenCalledWith('network failed')
     })
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
+
+  it('does not report a canceled save request as a user-visible failure', async () => {
+    mockSettings(true)
+    const canceled = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED', name: 'CanceledError' })
+    mocks.apiPost.mockImplementation((endpoint: string) => {
+      if (endpoint === 'system/setting/Storages') return Promise.reject(canceled)
+      return Promise.resolve({ success: true })
+    })
+    await renderDirectorySettings()
+
+    const card = screen.getByText('存储', { selector: '.v-card-title' }).closest('.v-card')
+    expect(card).not.toBeNull()
+    await fireEvent.click(within(card as HTMLElement).getByRole('button', { name: '保存' }))
+    await flushPromises()
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
 

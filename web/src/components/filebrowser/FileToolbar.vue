@@ -5,6 +5,7 @@ import { useDisplay } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'vue-toastification'
 import { openSharedDialog } from '@/composables/useSharedDialog'
+import { isRequestCancellation } from '@/utils/requestCancellation'
 
 const FileNewFolderDialog = defineAsyncComponent(() => import('../dialog/FileNewFolderDialog.vue'))
 
@@ -130,8 +131,10 @@ async function mkdir() {
     newFolderName.value = ''
     emit('foldercreated')
   } catch (error) {
-    console.error('创建目录失败:', error)
-    $toast.error(error instanceof Error ? error.message : t('common.error'))
+    if (!isRequestCancellation(error)) {
+      console.error('创建目录失败:', error)
+      $toast.error(error instanceof Error ? error.message : t('common.error'))
+    }
   } finally {
     emit('loading', false)
   }

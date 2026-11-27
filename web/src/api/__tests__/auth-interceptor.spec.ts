@@ -93,4 +93,22 @@ describe('API authentication interceptor', () => {
     await rejection
     expect(routerPush).toHaveBeenCalledWith('/login')
   })
+  it('preserves axios cancellation errors for route-switch aborts', async () => {
+    server.use(
+      http.get(new URL('test/cancelled', 'http://localhost/api/v1/').href, async () => {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        return HttpResponse.json({ success: true })
+      }),
+    )
+    const controller = new AbortController()
+
+    const request = api.get('test/cancelled', { signal: controller.signal })
+    controller.abort()
+
+    await expect(request).rejects.toMatchObject({
+      code: 'ERR_CANCELED',
+      name: 'CanceledError',
+    })
+  })
+
 })

@@ -1,7 +1,7 @@
 import FileNavigator from '@/components/filebrowser/FileNavigator.vue'
 import type { EndPoints, FileItem } from '@/api/types'
 import i18n from '@/plugins/i18n'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
 import type { AxiosInstance } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -150,7 +150,31 @@ describe('FileNavigator directory tree', () => {
     expect(request).toHaveBeenCalledOnce()
   })
 
-  it('loads uncached ancestors needed by the current path', async () => {
+  it('expands canonical trailing-slash ancestors of the current path', async () => {
+    const request = vi.fn().mockImplementation(({ data }: { data: FileItem }) => {
+      if (data.path === '/') {
+        return [{ name: 'shows', path: '/shows/', storage: 'local', type: 'dir' }]
+      }
+      if (data.path === '/shows/') {
+        return [{ name: 'Season 01', path: '/shows/Season 01/', storage: 'local', type: 'dir' }]
+      }
+      return []
+    })
+
+    const wrapper = mountNavigator(request, { currentPath: '/shows/Season 01/' })
+    await flushPromises()
+    await nextTick()
+
+    expect(wrapper.text()).toContain('shows')
+    expect(wrapper.text()).toContain('Season 01')
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ path: '/shows/' }),
+      }),
+    )
+  })
+
+  it('loads uncached canonical ancestors needed by the current path', async () => {
     const requestedPaths: string[] = []
     const request = vi.fn().mockImplementation(({ data }: { data: FileItem }) => {
       requestedPaths.push(data.path)
@@ -158,9 +182,8 @@ describe('FileNavigator directory tree', () => {
     })
 
     mountNavigator(request, { currentPath: '/shows/Season 01' })
-    await nextTick()
-    await nextTick()
+    await flushPromises()
 
-    expect(requestedPaths).toEqual(['/shows', '/'])
+    expect(requestedPaths).toEqual(['/', '/shows/', '/shows/Season 01/'])
   })
 })

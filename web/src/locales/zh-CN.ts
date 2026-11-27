@@ -1118,6 +1118,7 @@ export default {
     modifyTime: '修改时间',
     noFiles: '没有目录或文件',
     emptyDirectory: '空目录',
+    loadFailed: '文件列表加载失败',
     confirmBatchDelete: '是否确认删除选中的 {count} 个项目？',
     deleting: '正在删除 {name}...',
     recognize: '识别',
