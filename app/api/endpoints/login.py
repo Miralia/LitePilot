@@ -1,3 +1,4 @@
+import ipaddress
 import threading
 import time
 from dataclasses import dataclass
@@ -43,9 +44,32 @@ _login_throttle_states: TTLCache = TTLCache(
 )
 
 
+def _login_client_host(request: Request) -> str:
+    """
+    返回用于限流的客户端地址。
+
+    只有直连 peer 是本机反向代理时才信任 ``X-Forwarded-For``。nginx 使用
+    ``$proxy_add_x_forwarded_for`` 把真实远端追加到链尾，因此取最后一个
+    有效地址；客户端预置的伪造首跳不能参与限流身份。
+    """
+    client_host = request.client.host if request.client else "unknown"
+    if client_host not in {"127.0.0.1", "::1"}:
+        return client_host
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    candidates = [part.strip() for part in forwarded_for.split(",") if part.strip()]
+    if not candidates:
+        return client_host
+    forwarded_host = candidates[-1]
+    try:
+        ipaddress.ip_address(forwarded_host)
+    except ValueError:
+        return client_host
+    return forwarded_host
+
+
 def _login_throttle_keys(request: Request, username: str | None) -> tuple[tuple[str, ...], ...]:
     """生成账号级与来源 IP 级限流键，避免单账号绕过或单账号爆破。"""
-    client_host = request.client.host if request.client else "unknown"
+    client_host = _login_client_host(request)
     normalized_username = (username or "").strip().casefold()
     return (
         ("account", client_host, normalized_username),

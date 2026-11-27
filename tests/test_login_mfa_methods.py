@@ -243,3 +243,53 @@ def test_missing_user_still_pays_password_verification_cost(monkeypatch):
     assert len(calls) == 1
     assert calls[0][0] == "wrong"
     assert calls[0][1].startswith("$2")
+
+
+def test_login_throttle_uses_forwarded_client_behind_loopback_proxy():
+    """本地 nginx 代理后，限流键应使用 XFF 链尾的真实客户端地址。"""
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/v1/login/access-token",
+            "headers": [
+                (b"host", b"testserver"),
+                (b"x-forwarded-for", b"203.0.113.9, 198.51.100.7"),
+            ],
+            "scheme": "https",
+            "server": ("testserver", 443),
+            "client": ("127.0.0.1", 123),
+        }
+    )
+
+    keys = login_endpoint._login_throttle_keys(request, "user")
+
+    assert keys == (
+        ("account", "198.51.100.7", "user"),
+        ("ip", "198.51.100.7"),
+    )
+
+
+def test_login_throttle_ignores_forwarded_header_for_direct_client():
+    """非可信直连客户端不能通过伪造 XFF 轮换限流身份。"""
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/v1/login/access-token",
+            "headers": [
+                (b"host", b"testserver"),
+                (b"x-forwarded-for", b"198.51.100.7"),
+            ],
+            "scheme": "http",
+            "server": ("testserver", 80),
+            "client": ("192.0.2.10", 123),
+        }
+    )
+
+    keys = login_endpoint._login_throttle_keys(request, "user")
+
+    assert keys == (
+        ("account", "192.0.2.10", "user"),
+        ("ip", "192.0.2.10"),
+    )
