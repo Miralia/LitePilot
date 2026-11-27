@@ -897,3 +897,29 @@ def test_scrape_metadata_recognize_fail(mock_recognize, media_chain):
             fileitem=fileitem
         )
         mock_logger.assert_called_with(f"{Path(fileitem.path)} 无法识别文件媒体信息！")
+
+
+def test_tv_episode_zero_scrape_continues_recognition():
+    """手动刮削第 0 集特别篇时不能把集号当作未识别。"""
+    chain = object.__new__(MediaChain)
+    file_meta = MagicMock()
+    file_meta.begin_episode = 0
+    mediainfo = MagicMock()
+    mediainfo.tmdb_id = 1
+    mediainfo.episode_group = None
+    chain.recognize_media = MagicMock(return_value=None)
+
+    with patch("app.chain.media.MetaInfoPath", return_value=file_meta):
+        chain._handle_tv_episode_file(
+            fileitem=MagicMock(),
+            filepath=Path("/tmp/S00E00.mkv"),
+            mediainfo=mediainfo,
+            parent=MagicMock(),
+            overwrite=False,
+        )
+
+    chain.recognize_media.assert_called_once_with(
+        meta=file_meta,
+        tmdbid=1,
+        episode_group=None,
+    )

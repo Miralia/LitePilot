@@ -220,7 +220,7 @@ class StringUtils:
         if episode_re:
             mtype = MediaType.TV
             episode_num = int(cn2an.cn2an(episode_re.group(1), mode='smart'))
-            if episode_num and not season_num:
+            if episode_num is not None and season_num is None:
                 season_num = 1
 
         year_re = re.search(r'[\s(]+(\d{4})[\s)]*', content)

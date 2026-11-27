@@ -331,6 +331,20 @@ def test_anime_parser_preserves_numeric_special_season_zero():
     assert ranged_meta.end_season == 1
 
 
+def test_anime_parser_preserves_numeric_episode_zero():
+    """第三方动漫解析器返回整数 0 时也应保留第 0 集。"""
+    parsed = {
+        "anime_title": "Demo Anime",
+        "episode_number": 0,
+    }
+    with patch("app.core.meta.metaanime.anitopy.parse", return_value=parsed):
+        meta = MetaAnime(title="Demo Anime E00")
+
+    assert meta.begin_episode == 0
+    assert meta.total_episode == 1
+    assert meta.type == MediaType.TV
+
+
 def test_anime_parser_ignores_empty_and_invalid_season_values():
     """第三方动漫季号的空值和非法列表项应按未指定处理且不得抛错。"""
     empty = {

@@ -197,7 +197,7 @@ class MetaAnime(MetaBase):
         else:
             begin_episode = episode_number
             end_episode = None
-        if not begin_episode:
+        if begin_episode is None or begin_episode == "":
             return
         try:
             self.begin_episode = int(begin_episode)

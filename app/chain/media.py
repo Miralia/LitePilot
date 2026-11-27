@@ -809,9 +809,9 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         # 合并信息
         if mtype:
             meta.type = mtype
-        if season_num:
+        if season_num is not None:
             meta.begin_season = season_num
-        if episode_num:
+        if episode_num is not None:
             meta.begin_episode = episode_num
         if year:
             meta.year = year
@@ -1289,7 +1289,7 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         """
         # 重新识别季集信息
         file_meta = MetaInfoPath(filepath)
-        if not file_meta.begin_episode:
+        if file_meta.begin_episode is None:
             logger.warning(f"{filepath.name} 无法识别文件集数！")
             return
 
@@ -1571,9 +1571,9 @@ class MediaChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         # 合并信息
         if mtype:
             meta.type = mtype
-        if season_num:
+        if season_num is not None:
             meta.begin_season = season_num
-        if episode_num:
+        if episode_num is not None:
             meta.begin_episode = episode_num
         if year:
             meta.year = year
