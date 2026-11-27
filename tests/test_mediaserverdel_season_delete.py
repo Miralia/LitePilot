@@ -171,3 +171,23 @@ def test_partial_delete_keeps_torrent_paused(tmp_path) -> None:
 
     assert state == "paused"
     pause.assert_called_once()
+
+
+def test_query_history_preserves_numeric_episode_zero() -> None:
+    """原生 Emby webhook 的 int 0 季集号必须定位特别篇，不能降级成整剧删除。"""
+    chain = object.__new__(MediaServerDelChain)
+    chain.transferhis = MagicMock()
+    chain.transferhis.get_by.return_value = []
+
+    chain._query_history(
+        media_type="Episode",
+        media_name="Show",
+        media_path="/media/Show/S00/episode0.mkv",
+        tmdb_id=123,
+        season_num=0,
+        episode_num=0,
+    )
+
+    first_query = chain.transferhis.get_by.call_args_list[0].kwargs
+    assert first_query["season"] == "S00"
+    assert first_query["episode"] == "E00"

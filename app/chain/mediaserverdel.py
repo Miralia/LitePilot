@@ -77,8 +77,8 @@ class MediaServerDelChain(ChainBase):
         :param episode_num: 集号
         :return: 描述文本与整理历史列表
         """
-        season = str(season_num).rjust(2, "0") if season_num and str(season_num).isdigit() else None
-        episode = str(episode_num).rjust(2, "0") if episode_num and str(episode_num).isdigit() else None
+        season = str(season_num).rjust(2, "0") if season_num is not None and str(season_num).isdigit() else None
+        episode = str(episode_num).rjust(2, "0") if episode_num is not None and str(episode_num).isdigit() else None
         # Emby 的 ScripterX 拼接 webhook URL 时不对 `+` 转义，`DD+` 这类
         # 路径到达时已变成 `DD `（加号被当作空格的转义）。查询前先还原，
         # 否则含 + 的路径永远匹配不到整理记录
@@ -748,8 +748,8 @@ class MediaServerDelChain(ChainBase):
             return default_icon
         mtype = MediaType.MOVIE if media_type in ("Movie", "MOV") else MediaType.TV
         try:
-            season = int(season_num) if str(season_num or "").isdigit() else None
-            episode = int(episode_num) if str(episode_num or "").isdigit() else None
+            season = int(season_num) if season_num is not None and str(season_num).isdigit() else None
+            episode = int(episode_num) if episode_num is not None and str(episode_num).isdigit() else None
             image = self.obtain_specific_image(
                 mediaid=tmdb_id,
                 mtype=mtype,

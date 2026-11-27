@@ -66,3 +66,15 @@ def test_tmdb_episode_zero_uses_episode_still() -> None:
 
     assert result is not None
     assert result.endswith("/episode0.jpg")
+
+
+def test_notify_image_preserves_numeric_episode_zero() -> None:
+    """原生 webhook 的 int 0 季集号在通知图片路径中也不能被当成缺失。"""
+    chain = object.__new__(MediaServerDelChain)
+    chain.obtain_specific_image = MagicMock(return_value="https://image.tmdb.org/episode0.jpg")
+
+    result = chain._obtain_notify_image(295071, "Episode", season_num=0, episode_num=0)
+
+    assert result == "https://image.tmdb.org/episode0.jpg"
+    assert chain.obtain_specific_image.call_args.kwargs["season"] == 0
+    assert chain.obtain_specific_image.call_args.kwargs["episode"] == 0
