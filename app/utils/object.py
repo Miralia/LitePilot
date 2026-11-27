@@ -3,7 +3,7 @@ import dis
 import inspect
 import textwrap
 from types import FunctionType
-from typing import Any, Callable, get_type_hints
+from typing import Any, Callable, get_type_hints, get_origin
 
 
 class ObjectUtils:
@@ -99,6 +99,15 @@ class ObjectUtils:
                 param_type = param_annotation
             if param_type is None:
                 continue
-            if not isinstance(arg, param_type):
+            try:
+                matches = isinstance(arg, param_type)
+            except TypeError:
+                # list[int] 等泛型容器不能直接 isinstance，降级校验容器本身；
+                # Literal/Annotated 等特殊 typing 形式无法安全校验时维持无类型约束
+                origin = get_origin(param_type)
+                if origin is None or not isinstance(origin, type):
+                    continue
+                matches = isinstance(arg, origin)
+            if not matches:
                 return False
         return True

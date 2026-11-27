@@ -52,3 +52,12 @@ def test_check_signature_unresolved_annotation_is_unconstrained():
         return value
 
     assert ObjectUtils.check_signature(target, object()) is True
+
+
+def test_check_signature_matches_generic_container_origin():
+    """泛型容器注解按容器类型校验，元素泛型不应使模块链抛出 TypeError。"""
+    def target(values: list[int]):
+        return values
+
+    assert ObjectUtils.check_signature(target, [1]) is True
+    assert ObjectUtils.check_signature(target, {"value": 1}) is False
