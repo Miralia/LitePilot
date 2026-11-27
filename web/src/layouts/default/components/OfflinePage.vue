@@ -16,12 +16,12 @@ const statusMessage = computed(() => {
   return t('app.serviceUnavailableMessage')
 })
 
-/** 拼接离线状态提示文案，供 Toast 或 Agent 助手气泡展示。 */
+/** 拼接离线状态提示文案。 */
 function buildConnectionPromptMessage() {
   return `${statusTitle.value}：${statusMessage.value}`
 }
 
-/** 根据当前连接状态选择 Toast 级别，Agent 助手可用时会由全局 Toast 路由接管。 */
+/** 根据当前连接状态选择 Toast 级别。 */
 function showConnectionPrompt() {
   const message = buildConnectionPromptMessage()
   const options = {

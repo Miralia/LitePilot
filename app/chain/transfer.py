@@ -992,7 +992,6 @@ class TransferChain(ChainBase, ConfigReloadMixin, metaclass=Singleton):
         self._transfer_interval = 15
         # 事件管理器
         self.jobview = JobManager()
-        # Agent重试管理器
         # 转移成功的文件清单
         self._success_target_files: Dict[str, List[str]] = {}
         # 入库通知的延迟聚合状态：按 (媒体标识, 季) 记录代号，
