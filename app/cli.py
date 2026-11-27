@@ -1159,7 +1159,7 @@ def backup(output_path: Optional[Path]) -> None:
     click.echo(f"备份完成：{result.archive}")
     click.echo(f"文件数：{result.file_count}")
     if result.excluded:
-        click.echo(f"已排除可重建目录：{', '.join(result.excluded)}")
+        click.echo(f"已排除可重建与运维产物：{', '.join(result.excluded)}")
 
 
 @cli.command(context_settings=CONTEXT_SETTINGS)

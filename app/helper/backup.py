@@ -27,8 +27,8 @@ from app.log import logger
 MANIFEST_NAME = "moviepilot-backup.json"
 # 备份格式版本，后续格式变化时用于兼容判断
 BACKUP_FORMAT_VERSION = 1
-# 备份时排除的目录：均为可重建的缓存与运行期临时数据
-EXCLUDE_DIRS = {"temp", "cache", ".cache", "logs"}
+# 备份时排除的目录：可重建缓存、运行期临时数据、自动下载字体与已移除插件体系产物
+EXCLUDE_DIRS = {"temp", "cache", ".cache", "logs", "fonts", "plugins", "plugins_backup"}
 # 历史升级前目录副本是一次性运维回滚产物，迁移配置时不随正文递归打包
 EXCLUDE_OPERATIONAL_BACKUP_PREFIX = "backup-pre-upgrade-"
 # 备份包与敏感配置文件只允许所有者读写，避免数据库/env 凭据被本机其它账户读取
@@ -238,7 +238,7 @@ def create_backup(
         config_dir=source,
         file_count=file_count,
         total_bytes=total_bytes,
-        excluded=sorted(EXCLUDE_DIRS),
+        excluded=sorted(EXCLUDE_DIRS) + [f"{EXCLUDE_OPERATIONAL_BACKUP_PREFIX}*"],
     )
 
 

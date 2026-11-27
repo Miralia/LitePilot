@@ -295,3 +295,26 @@ def test_create_backup_excludes_pre_upgrade_backup_directories(tmp_path):
         names = {member.name for member in tar.getmembers()}
     assert "backup-pre-upgrade-20261127041959/large-copy.db" not in names
     assert "app.env" in names
+
+
+def test_create_backup_excludes_derived_fonts_and_removed_plugin_artifacts(tmp_path):
+    """可重新下载的字体与已移除插件体系产物不应随配置备份迁移。"""
+    config = _make_config(tmp_path)
+    for directory, filename in (
+        ("fonts", "LXGWZhenKaiSlabGB-Regular.ttf"),
+        ("plugins/MediaCoverGenerator/fonts", "zh.ttf"),
+        ("plugins_backup/mediacovergenerator", "__init__.py"),
+    ):
+        path = config / directory
+        path.mkdir(parents=True, exist_ok=True)
+        (path / filename).write_bytes(b"derived")
+
+    result = create_backup(archive=tmp_path / "backup.tar.gz", config_dir=config)
+
+    with tarfile.open(result.archive, "r:gz") as tar:
+        names = {member.name for member in tar.getmembers()}
+    assert "fonts/LXGWZhenKaiSlabGB-Regular.ttf" not in names
+    assert "plugins/MediaCoverGenerator/fonts/zh.ttf" not in names
+    assert "plugins_backup/mediacovergenerator/__init__.py" not in names
+    assert "app.env" in names
+    assert "user.db" in names
