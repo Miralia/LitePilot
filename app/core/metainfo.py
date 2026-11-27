@@ -76,11 +76,13 @@ def _apply_range_total(metainfo: dict, begin_key: str, end_key: str, total_key: 
     """
     计算季/集范围总数；保留原有倒序输入自动交换的兼容行为。
     """
-    if metainfo.get(begin_key) and metainfo.get(end_key):
-        if metainfo[begin_key] > metainfo[end_key]:
-            metainfo[begin_key], metainfo[end_key] = metainfo[end_key], metainfo[begin_key]
+    begin_value = metainfo.get(begin_key)
+    end_value = metainfo.get(end_key)
+    if begin_value is not None and end_value is not None:
+        if begin_value > end_value:
+            metainfo[begin_key], metainfo[end_key] = end_value, begin_value
         metainfo[total_key] = metainfo[end_key] - metainfo[begin_key] + 1
-    elif metainfo.get(begin_key) and not metainfo.get(end_key):
+    elif begin_value is not None and end_value is None:
         metainfo[total_key] = 1
 
 

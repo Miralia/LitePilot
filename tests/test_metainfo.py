@@ -479,3 +479,15 @@ def test_video_parser_preserves_part_after_episode_zero():
 
     assert meta.begin_episode == 0
     assert meta.part == "PartA"
+
+
+def test_find_metainfo_episode_zero_range_totals():
+    """显式媒体标签中的第 0 季/集也应参与范围总数计算。"""
+    _, season_info = find_metainfo("测试剧 {[type=tv;s=0]}")
+    _, episode_info = find_metainfo("测试剧 {[type=tv;e=0-1]}")
+
+    assert season_info["begin_season"] == 0
+    assert season_info["total_season"] == 1
+    assert episode_info["begin_episode"] == 0
+    assert episode_info["end_episode"] == 1
+    assert episode_info["total_episode"] == 2
