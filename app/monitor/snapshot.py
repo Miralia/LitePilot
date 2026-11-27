@@ -1,4 +1,6 @@
+import hashlib
 import json
+import re
 import time
 from typing import Dict, List, Optional, Tuple
 
@@ -11,6 +13,16 @@ class SnapshotStore:
     """
     远程目录监控快照的存取与比对。
     """
+
+    @staticmethod
+    def _cache_key(storage: str) -> str:
+        """把存储名派生成单段缓存 key，阻止路径分隔符越出快照目录。"""
+        text = str(storage or "")
+        safe = re.sub(r"[/\\\x00]", "_", text)
+        if safe != text:
+            digest = hashlib.sha256(text.encode("utf-8", errors="surrogatepass")).hexdigest()[:12]
+            safe = f"{safe}-{digest}"
+        return f"{safe}_snapshot"
 
     def __init__(self, cache: Optional[FileCache] = None):
         """
@@ -38,7 +50,7 @@ class SnapshotStore:
                 'file_count': file_count,
                 'snapshot': snapshot
             }
-            cache_key = f"{storage}_snapshot"
+            cache_key = self._cache_key(storage)
             snapshot_json = json.dumps(snapshot_data, ensure_ascii=False, indent=2)
             self._cache.set(cache_key, snapshot_json.encode('utf-8'), region="snapshots")
             logger.debug(f"快照已保存到缓存: {storage}")
@@ -55,7 +67,7 @@ class SnapshotStore:
         :return: (快照数据或None, 是否读取成功)
         """
         try:
-            cache_key = f"{storage}_snapshot"
+            cache_key = self._cache_key(storage)
             snapshot_data = self._cache.get(cache_key, region="snapshots")
             if snapshot_data:
                 data = json.loads(snapshot_data.decode('utf-8'))
@@ -83,7 +95,7 @@ class SnapshotStore:
         :return: 是否成功
         """
         try:
-            cache_key = f"{storage}_snapshot"
+            cache_key = self._cache_key(storage)
             if self._cache.exists(cache_key, region="snapshots"):
                 self._cache.delete(cache_key, region="snapshots")
                 logger.info(f"快照已重置: {storage}")

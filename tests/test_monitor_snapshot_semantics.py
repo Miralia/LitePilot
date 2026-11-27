@@ -175,3 +175,14 @@ def test_watcher_poll_delay_defaults_and_override(tmp_path):
         poll_delay_ms=LocalDirectoryWatcher.POLL_DELAY_NETWORK_MS
     )
     assert network_watcher.poll_delay_ms == LocalDirectoryWatcher.POLL_DELAY_NETWORK_MS
+
+
+def test_snapshot_storage_name_cannot_escape_cache_directory(tmp_path):
+    """快照 key 不能把存储配置中的 ../ 拼成缓存根目录之外的写入路径。"""
+    from app.core.cache import FileCache
+    from app.monitor.snapshot import SnapshotStore
+
+    store = SnapshotStore(cache=FileCache(base=tmp_path / "cache"))
+    assert store.save("../../escape", {"/mon/a.mkv": {"size": 1, "modify_time": 100}}) is True
+
+    assert not (tmp_path / "escape_snapshot").exists()
