@@ -481,11 +481,15 @@ watch(
 )
 
 // 监听系统主题变化
+const handleSystemThemeChange = async () => {
+  await updateTheme()
+}
+let systemThemeMediaQuery: MediaQueryList | null = null
 try {
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async () => {
-    await updateTheme()
-  })
+  systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  systemThemeMediaQuery.addEventListener('change', handleSystemThemeChange)
 } catch {
+  systemThemeMediaQuery = null
   console.error(t('theme.deviceNotSupport'))
 }
 
@@ -516,6 +520,7 @@ onUnmounted(() => {
   isRestarting.value = false
   closeRestartProgress()
   customCssDialogController?.close()
+  systemThemeMediaQuery?.removeEventListener('change', handleSystemThemeChange)
   window.removeEventListener(THEME_CUSTOMIZER_CHANGE_EVENT, handleThemeCustomizerSettingsChange)
 })
 </script>
